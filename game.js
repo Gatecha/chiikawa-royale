@@ -1,7 +1,19 @@
 // Check if this window was opened as an OAuth login popup redirect
+const oauthRedirectParams = new URLSearchParams(window.location.search);
+const oauthHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+const oauthError =
+  oauthRedirectParams.get("error_description") ||
+  oauthHashParams.get("error_description") ||
+  oauthRedirectParams.get("error") ||
+  oauthHashParams.get("error");
+let pendingOAuthError = oauthError ? decodeURIComponent(oauthError) : "";
 let isOAuthPopup = false;
-if (window.opener && (window.location.hash.includes("access_token=") || window.location.search.includes("code="))) {
+if (window.opener && (window.location.hash.includes("access_token=") || window.location.search.includes("code=") || pendingOAuthError)) {
   isOAuthPopup = true;
+}
+
+if (pendingOAuthError && window.history?.replaceState) {
+  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 const canvas = document.getElementById("game");
@@ -45,6 +57,16 @@ try {
             await handleAuthenticatedUser(session.user);
           }
         }
+      }
+    });
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "oauth_error") return;
+      switchScreen(loginScreen);
+      if (authMessage) {
+        authMessage.textContent = `Login failed: ${event.data.message || "OAuth provider returned an error."}`;
+        authMessage.className = "auth-message error";
+        authMessage.classList.remove("hidden");
       }
     });
 
@@ -4436,6 +4458,21 @@ if (btnLogoutAccount) {
 // ----------------------------------------------------------------
 
 function initIntroSequence() {
+  if (pendingOAuthError) {
+    if (studioSplashScreen) {
+      studioSplashScreen.classList.remove("active");
+      studioSplashScreen.style.display = "none";
+    }
+    switchScreen(loginScreen);
+    if (authMessage) {
+      authMessage.textContent = `Login failed: ${pendingOAuthError}`;
+      authMessage.className = "auth-message error";
+      authMessage.classList.remove("hidden");
+    }
+    pendingOAuthError = "";
+    return;
+  }
+
   // Ensure title screen starts active under the splash overlay
   if (titleScreen) {
     switchScreen(titleScreen);
@@ -4472,6 +4509,21 @@ function initIntroSequence() {
 }
 
 async function checkInitialSession() {
+  if (pendingOAuthError) {
+    if (isOAuthPopup) {
+      try {
+        window.opener?.postMessage({ type: "oauth_error", message: pendingOAuthError }, window.location.origin);
+      } catch (err) {
+        console.warn("Unable to notify opener about OAuth error:", err);
+      }
+      setTimeout(() => window.close(), 800);
+      return;
+    }
+
+    initIntroSequence();
+    return;
+  }
+
   if (isOAuthPopup) {
     // Popup window will handle its own closing, don't trigger intro transitions
     return;
