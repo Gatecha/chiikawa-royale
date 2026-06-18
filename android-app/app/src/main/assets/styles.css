@@ -4786,12 +4786,12 @@ canvas#game {
 
 /* 5. Title Footer text */
 .title-footer {
-  border-top: 4px solid var(--ink);
+  border-top: none;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 10px 0;
-  background-color: var(--ink);
+  background-color: transparent;
   z-index: 2;
   margin-top: auto;
 }
@@ -4799,7 +4799,7 @@ canvas#game {
 .title-footer-text {
   font-family: 'Comfortaa', 'Fredoka', cursive;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(34, 31, 37, 0.65);
   font-weight: 700;
   letter-spacing: 0.8px;
 }

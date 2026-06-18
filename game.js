@@ -3982,11 +3982,17 @@ if (btnSignup) {
         authMessage.classList.remove("hidden");
       }
 
-      // Automatically sign in or check user
-      if (data.user) {
+      // Automatically sign in or check user if a session is immediately established (i.e. email confirmation disabled)
+      if (data.session) {
         setTimeout(async () => {
           await handleAuthenticatedUser(data.user);
         }, 1500);
+      } else {
+        if (authMessage) {
+          authMessage.textContent = "Account created! Please check your email to verify your account, then log in.";
+          authMessage.className = "auth-message success";
+          authMessage.classList.remove("hidden");
+        }
       }
     } catch (err) {
       console.error("Signup error:", err);
