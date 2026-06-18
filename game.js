@@ -1491,11 +1491,13 @@ function addChatMessage(sender, text, isSystem = false, isMe = false) {
 }
 
 function escapeHTML(str) {
-  return str.replace(/[&<>'"]/g, 
+  // Safe check: If str is null, undefined, or not a string, return an empty string
+  if (!str) return ""; 
+  
+  return String(str).replace(/[&<>'"]/g, 
     (tag) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[tag] || tag)
   );
 }
-
 // ----------------------------------------------------------------
 // CLIENT GAME PHYSICS & COLLISION SIMULATION
 // ----------------------------------------------------------------
