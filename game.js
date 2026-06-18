@@ -5,10 +5,15 @@ const ctx = canvas.getContext("2d");
 const SUPABASE_URL = "https://ccwcifnddnwotrnutanp.supabase.co"; // Pre-populated with your project ID
 const SUPABASE_ANON_KEY = ""; // PASTE YOUR PUBLIC ANON KEY HERE
 
-// Initialize Supabase Client
-const supabase = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+// Initialize Supabase Client (wrapped in try/catch to prevent script block if credentials/library fail)
+let supabase = null;
+try {
+  if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (err) {
+  console.error("Supabase client initialization failed:", err);
+}
 
 // Screen DOM elements
 const loginScreen = document.getElementById("loginScreen");
