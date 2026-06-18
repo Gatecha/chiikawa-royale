@@ -6,10 +6,10 @@ const SUPABASE_URL = "https://ccwcifnddnwotrnutanp.supabase.co"; // Pre-populate
 const SUPABASE_ANON_KEY = ""; // PASTE YOUR PUBLIC ANON KEY HERE
 
 // Initialize Supabase Client (wrapped in try/catch to prevent script block if credentials/library fail)
-let supabase = null;
+let supabaseClient = null;
 try {
   if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch (err) {
   console.error("Supabase client initialization failed:", err);
@@ -1114,7 +1114,7 @@ function updateProgressionUI() {
 
 async function loadProgression() {
   // If Supabase is not active, fallback to localStorage
-  if (!supabase) {
+  if (!supabaseClient) {
     try {
       const saved = JSON.parse(localStorage.getItem("chiikawaProgress") || "{}");
       crownCount = Number.isFinite(saved.crownCount) ? saved.crownCount : crownCount;
@@ -1129,10 +1129,10 @@ async function loadProgression() {
   }
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('profiles')
       .select('crown_count, gems_count, season_level, season_xp')
       .eq('id', user.id)
@@ -1153,7 +1153,7 @@ async function loadProgression() {
 
 async function saveProgression() {
   // If Supabase is not active, fallback to localStorage
-  if (!supabase) {
+  if (!supabaseClient) {
     localStorage.setItem(
       "chiikawaProgress",
       JSON.stringify({ crownCount, gemsCount, seasonLevel, seasonXp, seasonXpToNext })
@@ -1162,10 +1162,10 @@ async function saveProgression() {
   }
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('profiles')
       .update({
         crown_count: crownCount,
@@ -3827,7 +3827,7 @@ window.addEventListener("resize", resizeConfettiCanvas);
 // ----------------------------------------------------------------
 
 async function checkAuthSession() {
-  if (!supabase) {
+  if (!supabaseClient) {
     // If Supabase is not configured, skip to main menu
     switchScreen(menuScreen);
     tryPlayMusic();
@@ -3835,7 +3835,7 @@ async function checkAuthSession() {
   }
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (session && session.user) {
       await handleAuthenticatedUser(session.user);
     } else {
@@ -3853,7 +3853,7 @@ async function handleAuthenticatedUser(user) {
     await loadProgression();
 
     // Check if user has a username
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('profiles')
       .select('username')
       .eq('id', user.id)
@@ -3920,7 +3920,7 @@ function startUsernameIntroFlow() {
 if (authForm) {
   authForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!supabase) return;
+    if (!supabaseClient) return;
 
     const email = authEmail.value.trim();
     const password = authPassword.value;
@@ -3932,7 +3932,7 @@ if (authForm) {
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
       if (authMessage) authMessage.classList.add("hidden");
@@ -3950,7 +3950,7 @@ if (authForm) {
 
 if (btnSignup) {
   btnSignup.addEventListener("click", async () => {
-    if (!supabase) return;
+    if (!supabaseClient) return;
 
     const email = authEmail.value.trim();
     const password = authPassword.value;
@@ -3971,7 +3971,7 @@ if (btnSignup) {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
       if (error) throw error;
 
       if (authMessage) {
@@ -4001,7 +4001,7 @@ if (btnSignup) {
 if (usernameForm) {
   usernameForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!supabase) return;
+    if (!supabaseClient) return;
 
     const username = introUsernameInput.value.trim();
     if (username.length < 3) {
@@ -4020,11 +4020,11 @@ if (usernameForm) {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) throw new Error("No authenticated user session.");
 
       // Check if username is taken
-      const { data: takenCheck, error: checkError } = await supabase
+      const { data: takenCheck, error: checkError } = await supabaseClient
         .from('profiles')
         .select('id')
         .eq('username', username);
@@ -4035,7 +4035,7 @@ if (usernameForm) {
       }
 
       // Update username in profiles
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('profiles')
         .update({ username: username })
         .eq('id', user.id);
@@ -4066,9 +4066,9 @@ if (usernameForm) {
 const btnLogoutAccount = document.getElementById("btnLogoutAccount");
 if (btnLogoutAccount) {
   btnLogoutAccount.addEventListener("click", async () => {
-    if (!supabase) return;
+    if (!supabaseClient) return;
     try {
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       
       // Reset progression locally
       crownCount = 0;
