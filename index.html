@@ -59,6 +59,7 @@
               <div class="auth-buttons">
                 <button id="btnLogin" class="btn btn-primary" type="submit">Log In</button>
                 <button id="btnSignup" class="btn btn-secondary" type="button">Create Account</button>
+                <button id="btnPlayOffline" class="btn btn-accent" type="button" style="margin-top: 10px; width: 100%;">Play Locally / LAN</button>
               </div>
 
               <div class="social-login-separator">
@@ -755,6 +756,29 @@
             </div>
             
             <button id="closeDialogBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
+          </div>
+        </div>
+
+        <!-- Server Selection Dialog Popup -->
+        <div id="serverSelectionDialog" class="dialog-overlay hidden">
+          <div class="card glass dialog-card server-select-card">
+            <h2>Select Server Mode</h2>
+            <p>Choose how you want to connect to the game.</p>
+            
+            <div class="server-options-grid">
+              <button id="btnOnlineServer" class="btn btn-primary btn-server-option" type="button">
+                <span class="option-icon">🌐</span>
+                <span class="option-title">Online Server</span>
+                <span class="option-desc">Connect to global multiplayer battles and track progression.</span>
+              </button>
+              <button id="btnLocalServer" class="btn btn-accent btn-server-option" type="button">
+                <span class="option-icon">🏠</span>
+                <span class="option-title">Local Server</span>
+                <span class="option-desc">Play with friends on the same Wi-Fi / Local Area Network (LAN).</span>
+              </button>
+            </div>
+            
+            <button id="closeServerSelectionBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
           </div>
         </div>
       </section>

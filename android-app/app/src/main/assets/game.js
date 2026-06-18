@@ -299,6 +299,8 @@ let selectedCharacter = "chiikawa";
 let previewCharacter = selectedCharacter;
 let readyState = false;
 let localMode = false;
+let serverMode = "online"; // "online" or "local"
+let pendingLocalConnect = false;
 let localBombId = 0;
 
 // Tournament Overlay & Confetti Variables
@@ -421,12 +423,90 @@ document.querySelector(".select-back-btn")?.addEventListener("click", () => {
   document.querySelector('.tab-btn[data-tab="play"]')?.click();
 });
 
-// Matchmaking dialog visibility triggers
-lobbyPlayBtn.addEventListener("click", () => {
-  const squadTabBtn = document.querySelector('.tab-btn[data-tab="squad"]');
-  if (squadTabBtn) {
-    squadTabBtn.click();
+// Server Selection Dialog triggers
+const serverSelectionDialog = document.getElementById("serverSelectionDialog");
+const btnOnlineServer = document.getElementById("btnOnlineServer");
+const btnLocalServer = document.getElementById("btnLocalServer");
+const closeServerSelectionBtn = document.getElementById("closeServerSelectionBtn");
+const btnPlayOffline = document.getElementById("btnPlayOffline");
+
+if (lobbyPlayBtn) {
+  lobbyPlayBtn.addEventListener("click", () => {
+    if (serverSelectionDialog) {
+      serverSelectionDialog.classList.remove("hidden");
+    }
+  });
+}
+
+if (closeServerSelectionBtn) {
+  closeServerSelectionBtn.addEventListener("click", () => {
+    if (serverSelectionDialog) serverSelectionDialog.classList.add("hidden");
+  });
+}
+
+if (serverSelectionDialog) {
+  serverSelectionDialog.addEventListener("click", (e) => {
+    if (e.target === serverSelectionDialog) {
+      serverSelectionDialog.classList.add("hidden");
+    }
+  });
+}
+
+// Online Server Selection
+btnOnlineServer?.addEventListener("click", () => {
+  if (serverSelectionDialog) serverSelectionDialog.classList.add("hidden");
+  serverMode = "online";
+  
+  // If not logged in and Supabase exists, go to login Screen
+  if (supabaseClient) {
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session && session.user) {
+        connectWebSocket(true);
+        const squadTabBtn = document.querySelector('.tab-btn[data-tab="squad"]');
+        if (squadTabBtn) squadTabBtn.click();
+      } else {
+        switchScreen(loginScreen);
+      }
+    }).catch(() => {
+      switchScreen(loginScreen);
+    });
+  } else {
+    connectWebSocket(true);
+    const squadTabBtn = document.querySelector('.tab-btn[data-tab="squad"]');
+    if (squadTabBtn) squadTabBtn.click();
   }
+});
+
+// Local Server Selection
+btnLocalServer?.addEventListener("click", () => {
+  if (serverSelectionDialog) serverSelectionDialog.classList.add("hidden");
+  serverMode = "local";
+  
+  const savedLocalName = localStorage.getItem("local_username");
+  if (!savedLocalName || savedLocalName === "Friend") {
+    // Show account/username creation screen
+    pendingLocalConnect = true;
+    startUsernameIntroFlow();
+  } else {
+    // We already have a nickname! Connect directly
+    if (usernameInput) usernameInput.value = savedLocalName;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+    connectWebSocket(true);
+    const squadTabBtn = document.querySelector('.tab-btn[data-tab="squad"]');
+    if (squadTabBtn) squadTabBtn.click();
+  }
+});
+
+// Play Offline / Bypass Login Screen Button
+btnPlayOffline?.addEventListener("click", () => {
+  serverMode = "local";
+  const savedLocalName = localStorage.getItem("local_username");
+  if (savedLocalName) {
+    if (usernameInput) usernameInput.value = savedLocalName;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+  }
+  switchScreen(menuScreen);
+  tryPlayMusic();
 });
 
 closeDialogBtn?.addEventListener("click", () => {
@@ -588,20 +668,32 @@ installBtn.addEventListener("click", () => {
 // if you choose to host the frontend separately on Vercel. Leave it as null if hosting together on Render.
 const BACKEND_WS_URL = null;
 
-function connectWebSocket() {
-  if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
-    return;
+function connectWebSocket(forceReconnect = false) {
+  if (socket) {
+    if (forceReconnect) {
+      try { socket.close(); } catch(e) {}
+      socket = null;
+    } else if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+      return;
+    }
   }
 
-  let wsUrl = BACKEND_WS_URL;
-  if (!wsUrl) {
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+  let wsUrl;
+  if (serverMode === "local") {
+    if (window.location.protocol === "file:") {
+      const targetIP = prompt("Enter Local Server IP Address (e.g. 192.168.1.50:3000):", localStorage.getItem("local_server_ip") || "192.168.1.50:3000");
+      if (targetIP) {
+        localStorage.setItem("local_server_ip", targetIP);
+        wsUrl = `ws://${targetIP}`;
+      } else {
+        return;
+      }
+    } else {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       wsUrl = `${protocol}//${window.location.host}`;
-    } else {
-      // If we are online (Vercel, APK, etc.), connect to the production Render server
-      wsUrl = "wss://chiikawa-royale.onrender.com";
     }
+  } else {
+    wsUrl = BACKEND_WS_URL || "wss://chiikawa-royale.onrender.com";
   }
 
   console.log("Connecting to WebSocket server:", wsUrl);
@@ -4563,7 +4655,33 @@ if (btnDiscordLogin) {
 if (usernameForm) {
   usernameForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!supabaseClient) return;
+
+    if (serverMode === "local" || !supabaseClient) {
+      const username = introUsernameInput.value.trim();
+      if (username.length < 3) {
+        if (usernameMessage) {
+          usernameMessage.textContent = "Username must be at least 3 characters!";
+          usernameMessage.className = "username-message error";
+          usernameMessage.classList.remove("hidden");
+        }
+        return;
+      }
+      localStorage.setItem("local_username", username);
+      if (usernameInput) usernameInput.value = username;
+      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = username;
+
+      if (usernameMessage) usernameMessage.classList.add("hidden");
+      switchScreen(menuScreen);
+      tryPlayMusic();
+
+      if (pendingLocalConnect) {
+        pendingLocalConnect = false;
+        connectWebSocket(true);
+        const squadTabBtn = document.querySelector('.tab-btn[data-tab="squad"]');
+        if (squadTabBtn) squadTabBtn.click();
+      }
+      return;
+    }
 
     const username = introUsernameInput.value.trim();
     if (username.length < 3) {
