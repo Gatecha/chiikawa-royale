@@ -1,10 +1,35 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+// CONFIGURATION: Set this to your Supabase project credentials
+const SUPABASE_URL = "https://ccwcifnddnwotrnutanp.supabase.co"; // Pre-populated with your project ID
+const SUPABASE_ANON_KEY = ""; // PASTE YOUR PUBLIC ANON KEY HERE
+
+// Initialize Supabase Client
+const supabase = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
 // Screen DOM elements
+const loginScreen = document.getElementById("loginScreen");
+const introScreen = document.getElementById("introScreen");
 const menuScreen = document.getElementById("menuScreen");
 const lobbyScreen = document.getElementById("lobbyScreen");
 const gameScreen = document.getElementById("gameScreen");
+
+// Auth and Intro Elements
+const authForm = document.getElementById("authForm");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+const authMessage = document.getElementById("authMessage");
+const btnLogin = document.getElementById("btnLogin");
+const btnSignup = document.getElementById("btnSignup");
+
+const usernameForm = document.getElementById("usernameForm");
+const introUsernameInput = document.getElementById("introUsernameInput");
+const usernameMessage = document.getElementById("usernameMessage");
+const btnConfirmUsername = document.getElementById("btnConfirmUsername");
+const introSpeechBubble = document.getElementById("introSpeechBubble");
 
 // Studio Splash and Title Screen Elements
 const studioSplashScreen = document.getElementById("studioSplashScreen");
@@ -745,7 +770,7 @@ function handleServerMessage(msg) {
 // ----------------------------------------------------------------
 
 function switchScreen(targetScreen) {
-  [titleScreen, menuScreen, lobbyScreen, gameScreen].forEach((s) => {
+  [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].forEach((s) => {
     if (s) s.classList.remove("active");
   });
   if (targetScreen) targetScreen.classList.add("active");
@@ -1082,24 +1107,74 @@ function updateProgressionUI() {
   document.getElementById("seasonProgressFill").style.width = `${Math.min(100, (seasonXp / seasonXpToNext) * 100)}%`;
 }
 
-function loadProgression() {
+async function loadProgression() {
+  // If Supabase is not active, fallback to localStorage
+  if (!supabase) {
+    try {
+      const saved = JSON.parse(localStorage.getItem("chiikawaProgress") || "{}");
+      crownCount = Number.isFinite(saved.crownCount) ? saved.crownCount : crownCount;
+      gemsCount = Number.isFinite(saved.gemsCount) ? saved.gemsCount : gemsCount;
+      seasonLevel = Number.isFinite(saved.seasonLevel) ? saved.seasonLevel : seasonLevel;
+      seasonXp = Number.isFinite(saved.seasonXp) ? saved.seasonXp : seasonXp;
+      seasonXpToNext = Number.isFinite(saved.seasonXpToNext) ? saved.seasonXpToNext : seasonXpToNext;
+    } catch {
+      saveProgression();
+    }
+    return;
+  }
+
   try {
-    const saved = JSON.parse(localStorage.getItem("chiikawaProgress") || "{}");
-    crownCount = Number.isFinite(saved.crownCount) ? saved.crownCount : crownCount;
-    gemsCount = Number.isFinite(saved.gemsCount) ? saved.gemsCount : gemsCount;
-    seasonLevel = Number.isFinite(saved.seasonLevel) ? saved.seasonLevel : seasonLevel;
-    seasonXp = Number.isFinite(saved.seasonXp) ? saved.seasonXp : seasonXp;
-    seasonXpToNext = Number.isFinite(saved.seasonXpToNext) ? saved.seasonXpToNext : seasonXpToNext;
-  } catch {
-    saveProgression();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('crown_count, gems_count, season_level, season_xp')
+      .eq('id', user.id)
+      .single();
+
+    if (error) throw error;
+    if (data) {
+      crownCount = data.crown_count ?? 0;
+      gemsCount = data.gems_count ?? 100;
+      seasonLevel = data.season_level ?? 1;
+      seasonXp = data.season_xp ?? 0;
+      updateProgressionUI();
+    }
+  } catch (err) {
+    console.error("Error loading progression from Supabase:", err);
   }
 }
 
-function saveProgression() {
-  localStorage.setItem(
-    "chiikawaProgress",
-    JSON.stringify({ crownCount, gemsCount, seasonLevel, seasonXp, seasonXpToNext })
-  );
+async function saveProgression() {
+  // If Supabase is not active, fallback to localStorage
+  if (!supabase) {
+    localStorage.setItem(
+      "chiikawaProgress",
+      JSON.stringify({ crownCount, gemsCount, seasonLevel, seasonXp, seasonXpToNext })
+    );
+    return;
+  }
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        crown_count: crownCount,
+        gems_count: gemsCount,
+        season_level: seasonLevel,
+        season_xp: seasonXp,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id);
+
+    if (error) throw error;
+  } catch (err) {
+    console.error("Error saving progression to Supabase:", err);
+  }
 }
 
 function updateSuddenDeathZone(dt) {
@@ -3742,6 +3817,269 @@ function updateConfetti() {
 window.addEventListener("resize", resizeConfettiCanvas);
 
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// SUPABASE AUTHENTICATION & LOGIN LOGIC
+// ----------------------------------------------------------------
+
+async function checkAuthSession() {
+  if (!supabase) {
+    // If Supabase is not configured, skip to main menu
+    switchScreen(menuScreen);
+    tryPlayMusic();
+    return;
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user) {
+      await handleAuthenticatedUser(session.user);
+    } else {
+      switchScreen(loginScreen);
+    }
+  } catch (err) {
+    console.error("Error checking session:", err);
+    switchScreen(loginScreen);
+  }
+}
+
+async function handleAuthenticatedUser(user) {
+  try {
+    // Load progression
+    await loadProgression();
+
+    // Check if user has a username
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is empty result
+
+    if (data && data.username) {
+      // User has a username, proceed to main menu
+      switchScreen(menuScreen);
+      tryPlayMusic();
+    } else {
+      // No username, show intro registration screen
+      startUsernameIntroFlow();
+    }
+  } catch (err) {
+    console.error("Error handling authenticated user:", err);
+    startUsernameIntroFlow(); // fallback to intro
+  }
+}
+
+// Bouncing character introduction dialogue typewriter effect
+let introTypewriterInterval = null;
+function startUsernameIntroFlow() {
+  switchScreen(introScreen);
+  if (usernameForm) usernameForm.classList.add("hidden");
+
+  const characterNames = ["Hachiware", "Chiikawa", "Usagi", "Momonga"];
+  const chosenGuide = characterNames[Math.floor(Math.random() * characterNames.length)];
+  
+  // Set guide avatar image dynamically
+  const guideImg = document.querySelector(".intro-guide-character");
+  if (guideImg) {
+    guideImg.src = `assets/cards/${chosenGuide.toLowerCase()}.png`;
+  }
+
+  const welcomeMessage = `Hello there! I am ${chosenGuide}, your arena guide. Welcome to Chiikawa Royale! Let's choose a cool username for you so we can start matching with friends online!`;
+  
+  if (introSpeechBubble) {
+    introSpeechBubble.textContent = "";
+    let i = 0;
+    clearInterval(introTypewriterInterval);
+    introTypewriterInterval = setInterval(() => {
+      if (i < welcomeMessage.length) {
+        introSpeechBubble.textContent += welcomeMessage.charAt(i);
+        i++;
+      } else {
+        clearInterval(introTypewriterInterval);
+        // Show username form when typewriter finishes
+        if (usernameForm) {
+          usernameForm.classList.remove("hidden");
+          usernameForm.style.opacity = "0";
+          setTimeout(() => {
+            usernameForm.style.transition = "opacity 0.5s ease";
+            usernameForm.style.opacity = "1";
+          }, 50);
+        }
+      }
+    }, 35); // 35ms per character
+  }
+}
+
+// Hook up Auth Form submissions
+if (authForm) {
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    
+    if (authMessage) {
+      authMessage.textContent = "Logging in...";
+      authMessage.className = "auth-message success";
+      authMessage.classList.remove("hidden");
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      if (authMessage) authMessage.classList.add("hidden");
+      await handleAuthenticatedUser(data.user);
+    } catch (err) {
+      console.error("Login error:", err);
+      if (authMessage) {
+        authMessage.textContent = err.message || "Failed to log in.";
+        authMessage.className = "auth-message error";
+        authMessage.classList.remove("hidden");
+      }
+    }
+  });
+}
+
+if (btnSignup) {
+  btnSignup.addEventListener("click", async () => {
+    if (!supabase) return;
+
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+
+    if (!email || !password) {
+      if (authMessage) {
+        authMessage.textContent = "Please enter both email and password.";
+        authMessage.className = "auth-message error";
+        authMessage.classList.remove("hidden");
+      }
+      return;
+    }
+
+    if (authMessage) {
+      authMessage.textContent = "Creating account...";
+      authMessage.className = "auth-message success";
+      authMessage.classList.remove("hidden");
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+
+      if (authMessage) {
+        authMessage.textContent = "Account created! Logging in...";
+        authMessage.className = "auth-message success";
+        authMessage.classList.remove("hidden");
+      }
+
+      // Automatically sign in or check user
+      if (data.user) {
+        setTimeout(async () => {
+          await handleAuthenticatedUser(data.user);
+        }, 1500);
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
+      if (authMessage) {
+        authMessage.textContent = err.message || "Failed to sign up.";
+        authMessage.className = "auth-message error";
+        authMessage.classList.remove("hidden");
+      }
+    }
+  });
+}
+
+// Hook up Username Form submission
+if (usernameForm) {
+  usernameForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    const username = introUsernameInput.value.trim();
+    if (username.length < 3) {
+      if (usernameMessage) {
+        usernameMessage.textContent = "Username must be at least 3 characters!";
+        usernameMessage.className = "username-message error";
+        usernameMessage.classList.remove("hidden");
+      }
+      return;
+    }
+
+    if (usernameMessage) {
+      usernameMessage.textContent = "Saving username...";
+      usernameMessage.className = "username-message success";
+      usernameMessage.classList.remove("hidden");
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No authenticated user session.");
+
+      // Check if username is taken
+      const { data: takenCheck, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username);
+
+      if (checkError) throw checkError;
+      if (takenCheck && takenCheck.length > 0) {
+        throw new Error("Username already taken! Try another one.");
+      }
+
+      // Update username in profiles
+      const { error } = await supabase
+        .from('profiles')
+        .update({ username: username })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      if (usernameMessage) usernameMessage.classList.add("hidden");
+      
+      // Update UI nicknames
+      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = username;
+      if (usernameInput) usernameInput.value = username;
+
+      // Go to main menu
+      switchScreen(menuScreen);
+      tryPlayMusic();
+    } catch (err) {
+      console.error("Username registration error:", err);
+      if (usernameMessage) {
+        usernameMessage.textContent = err.message || "Failed to save username.";
+        usernameMessage.className = "username-message error";
+        usernameMessage.classList.remove("hidden");
+      }
+    }
+  });
+}
+
+// Hook up Log Out button in Settings
+const btnLogoutAccount = document.getElementById("btnLogoutAccount");
+if (btnLogoutAccount) {
+  btnLogoutAccount.addEventListener("click", async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      
+      // Reset progression locally
+      crownCount = 0;
+      gemsCount = 100;
+      seasonLevel = 1;
+      seasonXp = 0;
+      updateProgressionUI();
+
+      // Go back to login screen
+      switchScreen(loginScreen);
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  });
+}
+
 // INTRO SPLASH & TITLE SCREEN SEQUENCE
 // ----------------------------------------------------------------
 
@@ -3776,11 +4114,7 @@ function initIntroSequence() {
   // Hook up the Play Button click handler
   if (titlePlayBtn) {
     titlePlayBtn.addEventListener("click", () => {
-      // Transition to main menu lobby console
-      switchScreen(menuScreen);
-      
-      // Also try playing background music
-      tryPlayMusic();
+      checkAuthSession();
     });
   }
 }
