@@ -894,10 +894,13 @@ function handleServerMessage(msg) {
           localP.range = serverPlayer.range;
 
           if (serverPlayer.id !== localPlayerId) {
+            localP.prevX = localP.targetX !== undefined ? localP.targetX : serverPlayer.x;
+            localP.prevY = localP.targetY !== undefined ? localP.targetY : serverPlayer.y;
             localP.targetX = serverPlayer.x;
             localP.targetY = serverPlayer.y;
             localP.dx = serverPlayer.dx;
             localP.dy = serverPlayer.dy;
+            localP.lerpTime = 0;
           } else {
             // Check desync
             const dist = Math.hypot(localP.x - serverPlayer.x, localP.y - serverPlayer.y);
@@ -2862,8 +2865,24 @@ function update(dt) {
 
     players.forEach((p) => {
       if (!localMode && p.id !== localPlayerId) {
-        p.x += (p.targetX - p.x) * 0.3;
-        p.y += (p.targetY - p.y) * 0.3;
+        if (p.targetX !== undefined && p.prevX !== undefined) {
+          p.lerpTime = (p.lerpTime || 0) + dt;
+          const tickRate = 0.05; // 50ms server tick
+          if (p.lerpTime <= tickRate) {
+            const t = p.lerpTime / tickRate;
+            p.x = p.prevX + (p.targetX - p.prevX) * t;
+            p.y = p.prevY + (p.targetY - p.prevY) * t;
+          } else {
+            // Extrapolate if packet is late, capped at max extrapolation time (e.g. 100ms) to prevent flying off screen
+            if (p.lerpTime < tickRate + 0.1) {
+              p.x += (p.dx || 0) * (p.speed || 142) * dt;
+              p.y += (p.dy || 0) * (p.speed || 142) * dt;
+            }
+          }
+        } else if (p.targetX !== undefined) {
+          p.x = p.targetX;
+          p.y = p.targetY;
+        }
       }
 
       // Track distance traveled, tile steps, and facing direction for animations
