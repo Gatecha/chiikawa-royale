@@ -1,10 +1,7 @@
-// Auto-close popup window if we are redirected here from OAuth callback and there's a parent opener
+// Check if this window was opened as an OAuth login popup redirect
+let isOAuthPopup = false;
 if (window.opener && (window.location.hash.includes("access_token=") || window.location.search.includes("code="))) {
-  window.addEventListener("load", () => {
-    setTimeout(() => {
-      window.close();
-    }, 1500); // Wait 1.5s to allow Supabase script to parse token and write to localStorage
-  });
+  isOAuthPopup = true;
 }
 
 const canvas = document.getElementById("game");
@@ -23,12 +20,48 @@ try {
     // Listen for auth state changes (e.g. when OAuth login completes in a popup)
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session && session.user) {
-        const loginScreenActive = document.getElementById("loginScreen")?.classList.contains("active");
-        if (loginScreenActive) {
-          await handleAuthenticatedUser(session.user);
+        if (isOAuthPopup) {
+          // If we are in the popup window, wait a brief moment for storage write, then close
+          setTimeout(() => {
+            window.close();
+          }, 800);
+        } else {
+          // If we are in the main game tab, transition to the game
+          const loginScreenActive = document.getElementById("loginScreen")?.classList.contains("active");
+          if (loginScreenActive) {
+            await handleAuthenticatedUser(session.user);
+          }
         }
       }
     });
+
+    // Listen for localStorage changes to sync auth state across tabs instantly
+    window.addEventListener("storage", async (e) => {
+      if (e.key && e.key.includes("-auth-token")) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+          const loginScreenActive = document.getElementById("loginScreen")?.classList.contains("active");
+          if (loginScreenActive) {
+            await handleAuthenticatedUser(session.user);
+          }
+        }
+      }
+    });
+
+    // Check if session is already present for the popup, and handle auto-close
+    if (isOAuthPopup) {
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setTimeout(() => {
+            window.close();
+          }, 800);
+        }
+      });
+      // Safety timeout to prevent popup from hanging indefinitely
+      setTimeout(() => {
+        window.close();
+      }, 5000);
+    }
   }
 } catch (err) {
   console.error("Supabase client initialization failed:", err);
