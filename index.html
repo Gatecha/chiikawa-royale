@@ -865,6 +865,12 @@
         <div id="resultsPlayersRow" class="results-players-row">
           <!-- Dynamically populated player results cards -->
         </div>
+        <!-- Team trophies score (shown in team mode) -->
+        <div id="teamScoreBanner" class="team-score-banner hidden">
+          <span class="team-score-side team-a-color">Team A <span id="teamScoreA">0</span></span>
+          <span class="team-score-sep">—</span>
+          <span class="team-score-side team-b-color"><span id="teamScoreB">0</span> Team B</span>
+        </div>
         <div id="nextRoundCountdown" class="countdown-msg">Next round starts in 5s...</div>
       </div>
 
@@ -880,6 +886,71 @@
         
         <button id="victoryLobbyBtn" class="btn-match-play btn-victory-lobby" type="button">Return to Lobby</button>
       </div>
+    </div>
+
+    <!-- 5. FINAL VOTE OVERLAY (3v3 decisive round champion selection) -->
+    <div id="finalVoteOverlay" class="overlay hidden">
+      <div class="final-vote-container">
+        <!-- Header -->
+        <div class="final-vote-header">
+          <div class="final-vote-swords">⚔️</div>
+          <div>
+            <h2 class="final-vote-title">FINAL ROUND</h2>
+            <p class="final-vote-sub">Vote for your team's champion!</p>
+          </div>
+          <div class="final-vote-swords">⚔️</div>
+        </div>
+
+        <!-- Score display -->
+        <div class="final-vote-scores">
+          <div class="fvs-team fvs-a">
+            <span class="fvs-label">Team A</span>
+            <span class="fvs-trophy-count" id="fvTrophyA">0</span>🏆
+          </div>
+          <div class="final-vote-countdown-ring">
+            <svg viewBox="0 0 60 60" class="vote-ring-svg">
+              <circle cx="30" cy="30" r="26" class="vote-ring-bg"/>
+              <circle cx="30" cy="30" r="26" class="vote-ring-fill" id="voteRingFill"/>
+            </svg>
+            <span id="voteCountdownNum" class="vote-countdown-num">20</span>
+          </div>
+          <div class="fvs-team fvs-b">
+            <span class="fvs-trophy-count" id="fvTrophyB">0</span>🏆
+            <span class="fvs-label">Team B</span>
+          </div>
+        </div>
+
+        <!-- Player cards row -->
+        <div class="final-vote-players-row">
+          <!-- Team A side -->
+          <div class="fv-team-col fv-team-a-col">
+            <div class="fv-team-tag fv-tag-a">TEAM A</div>
+            <div id="fvCardsA" class="fv-cards"></div>
+          </div>
+
+          <!-- Center VS -->
+          <div class="fv-vs-column">
+            <div class="fv-vs-badge">VS</div>
+          </div>
+
+          <!-- Team B side -->
+          <div class="fv-team-col fv-team-b-col">
+            <div class="fv-team-tag fv-tag-b">TEAM B</div>
+            <div id="fvCardsB" class="fv-cards"></div>
+          </div>
+        </div>
+
+        <!-- Status row -->
+        <div id="fvStatusRow" class="fv-status-row">
+          Tap a player card to vote for your champion!
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. MATCHMAKING COUNTDOWN NOTIFICATION (shown in matchmaking dialog) -->
+    <div id="matchmakingFillNotice" class="matchmaking-fill-notice hidden">
+      <span class="fill-notice-icon">🤖</span>
+      <span id="matchmakingFillText">Filling with CPU in <strong id="matchmakingFillTimer">30</strong>s</span>
     </div>
 
     <!-- Social Modal (Friends + Online Users) -->

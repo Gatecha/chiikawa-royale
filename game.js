@@ -290,6 +290,12 @@ const yellowConsoleEl = document.querySelector(".yellow-console");
 // Custom Map & Voting States
 let currentMapType = "classic";
 let myLastVote = null;
+let currentRoomMode = "standard";
+let currentTeams = { A: [], B: [] };
+let currentTeamTrophies = { A: 0, B: 0 };
+let currentActiveRoundPlayers = [];
+let finalVoteSecondsTotal = 20;
+let finalVoteSelection = null;
 
 // Game World State
 let map = [];
@@ -624,17 +630,26 @@ function handleServerMessage(msg) {
     case "lobby_updated":
       hostId = data.hostId;
       players = data.players;
+      // Store team info globally
+      if (data.mode) currentRoomMode = data.mode;
+      if (data.teams) currentTeams = data.teams;
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
       updateLobbyUI();
       break;
 
     case "game_started":
       map = data.map;
       currentMapType = data.mapType || "classic";
+      // Store team mode info
+      if (data.mode) currentRoomMode = data.mode;
+      if (data.teams) currentTeams = data.teams;
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
+      if (data.activeRoundPlayers) currentActiveRoundPlayers = data.activeRoundPlayers;
       players = data.players.map((p) => ({
         ...p,
         targetX: p.x,
         targetY: p.y,
-        invuln: 1.4,
+        invuln: p.alive ? 1.4 : 0,
         emote: null,
         emoteTimer: 0,
         radius: 13,
@@ -648,19 +663,31 @@ function handleServerMessage(msg) {
       shakeTimer = 0;
       gameMessage = "";
 
-      // Hide results overlay and pause victory video
+      // Hide all overlays
       document.getElementById("tournamentOverlay").classList.add("hidden");
+      document.getElementById("finalVoteOverlay").classList.add("hidden");
       stopConfetti();
       const startVideo = document.getElementById("victoryVideo");
-      if (startVideo) {
-        startVideo.pause();
-      }
+      if (startVideo) startVideo.pause();
       if (roundCountdownInterval) {
         clearInterval(roundCountdownInterval);
         roundCountdownInterval = null;
       }
 
-      stateEl.textContent = "Battle!";
+      // Show round header in team mode
+      if (currentRoomMode === "team" && currentActiveRoundPlayers.length === 2) {
+        const pA = players.find(p => p.id === currentActiveRoundPlayers[0]);
+        const pB = players.find(p => p.id === currentActiveRoundPlayers[1]);
+        if (pA && pB) {
+          stateEl.textContent = `${pA.name} vs ${pB.name}`;
+          setTimeout(() => { if (running) stateEl.textContent = "Battle!"; }, 3000);
+        } else {
+          stateEl.textContent = "Battle!";
+        }
+      } else {
+        stateEl.textContent = "Battle!";
+      }
+
       switchScreen(gameScreen);
       updateHudSidebar();
       break;
@@ -766,16 +793,18 @@ function handleServerMessage(msg) {
       stateEl.textContent = data.message;
       keys.clear();
 
+      // Update team trophies if present
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
+      if (data.teams) currentTeams = data.teams;
+
       // Give progression rewards
       const isWinner = data.winnerId === localPlayerId;
       if (isWinner) {
         if (data.tournamentFinished) {
-          crownCount += 2;
-          gemsCount += 300;
+          crownCount += 2; gemsCount += 300;
           addChatMessage("System", "TOURNAMENT VICTORY! You earned 300 gems and 2 crowns! 👑🏆", true);
         } else {
-          crownCount += 1;
-          gemsCount += 100;
+          crownCount += 1; gemsCount += 100;
           addChatMessage("System", "ROUND VICTORY! You earned 100 gems and 1 crown! 👑", true);
         }
       } else {
@@ -787,14 +816,63 @@ function handleServerMessage(msg) {
           addChatMessage("System", "Round Finished. You earned 20 gems! 💎", true);
         }
       }
-
-      // Update UI counters & save progression
       document.getElementById("crownCount").textContent = crownCount;
       document.getElementById("gemsCount").textContent = gemsCount;
       saveProgression();
 
-      // Show tournament overlay
+      // Show team score banner in round results
+      if (currentRoomMode === "team" && data.teamTrophies) {
+        const banner = document.getElementById("teamScoreBanner");
+        if (banner) {
+          banner.classList.remove("hidden");
+          document.getElementById("teamScoreA").textContent = data.teamTrophies.A || 0;
+          document.getElementById("teamScoreB").textContent = data.teamTrophies.B || 0;
+        }
+      }
+
       showTournamentResults(data.players, data.winnerId, data.tournamentFinished);
+      break;
+    }
+
+    case "final_vote_started": {
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
+      if (data.teams) currentTeams = data.teams;
+      showFinalVoteOverlay(data);
+      break;
+    }
+
+    case "vote_updated": {
+      updateVoteCards(data.votes);
+      break;
+    }
+
+    case "vote_countdown": {
+      updateVoteCountdown(data.secondsLeft);
+      break;
+    }
+
+    case "final_vote_resolved": {
+      const champA = players.find(p => p.id === data.championA);
+      const champB = players.find(p => p.id === data.championB);
+      const statusEl = document.getElementById("fvStatusRow");
+      if (statusEl) {
+        statusEl.innerHTML = `⚔️ <strong>${escapeHTML(champA ? champA.name : "?")}</strong> vs <strong>${escapeHTML(champB ? champB.name : "?")}</strong> — FINAL ROUND!`;
+      }
+      // Hide vote overlay after 3s (when game_started fires)
+      setTimeout(() => {
+        document.getElementById("finalVoteOverlay").classList.add("hidden");
+      }, 2800);
+      break;
+    }
+
+    case "matchmaking_countdown": {
+      const notice = document.getElementById("matchmakingFillNotice");
+      const timerEl2 = document.getElementById("matchmakingFillTimer");
+      if (notice && timerEl2) {
+        notice.classList.remove("hidden");
+        timerEl2.textContent = data.secondsLeft;
+        if (data.secondsLeft <= 0) notice.classList.add("hidden");
+      }
       break;
     }
 
@@ -946,6 +1024,7 @@ function buildLocalMap(mapType = "classic") {
 function updateLobbyUI() {
   lobbyPlayersList.innerHTML = "";
   const isHost = localPlayerId === hostId;
+  const isTeamMode = currentRoomMode === "team";
 
   if (isHost) {
     addBotBtn.classList.remove("hidden");
@@ -955,40 +1034,85 @@ function updateLobbyUI() {
     startGameBtn.classList.add("hidden");
   }
 
-  players.forEach((p) => {
-    const card = document.createElement("div");
-    card.className = `lobby-player-card ${p.ready ? "ready" : ""} ${p.ai ? "bot" : ""} ${p.id === hostId ? "host" : ""}`;
-
-    const style = characterStyle[p.kind];
-    const avatarCanvasId = `lobby_avatar_${p.id}`;
-
-    card.innerHTML = `
-      <div class="avatar-box">
-        <canvas id="${avatarCanvasId}" width="60" height="60"></canvas>
-      </div>
-      <div class="player-info">
-        <div class="name-tag">${escapeHTML(p.name)}</div>
-        <div class="status-tag">${p.ready ? "READY" : "WAITING..."}</div>
-      </div>
-      ${p.id === hostId ? '<span class="host-tag">HOST</span>' : ""}
-      ${isHost && p.ai ? `<button class="btn-remove-bot" data-bot-id="${p.id}">Remove</button>` : ""}
+  // In team mode, insert Team A / Team B dividers
+  if (isTeamMode && currentTeams) {
+    // Team score display
+    const scoreRow = document.createElement("div");
+    scoreRow.className = "lobby-team-score-row";
+    scoreRow.innerHTML = `
+      <span class="team-a-color" style="font-size:16px">Team A 🔵 <strong>${currentTeamTrophies?.A || 0}</strong>🏆</span>
+      <span style="color:#999;font-size:20px">—</span>
+      <span class="team-b-color" style="font-size:16px"><strong>${currentTeamTrophies?.B || 0}</strong>🏆 🟠 Team B</span>
     `;
+    lobbyPlayersList.appendChild(scoreRow);
 
-    lobbyPlayersList.appendChild(card);
+    // Team A divider
+    const divA = document.createElement("div");
+    divA.className = "lobby-team-divider";
+    divA.innerHTML = `<span class="lobby-team-label-a">⚔ TEAM A</span>`;
+    lobbyPlayersList.appendChild(divA);
 
-    const avatarCanvas = document.getElementById(avatarCanvasId);
-    if (avatarCanvas) {
-      const actx = avatarCanvas.getContext("2d");
-      actx.translate(avatarCanvas.width / 2, avatarCanvas.height / 2 + 6);
-      drawCharacterOnContext(actx, p.kind, style, 0);
-    }
+    (currentTeams.A || []).forEach(pid => {
+      const p = players.find(pl => pl.id === pid);
+      if (p) appendLobbyPlayerCard(p, isHost);
+    });
 
-    if (isHost && p.ai) {
-      card.querySelector(".btn-remove-bot").addEventListener("click", () => {
-        sendServerMessage("remove_bot", { botId: p.id });
-      });
-    }
-  });
+    // Team B divider
+    const divB = document.createElement("div");
+    divB.className = "lobby-team-divider";
+    divB.innerHTML = `<span class="lobby-team-label-b">⚔ TEAM B</span>`;
+    lobbyPlayersList.appendChild(divB);
+
+    (currentTeams.B || []).forEach(pid => {
+      const p = players.find(pl => pl.id === pid);
+      if (p) appendLobbyPlayerCard(p, isHost);
+    });
+
+    // Any unassigned players
+    players.forEach(p => {
+      const inA = (currentTeams.A || []).includes(p.id);
+      const inB = (currentTeams.B || []).includes(p.id);
+      if (!inA && !inB) appendLobbyPlayerCard(p, isHost);
+    });
+  } else {
+    players.forEach((p) => appendLobbyPlayerCard(p, isHost));
+  }
+}
+
+function appendLobbyPlayerCard(p, isHost) {
+  const card = document.createElement("div");
+  card.className = `lobby-player-card ${p.ready ? "ready" : ""} ${p.ai ? "bot" : ""} ${p.id === hostId ? "host" : ""}`;
+  card.style.position = "relative";
+
+  const style = characterStyle[p.kind];
+  const avatarCanvasId = `lobby_avatar_${p.id}`;
+
+  card.innerHTML = `
+    <div class="avatar-box">
+      <canvas id="${avatarCanvasId}" width="60" height="60"></canvas>
+    </div>
+    <div class="player-info">
+      <div class="name-tag">${escapeHTML(p.name)}</div>
+      <div class="status-tag">${p.ready ? "READY" : "WAITING..."}</div>
+    </div>
+    ${p.id === hostId ? '<span class="host-tag">HOST</span>' : ""}
+    ${isHost && p.ai ? `<button class="btn-remove-bot" data-bot-id="${p.id}">Remove</button>` : ""}
+  `;
+
+  lobbyPlayersList.appendChild(card);
+
+  const avatarCanvas = document.getElementById(avatarCanvasId);
+  if (avatarCanvas) {
+    const actx = avatarCanvas.getContext("2d");
+    actx.translate(avatarCanvas.width / 2, avatarCanvas.height / 2 + 6);
+    drawCharacterOnContext(actx, p.kind, style, 0);
+  }
+
+  if (isHost && p.ai) {
+    card.querySelector(".btn-remove-bot")?.addEventListener("click", () => {
+      sendServerMessage("remove_bot", { botId: p.id });
+    });
+  }
 }
 
 function updateHudSidebar() {
@@ -3619,6 +3743,112 @@ document.addEventListener("keydown", tryPlayMusic);
 // =================================================================
 // TOURNAMENT OVERLAYS, CONFETTI & NEXT ROUND SYSTEM
 // =================================================================
+
+function getPlayerTeam(playerId) {
+  if ((currentTeams.A || []).includes(playerId)) return "A";
+  if ((currentTeams.B || []).includes(playerId)) return "B";
+  return null;
+}
+
+function getVoteCounts(votes = {}) {
+  const counts = {};
+  Object.values(votes).forEach((votedId) => {
+    counts[votedId] = (counts[votedId] || 0) + 1;
+  });
+  return counts;
+}
+
+function showFinalVoteOverlay(data) {
+  const overlay = document.getElementById("finalVoteOverlay");
+  const cardsA = document.getElementById("fvCardsA");
+  const cardsB = document.getElementById("fvCardsB");
+  if (!overlay || !cardsA || !cardsB) return;
+
+  currentTeams = data.teams || currentTeams || { A: [], B: [] };
+  currentTeamTrophies = data.teamTrophies || currentTeamTrophies || { A: 0, B: 0 };
+  players = data.players || players;
+  finalVoteSecondsTotal = data.secondsLeft || 20;
+  finalVoteSelection = null;
+  window.__finalVoteSnapshot = {};
+
+  document.getElementById("tournamentOverlay")?.classList.add("hidden");
+  document.getElementById("fvTrophyA").textContent = currentTeamTrophies.A || 0;
+  document.getElementById("fvTrophyB").textContent = currentTeamTrophies.B || 0;
+  cardsA.innerHTML = "";
+  cardsB.innerHTML = "";
+
+  const localTeam = getPlayerTeam(localPlayerId);
+  const renderTeam = (team, container) => {
+    (currentTeams[team] || []).forEach((playerId) => {
+      const player = players.find((p) => p.id === playerId);
+      if (!player) return;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `fv-player-card ${player.id === localPlayerId ? "is-me" : ""}`;
+      card.dataset.playerId = player.id;
+      card.disabled = localTeam !== team;
+      card.innerHTML = `
+        <img class="fv-card-avatar" src="assets/cards/${player.kind || "chiikawa"}.png" alt="">
+        <div class="fv-card-info">
+          <div class="fv-card-name">${escapeHTML(player.name)}</div>
+          <div class="fv-card-votes" data-vote-count-for="${player.id}">0 votes</div>
+        </div>
+        <div class="fv-vote-check">OK</div>
+      `;
+      card.addEventListener("click", () => {
+        if (card.disabled) return;
+        finalVoteSelection = player.id;
+        sendServerMessage("submit_vote", { votedPlayerId: player.id });
+        updateVoteCards({ [localPlayerId]: player.id });
+        const statusEl = document.getElementById("fvStatusRow");
+        if (statusEl) statusEl.textContent = `Vote locked for ${player.name}. Waiting for the teams...`;
+      });
+      container.appendChild(card);
+    });
+  };
+
+  renderTeam("A", cardsA);
+  renderTeam("B", cardsB);
+
+  const statusEl = document.getElementById("fvStatusRow");
+  if (statusEl) {
+    statusEl.textContent = localTeam
+      ? "Pick one player from your team for the final round."
+      : "Spectating the team champion vote.";
+  }
+
+  updateVoteCards({});
+  updateVoteCountdown(finalVoteSecondsTotal);
+  overlay.classList.remove("hidden");
+}
+
+function updateVoteCards(votes = {}) {
+  const mergedVotes = { ...(window.__finalVoteSnapshot || {}), ...votes };
+  window.__finalVoteSnapshot = mergedVotes;
+  const counts = getVoteCounts(mergedVotes);
+
+  document.querySelectorAll(".fv-player-card").forEach((card) => {
+    const playerId = card.dataset.playerId;
+    const selectedByMe = finalVoteSelection === playerId || mergedVotes[localPlayerId] === playerId;
+    card.classList.toggle("selected", selectedByMe);
+    card.classList.toggle("my-vote", selectedByMe);
+    const countEl = card.querySelector("[data-vote-count-for]");
+    const count = counts[playerId] || 0;
+    if (countEl) countEl.textContent = `${count} vote${count === 1 ? "" : "s"}`;
+  });
+}
+
+function updateVoteCountdown(secondsLeft) {
+  const countEl = document.getElementById("voteCountdownNum");
+  const ring = document.getElementById("voteRingFill");
+  const seconds = Math.max(0, Number(secondsLeft) || 0);
+  if (countEl) countEl.textContent = seconds;
+  if (ring) {
+    const circumference = 163.4;
+    const progress = finalVoteSecondsTotal > 0 ? seconds / finalVoteSecondsTotal : 0;
+    ring.style.strokeDashoffset = String(circumference * (1 - progress));
+  }
+}
 
 function showTournamentResults(playersList, winnerId, tournamentFinished) {
   const overlay = document.getElementById("tournamentOverlay");
