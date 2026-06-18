@@ -2005,15 +2005,15 @@ function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0,
         }
       }
       
-      img = (tilesWalked % 2 === 0) ? frame1 : frame2;
+      // Time-based walking cycle for smooth constant leg-switch and bounce timing
+      const walkAngle = t * 18.6;
+      img = (Math.floor(walkAngle / Math.PI) % 2 === 0) ? frame1 : frame2;
       
-      // Jiggly walking bounce rig (synchronized with walk distance for smooth footstep timing)
-      const walkAngle = walkDistance * (Math.PI / 48); // One full tile is Math.PI (half cycle)
-      const bobFactor = Math.abs(Math.sin(walkAngle)); // 0 at tile boundaries, 1 at mid-tile
-      const bounceScaleY = 0.99 + 0.02 * bobFactor; // squashes slightly on ground, stretches in air
+      const bobFactor = Math.abs(Math.sin(walkAngle)); 
+      const bounceScaleY = 0.99 + 0.02 * bobFactor; 
       const bounceScaleX = 1.005 - 0.01 * bobFactor;
-      const bobY = -bobFactor * 1.8; // gentle bob up to 1.8px
-      const wiggleAngle = 0; // remove tilting sway to eliminate any stiff wiggles
+      const bobY = -bobFactor * 1.8; 
+      const wiggleAngle = 0; 
       
       if (rotation !== 0) {
         actx.rotate(rotation);
