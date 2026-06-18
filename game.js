@@ -499,14 +499,23 @@ btnLocalServer?.addEventListener("click", () => {
 
 // Play Offline / Bypass Login Screen Button
 btnPlayOffline?.addEventListener("click", () => {
-  serverMode = "local";
-  const savedLocalName = localStorage.getItem("local_username");
-  if (savedLocalName) {
-    if (usernameInput) usernameInput.value = savedLocalName;
-    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+  const localPlaySetupDialog = document.getElementById("localPlaySetupDialog");
+  if (localPlaySetupDialog) {
+    const localNicknameInput = document.getElementById("localNicknameInput");
+    if (localNicknameInput) {
+      localNicknameInput.value = localStorage.getItem("local_username") || "Friend";
+    }
+    localPlaySetupDialog.classList.remove("hidden");
+  } else {
+    serverMode = "local";
+    const savedLocalName = localStorage.getItem("local_username");
+    if (savedLocalName) {
+      if (usernameInput) usernameInput.value = savedLocalName;
+      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+    }
+    switchScreen(menuScreen);
+    tryPlayMusic();
   }
-  switchScreen(menuScreen);
-  tryPlayMusic();
 });
 
 closeDialogBtn?.addEventListener("click", () => {
@@ -892,9 +901,14 @@ function handleServerMessage(msg) {
           } else {
             // Check desync
             const dist = Math.hypot(localP.x - serverPlayer.x, localP.y - serverPlayer.y);
-            if (dist > 36) {
+            if (dist > 96) {
               localP.x = serverPlayer.x;
               localP.y = serverPlayer.y;
+              localP.moveTarget = null;
+              localP.moveFrom = null;
+              localP.moveDir = null;
+              localP.dx = 0;
+              localP.dy = 0;
             }
           }
         }
@@ -1104,8 +1118,10 @@ function startLocalGame() {
   currentMapType = mapSelect ? mapSelect.value : "classic";
   map = buildLocalMap(currentMapType);
 
+  const localNickname = localStorage.getItem("local_username") || "You";
+
   players = [
-    makeLocalPlayer("local_player", "You", selectedCharacter, starts[0], false),
+    makeLocalPlayer("local_player", localNickname, selectedCharacter, starts[0], false),
     makeLocalPlayer("cpu_usagi", "Usagi CPU", "usagi", starts[1], true),
     makeLocalPlayer("cpu_momonga", "Momonga CPU", "momonga", starts[2], true),
     makeLocalPlayer("cpu_chiikawa", "Chiikawa CPU", "chiikawa", starts[3], true),
@@ -1777,7 +1793,10 @@ function canMoveTo(px, py, actor) {
 
 function moveActor(actor, dx, dy, dt) {
   if (actor.moveTarget) {
-    return stepTowardTarget(actor, dt);
+    stepTowardTarget(actor, dt);
+    if (actor.moveTarget) {
+      return true;
+    }
   }
 
   const current = gridAt(actor.x, actor.y);
@@ -4974,7 +4993,12 @@ function initIntroSequence() {
   // Hook up the Play Button click handler
   if (titlePlayBtn) {
     titlePlayBtn.addEventListener("click", () => {
-      checkAuthSession();
+      const startModeSelectionDialog = document.getElementById("startModeSelectionDialog");
+      if (startModeSelectionDialog) {
+        startModeSelectionDialog.classList.remove("hidden");
+      } else {
+        checkAuthSession();
+      }
     });
   }
 }
@@ -5707,3 +5731,73 @@ document.getElementById("btnLogoutAccount")?.addEventListener("click", async () 
   myFriendshipMap = {};
   pendingRequests = [];
 }, { capture: false });
+
+// ----------------------------------------------------------------
+// START MODE SELECTION & LOCAL PLAY SETUP DIALOGS
+// ----------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+  const startModeSelectionDialog = document.getElementById("startModeSelectionDialog");
+  const localPlaySetupDialog = document.getElementById("localPlaySetupDialog");
+  const btnSelectOnline = document.getElementById("btnSelectOnline");
+  const btnSelectLocal = document.getElementById("btnSelectLocal");
+  const closeStartModeBtn = document.getElementById("closeStartModeBtn");
+  const closeLocalSetupBtn = document.getElementById("closeLocalSetupBtn");
+  const btnLocalSinglePlayer = document.getElementById("btnLocalSinglePlayer");
+  const btnLocalMultiplayer = document.getElementById("btnLocalMultiplayer");
+  const localNicknameInput = document.getElementById("localNicknameInput");
+
+  // Close Mode Selection Dialog
+  closeStartModeBtn?.addEventListener("click", () => {
+    startModeSelectionDialog?.classList.add("hidden");
+  });
+
+  // Online Play Selected
+  btnSelectOnline?.addEventListener("click", () => {
+    startModeSelectionDialog?.classList.add("hidden");
+    checkAuthSession();
+  });
+
+  // Local Play Selected
+  btnSelectLocal?.addEventListener("click", () => {
+    startModeSelectionDialog?.classList.add("hidden");
+    if (localPlaySetupDialog) {
+      if (localNicknameInput) {
+        localNicknameInput.value = localStorage.getItem("local_username") || "Friend";
+      }
+      localPlaySetupDialog.classList.remove("hidden");
+    }
+  });
+
+  // Close Local Play Setup Dialog (go back to Mode Selection)
+  closeLocalSetupBtn?.addEventListener("click", () => {
+    localPlaySetupDialog?.classList.add("hidden");
+    startModeSelectionDialog?.classList.remove("hidden");
+  });
+
+  // Local Single Player (Offline Solo against bots, starts immediately)
+  btnLocalSinglePlayer?.addEventListener("click", () => {
+    const nickname = (localNicknameInput?.value.trim()) || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    localPlaySetupDialog?.classList.add("hidden");
+    startLocalGame();
+    tryPlayMusic();
+  });
+
+  // Local Multiplayer (LAN mode, connects to server and goes to menu lobby)
+  btnLocalMultiplayer?.addEventListener("click", () => {
+    const nickname = (localNicknameInput?.value.trim()) || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    localPlaySetupDialog?.classList.add("hidden");
+    switchScreen(menuScreen);
+    connectWebSocket(true);
+    tryPlayMusic();
+  });
+});
