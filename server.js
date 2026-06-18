@@ -120,13 +120,46 @@ function handleMessage(ws, msg) {
           const playerInfo = room.players.find(p => p.id === client.id);
           const name = playerInfo ? playerInfo.name : "Friend";
           const kind = playerInfo ? playerInfo.kind : "hachiware";
+          const originalSquadCode = playerInfo && playerInfo.squadCode ? playerInfo.squadCode : room.code;
           leaveRoom(client);
-          joinPlayerToRoom(client, targetRoom, name, kind);
+          joinPlayerToRoom(client, targetRoom, name, kind, originalSquadCode);
         });
       } else {
         room.isPrivate = false;
         scheduleMatchmakingFill(room);
       }
+      break;
+    }
+
+    case "select_character": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.state !== "lobby") return;
+      const player = room.players.find((p) => p.id === ws.id);
+      if (player) {
+        player.kind = data.kind;
+        broadcastLobbyUpdate(room);
+      }
+      break;
+    }
+
+    case "cancel_matchmaking": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
+      room.isPrivate = true;
+      if (room.matchmakingTimer) {
+        clearTimeout(room.matchmakingTimer);
+        room.matchmakingTimer = null;
+      }
+      if (room.matchmakingCountdownInterval) {
+        clearInterval(room.matchmakingCountdownInterval);
+        room.matchmakingCountdownInterval = null;
+      }
+      room.matchmakingFillSecondsLeft = 0;
+      broadcastToRoom(room, {
+        type: "matchmaking_countdown",
+        data: { secondsLeft: 0 }
+      });
+      broadcastLobbyUpdate(room);
       break;
     }
 
@@ -431,7 +464,7 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
 // PLAYER JOIN
 // ----------------------------------------------------------------
 
-function joinPlayerToRoom(ws, room, name, kind) {
+function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
   const maxPlayers = room.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
   if (room.players.length >= maxPlayers) {
     ws.send(JSON.stringify({ type: "error", data: { message: "Room is full!" } }));
@@ -446,6 +479,7 @@ function joinPlayerToRoom(ws, room, name, kind) {
     kind: kind || "hachiware",
     ready: false,
     ai: false,
+    squadCode: squadCode || room.code,
     x: 0, y: 0,
     dx: 0, dy: 0,
     alive: true,
@@ -610,6 +644,8 @@ function broadcastLobbyUpdate(room) {
       mode: room.mode,
       teams: room.teams,
       teamTrophies: room.teamTrophies,
+      isPrivate: room.isPrivate,
+      state: room.state,
     },
   });
 }

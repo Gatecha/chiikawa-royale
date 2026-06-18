@@ -3966,6 +3966,14 @@ canvas#game {
   background: #3b82f6;
 }
 
+.badge-member {
+  background: #10b981;
+}
+
+.badge-enemy {
+  background: #ef4444;
+}
+
 /* Searching / Loading state */
 .matchmaking-card.empty-slot {
   border: 3.5px dashed #34343e;
@@ -4072,6 +4080,32 @@ canvas#game {
 }
 
 .btn-cancel-matchmaking:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #000;
+}
+
+.btn-start-match-early {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 16px;
+  background: #10b981;
+  color: #fff;
+  border: 3.5px solid #000;
+  border-radius: 12px;
+  padding: 10px 32px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px #000;
+  transition: all 100ms ease;
+  letter-spacing: 1px;
+}
+
+.btn-start-match-early:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #000;
+  background: #34d399;
+}
+
+.btn-start-match-early:active {
   transform: translate(2px, 2px);
   box-shadow: 0px 0px 0px #000;
 }

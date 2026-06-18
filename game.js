@@ -608,6 +608,9 @@ function confirmCharacterSelection() {
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
   syncSquadLobbyInterface();
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendServerMessage("select_character", { kind: selectedCharacter });
+  }
 }
 
 playMutedLoop(characterSelectVideo);
@@ -796,6 +799,19 @@ function handleServerMessage(msg) {
       if (data.teams) currentTeams = data.teams;
       if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
       updateLobbyUI();
+
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        if (!data.isPrivate && data.state === "lobby") {
+          startOnlineMatchmakingTimer();
+          updateOnlineMatchmakingPopup();
+        } else {
+          stopOnlineMatchmakingTimer();
+          if (matchmakingPopup) {
+            matchmakingPopup.classList.remove("active");
+            matchmakingPopup.classList.add("hidden");
+          }
+        }
+      }
       break;
 
     case "game_started":
@@ -827,6 +843,11 @@ function handleServerMessage(msg) {
       // Hide all overlays
       document.getElementById("tournamentOverlay").classList.add("hidden");
       document.getElementById("finalVoteOverlay").classList.add("hidden");
+      if (matchmakingPopup) {
+        matchmakingPopup.classList.remove("active");
+        matchmakingPopup.classList.add("hidden");
+      }
+      stopOnlineMatchmakingTimer();
       stopConfetti();
       const startVideo = document.getElementById("victoryVideo");
       if (startVideo) startVideo.pause();
@@ -2790,7 +2811,13 @@ function update(dt) {
 
       const moved = moveActor(localPlayer, dx, dy, dt);
 
-      if (moved || dx !== 0 || dy !== 0) {
+      if (!localPlayer.lastSentMove) {
+        localPlayer.lastSentMove = { x: 0, y: 0, dx: 0, dy: 0 };
+      }
+      const last = localPlayer.lastSentMove;
+      const hasChanged = (dx !== last.dx || dy !== last.dy || Math.abs(localPlayer.x - last.x) > 1 || Math.abs(localPlayer.y - last.y) > 1);
+
+      if (hasChanged) {
         if (localMode) {
           localCheckPickup(localPlayer);
         } else {
@@ -2801,6 +2828,7 @@ function update(dt) {
             dy: dy,
           });
         }
+        localPlayer.lastSentMove = { x: localPlayer.x, y: localPlayer.y, dx: dx, dy: dy };
       }
     }
 
@@ -2815,6 +2843,13 @@ function update(dt) {
 
     players.forEach((p) => {
       if (!localMode && p.id !== localPlayerId) {
+        // Extrapolate target position using velocity (dead reckoning)
+        if (p.dx !== 0 || p.dy !== 0) {
+          p.targetX += p.dx * p.speed * dt;
+          p.targetY += p.dy * p.speed * dt;
+        }
+        
+        // Smoothly interpolate current position toward the target
         p.x += (p.targetX - p.x) * 0.3;
         p.y += (p.targetY - p.y) * 0.3;
       }
@@ -3071,6 +3106,9 @@ function changeSquadLobbyCharacter(direction) {
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
   syncSquadLobbyInterface();
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendServerMessage("select_character", { kind: selectedCharacter });
+  }
 }
 
 function syncSquadLobbyInterface() {
@@ -3088,14 +3126,16 @@ function syncSquadLobbyInterface() {
     img.src = `assets/cards/${selectedCharacter}.png`;
   }
 
-  // Get other players in the room
-  const otherPlayers = players.filter(p => p.id !== localPlayerId);
+  // Teammates-only filtering: must share the same squadCode and not be bots
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  const localSquadCode = localPlayer ? localPlayer.squadCode : null;
+  const otherTeammates = players.filter(p => p.id !== localPlayerId && (localSquadCode ? p.squadCode === localSquadCode : true) && !p.ai);
 
   // Left Card
   const leftCard = document.getElementById("squadInviteCard_left");
   if (leftCard) {
-    if (otherPlayers[0]) {
-      const p = otherPlayers[0];
+    if (otherTeammates[0]) {
+      const p = otherTeammates[0];
       leftCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
@@ -3125,8 +3165,8 @@ function syncSquadLobbyInterface() {
   // Right Card
   const rightCard = document.getElementById("squadInviteCard_right");
   if (rightCard) {
-    if (otherPlayers[1]) {
-      const p = otherPlayers[1];
+    if (otherTeammates[1]) {
+      const p = otherTeammates[1];
       rightCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
@@ -3551,7 +3591,123 @@ function revealMatchedBot(slotNum, charKind, botName) {
   `;
 }
 
+let onlineMatchmakingInterval = null;
+
+function startOnlineMatchmakingTimer() {
+  if (onlineMatchmakingInterval) return;
+  let elapsedSeconds = 0;
+  if (matchmakingTimer) matchmakingTimer.textContent = "00:00";
+  onlineMatchmakingInterval = setInterval(() => {
+    elapsedSeconds++;
+    const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
+    const s = String(elapsedSeconds % 60).padStart(2, "0");
+    if (matchmakingTimer) matchmakingTimer.textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function stopOnlineMatchmakingTimer() {
+  if (onlineMatchmakingInterval) {
+    clearInterval(onlineMatchmakingInterval);
+    onlineMatchmakingInterval = null;
+  }
+}
+
+function updateOnlineMatchmakingPopup() {
+  if (!matchmakingPopup) return;
+
+  if (matchmakingPopup.classList.contains("hidden")) {
+    matchmakingPopup.classList.remove("hidden");
+    matchmakingPopup.classList.add("active");
+  }
+
+  const titleEl = matchmakingPopup.querySelector(".matchmaking-title");
+  
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  const localSquadCode = localPlayer ? localPlayer.squadCode : null;
+
+  const teammates = players.filter(p => p.id !== localPlayerId && p.squadCode === localSquadCode && !p.ai);
+  const enemies = players.filter(p => p.squadCode !== localSquadCode && !p.ai);
+  const bots = players.filter(p => p.ai);
+
+  const sortedPlayers = [];
+  if (localPlayer) {
+    sortedPlayers.push({ player: localPlayer, type: "YOU" });
+  }
+  teammates.forEach(p => sortedPlayers.push({ player: p, type: "MEMBER" }));
+  enemies.forEach(p => sortedPlayers.push({ player: p, type: "ENEMY" }));
+  bots.forEach(p => sortedPlayers.push({ player: p, type: "CPU" }));
+
+  const displayPlayers = sortedPlayers.slice(0, 4);
+
+  for (let i = 1; i <= 4; i++) {
+    const slotIndex = i - 1;
+    const slot = document.getElementById(`matchmakerSlot_${i}`);
+    if (!slot) continue;
+
+    if (slotIndex < displayPlayers.length) {
+      const { player, type } = displayPlayers[slotIndex];
+      slot.className = `matchmaking-card active pop-found`;
+      
+      let badgeClass = "badge-bot";
+      if (type === "YOU") badgeClass = "badge-you";
+      else if (type === "MEMBER") badgeClass = "badge-member";
+      else if (type === "ENEMY") badgeClass = "badge-enemy";
+
+      slot.innerHTML = `
+        <div class="card-inner">
+          <span class="slot-badge ${badgeClass}">${type}</span>
+          <div class="slot-image-container">
+            <img src="assets/cards/${player.kind}.png" alt="${player.name}" />
+          </div>
+          <div class="slot-name">${escapeHTML(player.name)}</div>
+        </div>
+      `;
+    } else {
+      slot.className = "matchmaking-card empty-slot";
+      slot.innerHTML = `
+        <div class="card-inner">
+          <div class="searching-pulse"></div>
+          <div class="slot-status-text">SEARCHING...</div>
+        </div>
+      `;
+    }
+  }
+
+  const isHost = localPlayerId === hostId;
+  const realPlayersCount = players.filter(p => !p.ai).length;
+
+  const startBtn = document.getElementById("startMatchEarlyBtn");
+  if (startBtn) {
+    if (socket && socket.readyState === WebSocket.OPEN && isHost && realPlayersCount >= 2) {
+      startBtn.classList.remove("hidden");
+    } else {
+      startBtn.classList.add("hidden");
+    }
+  }
+
+  if (cancelMatchmakingBtn) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      cancelMatchmakingBtn.style.display = isHost ? "block" : "none";
+    } else {
+      cancelMatchmakingBtn.style.display = "block";
+    }
+  }
+
+  const maxPlayers = currentRoomMode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+  if (players.length >= maxPlayers) {
+    if (titleEl) titleEl.textContent = "MATCH FOUND!";
+    if (cancelMatchmakingBtn) cancelMatchmakingBtn.style.display = "none";
+    if (startBtn) startBtn.classList.add("hidden");
+  } else {
+    if (titleEl) titleEl.textContent = "MATCHMAKING...";
+  }
+}
+
 function cancelMatchmaking() {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendServerMessage("cancel_matchmaking");
+  }
+  stopOnlineMatchmakingTimer();
   if (matchmakingPopup) {
     matchmakingPopup.classList.remove("active");
     matchmakingPopup.classList.add("hidden");
@@ -3749,6 +3905,14 @@ if (lobbyMatchBtn) {
 if (cancelMatchmakingBtn) {
   cancelMatchmakingBtn.addEventListener("click", () => {
     cancelMatchmaking();
+  });
+}
+const startMatchEarlyBtn = document.getElementById("startMatchEarlyBtn");
+if (startMatchEarlyBtn) {
+  startMatchEarlyBtn.addEventListener("click", () => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      sendServerMessage("start_game");
+    }
   });
 }
 
