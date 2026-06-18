@@ -3,7 +3,7 @@ const ctx = canvas.getContext("2d");
 
 // CONFIGURATION: Set this to your Supabase project credentials
 const SUPABASE_URL = "https://ccwcifnddnwotrnutanp.supabase.co"; // Pre-populated with your project ID
-const SUPABASE_ANON_KEY = ""; // PASTE YOUR PUBLIC ANON KEY HERE
+const SUPABASE_ANON_KEY = "sb_publishable_-CxUNw_KVKIPaZMtjsURgg_QbufGANy"; // PASTE YOUR PUBLIC ANON KEY HERE
 
 // Initialize Supabase Client (wrapped in try/catch to prevent script block if credentials/library fail)
 let supabaseClient = null;
