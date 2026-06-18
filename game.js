@@ -1,3 +1,12 @@
+// Auto-close popup window if we are redirected here from OAuth callback and there's a parent opener
+if (window.opener && (window.location.hash.includes("access_token=") || window.location.search.includes("code="))) {
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      window.close();
+    }, 1500); // Wait 1.5s to allow Supabase script to parse token and write to localStorage
+  });
+}
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -10,6 +19,16 @@ let supabaseClient = null;
 try {
   if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Listen for auth state changes (e.g. when OAuth login completes in a popup)
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session && session.user) {
+        const loginScreenActive = document.getElementById("loginScreen")?.classList.contains("active");
+        if (loginScreenActive) {
+          await handleAuthenticatedUser(session.user);
+        }
+      }
+    });
   }
 } catch (err) {
   console.error("Supabase client initialization failed:", err);
@@ -4011,13 +4030,18 @@ if (btnGoogleLogin) {
   btnGoogleLogin.addEventListener("click", async () => {
     if (!supabaseClient) return;
     try {
-      const { error } = await supabaseClient.auth.signInWithOAuth({
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin,
+          skipBrowserRedirect: true
         }
       });
       if (error) throw error;
+      if (data && data.url) {
+        // Open the OAuth screen in a popup window so it doesn't reload the game tab
+        window.open(data.url, "OAuthSignIn", "width=600,height=800,resizable=yes,scrollbars=yes");
+      }
     } catch (err) {
       console.error("Google login error:", err);
       if (authMessage) {
@@ -4034,13 +4058,18 @@ if (btnDiscordLogin) {
   btnDiscordLogin.addEventListener("click", async () => {
     if (!supabaseClient) return;
     try {
-      const { error } = await supabaseClient.auth.signInWithOAuth({
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: "discord",
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin,
+          skipBrowserRedirect: true
         }
       });
       if (error) throw error;
+      if (data && data.url) {
+        // Open the OAuth screen in a popup window so it doesn't reload the game tab
+        window.open(data.url, "OAuthSignIn", "width=600,height=800,resizable=yes,scrollbars=yes");
+      }
     } catch (err) {
       console.error("Discord login error:", err);
       if (authMessage) {
