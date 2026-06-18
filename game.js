@@ -3293,7 +3293,7 @@ if (nextCharBtn) {
   });
 }
 
-const openFriendsList = (e) => {
+function openFriendsList(e) {
   if (e) e.stopPropagation();
   // Auto-create room if not in one yet
   if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
@@ -3304,7 +3304,7 @@ const openFriendsList = (e) => {
   setTimeout(() => {
     document.querySelector('.social-tab-btn[data-social-tab="friends"]')?.click();
   }, 100);
-};
+}
 
 const squadInviteLeft = document.getElementById("squadInviteCard_left");
 const squadInviteRight = document.getElementById("squadInviteCard_right");

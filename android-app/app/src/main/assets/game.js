@@ -1527,12 +1527,12 @@ function addChatMessage(sender, text, isSystem = false, isMe = false) {
 }
 
 function escapeHTML(str) {
-  if (str === null || str === undefined) return "";
+  // Safe check: If str is null, undefined, or not a string, return an empty string
+  if (!str) return ""; 
   return String(str).replace(/[&<>'"]/g, 
     (tag) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[tag] || tag)
   );
 }
-
 // ----------------------------------------------------------------
 // CLIENT GAME PHYSICS & COLLISION SIMULATION
 // ----------------------------------------------------------------
@@ -3293,7 +3293,7 @@ if (nextCharBtn) {
   });
 }
 
-const openFriendsList = (e) => {
+function openFriendsList(e) {
   if (e) e.stopPropagation();
   // Auto-create room if not in one yet
   if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
@@ -3304,7 +3304,7 @@ const openFriendsList = (e) => {
   setTimeout(() => {
     document.querySelector('.social-tab-btn[data-social-tab="friends"]')?.click();
   }, 100);
-};
+}
 
 const squadInviteLeft = document.getElementById("squadInviteCard_left");
 const squadInviteRight = document.getElementById("squadInviteCard_right");
