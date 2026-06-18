@@ -689,6 +689,48 @@
           </div>
         </div>
 
+        <!-- Mobile Fullscreen Reminder Dialog -->
+        <div id="mobileFullscreenReminder" class="dialog-overlay hidden">
+          <div class="card glass dialog-card" style="padding: 24px; text-align: center; max-width: 380px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">📱</div>
+            <h2 style="font-family: var(--font); color: var(--yellow); margin-bottom: 10px; font-size: 20px;">FULLSCREEN REMINDER</h2>
+            <p style="font-family: var(--font-clean); color: #fff; font-size: 15px; margin-bottom: 24px; line-height: 1.5;">This game is better in fullscreen. Would you like to fullscreen the app?</p>
+            <div style="display: flex; gap: 16px; justify-content: center;">
+              <button id="btnMobileFullscreenYes" class="btn btn-primary" style="padding: 8px 20px;">Yes</button>
+              <button id="btnMobileFullscreenNo" class="btn btn-secondary" style="padding: 8px 20px;">No</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Room Invite Overlay Dialog -->
+        <div id="roomInviteOverlay" class="dialog-overlay hidden">
+          <div class="card glass dialog-card" style="padding: 24px; text-align: center;">
+            <div class="invite-overlay-icon" style="font-size: 48px; margin-bottom: 12px;">📨</div>
+            <h2 id="inviteOverlayTitle" style="font-family: var(--font); color: var(--yellow); margin-bottom: 10px;">GAME INVITATION</h2>
+            <p id="inviteOverlayText" style="font-family: var(--font-clean); color: #fff; font-size: 16px; margin-bottom: 24px; line-height: 1.5;"></p>
+            <div class="invite-overlay-buttons" style="display: flex; gap: 16px; justify-content: center;">
+              <button id="inviteOverlayAccept" class="btn btn-primary" style="padding: 10px 24px;">Accept</button>
+              <button id="inviteOverlayDecline" class="btn btn-danger" style="padding: 10px 24px;">Decline</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lobby Chat Popup (for squad tab chat) -->
+        <div id="lobbyChatPopup" class="dialog-overlay hidden">
+          <div class="global-chat-card card glass">
+            <button id="closeLobbyChat" class="btn-close-dialog" type="button">&times;</button>
+            <div class="global-chat-header">
+              <span class="global-chat-title">💬 Room Chat</span>
+              <span class="global-chat-sub" id="lobbyChatRoomCode">Room ABCD</span>
+            </div>
+            <div id="lobbyChatMessages" class="global-chat-messages"></div>
+            <form id="lobbyChatFormPopup" class="global-chat-form">
+              <input id="lobbyChatInputPopup" type="text" maxlength="64" placeholder="Send room message..." autocomplete="off" />
+              <button class="btn btn-primary btn-sm" type="submit">Send</button>
+            </form>
+          </div>
+        </div>
+
         <!-- Matchmaking Glass Dialog Popup (opened when clicking PLAY!) -->
         <div id="matchmakingDialog" class="dialog-overlay hidden">
           <div class="card glass dialog-card">
@@ -803,6 +845,28 @@
               </div>
             </div>
 
+            <!-- Team Trophies Panel (visible in team mode) -->
+            <div id="teamTrophiesPanel" class="card glass team-trophies-panel hidden">
+              <div class="team-trophy-row">
+                <div class="team-trophy-header-row">
+                  <span class="team-trophy-label team-a-color">🔵 TEAM A</span>
+                  <span class="team-trophy-count"><span id="teamTrophyCount_A">0</span>/8</span>
+                </div>
+                <div class="team-trophy-bar-wrap">
+                  <div id="teamTrophyBar_A" class="team-trophy-bar-fill team-a-bg" style="width: 0%;"></div>
+                </div>
+              </div>
+              <div class="team-trophy-row" style="margin-top: 10px;">
+                <div class="team-trophy-header-row">
+                  <span class="team-trophy-label team-b-color">🟠 TEAM B</span>
+                  <span class="team-trophy-count"><span id="teamTrophyCount_B">0</span>/8</span>
+                </div>
+                <div class="team-trophy-bar-wrap">
+                  <div id="teamTrophyBar_B" class="team-trophy-bar-fill team-b-bg" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
+
             <div class="hud-players-list" id="hudPlayersList">
               <!-- Dynamically filled with player status cards (bombs, range, speed, alive) -->
             </div>
@@ -865,6 +929,12 @@
         <div id="resultsPlayersRow" class="results-players-row">
           <!-- Dynamically populated player results cards -->
         </div>
+        <!-- Team trophies score (shown in team mode) -->
+        <div id="teamScoreBanner" class="team-score-banner hidden">
+          <span class="team-score-side team-a-color">Team A <span id="teamScoreA">0</span></span>
+          <span class="team-score-sep">—</span>
+          <span class="team-score-side team-b-color"><span id="teamScoreB">0</span> Team B</span>
+        </div>
         <div id="nextRoundCountdown" class="countdown-msg">Next round starts in 5s...</div>
       </div>
 
@@ -880,6 +950,71 @@
         
         <button id="victoryLobbyBtn" class="btn-match-play btn-victory-lobby" type="button">Return to Lobby</button>
       </div>
+    </div>
+
+    <!-- 5. FINAL VOTE OVERLAY (3v3 decisive round champion selection) -->
+    <div id="finalVoteOverlay" class="overlay hidden">
+      <div class="final-vote-container">
+        <!-- Header -->
+        <div class="final-vote-header">
+          <div class="final-vote-swords">⚔️</div>
+          <div>
+            <h2 class="final-vote-title">FINAL ROUND</h2>
+            <p class="final-vote-sub">Vote for your team's champion!</p>
+          </div>
+          <div class="final-vote-swords">⚔️</div>
+        </div>
+
+        <!-- Score display -->
+        <div class="final-vote-scores">
+          <div class="fvs-team fvs-a">
+            <span class="fvs-label">Team A</span>
+            <span class="fvs-trophy-count" id="fvTrophyA">0</span>🏆
+          </div>
+          <div class="final-vote-countdown-ring">
+            <svg viewBox="0 0 60 60" class="vote-ring-svg">
+              <circle cx="30" cy="30" r="26" class="vote-ring-bg"/>
+              <circle cx="30" cy="30" r="26" class="vote-ring-fill" id="voteRingFill"/>
+            </svg>
+            <span id="voteCountdownNum" class="vote-countdown-num">20</span>
+          </div>
+          <div class="fvs-team fvs-b">
+            <span class="fvs-trophy-count" id="fvTrophyB">0</span>🏆
+            <span class="fvs-label">Team B</span>
+          </div>
+        </div>
+
+        <!-- Player cards row -->
+        <div class="final-vote-players-row">
+          <!-- Team A side -->
+          <div class="fv-team-col fv-team-a-col">
+            <div class="fv-team-tag fv-tag-a">TEAM A</div>
+            <div id="fvCardsA" class="fv-cards"></div>
+          </div>
+
+          <!-- Center VS -->
+          <div class="fv-vs-column">
+            <div class="fv-vs-badge">VS</div>
+          </div>
+
+          <!-- Team B side -->
+          <div class="fv-team-col fv-team-b-col">
+            <div class="fv-team-tag fv-tag-b">TEAM B</div>
+            <div id="fvCardsB" class="fv-cards"></div>
+          </div>
+        </div>
+
+        <!-- Status row -->
+        <div id="fvStatusRow" class="fv-status-row">
+          Tap a player card to vote for your champion!
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. MATCHMAKING COUNTDOWN NOTIFICATION (shown in matchmaking dialog) -->
+    <div id="matchmakingFillNotice" class="matchmaking-fill-notice hidden">
+      <span class="fill-notice-icon">🤖</span>
+      <span id="matchmakingFillText">Filling with CPU in <strong id="matchmakingFillTimer">30</strong>s</span>
     </div>
 
     <!-- Social Modal (Friends + Online Users) -->

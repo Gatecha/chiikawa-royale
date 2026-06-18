@@ -1,7 +1,19 @@
 // Check if this window was opened as an OAuth login popup redirect
+const oauthRedirectParams = new URLSearchParams(window.location.search);
+const oauthHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+const oauthError =
+  oauthRedirectParams.get("error_description") ||
+  oauthHashParams.get("error_description") ||
+  oauthRedirectParams.get("error") ||
+  oauthHashParams.get("error");
+let pendingOAuthError = oauthError ? decodeURIComponent(oauthError) : "";
 let isOAuthPopup = false;
-if (window.opener && (window.location.hash.includes("access_token=") || window.location.search.includes("code="))) {
+if (window.opener && (window.location.hash.includes("access_token=") || window.location.search.includes("code=") || pendingOAuthError)) {
   isOAuthPopup = true;
+}
+
+if (pendingOAuthError && window.history?.replaceState) {
+  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 const canvas = document.getElementById("game");
@@ -45,6 +57,16 @@ try {
             await handleAuthenticatedUser(session.user);
           }
         }
+      }
+    });
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "oauth_error") return;
+      switchScreen(loginScreen);
+      if (authMessage) {
+        authMessage.textContent = `Login failed: ${event.data.message || "OAuth provider returned an error."}`;
+        authMessage.className = "auth-message error";
+        authMessage.classList.remove("hidden");
       }
     });
 
@@ -287,9 +309,49 @@ const confettiCanvas = document.getElementById("victoryConfettiCanvas");
 const confettiCtx = confettiCanvas ? confettiCanvas.getContext("2d") : null;
 const yellowConsoleEl = document.querySelector(".yellow-console");
 
+let startupFinished = false;
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+    })
+  ]);
+}
+
+function showAppError(message, detail = "") {
+  console.error(message, detail);
+  let box = document.getElementById("appErrorBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "appErrorBox";
+    box.className = "app-error-box";
+    document.body.appendChild(box);
+  }
+  box.innerHTML = `
+    <strong>${escapeHTML(message)}</strong>
+    ${detail ? `<span>${escapeHTML(String(detail))}</span>` : ""}
+  `;
+}
+
+function finishStartup() {
+  startupFinished = true;
+  if (studioSplashScreen) {
+    studioSplashScreen.classList.remove("active");
+    studioSplashScreen.style.display = "none";
+  }
+}
+
 // Custom Map & Voting States
 let currentMapType = "classic";
 let myLastVote = null;
+let currentRoomMode = "standard";
+let currentTeams = { A: [], B: [] };
+let currentTeamTrophies = { A: 0, B: 0 };
+let currentActiveRoundPlayers = [];
+let finalVoteSecondsTotal = 20;
+let finalVoteSelection = null;
 
 // Game World State
 let map = [];
@@ -624,17 +686,26 @@ function handleServerMessage(msg) {
     case "lobby_updated":
       hostId = data.hostId;
       players = data.players;
+      // Store team info globally
+      if (data.mode) currentRoomMode = data.mode;
+      if (data.teams) currentTeams = data.teams;
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
       updateLobbyUI();
       break;
 
     case "game_started":
       map = data.map;
       currentMapType = data.mapType || "classic";
+      // Store team mode info
+      if (data.mode) currentRoomMode = data.mode;
+      if (data.teams) currentTeams = data.teams;
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
+      if (data.activeRoundPlayers) currentActiveRoundPlayers = data.activeRoundPlayers;
       players = data.players.map((p) => ({
         ...p,
         targetX: p.x,
         targetY: p.y,
-        invuln: 1.4,
+        invuln: p.alive ? 1.4 : 0,
         emote: null,
         emoteTimer: 0,
         radius: 13,
@@ -648,19 +719,31 @@ function handleServerMessage(msg) {
       shakeTimer = 0;
       gameMessage = "";
 
-      // Hide results overlay and pause victory video
+      // Hide all overlays
       document.getElementById("tournamentOverlay").classList.add("hidden");
+      document.getElementById("finalVoteOverlay").classList.add("hidden");
       stopConfetti();
       const startVideo = document.getElementById("victoryVideo");
-      if (startVideo) {
-        startVideo.pause();
-      }
+      if (startVideo) startVideo.pause();
       if (roundCountdownInterval) {
         clearInterval(roundCountdownInterval);
         roundCountdownInterval = null;
       }
 
-      stateEl.textContent = "Battle!";
+      // Show round header in team mode
+      if (currentRoomMode === "team" && currentActiveRoundPlayers.length === 2) {
+        const pA = players.find(p => p.id === currentActiveRoundPlayers[0]);
+        const pB = players.find(p => p.id === currentActiveRoundPlayers[1]);
+        if (pA && pB) {
+          stateEl.textContent = `${pA.name} vs ${pB.name}`;
+          setTimeout(() => { if (running) stateEl.textContent = "Battle!"; }, 3000);
+        } else {
+          stateEl.textContent = "Battle!";
+        }
+      } else {
+        stateEl.textContent = "Battle!";
+      }
+
       switchScreen(gameScreen);
       updateHudSidebar();
       break;
@@ -766,16 +849,18 @@ function handleServerMessage(msg) {
       stateEl.textContent = data.message;
       keys.clear();
 
+      // Update team trophies if present
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
+      if (data.teams) currentTeams = data.teams;
+
       // Give progression rewards
       const isWinner = data.winnerId === localPlayerId;
       if (isWinner) {
         if (data.tournamentFinished) {
-          crownCount += 2;
-          gemsCount += 300;
+          crownCount += 2; gemsCount += 300;
           addChatMessage("System", "TOURNAMENT VICTORY! You earned 300 gems and 2 crowns! 👑🏆", true);
         } else {
-          crownCount += 1;
-          gemsCount += 100;
+          crownCount += 1; gemsCount += 100;
           addChatMessage("System", "ROUND VICTORY! You earned 100 gems and 1 crown! 👑", true);
         }
       } else {
@@ -787,14 +872,63 @@ function handleServerMessage(msg) {
           addChatMessage("System", "Round Finished. You earned 20 gems! 💎", true);
         }
       }
-
-      // Update UI counters & save progression
       document.getElementById("crownCount").textContent = crownCount;
       document.getElementById("gemsCount").textContent = gemsCount;
       saveProgression();
 
-      // Show tournament overlay
+      // Show team score banner in round results
+      if (currentRoomMode === "team" && data.teamTrophies) {
+        const banner = document.getElementById("teamScoreBanner");
+        if (banner) {
+          banner.classList.remove("hidden");
+          document.getElementById("teamScoreA").textContent = data.teamTrophies.A || 0;
+          document.getElementById("teamScoreB").textContent = data.teamTrophies.B || 0;
+        }
+      }
+
       showTournamentResults(data.players, data.winnerId, data.tournamentFinished);
+      break;
+    }
+
+    case "final_vote_started": {
+      if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
+      if (data.teams) currentTeams = data.teams;
+      showFinalVoteOverlay(data);
+      break;
+    }
+
+    case "vote_updated": {
+      updateVoteCards(data.votes);
+      break;
+    }
+
+    case "vote_countdown": {
+      updateVoteCountdown(data.secondsLeft);
+      break;
+    }
+
+    case "final_vote_resolved": {
+      const champA = players.find(p => p.id === data.championA);
+      const champB = players.find(p => p.id === data.championB);
+      const statusEl = document.getElementById("fvStatusRow");
+      if (statusEl) {
+        statusEl.innerHTML = `⚔️ <strong>${escapeHTML(champA ? champA.name : "?")}</strong> vs <strong>${escapeHTML(champB ? champB.name : "?")}</strong> — FINAL ROUND!`;
+      }
+      // Hide vote overlay after 3s (when game_started fires)
+      setTimeout(() => {
+        document.getElementById("finalVoteOverlay").classList.add("hidden");
+      }, 2800);
+      break;
+    }
+
+    case "matchmaking_countdown": {
+      const notice = document.getElementById("matchmakingFillNotice");
+      const timerEl2 = document.getElementById("matchmakingFillTimer");
+      if (notice && timerEl2) {
+        notice.classList.remove("hidden");
+        timerEl2.textContent = data.secondsLeft;
+        if (data.secondsLeft <= 0) notice.classList.add("hidden");
+      }
       break;
     }
 
@@ -946,6 +1080,7 @@ function buildLocalMap(mapType = "classic") {
 function updateLobbyUI() {
   lobbyPlayersList.innerHTML = "";
   const isHost = localPlayerId === hostId;
+  const isTeamMode = currentRoomMode === "team";
 
   if (isHost) {
     addBotBtn.classList.remove("hidden");
@@ -955,44 +1090,110 @@ function updateLobbyUI() {
     startGameBtn.classList.add("hidden");
   }
 
-  players.forEach((p) => {
-    const card = document.createElement("div");
-    card.className = `lobby-player-card ${p.ready ? "ready" : ""} ${p.ai ? "bot" : ""} ${p.id === hostId ? "host" : ""}`;
-
-    const style = characterStyle[p.kind];
-    const avatarCanvasId = `lobby_avatar_${p.id}`;
-
-    card.innerHTML = `
-      <div class="avatar-box">
-        <canvas id="${avatarCanvasId}" width="60" height="60"></canvas>
-      </div>
-      <div class="player-info">
-        <div class="name-tag">${escapeHTML(p.name)}</div>
-        <div class="status-tag">${p.ready ? "READY" : "WAITING..."}</div>
-      </div>
-      ${p.id === hostId ? '<span class="host-tag">HOST</span>' : ""}
-      ${isHost && p.ai ? `<button class="btn-remove-bot" data-bot-id="${p.id}">Remove</button>` : ""}
+  // In team mode, insert Team A / Team B dividers
+  if (isTeamMode && currentTeams) {
+    // Team score display
+    const scoreRow = document.createElement("div");
+    scoreRow.className = "lobby-team-score-row";
+    scoreRow.innerHTML = `
+      <span class="team-a-color" style="font-size:16px">Team A 🔵 <strong>${currentTeamTrophies?.A || 0}</strong>🏆</span>
+      <span style="color:#999;font-size:20px">—</span>
+      <span class="team-b-color" style="font-size:16px"><strong>${currentTeamTrophies?.B || 0}</strong>🏆 🟠 Team B</span>
     `;
+    lobbyPlayersList.appendChild(scoreRow);
 
-    lobbyPlayersList.appendChild(card);
+    // Team A divider
+    const divA = document.createElement("div");
+    divA.className = "lobby-team-divider";
+    divA.innerHTML = `<span class="lobby-team-label-a">⚔ TEAM A</span>`;
+    lobbyPlayersList.appendChild(divA);
 
-    const avatarCanvas = document.getElementById(avatarCanvasId);
-    if (avatarCanvas) {
-      const actx = avatarCanvas.getContext("2d");
-      actx.translate(avatarCanvas.width / 2, avatarCanvas.height / 2 + 6);
-      drawCharacterOnContext(actx, p.kind, style, 0);
-    }
+    (currentTeams.A || []).forEach(pid => {
+      const p = players.find(pl => pl.id === pid);
+      if (p) appendLobbyPlayerCard(p, isHost);
+    });
 
-    if (isHost && p.ai) {
-      card.querySelector(".btn-remove-bot").addEventListener("click", () => {
-        sendServerMessage("remove_bot", { botId: p.id });
-      });
-    }
-  });
+    // Team B divider
+    const divB = document.createElement("div");
+    divB.className = "lobby-team-divider";
+    divB.innerHTML = `<span class="lobby-team-label-b">⚔ TEAM B</span>`;
+    lobbyPlayersList.appendChild(divB);
+
+    (currentTeams.B || []).forEach(pid => {
+      const p = players.find(pl => pl.id === pid);
+      if (p) appendLobbyPlayerCard(p, isHost);
+    });
+
+    // Any unassigned players
+    players.forEach(p => {
+      const inA = (currentTeams.A || []).includes(p.id);
+      const inB = (currentTeams.B || []).includes(p.id);
+      if (!inA && !inB) appendLobbyPlayerCard(p, isHost);
+    });
+  } else {
+    players.forEach((p) => appendLobbyPlayerCard(p, isHost));
+  }
+  syncSquadLobbyInterface();
+}
+
+function appendLobbyPlayerCard(p, isHost) {
+  const card = document.createElement("div");
+  card.className = `lobby-player-card ${p.ready ? "ready" : ""} ${p.ai ? "bot" : ""} ${p.id === hostId ? "host" : ""}`;
+  card.style.position = "relative";
+
+  const style = characterStyle[p.kind];
+  const avatarCanvasId = `lobby_avatar_${p.id}`;
+
+  card.innerHTML = `
+    <div class="avatar-box">
+      <canvas id="${avatarCanvasId}" width="60" height="60"></canvas>
+    </div>
+    <div class="player-info">
+      <div class="name-tag">${escapeHTML(p.name)}</div>
+      <div class="status-tag">${p.ready ? "READY" : "WAITING..."}</div>
+    </div>
+    ${p.id === hostId ? '<span class="host-tag">HOST</span>' : ""}
+    ${isHost && p.ai ? `<button class="btn-remove-bot" data-bot-id="${p.id}">Remove</button>` : ""}
+  `;
+
+  lobbyPlayersList.appendChild(card);
+
+  const avatarCanvas = document.getElementById(avatarCanvasId);
+  if (avatarCanvas) {
+    const actx = avatarCanvas.getContext("2d");
+    actx.translate(avatarCanvas.width / 2, avatarCanvas.height / 2 + 6);
+    drawCharacterOnContext(actx, p.kind, style, 0);
+  }
+
+  if (isHost && p.ai) {
+    card.querySelector(".btn-remove-bot")?.addEventListener("click", () => {
+      sendServerMessage("remove_bot", { botId: p.id });
+    });
+  }
 }
 
 function updateHudSidebar() {
   hudPlayersList.innerHTML = "";
+
+  // Update Team Trophies Panel
+  const teamPanel = document.getElementById("teamTrophiesPanel");
+  if (teamPanel) {
+    if (currentRoomMode === "team") {
+      teamPanel.classList.remove("hidden");
+      const scoreA = currentTeamTrophies?.A || 0;
+      const scoreB = currentTeamTrophies?.B || 0;
+      const countA = document.getElementById("teamTrophyCount_A");
+      const countB = document.getElementById("teamTrophyCount_B");
+      const barA = document.getElementById("teamTrophyBar_A");
+      const barB = document.getElementById("teamTrophyBar_B");
+      if (countA) countA.textContent = scoreA;
+      if (countB) countB.textContent = scoreB;
+      if (barA) barA.style.width = `${Math.min(100, (scoreA / 8) * 100)}%`;
+      if (barB) barB.style.width = `${Math.min(100, (scoreB / 8) * 100)}%`;
+    } else {
+      teamPanel.classList.add("hidden");
+    }
+  }
 
   players.forEach((p) => {
     const card = document.createElement("div");
@@ -1002,11 +1203,18 @@ function updateHudSidebar() {
     const style = characterStyle[p.kind];
     const canvasId = `hud_avatar_${p.id}`;
 
+    let badgeHTML = `<div class="hud-wins-count">${p.trophies || 0}</div>`;
+    if (currentRoomMode === "team") {
+      const pTeam = (currentTeams?.A || []).includes(p.id) ? "A" : "B";
+      const teamColor = pTeam === "A" ? "#3b82f6" : "#f97316";
+      badgeHTML = `<div class="hud-wins-count" style="background:${teamColor}; color:#fff; border-radius:50%; width:20px; height:20px; font-size:11px; display:flex; justify-content:center; align-items:center; border:2px solid #000; font-weight:800; font-family:var(--font);">${pTeam}</div>`;
+    }
+
     card.innerHTML = `
       <div class="hud-avatar-box">
         <canvas id="${canvasId}" width="40" height="40"></canvas>
       </div>
-      <div class="hud-wins-count">${p.trophies || 0}</div>
+      ${badgeHTML}
     `;
 
     hudPlayersList.appendChild(card);
@@ -1306,12 +1514,21 @@ function addChatMessage(sender, text, isSystem = false, isMe = false) {
     msgEl.innerHTML = `<span class="sender">${escapeHTML(sender)}:</span><span class="text">${escapeHTML(text)}</span>`;
   }
 
-  chatMessages.appendChild(msgEl);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (chatMessages) {
+    chatMessages.appendChild(msgEl.cloneNode(true));
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  const lobbyChatMessages = document.getElementById("lobbyChatMessages");
+  if (lobbyChatMessages) {
+    lobbyChatMessages.appendChild(msgEl.cloneNode(true));
+    lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
+  }
 }
 
 function escapeHTML(str) {
-  return str.replace(/[&<>'"]/g, 
+  if (str === null || str === undefined) return "";
+  return String(str).replace(/[&<>'"]/g, 
     (tag) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[tag] || tag)
   );
 }
@@ -2752,6 +2969,7 @@ function changeSquadLobbyCharacter(direction) {
 }
 
 function syncSquadLobbyInterface() {
+  // Center Card (User)
   const charNameEl = document.getElementById("squadLobbyCharName");
   if (charNameEl) {
     charNameEl.textContent = characterStyle[selectedCharacter]?.label || selectedCharacter;
@@ -2760,10 +2978,74 @@ function syncSquadLobbyInterface() {
   if (userNameEl && usernameInput) {
     userNameEl.textContent = usernameInput.value.trim() || "Friend";
   }
-  // Keep squad lobby image synced with selectedCharacter
   const img = document.getElementById("squadLobbyCharImg");
   if (img && !img.src.endsWith(`/${selectedCharacter}.png`)) {
     img.src = `assets/cards/${selectedCharacter}.png`;
+  }
+
+  // Get other players in the room
+  const otherPlayers = players.filter(p => p.id !== localPlayerId);
+
+  // Left Card
+  const leftCard = document.getElementById("squadInviteCard_left");
+  if (leftCard) {
+    if (otherPlayers[0]) {
+      const p = otherPlayers[0];
+      leftCard.innerHTML = `
+        <div class="card-inner-skew">
+          <div class="squad-card-image-container">
+            <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+          </div>
+          <div class="card-footer-bar">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div class="user-info">
+              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+              <div class="user-level">${escapeHTML(p.name)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      leftCard.innerHTML = `
+        <div class="card-inner-skew">
+          <button class="invite-btn" type="button">+</button>
+        </div>
+      `;
+      leftCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+    }
+  }
+
+  // Right Card
+  const rightCard = document.getElementById("squadInviteCard_right");
+  if (rightCard) {
+    if (otherPlayers[1]) {
+      const p = otherPlayers[1];
+      rightCard.innerHTML = `
+        <div class="card-inner-skew">
+          <div class="squad-card-image-container">
+            <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+          </div>
+          <div class="card-footer-bar">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div class="user-info">
+              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+              <div class="user-level">${escapeHTML(p.name)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      rightCard.innerHTML = `
+        <div class="card-inner-skew">
+          <button class="invite-btn" type="button">+</button>
+        </div>
+      `;
+      rightCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+    }
   }
 }
 
@@ -2871,6 +3153,16 @@ lobbyChatForm?.addEventListener("submit", (e) => {
   if (text) {
     sendServerMessage("send_chat", { text });
     chatInput.value = "";
+  }
+});
+
+document.getElementById("lobbyChatFormPopup")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = document.getElementById("lobbyChatInputPopup");
+  const text = (input?.value || "").trim();
+  if (text) {
+    sendServerMessage("send_chat", { text });
+    input.value = "";
   }
 });
 
@@ -3002,15 +3294,28 @@ if (nextCharBtn) {
 }
 
 const openFriendsList = (e) => {
-  e.stopPropagation();
-  const popup = document.getElementById("friendsPopup");
-  if (popup) popup.classList.remove("hidden");
+  if (e) e.stopPropagation();
+  // Auto-create room if not in one yet
+  if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
+    const name = usernameInput?.value.trim() || "Friend";
+    sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
+  }
+  openSocialModal();
+  setTimeout(() => {
+    document.querySelector('.social-tab-btn[data-social-tab="friends"]')?.click();
+  }, 100);
 };
 
 const squadInviteLeft = document.getElementById("squadInviteCard_left");
 const squadInviteRight = document.getElementById("squadInviteCard_right");
-if (squadInviteLeft) squadInviteLeft.addEventListener("click", openFriendsList);
-if (squadInviteRight) squadInviteRight.addEventListener("click", openFriendsList);
+if (squadInviteLeft) {
+  squadInviteLeft.addEventListener("click", openFriendsList);
+  squadInviteLeft.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+}
+if (squadInviteRight) {
+  squadInviteRight.addEventListener("click", openFriendsList);
+  squadInviteRight.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+}
 
 // Nickname synchronization
 const squadLobbyUserNameEl = document.getElementById("squadLobbyUserName");
@@ -3504,26 +3809,22 @@ if (window.location.protocol === "http:" || window.location.protocol === "https:
 const fullscreenToggleBtn = document.getElementById("fullscreenToggleBtn");
 if (fullscreenToggleBtn) {
   fullscreenToggleBtn.addEventListener("click", () => {
-    const consoleEl = document.querySelector(".yellow-console");
-    if (consoleEl) {
-      if (!document.fullscreenElement) {
-        consoleEl.requestFullscreen().then(() => {
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock("landscape").catch((err) => {
-              console.log("Landscape lock not supported/allowed:", err);
-            });
-          }
-        }).catch((err) => {
-          console.warn(`Fullscreen error: ${err.message}`);
-          document.documentElement.requestFullscreen().catch(() => {});
-        });
-      } else {
-        document.exitFullscreen().then(() => {
-          if (screen.orientation && screen.orientation.unlock) {
-            screen.orientation.unlock();
-          }
-        }).catch(() => {});
-      }
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock("landscape").catch((err) => {
+            console.log("Landscape lock not supported/allowed:", err);
+          });
+        }
+      }).catch((err) => {
+        console.warn(`Fullscreen error: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        if (screen.orientation && screen.orientation.unlock) {
+          screen.orientation.unlock();
+        }
+      }).catch(() => {});
     }
   });
 }
@@ -3538,6 +3839,11 @@ requestAnimationFrame(loop);
 
 // Start Intro Sequence (Check active session, otherwise trigger logo and Title loading)
 checkInitialSession();
+setTimeout(() => {
+  if (startupFinished) return;
+  showAppError("Startup took too long. Loading title screen instead.");
+  initIntroSequence();
+}, 8000);
 
 // ----------------------------------------------------------------
 // BACKGROUND MUSIC AND AUDIO VOLUME CONTROLLER
@@ -3619,6 +3925,112 @@ document.addEventListener("keydown", tryPlayMusic);
 // =================================================================
 // TOURNAMENT OVERLAYS, CONFETTI & NEXT ROUND SYSTEM
 // =================================================================
+
+function getPlayerTeam(playerId) {
+  if ((currentTeams.A || []).includes(playerId)) return "A";
+  if ((currentTeams.B || []).includes(playerId)) return "B";
+  return null;
+}
+
+function getVoteCounts(votes = {}) {
+  const counts = {};
+  Object.values(votes).forEach((votedId) => {
+    counts[votedId] = (counts[votedId] || 0) + 1;
+  });
+  return counts;
+}
+
+function showFinalVoteOverlay(data) {
+  const overlay = document.getElementById("finalVoteOverlay");
+  const cardsA = document.getElementById("fvCardsA");
+  const cardsB = document.getElementById("fvCardsB");
+  if (!overlay || !cardsA || !cardsB) return;
+
+  currentTeams = data.teams || currentTeams || { A: [], B: [] };
+  currentTeamTrophies = data.teamTrophies || currentTeamTrophies || { A: 0, B: 0 };
+  players = data.players || players;
+  finalVoteSecondsTotal = data.secondsLeft || 20;
+  finalVoteSelection = null;
+  window.__finalVoteSnapshot = {};
+
+  document.getElementById("tournamentOverlay")?.classList.add("hidden");
+  document.getElementById("fvTrophyA").textContent = currentTeamTrophies.A || 0;
+  document.getElementById("fvTrophyB").textContent = currentTeamTrophies.B || 0;
+  cardsA.innerHTML = "";
+  cardsB.innerHTML = "";
+
+  const localTeam = getPlayerTeam(localPlayerId);
+  const renderTeam = (team, container) => {
+    (currentTeams[team] || []).forEach((playerId) => {
+      const player = players.find((p) => p.id === playerId);
+      if (!player) return;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `fv-player-card ${player.id === localPlayerId ? "is-me" : ""}`;
+      card.dataset.playerId = player.id;
+      card.disabled = localTeam !== team;
+      card.innerHTML = `
+        <img class="fv-card-avatar" src="assets/cards/${player.kind || "chiikawa"}.png" alt="">
+        <div class="fv-card-info">
+          <div class="fv-card-name">${escapeHTML(player.name)}</div>
+          <div class="fv-card-votes" data-vote-count-for="${player.id}">0 votes</div>
+        </div>
+        <div class="fv-vote-check">OK</div>
+      `;
+      card.addEventListener("click", () => {
+        if (card.disabled) return;
+        finalVoteSelection = player.id;
+        sendServerMessage("submit_vote", { votedPlayerId: player.id });
+        updateVoteCards({ [localPlayerId]: player.id });
+        const statusEl = document.getElementById("fvStatusRow");
+        if (statusEl) statusEl.textContent = `Vote locked for ${player.name}. Waiting for the teams...`;
+      });
+      container.appendChild(card);
+    });
+  };
+
+  renderTeam("A", cardsA);
+  renderTeam("B", cardsB);
+
+  const statusEl = document.getElementById("fvStatusRow");
+  if (statusEl) {
+    statusEl.textContent = localTeam
+      ? "Pick one player from your team for the final round."
+      : "Spectating the team champion vote.";
+  }
+
+  updateVoteCards({});
+  updateVoteCountdown(finalVoteSecondsTotal);
+  overlay.classList.remove("hidden");
+}
+
+function updateVoteCards(votes = {}) {
+  const mergedVotes = { ...(window.__finalVoteSnapshot || {}), ...votes };
+  window.__finalVoteSnapshot = mergedVotes;
+  const counts = getVoteCounts(mergedVotes);
+
+  document.querySelectorAll(".fv-player-card").forEach((card) => {
+    const playerId = card.dataset.playerId;
+    const selectedByMe = finalVoteSelection === playerId || mergedVotes[localPlayerId] === playerId;
+    card.classList.toggle("selected", selectedByMe);
+    card.classList.toggle("my-vote", selectedByMe);
+    const countEl = card.querySelector("[data-vote-count-for]");
+    const count = counts[playerId] || 0;
+    if (countEl) countEl.textContent = `${count} vote${count === 1 ? "" : "s"}`;
+  });
+}
+
+function updateVoteCountdown(secondsLeft) {
+  const countEl = document.getElementById("voteCountdownNum");
+  const ring = document.getElementById("voteRingFill");
+  const seconds = Math.max(0, Number(secondsLeft) || 0);
+  if (countEl) countEl.textContent = seconds;
+  if (ring) {
+    const circumference = 163.4;
+    const progress = finalVoteSecondsTotal > 0 ? seconds / finalVoteSecondsTotal : 0;
+    ring.style.strokeDashoffset = String(circumference * (1 - progress));
+  }
+}
 
 function showTournamentResults(playersList, winnerId, tournamentFinished) {
   const overlay = document.getElementById("tournamentOverlay");
@@ -3889,7 +4301,7 @@ async function checkAuthSession() {
   }
 
   try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 6000, "Auth session check");
     if (session && session.user) {
       await handleAuthenticatedUser(session.user);
     } else {
@@ -3904,27 +4316,35 @@ async function checkAuthSession() {
 async function handleAuthenticatedUser(user) {
   try {
     // Load progression
-    await loadProgression();
+    try {
+      await withTimeout(loadProgression(), 6000, "Progression load");
+    } catch (progressErr) {
+      console.warn("Progression load skipped:", progressErr);
+    }
 
     // Check if user has a username
-    const { data, error } = await supabaseClient
+    const { data, error } = await withTimeout(supabaseClient
       .from('profiles')
       .select('username')
       .eq('id', user.id)
-      .single();
+      .single(), 6000, "Profile load");
 
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 is empty result
 
     if (data && data.username) {
       // User has a username, proceed to main menu
+      finishStartup();
       switchScreen(menuScreen);
       tryPlayMusic();
     } else {
       // No username, show intro registration screen
+      finishStartup();
       startUsernameIntroFlow();
     }
   } catch (err) {
     console.error("Error handling authenticated user:", err);
+    finishStartup();
+    showAppError("Profile load failed. You can still choose a username.", err.message || err);
     startUsernameIntroFlow(); // fallback to intro
   }
 }
@@ -4151,11 +4571,15 @@ if (usernameForm) {
         throw new Error("Username already taken! Try another one.");
       }
 
-      // Update username in profiles
+      // Create or update username in profiles
       const { error } = await supabaseClient
         .from('profiles')
-        .update({ username: username })
-        .eq('id', user.id);
+        .upsert({
+          id: user.id,
+          username: username,
+          character: selectedCharacter || "chiikawa",
+          updated_at: new Date().toISOString()
+        }, { onConflict: "id" });
 
       if (error) throw error;
 
@@ -4206,7 +4630,20 @@ if (btnLogoutAccount) {
 // ----------------------------------------------------------------
 
 function initIntroSequence() {
+  if (pendingOAuthError) {
+    finishStartup();
+    switchScreen(loginScreen);
+    if (authMessage) {
+      authMessage.textContent = `Login failed: ${pendingOAuthError}`;
+      authMessage.className = "auth-message error";
+      authMessage.classList.remove("hidden");
+    }
+    pendingOAuthError = "";
+    return;
+  }
+
   // Ensure title screen starts active under the splash overlay
+  finishStartup();
   if (titleScreen) {
     switchScreen(titleScreen);
   }
@@ -4214,6 +4651,7 @@ function initIntroSequence() {
   // 1. Studio Logo Animation
   if (studioSplashScreen) {
     // Make sure the splash overlay starts active
+    studioSplashScreen.style.display = "";
     studioSplashScreen.classList.add("active");
     
     // Fade it out after 2 seconds
@@ -4241,7 +4679,56 @@ function initIntroSequence() {
   }
 }
 
+function initMobileFullscreenPrompt() {
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent) || window.innerWidth <= 800;
+  if (isMobile) {
+    document.body.classList.add("is-mobile");
+    if (!sessionStorage.getItem("fullscreen_prompted")) {
+      sessionStorage.setItem("fullscreen_prompted", "true");
+      setTimeout(() => {
+        const overlay = document.getElementById("mobileFullscreenReminder");
+        if (overlay) overlay.classList.remove("hidden");
+      }, 1200); // delay so it appears smoothly after splash screen loads
+    }
+  }
+
+  // Wire up fullscreen reminder buttons
+  document.getElementById("btnMobileFullscreenYes")?.addEventListener("click", () => {
+    document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+    document.documentElement.requestFullscreen().then(() => {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock("landscape").catch((err) => {
+          console.log("Landscape lock error:", err);
+        });
+      }
+    }).catch((err) => {
+      console.warn("Fullscreen request failed:", err);
+    });
+  });
+
+  document.getElementById("btnMobileFullscreenNo")?.addEventListener("click", () => {
+    document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+  });
+}
+
 async function checkInitialSession() {
+  initMobileFullscreenPrompt();
+
+  if (pendingOAuthError) {
+    if (isOAuthPopup) {
+      try {
+        window.opener?.postMessage({ type: "oauth_error", message: pendingOAuthError }, window.location.origin);
+      } catch (err) {
+        console.warn("Unable to notify opener about OAuth error:", err);
+      }
+      setTimeout(() => window.close(), 800);
+      return;
+    }
+
+    initIntroSequence();
+    return;
+  }
+
   if (isOAuthPopup) {
     // Popup window will handle its own closing, don't trigger intro transitions
     return;
@@ -4253,7 +4740,7 @@ async function checkInitialSession() {
   }
 
   try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 6000, "Initial auth session check");
     if (session && session.user) {
       // User is already authenticated! Bypass splash screen and go directly to main menu
       await handleAuthenticatedUser(session.user);
@@ -4263,6 +4750,7 @@ async function checkInitialSession() {
     }
   } catch (err) {
     console.error("Initial session check failed:", err);
+    showAppError("Startup auth check failed. Loading offline menu.", err.message || err);
     initIntroSequence();
   }
 }
@@ -4379,9 +4867,26 @@ document.getElementById("globalChatPopup")?.addEventListener("click", (e) => {
   if (e.target === document.getElementById("globalChatPopup")) closeGlobalChat();
 });
 
+function closeLobbyChat() {
+  const popup = document.getElementById("lobbyChatPopup");
+  if (popup) popup.classList.add("hidden");
+}
+
+document.getElementById("closeLobbyChat")?.addEventListener("click", closeLobbyChat);
+document.getElementById("lobbyChatPopup")?.addEventListener("click", (e) => {
+  if (e.target === document.getElementById("lobbyChatPopup")) closeLobbyChat();
+});
+
 // Wire CHAT button in squad lobby
 document.querySelector(".chat-btn")?.addEventListener("click", () => {
-  openGlobalChat();
+  if (roomCode) {
+    const popup = document.getElementById("lobbyChatPopup");
+    const codeLabel = document.getElementById("lobbyChatRoomCode");
+    if (codeLabel) codeLabel.textContent = `Room ${roomCode}`;
+    if (popup) popup.classList.remove("hidden");
+  } else {
+    openGlobalChat();
+  }
 });
 
 // Global chat form submit
@@ -4782,28 +5287,35 @@ function sendRoomInvite(targetUserId, targetUsername) {
 
 let inviteToastTimeout = null;
 function showInviteToast(fromName, code) {
-  let toast = document.getElementById("inviteToast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "inviteToast";
-    toast.className = "invite-toast";
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML = `
-    🎮 <strong>${escapeHTML(fromName)}</strong> invites you to room <strong>${escapeHTML(code)}</strong>
-    <button class="invite-toast-accept" id="inviteToastAccept">Join!</button>
-  `;
-  toast.classList.add("show");
-  document.getElementById("inviteToastAccept")?.addEventListener("click", () => {
-    toast.classList.remove("show");
+  const overlay = document.getElementById("roomInviteOverlay");
+  const textEl = document.getElementById("inviteOverlayText");
+  if (!overlay || !textEl) return;
+  
+  textEl.innerHTML = `🎮 <strong>${escapeHTML(fromName)}</strong> invites you to room <strong style="color:var(--yellow);font-size:20px;">${escapeHTML(code)}</strong>`;
+  overlay.classList.remove("hidden");
+  
+  const acceptBtn = document.getElementById("inviteOverlayAccept");
+  const declineBtn = document.getElementById("inviteOverlayDecline");
+  
+  // Clear old listeners by cloning
+  const newAccept = acceptBtn.cloneNode(true);
+  acceptBtn.parentNode.replaceChild(newAccept, acceptBtn);
+  const newDecline = declineBtn.cloneNode(true);
+  declineBtn.parentNode.replaceChild(newDecline, declineBtn);
+  
+  newAccept.addEventListener("click", () => {
+    overlay.classList.add("hidden");
     if (joinCodeInput) joinCodeInput.value = code;
+    // Switch to squad tab
     document.querySelector('.tab-btn[data-tab="squad"]')?.click();
     const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
     sendServerMessage("join_room", { name, kind: selectedCharacter, roomCode: code });
     matchmakingDialog?.classList.add("hidden");
   });
-  if (inviteToastTimeout) clearTimeout(inviteToastTimeout);
-  inviteToastTimeout = setTimeout(() => toast.classList.remove("show"), 12000);
+  
+  newDecline.addEventListener("click", () => {
+    overlay.classList.add("hidden");
+  });
 }
 
 function showToastMsg(msg) {

@@ -3640,6 +3640,19 @@ canvas#game {
   filter: drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.45));
 }
 
+.squad-card-image-container img {
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  transform: skewX(13deg) translate(-36%, 0);
+  transform-origin: bottom center;
+  width: auto;
+  height: 98%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.45));
+}
+
 /* Sliding animation classes keeping the un-skew */
 .slide-out-left {
   transform: skewX(13deg) translate(-140%, 0) !important;
@@ -4320,7 +4333,7 @@ canvas#game {
   display: none;
 }
 
-/* Show D-pad and Action buttons only on touch devices */
+/* Show D-pad and Action buttons only on touch devices or when is-mobile class is active */
 @media (pointer: coarse) {
   .mobile-gamepad {
     display: block;
@@ -4329,6 +4342,13 @@ canvas#game {
   .arcade-controller {
     display: none !important;
   }
+}
+
+body.is-mobile .mobile-gamepad {
+  display: block;
+}
+body.is-mobile .arcade-controller {
+  display: none !important;
 }
 
 .dpad {
@@ -6073,4 +6093,51 @@ canvas#game {
 
 .app-error-box span {
   color: rgba(255,255,255,0.78);
+}
+
+/* Team Trophies Panel in HUD */
+.team-trophies-panel {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.team-trophy-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.team-trophy-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 800;
+}
+.team-trophy-label {
+  text-shadow: 0 2px 0 #000;
+}
+.team-trophy-count {
+  color: #fff;
+  font-family: var(--font-clean);
+}
+.team-trophy-bar-wrap {
+  height: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #000;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+}
+.team-trophy-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.team-a-bg {
+  background: #3b82f6; /* bright blue */
+  box-shadow: 0 0 8px #3b82f6;
+}
+.team-b-bg {
+  background: #f97316; /* bright orange */
+  box-shadow: 0 0 8px #f97316;
 }

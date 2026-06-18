@@ -689,6 +689,48 @@
           </div>
         </div>
 
+        <!-- Mobile Fullscreen Reminder Dialog -->
+        <div id="mobileFullscreenReminder" class="dialog-overlay hidden">
+          <div class="card glass dialog-card" style="padding: 24px; text-align: center; max-width: 380px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">📱</div>
+            <h2 style="font-family: var(--font); color: var(--yellow); margin-bottom: 10px; font-size: 20px;">FULLSCREEN REMINDER</h2>
+            <p style="font-family: var(--font-clean); color: #fff; font-size: 15px; margin-bottom: 24px; line-height: 1.5;">This game is better in fullscreen. Would you like to fullscreen the app?</p>
+            <div style="display: flex; gap: 16px; justify-content: center;">
+              <button id="btnMobileFullscreenYes" class="btn btn-primary" style="padding: 8px 20px;">Yes</button>
+              <button id="btnMobileFullscreenNo" class="btn btn-secondary" style="padding: 8px 20px;">No</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Room Invite Overlay Dialog -->
+        <div id="roomInviteOverlay" class="dialog-overlay hidden">
+          <div class="card glass dialog-card" style="padding: 24px; text-align: center;">
+            <div class="invite-overlay-icon" style="font-size: 48px; margin-bottom: 12px;">📨</div>
+            <h2 id="inviteOverlayTitle" style="font-family: var(--font); color: var(--yellow); margin-bottom: 10px;">GAME INVITATION</h2>
+            <p id="inviteOverlayText" style="font-family: var(--font-clean); color: #fff; font-size: 16px; margin-bottom: 24px; line-height: 1.5;"></p>
+            <div class="invite-overlay-buttons" style="display: flex; gap: 16px; justify-content: center;">
+              <button id="inviteOverlayAccept" class="btn btn-primary" style="padding: 10px 24px;">Accept</button>
+              <button id="inviteOverlayDecline" class="btn btn-danger" style="padding: 10px 24px;">Decline</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lobby Chat Popup (for squad tab chat) -->
+        <div id="lobbyChatPopup" class="dialog-overlay hidden">
+          <div class="global-chat-card card glass">
+            <button id="closeLobbyChat" class="btn-close-dialog" type="button">&times;</button>
+            <div class="global-chat-header">
+              <span class="global-chat-title">💬 Room Chat</span>
+              <span class="global-chat-sub" id="lobbyChatRoomCode">Room ABCD</span>
+            </div>
+            <div id="lobbyChatMessages" class="global-chat-messages"></div>
+            <form id="lobbyChatFormPopup" class="global-chat-form">
+              <input id="lobbyChatInputPopup" type="text" maxlength="64" placeholder="Send room message..." autocomplete="off" />
+              <button class="btn btn-primary btn-sm" type="submit">Send</button>
+            </form>
+          </div>
+        </div>
+
         <!-- Matchmaking Glass Dialog Popup (opened when clicking PLAY!) -->
         <div id="matchmakingDialog" class="dialog-overlay hidden">
           <div class="card glass dialog-card">
@@ -800,6 +842,28 @@
               <div class="room-block">
                 <span>Room:</span>
                 <strong id="gameRoomCode">----</strong>
+              </div>
+            </div>
+
+            <!-- Team Trophies Panel (visible in team mode) -->
+            <div id="teamTrophiesPanel" class="card glass team-trophies-panel hidden">
+              <div class="team-trophy-row">
+                <div class="team-trophy-header-row">
+                  <span class="team-trophy-label team-a-color">🔵 TEAM A</span>
+                  <span class="team-trophy-count"><span id="teamTrophyCount_A">0</span>/8</span>
+                </div>
+                <div class="team-trophy-bar-wrap">
+                  <div id="teamTrophyBar_A" class="team-trophy-bar-fill team-a-bg" style="width: 0%;"></div>
+                </div>
+              </div>
+              <div class="team-trophy-row" style="margin-top: 10px;">
+                <div class="team-trophy-header-row">
+                  <span class="team-trophy-label team-b-color">🟠 TEAM B</span>
+                  <span class="team-trophy-count"><span id="teamTrophyCount_B">0</span>/8</span>
+                </div>
+                <div class="team-trophy-bar-wrap">
+                  <div id="teamTrophyBar_B" class="team-trophy-bar-fill team-b-bg" style="width: 0%;"></div>
+                </div>
               </div>
             </div>
 

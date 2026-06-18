@@ -80,9 +80,20 @@ function handleMessage(ws, msg) {
     case "create_room": {
       const roomCode = generateRoomCode();
       const room = createRoomObject(roomCode, ws.id, data.mode || "team");
+      room.isPrivate = data.isPrivate || false;
       rooms.set(roomCode, room);
       joinPlayerToRoom(ws, room, data.name, data.kind);
-      // Start matchmaking fill timer — alone for 30s
+      // Start matchmaking fill timer only if not private
+      if (!room.isPrivate) {
+        scheduleMatchmakingFill(room);
+      }
+      break;
+    }
+
+    case "start_matchmaking": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
+      room.isPrivate = false;
       scheduleMatchmakingFill(room);
       break;
     }
@@ -123,7 +134,7 @@ function handleMessage(ws, msg) {
       // Find open lobby room with space (standard mode only)
       let foundRoom = null;
       for (const [code, r] of rooms.entries()) {
-        if (r.state === "lobby" && r.mode !== "team" && r.players.length < STANDARD_MAX_PLAYERS) {
+        if (r.state === "lobby" && r.mode !== "team" && !r.isPrivate && r.players.length < STANDARD_MAX_PLAYERS) {
           foundRoom = r;
           break;
         }
@@ -147,6 +158,7 @@ function handleMessage(ws, msg) {
         // Create new room
         const roomCode = generateRoomCode();
         const room = createRoomObject(roomCode, ws.id, "standard");
+        room.isPrivate = false;
         rooms.set(roomCode, room);
         joinPlayerToRoom(ws, room, data.name, data.kind);
         scheduleMatchmakingFill(room);
@@ -423,6 +435,23 @@ function joinPlayerToRoom(ws, room, name, kind) {
   }));
 
   broadcastLobbyUpdate(room);
+
+  // Auto-start if lobby is full of real players
+  if (room.players.length >= maxPlayers) {
+    if (room.matchmakingTimer) {
+      clearTimeout(room.matchmakingTimer);
+      room.matchmakingTimer = null;
+    }
+    if (room.matchmakingCountdownInterval) {
+      clearInterval(room.matchmakingCountdownInterval);
+      room.matchmakingCountdownInterval = null;
+    }
+    setTimeout(() => {
+      if (room.state === "lobby") {
+        startRound(room, true);
+      }
+    }, 2000);
+  }
 }
 
 // ----------------------------------------------------------------

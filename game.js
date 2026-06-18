@@ -1133,6 +1133,7 @@ function updateLobbyUI() {
   } else {
     players.forEach((p) => appendLobbyPlayerCard(p, isHost));
   }
+  syncSquadLobbyInterface();
 }
 
 function appendLobbyPlayerCard(p, isHost) {
@@ -1174,6 +1175,26 @@ function appendLobbyPlayerCard(p, isHost) {
 function updateHudSidebar() {
   hudPlayersList.innerHTML = "";
 
+  // Update Team Trophies Panel
+  const teamPanel = document.getElementById("teamTrophiesPanel");
+  if (teamPanel) {
+    if (currentRoomMode === "team") {
+      teamPanel.classList.remove("hidden");
+      const scoreA = currentTeamTrophies?.A || 0;
+      const scoreB = currentTeamTrophies?.B || 0;
+      const countA = document.getElementById("teamTrophyCount_A");
+      const countB = document.getElementById("teamTrophyCount_B");
+      const barA = document.getElementById("teamTrophyBar_A");
+      const barB = document.getElementById("teamTrophyBar_B");
+      if (countA) countA.textContent = scoreA;
+      if (countB) countB.textContent = scoreB;
+      if (barA) barA.style.width = `${Math.min(100, (scoreA / 8) * 100)}%`;
+      if (barB) barB.style.width = `${Math.min(100, (scoreB / 8) * 100)}%`;
+    } else {
+      teamPanel.classList.add("hidden");
+    }
+  }
+
   players.forEach((p) => {
     const card = document.createElement("div");
     card.className = `hud-player-card ${p.alive ? "" : "dead"}`;
@@ -1182,11 +1203,18 @@ function updateHudSidebar() {
     const style = characterStyle[p.kind];
     const canvasId = `hud_avatar_${p.id}`;
 
+    let badgeHTML = `<div class="hud-wins-count">${p.trophies || 0}</div>`;
+    if (currentRoomMode === "team") {
+      const pTeam = (currentTeams?.A || []).includes(p.id) ? "A" : "B";
+      const teamColor = pTeam === "A" ? "#3b82f6" : "#f97316";
+      badgeHTML = `<div class="hud-wins-count" style="background:${teamColor}; color:#fff; border-radius:50%; width:20px; height:20px; font-size:11px; display:flex; justify-content:center; align-items:center; border:2px solid #000; font-weight:800; font-family:var(--font);">${pTeam}</div>`;
+    }
+
     card.innerHTML = `
       <div class="hud-avatar-box">
         <canvas id="${canvasId}" width="40" height="40"></canvas>
       </div>
-      <div class="hud-wins-count">${p.trophies || 0}</div>
+      ${badgeHTML}
     `;
 
     hudPlayersList.appendChild(card);
@@ -1486,14 +1514,21 @@ function addChatMessage(sender, text, isSystem = false, isMe = false) {
     msgEl.innerHTML = `<span class="sender">${escapeHTML(sender)}:</span><span class="text">${escapeHTML(text)}</span>`;
   }
 
-  chatMessages.appendChild(msgEl);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (chatMessages) {
+    chatMessages.appendChild(msgEl.cloneNode(true));
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  const lobbyChatMessages = document.getElementById("lobbyChatMessages");
+  if (lobbyChatMessages) {
+    lobbyChatMessages.appendChild(msgEl.cloneNode(true));
+    lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
+  }
 }
 
 function escapeHTML(str) {
   // Safe check: If str is null, undefined, or not a string, return an empty string
   if (!str) return ""; 
-  
   return String(str).replace(/[&<>'"]/g, 
     (tag) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[tag] || tag)
   );
@@ -2934,6 +2969,7 @@ function changeSquadLobbyCharacter(direction) {
 }
 
 function syncSquadLobbyInterface() {
+  // Center Card (User)
   const charNameEl = document.getElementById("squadLobbyCharName");
   if (charNameEl) {
     charNameEl.textContent = characterStyle[selectedCharacter]?.label || selectedCharacter;
@@ -2942,10 +2978,74 @@ function syncSquadLobbyInterface() {
   if (userNameEl && usernameInput) {
     userNameEl.textContent = usernameInput.value.trim() || "Friend";
   }
-  // Keep squad lobby image synced with selectedCharacter
   const img = document.getElementById("squadLobbyCharImg");
   if (img && !img.src.endsWith(`/${selectedCharacter}.png`)) {
     img.src = `assets/cards/${selectedCharacter}.png`;
+  }
+
+  // Get other players in the room
+  const otherPlayers = players.filter(p => p.id !== localPlayerId);
+
+  // Left Card
+  const leftCard = document.getElementById("squadInviteCard_left");
+  if (leftCard) {
+    if (otherPlayers[0]) {
+      const p = otherPlayers[0];
+      leftCard.innerHTML = `
+        <div class="card-inner-skew">
+          <div class="squad-card-image-container">
+            <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+          </div>
+          <div class="card-footer-bar">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div class="user-info">
+              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+              <div class="user-level">${escapeHTML(p.name)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      leftCard.innerHTML = `
+        <div class="card-inner-skew">
+          <button class="invite-btn" type="button">+</button>
+        </div>
+      `;
+      leftCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+    }
+  }
+
+  // Right Card
+  const rightCard = document.getElementById("squadInviteCard_right");
+  if (rightCard) {
+    if (otherPlayers[1]) {
+      const p = otherPlayers[1];
+      rightCard.innerHTML = `
+        <div class="card-inner-skew">
+          <div class="squad-card-image-container">
+            <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+          </div>
+          <div class="card-footer-bar">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div class="user-info">
+              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+              <div class="user-level">${escapeHTML(p.name)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      rightCard.innerHTML = `
+        <div class="card-inner-skew">
+          <button class="invite-btn" type="button">+</button>
+        </div>
+      `;
+      rightCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+    }
   }
 }
 
@@ -3053,6 +3153,16 @@ lobbyChatForm?.addEventListener("submit", (e) => {
   if (text) {
     sendServerMessage("send_chat", { text });
     chatInput.value = "";
+  }
+});
+
+document.getElementById("lobbyChatFormPopup")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = document.getElementById("lobbyChatInputPopup");
+  const text = (input?.value || "").trim();
+  if (text) {
+    sendServerMessage("send_chat", { text });
+    input.value = "";
   }
 });
 
@@ -3184,15 +3294,28 @@ if (nextCharBtn) {
 }
 
 const openFriendsList = (e) => {
-  e.stopPropagation();
-  const popup = document.getElementById("friendsPopup");
-  if (popup) popup.classList.remove("hidden");
+  if (e) e.stopPropagation();
+  // Auto-create room if not in one yet
+  if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
+    const name = usernameInput?.value.trim() || "Friend";
+    sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
+  }
+  openSocialModal();
+  setTimeout(() => {
+    document.querySelector('.social-tab-btn[data-social-tab="friends"]')?.click();
+  }, 100);
 };
 
 const squadInviteLeft = document.getElementById("squadInviteCard_left");
 const squadInviteRight = document.getElementById("squadInviteCard_right");
-if (squadInviteLeft) squadInviteLeft.addEventListener("click", openFriendsList);
-if (squadInviteRight) squadInviteRight.addEventListener("click", openFriendsList);
+if (squadInviteLeft) {
+  squadInviteLeft.addEventListener("click", openFriendsList);
+  squadInviteLeft.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+}
+if (squadInviteRight) {
+  squadInviteRight.addEventListener("click", openFriendsList);
+  squadInviteRight.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+}
 
 // Nickname synchronization
 const squadLobbyUserNameEl = document.getElementById("squadLobbyUserName");
@@ -3686,26 +3809,22 @@ if (window.location.protocol === "http:" || window.location.protocol === "https:
 const fullscreenToggleBtn = document.getElementById("fullscreenToggleBtn");
 if (fullscreenToggleBtn) {
   fullscreenToggleBtn.addEventListener("click", () => {
-    const consoleEl = document.querySelector(".yellow-console");
-    if (consoleEl) {
-      if (!document.fullscreenElement) {
-        consoleEl.requestFullscreen().then(() => {
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock("landscape").catch((err) => {
-              console.log("Landscape lock not supported/allowed:", err);
-            });
-          }
-        }).catch((err) => {
-          console.warn(`Fullscreen error: ${err.message}`);
-          document.documentElement.requestFullscreen().catch(() => {});
-        });
-      } else {
-        document.exitFullscreen().then(() => {
-          if (screen.orientation && screen.orientation.unlock) {
-            screen.orientation.unlock();
-          }
-        }).catch(() => {});
-      }
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock("landscape").catch((err) => {
+            console.log("Landscape lock not supported/allowed:", err);
+          });
+        }
+      }).catch((err) => {
+        console.warn(`Fullscreen error: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        if (screen.orientation && screen.orientation.unlock) {
+          screen.orientation.unlock();
+        }
+      }).catch(() => {});
     }
   });
 }
@@ -4560,7 +4679,41 @@ function initIntroSequence() {
   }
 }
 
+function initMobileFullscreenPrompt() {
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent) || window.innerWidth <= 800;
+  if (isMobile) {
+    document.body.classList.add("is-mobile");
+    if (!sessionStorage.getItem("fullscreen_prompted")) {
+      sessionStorage.setItem("fullscreen_prompted", "true");
+      setTimeout(() => {
+        const overlay = document.getElementById("mobileFullscreenReminder");
+        if (overlay) overlay.classList.remove("hidden");
+      }, 1200); // delay so it appears smoothly after splash screen loads
+    }
+  }
+
+  // Wire up fullscreen reminder buttons
+  document.getElementById("btnMobileFullscreenYes")?.addEventListener("click", () => {
+    document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+    document.documentElement.requestFullscreen().then(() => {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock("landscape").catch((err) => {
+          console.log("Landscape lock error:", err);
+        });
+      }
+    }).catch((err) => {
+      console.warn("Fullscreen request failed:", err);
+    });
+  });
+
+  document.getElementById("btnMobileFullscreenNo")?.addEventListener("click", () => {
+    document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+  });
+}
+
 async function checkInitialSession() {
+  initMobileFullscreenPrompt();
+
   if (pendingOAuthError) {
     if (isOAuthPopup) {
       try {
@@ -4714,9 +4867,26 @@ document.getElementById("globalChatPopup")?.addEventListener("click", (e) => {
   if (e.target === document.getElementById("globalChatPopup")) closeGlobalChat();
 });
 
+function closeLobbyChat() {
+  const popup = document.getElementById("lobbyChatPopup");
+  if (popup) popup.classList.add("hidden");
+}
+
+document.getElementById("closeLobbyChat")?.addEventListener("click", closeLobbyChat);
+document.getElementById("lobbyChatPopup")?.addEventListener("click", (e) => {
+  if (e.target === document.getElementById("lobbyChatPopup")) closeLobbyChat();
+});
+
 // Wire CHAT button in squad lobby
 document.querySelector(".chat-btn")?.addEventListener("click", () => {
-  openGlobalChat();
+  if (roomCode) {
+    const popup = document.getElementById("lobbyChatPopup");
+    const codeLabel = document.getElementById("lobbyChatRoomCode");
+    if (codeLabel) codeLabel.textContent = `Room ${roomCode}`;
+    if (popup) popup.classList.remove("hidden");
+  } else {
+    openGlobalChat();
+  }
 });
 
 // Global chat form submit
@@ -5117,28 +5287,35 @@ function sendRoomInvite(targetUserId, targetUsername) {
 
 let inviteToastTimeout = null;
 function showInviteToast(fromName, code) {
-  let toast = document.getElementById("inviteToast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "inviteToast";
-    toast.className = "invite-toast";
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML = `
-    🎮 <strong>${escapeHTML(fromName)}</strong> invites you to room <strong>${escapeHTML(code)}</strong>
-    <button class="invite-toast-accept" id="inviteToastAccept">Join!</button>
-  `;
-  toast.classList.add("show");
-  document.getElementById("inviteToastAccept")?.addEventListener("click", () => {
-    toast.classList.remove("show");
+  const overlay = document.getElementById("roomInviteOverlay");
+  const textEl = document.getElementById("inviteOverlayText");
+  if (!overlay || !textEl) return;
+  
+  textEl.innerHTML = `🎮 <strong>${escapeHTML(fromName)}</strong> invites you to room <strong style="color:var(--yellow);font-size:20px;">${escapeHTML(code)}</strong>`;
+  overlay.classList.remove("hidden");
+  
+  const acceptBtn = document.getElementById("inviteOverlayAccept");
+  const declineBtn = document.getElementById("inviteOverlayDecline");
+  
+  // Clear old listeners by cloning
+  const newAccept = acceptBtn.cloneNode(true);
+  acceptBtn.parentNode.replaceChild(newAccept, acceptBtn);
+  const newDecline = declineBtn.cloneNode(true);
+  declineBtn.parentNode.replaceChild(newDecline, declineBtn);
+  
+  newAccept.addEventListener("click", () => {
+    overlay.classList.add("hidden");
     if (joinCodeInput) joinCodeInput.value = code;
+    // Switch to squad tab
     document.querySelector('.tab-btn[data-tab="squad"]')?.click();
     const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
     sendServerMessage("join_room", { name, kind: selectedCharacter, roomCode: code });
     matchmakingDialog?.classList.add("hidden");
   });
-  if (inviteToastTimeout) clearTimeout(inviteToastTimeout);
-  inviteToastTimeout = setTimeout(() => toast.classList.remove("show"), 12000);
+  
+  newDecline.addEventListener("click", () => {
+    overlay.classList.add("hidden");
+  });
 }
 
 function showToastMsg(msg) {
