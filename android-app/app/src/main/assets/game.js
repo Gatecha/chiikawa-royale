@@ -665,8 +665,13 @@ function handleServerMessage(msg) {
       // Close matchmaking dialog
       matchmakingDialog.classList.add("hidden");
       
-      // Transition screen
-      switchScreen(lobbyScreen);
+      const consoleEl = document.querySelector(".yellow-console");
+      if (consoleEl && consoleEl.classList.contains("squad-lobby-active")) {
+        switchScreen(menuScreen);
+      } else {
+        switchScreen(lobbyScreen);
+      }
+      refreshSocialData();
       
       lobbyRoomCode.textContent = roomCode;
       gameRoomCode.textContent = roomCode;
