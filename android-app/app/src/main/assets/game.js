@@ -4005,6 +4005,53 @@ if (btnSignup) {
   });
 }
 
+// Hook up Google & Discord OAuth logins
+const btnGoogleLogin = document.getElementById("btnGoogleLogin");
+if (btnGoogleLogin) {
+  btnGoogleLogin.addEventListener("click", async () => {
+    if (!supabaseClient) return;
+    try {
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Google login error:", err);
+      if (authMessage) {
+        authMessage.textContent = err.message || "Failed to log in with Google.";
+        authMessage.className = "auth-message error";
+        authMessage.classList.remove("hidden");
+      }
+    }
+  });
+}
+
+const btnDiscordLogin = document.getElementById("btnDiscordLogin");
+if (btnDiscordLogin) {
+  btnDiscordLogin.addEventListener("click", async () => {
+    if (!supabaseClient) return;
+    try {
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: "discord",
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Discord login error:", err);
+      if (authMessage) {
+        authMessage.textContent = err.message || "Failed to log in with Discord.";
+        authMessage.className = "auth-message error";
+        authMessage.classList.remove("hidden");
+      }
+    }
+  });
+}
+
 // Hook up Username Form submission
 if (usernameForm) {
   usernameForm.addEventListener("submit", async (e) => {

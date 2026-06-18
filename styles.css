@@ -4928,6 +4928,74 @@ canvas#game {
   margin-top: 12px;
 }
 
+.social-login-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0 10px 0;
+  color: rgba(34, 31, 37, 0.5);
+  font-family: 'Comfortaa', 'Fredoka', cursive;
+  font-size: 11px;
+  font-weight: 700;
+  width: 100%;
+}
+
+.social-login-separator::before,
+.social-login-separator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 2px dashed rgba(34, 31, 37, 0.2);
+}
+
+.social-login-separator:not(:empty)::before {
+  margin-right: .7em;
+}
+
+.social-login-separator:not(:empty)::after {
+  margin-left: .7em;
+}
+
+.social-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.btn-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: white;
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Comfortaa', 'Fredoka', cursive;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px var(--ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-social:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0px var(--ink);
+}
+
+.btn-social:active {
+  transform: translateY(2px);
+  box-shadow: 2px 2px 0px var(--ink);
+}
+
+.social-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 /* =================================================================
    INTRODUCTION SCREEN STYLE
    ================================================================= */
