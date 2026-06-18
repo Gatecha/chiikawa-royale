@@ -4094,27 +4094,11 @@ function initIntroSequence() {
     switchScreen(titleScreen);
   }
 
-  // 1. Studio Logo Animation
+  // Skip studio splash animation and start loading directly
   if (studioSplashScreen) {
-    // Make sure the splash overlay starts active
-    studioSplashScreen.classList.add("active");
-    
-    // Fade it out after 2 seconds
-    setTimeout(() => {
-      studioSplashScreen.classList.remove("active");
-      
-      // Completely remove it from layout after transition completes
-      setTimeout(() => {
-        studioSplashScreen.style.display = "none";
-        
-        // 2. Start Title Screen Loading
-        startTitleScreenLoading();
-      }, 500); // matches the 0.5s transition in CSS
-    }, 2000);
-  } else {
-    // If no splash screen, start loading immediately
-    startTitleScreenLoading();
+    studioSplashScreen.style.display = "none";
   }
+  startTitleScreenLoading();
 
   // Hook up the Play Button click handler
   if (titlePlayBtn) {
