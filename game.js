@@ -4403,11 +4403,15 @@ if (usernameForm) {
         throw new Error("Username already taken! Try another one.");
       }
 
-      // Update username in profiles
+      // Create or update username in profiles
       const { error } = await supabaseClient
         .from('profiles')
-        .update({ username: username })
-        .eq('id', user.id);
+        .upsert({
+          id: user.id,
+          username: username,
+          character: selectedCharacter || "chiikawa",
+          updated_at: new Date().toISOString()
+        }, { onConflict: "id" });
 
       if (error) throw error;
 
