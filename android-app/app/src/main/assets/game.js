@@ -2843,13 +2843,6 @@ function update(dt) {
 
     players.forEach((p) => {
       if (!localMode && p.id !== localPlayerId) {
-        // Extrapolate target position using velocity (dead reckoning)
-        if (p.dx !== 0 || p.dy !== 0) {
-          p.targetX += p.dx * p.speed * dt;
-          p.targetY += p.dy * p.speed * dt;
-        }
-        
-        // Smoothly interpolate current position toward the target
         p.x += (p.targetX - p.x) * 0.3;
         p.y += (p.targetY - p.y) * 0.3;
       }

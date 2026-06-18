@@ -719,11 +719,11 @@ function fillWithBots(room) {
 }
 
 function addBotToRoom(room) {
-  const botKinds = ["momonga", "shisa", "chiikawa", "usagi", "hachiware"];
+  const botKinds = ["momonga", "chiikawa", "usagi", "hachiware"];
   const usedKinds = room.players.map((p) => p.kind);
   const kind = botKinds.find((k) => !usedKinds.includes(k)) || botKinds[Math.floor(Math.random() * botKinds.length)];
   const botId = "bot_" + Math.random().toString(36).substr(2, 9);
-  const botNames = ["Momonga Bot", "Shisa Bot", "Chiikawa Bot", "Hachiware Bot", "Usagi Bot"];
+  const botNames = ["Momonga Bot", "Chiikawa Bot", "Hachiware Bot", "Usagi Bot"];
   const name = botNames[Math.floor(Math.random() * botNames.length)] + " (CPU)";
 
   const bot = {
