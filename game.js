@@ -440,13 +440,17 @@ installBtn.addEventListener("click", () => {
 // NETWORK SOCKET HANDLING (WITH SAFE FILE:// FALLBACKS)
 // ----------------------------------------------------------------
 
+// CONFIGURATION: Set this to your deployed Render WebSocket URL (e.g., "wss://chiikawa-royale.onrender.com")
+// if you choose to host the frontend separately on Vercel. Leave it as null if hosting together on Render.
+const BACKEND_WS_URL = null;
+
 function connectWebSocket() {
   if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
     return;
   }
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = `${protocol}//${window.location.host}`;
+  const wsUrl = BACKEND_WS_URL || `${protocol}//${window.location.host}`;
 
   console.log("Connecting to WebSocket server:", wsUrl);
   if (connectionStatusIndicator) {
