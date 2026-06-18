@@ -3536,8 +3536,8 @@ updateProgressionUI();
 // Start ticks and render loops
 requestAnimationFrame(loop);
 
-// Start Intro Sequence (Studio logo and Title loading)
-initIntroSequence();
+// Start Intro Sequence (Check active session, otherwise trigger logo and Title loading)
+checkInitialSession();
 
 // ----------------------------------------------------------------
 // BACKGROUND MUSIC AND AUDIO VOLUME CONTROLLER
@@ -4238,6 +4238,32 @@ function initIntroSequence() {
     titlePlayBtn.addEventListener("click", () => {
       checkAuthSession();
     });
+  }
+}
+
+async function checkInitialSession() {
+  if (isOAuthPopup) {
+    // Popup window will handle its own closing, don't trigger intro transitions
+    return;
+  }
+
+  if (!supabaseClient) {
+    initIntroSequence();
+    return;
+  }
+
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user) {
+      // User is already authenticated! Bypass splash screen and go directly to main menu
+      await handleAuthenticatedUser(session.user);
+    } else {
+      // No active session, display normal intro splash and title screens
+      initIntroSequence();
+    }
+  } catch (err) {
+    console.error("Initial session check failed:", err);
+    initIntroSequence();
   }
 }
 
