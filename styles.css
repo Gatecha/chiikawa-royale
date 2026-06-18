@@ -6045,3 +6045,32 @@ canvas#game {
   color: #ffd86f;
   font-size: 15px;
 }
+
+.app-error-box {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10050;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  border: 2px solid #ff4d6d;
+  border-radius: 10px;
+  background: rgba(34, 31, 37, 0.94);
+  color: #fff;
+  font-family: var(--font-clean);
+  font-size: 13px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.32);
+}
+
+.app-error-box strong {
+  color: #ffd86f;
+}
+
+.app-error-box span {
+  color: rgba(255,255,255,0.78);
+}

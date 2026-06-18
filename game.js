@@ -309,6 +309,40 @@ const confettiCanvas = document.getElementById("victoryConfettiCanvas");
 const confettiCtx = confettiCanvas ? confettiCanvas.getContext("2d") : null;
 const yellowConsoleEl = document.querySelector(".yellow-console");
 
+let startupFinished = false;
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+    })
+  ]);
+}
+
+function showAppError(message, detail = "") {
+  console.error(message, detail);
+  let box = document.getElementById("appErrorBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "appErrorBox";
+    box.className = "app-error-box";
+    document.body.appendChild(box);
+  }
+  box.innerHTML = `
+    <strong>${escapeHTML(message)}</strong>
+    ${detail ? `<span>${escapeHTML(String(detail))}</span>` : ""}
+  `;
+}
+
+function finishStartup() {
+  startupFinished = true;
+  if (studioSplashScreen) {
+    studioSplashScreen.classList.remove("active");
+    studioSplashScreen.style.display = "none";
+  }
+}
+
 // Custom Map & Voting States
 let currentMapType = "classic";
 let myLastVote = null;
@@ -3684,6 +3718,11 @@ requestAnimationFrame(loop);
 
 // Start Intro Sequence (Check active session, otherwise trigger logo and Title loading)
 checkInitialSession();
+setTimeout(() => {
+  if (startupFinished) return;
+  showAppError("Startup took too long. Loading title screen instead.");
+  initIntroSequence();
+}, 8000);
 
 // ----------------------------------------------------------------
 // BACKGROUND MUSIC AND AUDIO VOLUME CONTROLLER
@@ -4141,7 +4180,7 @@ async function checkAuthSession() {
   }
 
   try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 6000, "Auth session check");
     if (session && session.user) {
       await handleAuthenticatedUser(session.user);
     } else {
@@ -4156,27 +4195,35 @@ async function checkAuthSession() {
 async function handleAuthenticatedUser(user) {
   try {
     // Load progression
-    await loadProgression();
+    try {
+      await withTimeout(loadProgression(), 6000, "Progression load");
+    } catch (progressErr) {
+      console.warn("Progression load skipped:", progressErr);
+    }
 
     // Check if user has a username
-    const { data, error } = await supabaseClient
+    const { data, error } = await withTimeout(supabaseClient
       .from('profiles')
       .select('username')
       .eq('id', user.id)
-      .single();
+      .single(), 6000, "Profile load");
 
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 is empty result
 
     if (data && data.username) {
       // User has a username, proceed to main menu
+      finishStartup();
       switchScreen(menuScreen);
       tryPlayMusic();
     } else {
       // No username, show intro registration screen
+      finishStartup();
       startUsernameIntroFlow();
     }
   } catch (err) {
     console.error("Error handling authenticated user:", err);
+    finishStartup();
+    showAppError("Profile load failed. You can still choose a username.", err.message || err);
     startUsernameIntroFlow(); // fallback to intro
   }
 }
@@ -4463,10 +4510,7 @@ if (btnLogoutAccount) {
 
 function initIntroSequence() {
   if (pendingOAuthError) {
-    if (studioSplashScreen) {
-      studioSplashScreen.classList.remove("active");
-      studioSplashScreen.style.display = "none";
-    }
+    finishStartup();
     switchScreen(loginScreen);
     if (authMessage) {
       authMessage.textContent = `Login failed: ${pendingOAuthError}`;
@@ -4478,6 +4522,7 @@ function initIntroSequence() {
   }
 
   // Ensure title screen starts active under the splash overlay
+  finishStartup();
   if (titleScreen) {
     switchScreen(titleScreen);
   }
@@ -4485,6 +4530,7 @@ function initIntroSequence() {
   // 1. Studio Logo Animation
   if (studioSplashScreen) {
     // Make sure the splash overlay starts active
+    studioSplashScreen.style.display = "";
     studioSplashScreen.classList.add("active");
     
     // Fade it out after 2 seconds
@@ -4539,7 +4585,7 @@ async function checkInitialSession() {
   }
 
   try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 6000, "Initial auth session check");
     if (session && session.user) {
       // User is already authenticated! Bypass splash screen and go directly to main menu
       await handleAuthenticatedUser(session.user);
@@ -4549,6 +4595,7 @@ async function checkInitialSession() {
     }
   } catch (err) {
     console.error("Initial session check failed:", err);
+    showAppError("Startup auth check failed. Loading offline menu.", err.message || err);
     initIntroSequence();
   }
 }
