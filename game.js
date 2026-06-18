@@ -4306,3 +4306,589 @@ function startTitleScreenLoading() {
     }
   }, 100); // 100ms ticks for a total duration of around 2-3 seconds
 }
+
+// ================================================================
+// SOCIAL SYSTEM — Online Presence, Friends, Chat, Invites
+// ================================================================
+
+// State
+let presenceChannel = null;
+let onlinePresenceMap = {}; // userId -> { username, character, status }
+let myFriendIds = new Set();
+let myFriendshipMap = {}; // friendId -> { friendshipId, username, character }
+let pendingRequests = []; // incoming friend requests
+let currentSocialUserId = null;
+let currentSocialUsername = null;
+
+// ----------------------------------------------------------------
+// Open/Close Social Modal
+// ----------------------------------------------------------------
+
+function openSocialModal() {
+  const modal = document.getElementById("socialModal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    refreshSocialData();
+  }
+}
+
+function closeSocialModal() {
+  const modal = document.getElementById("socialModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+document.getElementById("closeSocialModal")?.addEventListener("click", closeSocialModal);
+document.getElementById("socialModal")?.addEventListener("click", (e) => {
+  if (e.target === document.getElementById("socialModal")) closeSocialModal();
+});
+
+// Social tab switching
+document.querySelectorAll(".social-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".social-tab-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tabName = btn.getAttribute("data-social-tab");
+    document.querySelectorAll(".social-tab-content").forEach((c) => c.classList.remove("active"));
+    const target = document.getElementById(`socialTab_${tabName}`);
+    if (target) target.classList.add("active");
+  });
+});
+
+// Wire FRIENDS button in squad lobby
+document.querySelector(".friends-btn")?.addEventListener("click", () => {
+  openSocialModal();
+  document.querySelector('[data-social-tab="friends"]')?.click();
+});
+
+// ----------------------------------------------------------------
+// Open/Close Global Chat Popup
+// ----------------------------------------------------------------
+
+function openGlobalChat() {
+  const popup = document.getElementById("globalChatPopup");
+  if (popup) popup.classList.remove("hidden");
+}
+
+function closeGlobalChat() {
+  const popup = document.getElementById("globalChatPopup");
+  if (popup) popup.classList.add("hidden");
+}
+
+document.getElementById("closeGlobalChat")?.addEventListener("click", closeGlobalChat);
+document.getElementById("globalChatPopup")?.addEventListener("click", (e) => {
+  if (e.target === document.getElementById("globalChatPopup")) closeGlobalChat();
+});
+
+// Wire CHAT button in squad lobby
+document.querySelector(".chat-btn")?.addEventListener("click", () => {
+  openGlobalChat();
+});
+
+// Global chat form submit
+document.getElementById("globalChatForm")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = document.getElementById("globalChatInput");
+  const text = (input?.value || "").trim();
+  if (!text || !supabaseClient || !currentSocialUsername) return;
+  input.value = "";
+
+  if (presenceChannel) {
+    presenceChannel.send({
+      type: "broadcast",
+      event: "global_chat",
+      payload: {
+        senderId: currentSocialUserId,
+        senderName: currentSocialUsername,
+        text,
+        ts: Date.now()
+      }
+    });
+  }
+  appendGlobalChatMessage(currentSocialUsername, text, true, false);
+});
+
+function appendGlobalChatMessage(sender, text, isMe, isSystem) {
+  const msgs = document.getElementById("globalChatMessages");
+  if (!msgs) return;
+  const div = document.createElement("div");
+  div.className = `global-chat-msg${isMe ? " me" : ""}${isSystem ? " system" : ""}`;
+  if (isSystem) {
+    div.innerHTML = `<span class="gchat-text">${escapeHTML(text)}</span>`;
+  } else {
+    div.innerHTML = `<span class="gchat-sender">${escapeHTML(sender)}</span><span class="gchat-text">${escapeHTML(text)}</span>`;
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ----------------------------------------------------------------
+// Supabase Realtime Presence
+// ----------------------------------------------------------------
+
+async function joinOnlinePresence() {
+  if (!supabaseClient || !currentSocialUserId) return;
+  if (presenceChannel) {
+    try { await supabaseClient.removeChannel(presenceChannel); } catch(e) {}
+    presenceChannel = null;
+  }
+
+  presenceChannel = supabaseClient.channel("chiikawa-royale-lobby", {
+    config: { presence: { key: currentSocialUserId } }
+  });
+
+  presenceChannel
+    .on("presence", { event: "sync" }, () => {
+      const state = presenceChannel.presenceState();
+      onlinePresenceMap = {};
+      for (const [userId, presences] of Object.entries(state)) {
+        if (presences[0]) onlinePresenceMap[userId] = presences[0];
+      }
+      renderOnlineUsersTab();
+      renderFriendsTab();
+      updateOnlinePill();
+    })
+    .on("presence", { event: "join" }, ({ key, newPresences }) => {
+      onlinePresenceMap[key] = newPresences[0];
+      renderOnlineUsersTab();
+      renderFriendsTab();
+      updateOnlinePill();
+    })
+    .on("presence", { event: "leave" }, ({ key }) => {
+      delete onlinePresenceMap[key];
+      renderOnlineUsersTab();
+      renderFriendsTab();
+      updateOnlinePill();
+    })
+    .on("broadcast", { event: "global_chat" }, ({ payload }) => {
+      if (payload.senderId === currentSocialUserId) return;
+      appendGlobalChatMessage(payload.senderName, payload.text, false, false);
+    })
+    .on("broadcast", { event: "room_invite" }, ({ payload }) => {
+      if (payload.targetId !== currentSocialUserId) return;
+      showInviteToast(payload.fromName, payload.roomCode);
+    })
+    .subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await presenceChannel.track({
+          userId: currentSocialUserId,
+          username: currentSocialUsername,
+          character: selectedCharacter,
+          status: "menu"
+        });
+      }
+    });
+}
+
+async function updateMyPresenceStatus(newStatus) {
+  if (presenceChannel && currentSocialUserId) {
+    try {
+      await presenceChannel.track({
+        userId: currentSocialUserId,
+        username: currentSocialUsername,
+        character: selectedCharacter,
+        status: newStatus
+      });
+    } catch(e) {}
+  }
+}
+
+function updateOnlinePill() {
+  const count = Object.keys(onlinePresenceMap).length;
+  const pill = document.querySelector(".lobby-online-pill");
+  if (pill) {
+    pill.innerHTML = `<span class="online-dot"></span> ONLINE ${count}`;
+  }
+  const label = document.getElementById("onlineCountLabel");
+  if (label) {
+    label.textContent = `${count} player${count !== 1 ? "s" : ""} online`;
+  }
+}
+
+// ----------------------------------------------------------------
+// Fetch Friends & Pending Requests
+// ----------------------------------------------------------------
+
+async function fetchFriends() {
+  if (!supabaseClient || !currentSocialUserId) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from("friendships")
+      .select("id, requester_id, addressee_id, status, requester:profiles!friendships_requester_id_fkey(id, username, character), addressee:profiles!friendships_addressee_id_fkey(id, username, character)")
+      .or(`requester_id.eq.${currentSocialUserId},addressee_id.eq.${currentSocialUserId}`)
+      .eq("status", "accepted");
+    if (error) throw error;
+    myFriendIds = new Set();
+    myFriendshipMap = {};
+    (data || []).forEach((f) => {
+      const fp = f.requester_id === currentSocialUserId ? f.addressee : f.requester;
+      if (fp) {
+        myFriendIds.add(fp.id);
+        myFriendshipMap[fp.id] = { friendshipId: f.id, username: fp.username, character: fp.character || "chiikawa" };
+      }
+    });
+  } catch (err) { console.error("fetchFriends:", err); }
+}
+
+async function fetchPendingRequests() {
+  if (!supabaseClient || !currentSocialUserId) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from("friendships")
+      .select("id, requester_id, requester:profiles!friendships_requester_id_fkey(id, username, character)")
+      .eq("addressee_id", currentSocialUserId)
+      .eq("status", "pending");
+    if (error) throw error;
+    pendingRequests = data || [];
+    const badge = document.getElementById("pendingBadge");
+    if (badge) {
+      if (pendingRequests.length > 0) {
+        badge.textContent = pendingRequests.length;
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+  } catch (err) { console.error("fetchPendingRequests:", err); }
+}
+
+async function sendFriendRequest(targetUserId) {
+  if (!supabaseClient || !currentSocialUserId) return;
+  try {
+    const { data: existing } = await supabaseClient
+      .from("friendships")
+      .select("id, status")
+      .or(`and(requester_id.eq.${currentSocialUserId},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${currentSocialUserId})`)
+      .maybeSingle();
+
+    if (existing) {
+      showToastMsg(existing.status === "accepted" ? "Already friends! 💚" : "Request already sent! ⏳");
+      return;
+    }
+    const { error } = await supabaseClient
+      .from("friendships")
+      .insert({ requester_id: currentSocialUserId, addressee_id: targetUserId });
+    if (error) throw error;
+    showToastMsg("Friend request sent! 🎉");
+    await refreshSocialData();
+  } catch (err) {
+    console.error("sendFriendRequest:", err);
+    showToastMsg("Could not send request.");
+  }
+}
+
+async function acceptFriendRequest(friendshipId) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from("friendships").update({ status: "accepted" }).eq("id", friendshipId);
+    if (error) throw error;
+    showToastMsg("Friend request accepted! 💚");
+    await refreshSocialData();
+  } catch (err) { console.error("acceptFriendRequest:", err); }
+}
+
+async function declineFriendRequest(friendshipId) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from("friendships").delete().eq("id", friendshipId);
+    if (error) throw error;
+    showToastMsg("Request declined.");
+    await refreshSocialData();
+  } catch (err) { console.error("declineFriendRequest:", err); }
+}
+
+async function searchUsers(query) {
+  if (!supabaseClient || !query || query.trim().length < 2) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from("profiles")
+      .select("id, username, character")
+      .ilike("username", `%${query.trim()}%`)
+      .neq("id", currentSocialUserId)
+      .limit(12);
+    if (error) throw error;
+    return data || [];
+  } catch (err) { console.error("searchUsers:", err); return []; }
+}
+
+async function refreshSocialData() {
+  await Promise.all([fetchFriends(), fetchPendingRequests()]);
+  renderOnlineUsersTab();
+  renderFriendsTab();
+  renderPendingTab();
+}
+
+// ----------------------------------------------------------------
+// Render Social Tabs
+// ----------------------------------------------------------------
+
+function makeStatusInfo(userId) {
+  const p = onlinePresenceMap[userId];
+  if (!p) return { dot: "offline", text: "Offline" };
+  if (p.status === "in-game")  return { dot: "ingame", text: "🎮 In-game" };
+  if (p.status === "in-lobby") return { dot: "ingame", text: "🏠 In a room" };
+  return { dot: "online", text: "🟢 Online" };
+}
+
+function buildSocialUserItem(userId, username, character, statusInfo, isFriend, showInvite) {
+  const charImg = `assets/cards/${character || "chiikawa"}.png`;
+  const li = document.createElement("li");
+  li.className = "social-user-item";
+  li.innerHTML = `
+    <img class="social-user-avatar" src="${charImg}" alt="${escapeHTML(username)}" />
+    <div class="social-user-info">
+      <div class="social-user-name">${escapeHTML(username)}</div>
+      <div class="social-user-status"><span class="status-dot ${statusInfo.dot}"></span> ${statusInfo.text}</div>
+    </div>
+    <div class="social-action-btns">
+      ${isFriend ? `<span class="btn-friend-already">✓ Friend</span>` : `<button class="btn-add-friend" data-uid="${userId}">+ Add</button>`}
+      ${showInvite ? `<button class="btn-invite-to-room" data-uid="${userId}" data-uname="${escapeHTML(username)}">Invite</button>` : ""}
+    </div>
+  `;
+  li.querySelector(".btn-add-friend")?.addEventListener("click", () => sendFriendRequest(userId));
+  li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(userId, username));
+  return li;
+}
+
+function renderOnlineUsersTab() {
+  const list = document.getElementById("onlineUsersList");
+  if (!list) return;
+  const entries = Object.entries(onlinePresenceMap).filter(([uid]) => uid !== currentSocialUserId);
+  if (!entries.length) {
+    list.innerHTML = `<li class="social-empty-state">No other players online right now.</li>`;
+    return;
+  }
+  list.innerHTML = "";
+  entries.forEach(([userId, p]) => {
+    const isFriend = myFriendIds.has(userId);
+    const statusInfo = makeStatusInfo(userId);
+    const li = buildSocialUserItem(userId, p.username || userId, p.character || "chiikawa", statusInfo, isFriend, !!roomCode);
+    list.appendChild(li);
+  });
+}
+
+function renderFriendsTab() {
+  const list = document.getElementById("friendsList");
+  if (!list) return;
+  if (!myFriendIds.size) {
+    list.innerHTML = `<li class="social-empty-state">No friends yet. Search for players to add!</li>`;
+    return;
+  }
+  list.innerHTML = "";
+  myFriendIds.forEach((friendId) => {
+    const info = myFriendshipMap[friendId];
+    if (!info) return;
+    const presence = onlinePresenceMap[friendId];
+    const charImg = presence?.character || info.character || "chiikawa";
+    const statusInfo = makeStatusInfo(friendId);
+    const li = document.createElement("li");
+    li.className = "social-user-item";
+    li.innerHTML = `
+      <img class="social-user-avatar" src="assets/cards/${charImg}.png" alt="${escapeHTML(info.username)}" />
+      <div class="social-user-info">
+        <div class="social-user-name">${escapeHTML(info.username)}</div>
+        <div class="social-user-status"><span class="status-dot ${statusInfo.dot}"></span> ${statusInfo.text}</div>
+      </div>
+      <div class="social-action-btns">
+        ${roomCode ? `<button class="btn-invite-to-room" data-uid="${friendId}" data-uname="${escapeHTML(info.username)}">Invite</button>` : ""}
+      </div>
+    `;
+    li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(friendId, info.username));
+    list.appendChild(li);
+  });
+}
+
+function renderPendingTab() {
+  const list = document.getElementById("pendingRequestsList");
+  if (!list) return;
+  if (!pendingRequests.length) {
+    list.innerHTML = `<li class="social-empty-state">No pending friend requests.</li>`;
+    return;
+  }
+  list.innerHTML = "";
+  pendingRequests.forEach((req) => {
+    const rp = req.requester;
+    if (!rp) return;
+    const li = document.createElement("li");
+    li.className = "social-user-item";
+    li.innerHTML = `
+      <img class="social-user-avatar" src="assets/cards/${rp.character || "chiikawa"}.png" alt="${escapeHTML(rp.username || "")}" />
+      <div class="social-user-info">
+        <div class="social-user-name">${escapeHTML(rp.username || "Unknown")}</div>
+        <div class="social-user-status">Wants to be your friend!</div>
+      </div>
+      <div class="social-action-btns">
+        <button class="btn-accept-req" data-fid="${req.id}">✓ Accept</button>
+        <button class="btn-decline-req" data-fid="${req.id}">✗ Decline</button>
+      </div>
+    `;
+    li.querySelector(".btn-accept-req")?.addEventListener("click", () => acceptFriendRequest(req.id));
+    li.querySelector(".btn-decline-req")?.addEventListener("click", () => declineFriendRequest(req.id));
+    list.appendChild(li);
+  });
+}
+
+// ----------------------------------------------------------------
+// Search
+// ----------------------------------------------------------------
+
+let searchDebounceTimer = null;
+document.getElementById("socialSearchInput")?.addEventListener("input", (e) => {
+  clearTimeout(searchDebounceTimer);
+  const q = e.target.value.trim();
+  if (!q) { renderOnlineUsersTab(); return; }
+  searchDebounceTimer = setTimeout(() => runUserSearch(q), 400);
+});
+document.getElementById("socialSearchBtn")?.addEventListener("click", () => {
+  const q = document.getElementById("socialSearchInput")?.value.trim();
+  if (q) runUserSearch(q);
+});
+
+async function runUserSearch(q) {
+  const list = document.getElementById("onlineUsersList");
+  if (!list) return;
+  document.querySelector('[data-social-tab="online"]')?.click();
+  list.innerHTML = `<li class="social-empty-state">Searching...</li>`;
+  const results = await searchUsers(q);
+  if (!results.length) {
+    list.innerHTML = `<li class="social-empty-state">No players found matching "${escapeHTML(q)}".</li>`;
+    return;
+  }
+  list.innerHTML = "";
+  results.forEach((user) => {
+    const isFriend = myFriendIds.has(user.id);
+    const isOnline = !!onlinePresenceMap[user.id];
+    const statusInfo = isOnline ? makeStatusInfo(user.id) : { dot: "offline", text: "Offline" };
+    const li = buildSocialUserItem(user.id, user.username, user.character, statusInfo, isFriend, isOnline && !!roomCode);
+    list.appendChild(li);
+  });
+}
+
+// ----------------------------------------------------------------
+// Room Invites
+// ----------------------------------------------------------------
+
+function sendRoomInvite(targetUserId, targetUsername) {
+  if (!presenceChannel || !roomCode) {
+    showToastMsg("You must be in a room to invite players.");
+    return;
+  }
+  presenceChannel.send({
+    type: "broadcast",
+    event: "room_invite",
+    payload: { targetId: targetUserId, fromId: currentSocialUserId, fromName: currentSocialUsername, roomCode }
+  });
+  showToastMsg(`Invite sent to ${targetUsername}! 📨`);
+}
+
+let inviteToastTimeout = null;
+function showInviteToast(fromName, code) {
+  let toast = document.getElementById("inviteToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "inviteToast";
+    toast.className = "invite-toast";
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `
+    🎮 <strong>${escapeHTML(fromName)}</strong> invites you to room <strong>${escapeHTML(code)}</strong>
+    <button class="invite-toast-accept" id="inviteToastAccept">Join!</button>
+  `;
+  toast.classList.add("show");
+  document.getElementById("inviteToastAccept")?.addEventListener("click", () => {
+    toast.classList.remove("show");
+    if (joinCodeInput) joinCodeInput.value = code;
+    document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+    const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+    sendServerMessage("join_room", { name, kind: selectedCharacter, roomCode: code });
+    matchmakingDialog?.classList.add("hidden");
+  });
+  if (inviteToastTimeout) clearTimeout(inviteToastTimeout);
+  inviteToastTimeout = setTimeout(() => toast.classList.remove("show"), 12000);
+}
+
+function showToastMsg(msg) {
+  let toast = document.getElementById("feedbackToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "feedbackToast";
+    toast.className = "invite-toast";
+    toast.style.bottom = "90px";
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 3000);
+}
+
+// ----------------------------------------------------------------
+// Update presence status on screen changes
+// ----------------------------------------------------------------
+
+const _baseSwitchScreen = switchScreen;
+switchScreen = function(screen) {
+  _baseSwitchScreen(screen);
+  if (!currentSocialUserId) return;
+  if (screen === gameScreen)  updateMyPresenceStatus("in-game");
+  else if (screen === lobbyScreen) updateMyPresenceStatus("in-lobby");
+  else if (screen === menuScreen)  updateMyPresenceStatus("menu");
+};
+
+// ----------------------------------------------------------------
+// Initialize Social System (called from handleAuthenticatedUser)
+// ----------------------------------------------------------------
+
+async function initSocialSystem(user) {
+  currentSocialUserId = user.id;
+  try {
+    const { data } = await supabaseClient
+      .from("profiles")
+      .select("username, character")
+      .eq("id", user.id)
+      .single();
+    if (data) {
+      currentSocialUsername = data.username;
+      if (data.character && characterStyle[data.character]) {
+        selectedCharacter = data.character;
+        previewCharacter = selectedCharacter;
+        syncCharacterSelectPreview(selectedCharacter);
+        syncLobbySpotlightVideo(selectedCharacter);
+        syncSquadLobbyInterface();
+      }
+    }
+  } catch(e) { console.warn("Profile load for social:", e); }
+
+  await joinOnlinePresence();
+  await refreshSocialData();
+
+  // Realtime listener for incoming friend requests
+  supabaseClient
+    .channel(`fr_inbox_${currentSocialUserId}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "friendships", filter: `addressee_id=eq.${currentSocialUserId}` },
+      async () => { await fetchPendingRequests(); renderPendingTab(); })
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "friendships" },
+      async () => { await refreshSocialData(); })
+    .subscribe();
+}
+
+// Patch handleAuthenticatedUser to also init social
+const _origHandleAuth = handleAuthenticatedUser;
+handleAuthenticatedUser = async function(user) {
+  await _origHandleAuth(user);
+  if (supabaseClient && user) {
+    setTimeout(() => initSocialSystem(user), 500);
+  }
+};
+
+// Clean up presence on logout
+document.getElementById("btnLogoutAccount")?.addEventListener("click", async () => {
+  if (presenceChannel && supabaseClient) {
+    try { await presenceChannel.untrack(); await supabaseClient.removeChannel(presenceChannel); } catch(e) {}
+    presenceChannel = null;
+  }
+  currentSocialUserId = null;
+  currentSocialUsername = null;
+  onlinePresenceMap = {};
+  myFriendIds = new Set();
+  myFriendshipMap = {};
+  pendingRequests = [];
+}, { capture: false });

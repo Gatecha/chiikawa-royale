@@ -882,48 +882,79 @@
       </div>
     </div>
 
-    <!-- Friends List Popup UI -->
-    <div id="friendsPopup" class="dialog-overlay hidden">
-      <div class="dialog-card card friends-modal" style="width: 420px; padding: 24px;">
-        <button id="closeFriendsBtn" class="btn-close-dialog" type="button">&times;</button>
-        <h2 style="margin-top: 0; margin-bottom: 20px; text-align: center; text-transform: uppercase; font-family: inherit; font-size: 22px; letter-spacing: 1px;">Online Friends</h2>
-        <div class="friends-modal-body">
-          <ul class="friends-list">
-            <li class="friend-item">
-              <div class="friend-left">
-                <span class="friend-status online"></span>
-                <img class="friend-avatar" src="assets/cards/usagi.png" alt="Usagi" />
-                <span class="friend-name">Usagi</span>
-              </div>
-              <button class="btn-invite-friend" type="button" data-friend="Usagi">Invite</button>
-            </li>
-            <li class="friend-item">
-              <div class="friend-left">
-                <span class="friend-status online"></span>
-                <img class="friend-avatar" src="assets/cards/chiikawa.png" alt="Chiikawa" />
-                <span class="friend-name">Chiikawa</span>
-              </div>
-              <button class="btn-invite-friend" type="button" data-friend="Chiikawa">Invite</button>
-            </li>
-            <li class="friend-item">
-              <div class="friend-left">
-                <span class="friend-status online"></span>
-                <img class="friend-avatar" src="assets/cards/momonga.png" alt="Momonga" />
-                <span class="friend-name">Momonga</span>
-              </div>
-              <button class="btn-invite-friend" type="button" data-friend="Momonga">Invite</button>
-            </li>
-            <li class="friend-item">
-              <div class="friend-left">
-                <span class="friend-status offline"></span>
-                <span class="friend-avatar-placeholder">H</span>
-                <span class="friend-name">Hachiware (Offline)</span>
-              </div>
-              <button class="btn-invite-friend" type="button" disabled>Invite</button>
-            </li>
-          </ul>
+    <!-- Social Modal (Friends + Online Users) -->
+    <div id="socialModal" class="dialog-overlay hidden">
+      <div class="social-modal-card card glass">
+        <button id="closeSocialModal" class="btn-close-dialog" type="button">&times;</button>
+
+        <!-- Modal Header with Tabs -->
+        <div class="social-modal-header">
+          <h2 class="social-modal-title">Social</h2>
+          <div class="social-tabs">
+            <button class="social-tab-btn active" data-social-tab="online">🌐 Online Users</button>
+            <button class="social-tab-btn" data-social-tab="friends">👥 My Friends</button>
+            <button class="social-tab-btn" data-social-tab="pending">
+              🔔 Requests
+              <span id="pendingBadge" class="social-notif-badge hidden">0</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="social-search-bar">
+          <svg viewBox="0 0 24 24" class="search-icon"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>
+          <input id="socialSearchInput" type="text" placeholder="Search players by username..." autocomplete="off" />
+          <button id="socialSearchBtn" class="btn btn-sm btn-primary" type="button">Search</button>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="social-modal-body">
+
+          <!-- Online Users Tab -->
+          <div class="social-tab-content active" id="socialTab_online">
+            <div class="social-section-label">
+              <span class="online-pulse-dot"></span>
+              <span id="onlineCountLabel">0 players online</span>
+            </div>
+            <ul id="onlineUsersList" class="social-list">
+              <li class="social-empty-state">Loading online players...</li>
+            </ul>
+          </div>
+
+          <!-- My Friends Tab -->
+          <div class="social-tab-content" id="socialTab_friends">
+            <ul id="friendsList" class="social-list">
+              <li class="social-empty-state">No friends yet. Search for players to add friends!</li>
+            </ul>
+          </div>
+
+          <!-- Pending Requests Tab -->
+          <div class="social-tab-content" id="socialTab_pending">
+            <p class="social-section-label">Incoming friend requests:</p>
+            <ul id="pendingRequestsList" class="social-list">
+              <li class="social-empty-state">No pending requests.</li>
+            </ul>
+          </div>
+
         </div>
       </div>
+    </div>
+
+    <!-- Global Chat Popup -->
+    <div id="globalChatPopup" class="dialog-overlay hidden">
+      <div class="global-chat-card card glass">
+        <button id="closeGlobalChat" class="btn-close-dialog" type="button">&times;</button>
+        <div class="global-chat-header">
+          <span class="global-chat-title">💬 Global Chat</span>
+          <span class="global-chat-sub">Everyone in lobby</span>
+        </div>
+        <div id="globalChatMessages" class="global-chat-messages"></div>
+        <form id="globalChatForm" class="global-chat-form">
+          <input id="globalChatInput" type="text" maxlength="128" placeholder="Say something..." autocomplete="off" />
+          <button class="btn btn-primary btn-sm" type="submit">Send</button>
+        </form>
+      </div>
+    </div>
     <!-- Orientation Lock Warning Overlay -->
     <div id="orientationWarning" class="orientation-warning-overlay">
       <div class="warning-content">
