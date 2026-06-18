@@ -1,0 +1,13 @@
+{
+  "name": "super-bomberman-multiplayer",
+  "version": "1.0.0",
+  "description": "Chiikawa Park Bomb Battle with online multiplayer and PWA installable capability",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}

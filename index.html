@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chiikawa Park Bomb Battle Online</title>
+    <!-- Google Font for cute Chiikawa aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=DynaPuff:wght@500;700&family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body>
+    <!-- Studio Splash Screen Overlay -->
+    <div id="studioSplashScreen" class="studio-splash-overlay active">
+      <div class="studio-logo-container">
+        <img class="studio-logo-img" src="assets/chihua-studio-logo.png" alt="Chihua Studio" />
+      </div>
+    </div>
+
+    <!-- Floating Background Shapes for visual interest -->
+    <div class="decor-shape shape-pink"></div>
+    <div class="decor-shape shape-blue"></div>
+    <div class="decor-shape shape-green"></div>
+    <div class="decor-shape shape-yellow"></div>
+
+    <main class="app-container">
+      <!-- PWA Install Banner -->
+      <button id="installBtn" class="install-btn hidden" type="button" aria-label="Install App">
+        <span>Install App</span>
+      </button>
+
+      <!-- 0. TITLE SCREEN -->
+      <section id="titleScreen" class="screen active">
+        <div class="yellow-console title-console">
+          <!-- Dot grid background texture -->
+          <div class="title-bg-dots" aria-hidden="true"></div>
+          
+          <div class="title-screen-content">
+            <!-- Floating characters overlay -->
+            <div class="title-characters-wrapper">
+              <img class="title-characters-img" src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale Characters" />
+            </div>
+            
+            <!-- Loading Section -->
+            <div id="titleLoadingSection" class="title-loading-section">
+              <div class="title-loading-status" id="titleLoadingStatus">LOADING GAME ASSETS... 0%</div>
+              <div class="title-progress-bar-wrap">
+                <div id="titleProgressBarFill" class="title-progress-bar-fill"></div>
+              </div>
+            </div>
+            
+            <!-- Play Button Container (hidden initially) -->
+            <div id="titlePlayBtnContainer" class="title-play-container hidden">
+              <button id="titlePlayBtn" class="btn-title-play" type="button">PLAY</button>
+            </div>
+          </div>
+
+          <!-- Footer Console Info -->
+          <footer class="console-footer title-footer">
+            <span class="badge-text title-footer-text">© 2026 CHIHUA STUDIO. ALL RIGHTS RESERVED.</span>
+          </footer>
+        </div>
+      </section>
+
+      <!-- 1. MAIN LOBBY SCREEN (NEW - matches user screenshot) -->
+      <section id="menuScreen" class="screen">
+        <div class="yellow-console">
+          <!-- Top Navigation Header -->
+          <header class="console-header">
+            <!-- Normal Header Elements -->
+            <div class="console-title normal-header-only">LOBBY</div>
+            
+            <!-- Lobby Header Elements (Back + Lobby Badge) -->
+            <div class="lobby-header-left squad-lobby-only">
+              <button id="lobbyBackBtn" class="lobby-back-btn" type="button" aria-label="Back">
+                <svg viewBox="0 0 24 24" class="svg-back-icon" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 17a5 5 0 0 0-5-5H5" />
+                  <path d="M9 17l-5-5 5-5" />
+                </svg>
+              </button>
+              <div class="lobby-badge-btn">
+                <svg viewBox="0 0 24 24" class="svg-home-icon"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+                <span>Lobby</span>
+              </div>
+            </div>
+
+            <!-- Tabs (Normal Header only) -->
+            <nav class="console-tabs normal-header-only">
+              <span class="controller-key">LB</span>
+              <button class="tab-btn active tab-play" data-tab="play" type="button" aria-label="Play">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z" fill="white"/></svg>
+                </span>
+              </button>
+              <button class="tab-btn tab-look" data-tab="look" type="button" aria-label="Look">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" class="svg-icon" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 9V7.5a2.5 2.5 0 1 1 4 2c-.5.5-1.5 1-1.5 1.5m-2.5 0L3 16h18L12 11z"/>
+                  </svg>
+                </span>
+              </button>
+              <button class="tab-btn tab-squad" data-tab="squad" type="button" aria-label="Squad">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" class="svg-icon" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <circle cx="12" cy="12" r="3"/>
+                    <circle cx="12" cy="12" r="0.8" fill="white" stroke="none"/>
+                    <circle cx="6" cy="12" r="3"/>
+                    <circle cx="6" cy="12" r="0.8" fill="white" stroke="none"/>
+                    <circle cx="18" cy="12" r="3"/>
+                    <circle cx="18" cy="12" r="0.8" fill="white" stroke="none"/>
+                  </svg>
+                </span>
+              </button>
+              <button class="tab-btn tab-shop" data-tab="shop" type="button" aria-label="Shop">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" class="svg-icon" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="8.5" cy="19" r="1.5" fill="white" stroke="none"/>
+                    <circle cx="17.5" cy="19" r="1.5" fill="white" stroke="none"/>
+                    <path d="M2 3h3.5l2 10h10l2-7H7"/>
+                  </svg>
+                </span>
+              </button>
+              <button class="tab-btn tab-gear" data-tab="gear" type="button" aria-label="Gear">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" class="svg-icon" fill="white">
+                    <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                  </svg>
+                </span>
+              </button>
+              <span class="controller-key">RB</span>
+            </nav>
+
+            <!-- Stats (Visible in both headers) -->
+            <div class="console-stats">
+              <div class="stat-badge crown-badge">
+                <svg viewBox="0 0 24 24" class="svg-stat-icon"><path d="M5 16h14L21 6l-4 3-5-6-5 6-4-3 2 10z" fill="#ffd84a"/></svg>
+                <strong>crown</strong> <span id="crownCount">1</span>
+              </div>
+              <div class="stat-badge gem-badge">
+                <svg viewBox="0 0 24 24" class="svg-stat-icon"><path d="M6 2h12l4 6-10 14L2 8z" fill="#b16cff"/></svg>
+                <strong>gems</strong> <span id="gemsCount">2915</span>
+              </div>
+              
+              <!-- Fullscreen Toggle Button -->
+              <button id="fullscreenToggleBtn" class="header-fullscreen-btn" type="button" aria-label="Toggle Fullscreen">
+                <svg viewBox="0 0 24 24" class="svg-fullscreen-icon"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/></svg>
+              </button>
+
+              <!-- Profile smiley button (Lobby header only) -->
+              <button class="profile-btn squad-lobby-only" type="button" aria-label="Profile">
+                <svg viewBox="0 0 24 24" class="profile-smiley"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="9" r="1.5" fill="currentColor"/><circle cx="16" cy="9" r="1.5" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+                <span class="online-indicator"></span>
+              </button>
+            </div>
+          </header>
+
+          <!-- Main Content Area -->
+          <div class="console-body">
+            <!-- PLAY TAB CONTENT -->
+            <div class="tab-content active" id="tabContent_play">
+              <div class="left-column">
+                <img class="lobby-logo" src="chiikawa-royale-logo.png" alt="Chiikawa Royale" />
+                
+                <div class="progress-section">
+                  <div class="progress-label">SEASON PROGRESS</div>
+                  <div class="progress-bar-container">
+                    <div id="seasonLevel" class="level-badge">4</div>
+                    <div class="progress-bar-track">
+                      <div id="seasonProgressFill" class="progress-bar-fill" style="width: 76%;"></div>
+                      <span id="seasonProgressText" class="progress-text">609/800</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Spotlight pedestal (center) -->
+              <div class="spotlight-area">
+                <video id="spotlightVideo" src="hachiware-lobby.mp4" muted loop playsinline preload="auto"></video>
+                <canvas id="spotlightCanvas" width="580" height="580"></canvas>
+              </div>
+
+              <!-- Action buttons (right) -->
+              <div class="right-column">
+                <div class="map-select-wrapper">
+                  <span class="action-label">Select Map</span>
+                  <select id="localMapSelect" class="map-dropdown">
+                    <option value="classic">Classic Green</option>
+                    <option value="checkered">Checkered Ice</option>
+                    <option value="colosseum">Colosseum Clay</option>
+                  </select>
+                </div>
+                <div class="play-action-wrapper">
+                  <span class="action-label">Local Battle</span>
+                  <button id="lobbyPlayBtn" class="btn-giant-play" type="button">PLAY!</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOOK TAB CONTENT (Character Selection) -->
+            <div class="tab-content" id="tabContent_look">
+              <div class="character-select-screen">
+                <div class="select-topbar">
+                  <button class="select-back-btn" type="button" aria-label="Back">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M19 17a5 5 0 0 0-5-5H5" />
+                      <path d="M9 17l-5-5 5-5" />
+                    </svg>
+                  </button>
+                  <div class="select-lobby-pill">
+                    <span class="select-home-dot">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                    </span>
+                    <span>Lobby</span>
+                  </div>
+                </div>
+
+                <section class="select-hero-panel" aria-label="Selected character">
+                  <div class="select-rings" aria-hidden="true"></div>
+                  <div class="select-category-tabs" role="tablist" aria-label="Inventory category">
+                    <button class="wardrobe-tab active" data-wardrobe-mode="characters" type="button">Characters</button>
+                    <button class="wardrobe-tab" data-wardrobe-mode="clothes" type="button">Clothes</button>
+                    <button class="wardrobe-tab" data-wardrobe-mode="effects" type="button">Effects</button>
+                    <button class="wardrobe-tab" data-wardrobe-mode="bombs" type="button">Bombs</button>
+                  </div>
+                  <div class="select-main-video-wrap">
+                    <video id="characterSelectVideo" class="select-main-video-source" src="assets/chiikawa/chiikawa_character_animation.mp4" muted loop playsinline preload="auto"></video>
+                    <canvas id="characterSelectCanvas" class="select-main-video" width="580" height="580"></canvas>
+                  </div>
+                  <button id="confirmCharacterBtn" class="select-nameplate" type="button">
+                    <div class="select-paw-badge" aria-hidden="true">
+                      <span></span><span></span><span></span><span></span>
+                    </div>
+                    <span class="select-button-copy">Select</span>
+                    <strong id="characterSelectName">Chiikawa</strong>
+                    <div class="select-button-state" aria-hidden="true">
+                      <span id="characterSelectState">Selected</span>
+                    </div>
+                  </button>
+                </section>
+
+                <section class="select-card-panel" aria-label="Character cards">
+                  <div id="selectCardGrid" class="select-card-grid" data-mode="characters">
+                    <button class="character-card active" data-kind="chiikawa" type="button" aria-label="Select Chiikawa">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/cards/chiikawa.png" alt="Chiikawa">
+                      </span>
+                      <span class="card-character-name">Chiikawa</span>
+                    </button>
+
+                    <button class="character-card" data-kind="hachiware" type="button" aria-label="Select Hachiware">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/cards/hachiware.png" alt="Hachiware">
+                      </span>
+                      <span class="card-character-name">Hachiware</span>
+                    </button>
+
+                    <button class="character-card" data-kind="usagi" type="button" aria-label="Select Usagi">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/cards/usagi.png" alt="Usagi">
+                      </span>
+                      <span class="card-character-name">Usagi</span>
+                    </button>
+
+                    <button class="character-card" data-kind="momonga" type="button" aria-label="Select Momonga">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/cards/momonga.png" alt="Momonga">
+                      </span>
+                      <span class="card-character-name">Momonga</span>
+                    </button>
+
+                    <span class="empty-character-slot"></span>
+                    <span class="empty-character-slot"></span>
+                    <span class="empty-character-slot"></span>
+                    <span class="empty-character-slot"></span>
+                    <span class="empty-character-slot"></span>
+                    <span class="empty-character-slot"></span>
+                    <span class="empty-character-slot"></span>
+                    <span class="empty-character-slot"></span>
+
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                    <span class="item-empty-slot"><strong>Empty</strong></span>
+                  </div>
+                  <button class="select-filter-btn" type="button" aria-label="Filter">
+                    <svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5z"/></svg>
+                  </button>
+                </section>
+              </div>
+            </div>
+
+            <!-- SQUAD TAB CONTENT (Lobby interface matching mockup) -->
+            <div class="tab-content" id="tabContent_squad">
+              <div class="squad-lobby-container">
+                <!-- Animating swirly background layer -->
+                <div class="squad-lobby-bg-swirls" aria-hidden="true"></div>
+                 <!-- Slanted Cards Row -->
+                 <div class="lobby-cards-row">
+                    <!-- Card 1: Invite Left -->
+                    <div class="lobby-card card-yellow" id="squadInviteCard_left">
+                      <div class="card-inner-skew">
+                        <button class="invite-btn" type="button">+</button>
+                      </div>
+                    </div>
+ 
+                   <!-- Card 2: User Center -->
+                    <div class="lobby-card card-pink" id="squadCard_user">
+                      <div class="card-inner-skew">
+                        <!-- Image Container for sliding animation -->
+                        <div class="squad-card-image-container">
+                          <img id="squadLobbyCharImg" src="assets/cards/usagi.png" alt="Character Art" />
+                        </div>
+
+                        <div class="card-footer-bar">
+                          <div class="avatar-circle">
+                            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+                          </div>
+                          <div class="user-info">
+                            <div class="user-name" id="squadLobbyCharName">Usagi</div>
+                            <div class="user-level" id="squadLobbyUserName">PlayerOne</div>
+                          </div>
+                          <div class="user-badges">
+                            <span class="role-badge badge-purple">
+                              <svg viewBox="0 0 24 24" class="badge-svg" fill="currentColor">
+                                <path d="M12 2l1.8 4.7 4.7 1.8-4.7 1.8-1.8 4.7-1.8-4.7-4.7-1.8 4.7-1.8z" />
+                              </svg>
+                            </span>
+                            <span class="role-badge badge-outline">
+                              <svg viewBox="0 0 24 24" class="badge-svg" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round">
+                                <circle cx="12" cy="12" r="8" />
+                                <line x1="6.34" y1="6.34" x2="17.66" y2="17.66" />
+                              </svg>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+ 
+                   <!-- Card 3: Invite Blue -->
+                    <div class="lobby-card card-blue" id="squadInviteCard_right">
+                      <div class="card-inner-skew">
+                        <button class="invite-btn" type="button">+</button>
+                      </div>
+                    </div>
+                 </div>
+ 
+                 <!-- Footer Row -->
+                 <div class="lobby-footer-row">
+                   <div class="lobby-footer-left">
+                     <button class="lobby-footer-btn chat-btn" type="button">
+                       <span class="btn-content">
+                         <svg viewBox="0 0 24 24" class="footer-btn-svg"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" fill="currentColor"/></svg>
+                         CHAT
+                       </span>
+                     </button>
+                     <button class="lobby-footer-btn friends-btn" type="button">
+                       <span class="btn-content">
+                         <svg viewBox="0 0 24 24" class="footer-btn-svg"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg>
+                         FRIENDS
+                         <span class="friends-notif">3</span>
+                       </span>
+                     </button>
+                     <!-- Transferred circular mic toggle button -->
+                     <button id="lobbyMicBtn" class="lobby-footer-btn mic-btn" type="button" aria-label="Toggle Microphone">
+                       <span class="btn-content">
+                         <svg viewBox="0 0 24 24" class="footer-btn-svg" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                           <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                           <path d="M19 10v1c0 3.53-2.61 6.43-6 6.92V21h-2v-3.08c-3.39-.49-6-3.39-6-6.92v-1"/>
+                         </svg>
+                       </span>
+                     </button>
+                   </div>
+                    <div class="lobby-footer-center">
+                      <button class="lobby-footer-btn selector-btn btn-prev-char" type="button" aria-label="Previous Character">
+                        <span class="btn-content">&lt;</span>
+                      </button>
+                      <button class="lobby-footer-btn selector-btn btn-next-char" type="button" aria-label="Next Character">
+                        <span class="btn-content">&gt;</span>
+                      </button>
+                    </div>
+                   <div class="lobby-footer-right">
+                     <div class="lobby-online-pill">
+                       <span class="online-dot"></span>
+                       ONLINE 24/50
+                     </div>
+                     <button id="lobbyMatchBtn" class="btn-match-play" type="button">MATCH</button>
+                   </div>
+                 </div>
+               </div>
+            </div>
+
+            <!-- SHOP TAB CONTENT (Alpha stage warning) -->
+            <div class="tab-content" id="tabContent_shop">
+              <div class="tab-panel-inner card-inner shop-panel" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; height:100%; gap:16px;">
+                <div class="alpha-warning-icon" style="font-size: 48px; filter: drop-shadow(0 4px 0 #000); margin-bottom: 8px;">🚧</div>
+                <h3 style="font-family: var(--font); font-size: 24px; color: #ffd84a; margin: 0; text-transform: uppercase;">Alpha Stage Notice</h3>
+                <p class="tab-description" style="font-family: var(--font-clean); font-size: 16px; color: #fff; max-width: 460px; line-height: 1.5; margin: 0;">
+                  This game is under alpha stage, shop features won't be available.
+                </p>
+              </div>
+            </div>
+
+            <!-- GEAR TAB CONTENT (Options) -->
+            <div class="tab-content" id="tabContent_gear">
+              <div class="tab-panel-inner card-inner gear-panel">
+                <h3>System Settings</h3>
+                <div class="settings-list">
+                  <div class="setting-row">
+                    <span>Server Connection Status</span>
+                    <span class="connection-status online" id="connectionStatusIndicator">Connecting...</span>
+                  </div>
+                  <div class="setting-row">
+                    <span>Sound Effects Volume</span>
+                    <input type="range" id="sfxVolumeSlider" min="0" max="100" value="80" style="cursor:pointer;" />
+                  </div>
+                  <div class="setting-row">
+                    <span>Background Music</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <input type="checkbox" id="bgMusicToggle" checked style="cursor:pointer; width:20px; height:20px;" />
+                      <label for="bgMusicToggle" style="cursor:pointer; font-size:13px; color:#fff;">On</label>
+                    </div>
+                  </div>
+                  <div class="setting-row">
+                    <span>Music Volume</span>
+                    <input type="range" id="bgMusicVolumeSlider" min="0" max="100" value="50" style="cursor:pointer;" />
+                  </div>
+                  <div class="setting-row">
+                    <span>Local Player UUID</span>
+                    <span id="playerUuidLabel" style="font-size:12px; font-family:monospace; color:#8c8294;">----</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Console Info -->
+          <footer class="console-footer">
+            <button class="badge-btn" type="button">HOME</button>
+            <span class="badge-text">Chiikawa Battle 2026</span>
+          </footer>
+
+          <!-- Matchmaking Popup UI (simulates finding CPU players offline) -->
+          <div id="matchmakingPopup" class="dialog-overlay hidden">
+            <div class="matchmaking-box">
+              <div class="matchmaking-header">
+                <div class="matchmaking-title">MATCHMAKING...</div>
+                <div class="matchmaking-status-row">
+                  <div class="matchmaking-timer" id="matchmakingTimer">00:00</div>
+                  <div class="matchmaking-spinner"></div>
+                </div>
+              </div>
+              
+              <div class="matchmaking-slots">
+                <!-- Slot 1: You (Player 1) -->
+                <div class="matchmaking-card player-slot active" id="matchmakerSlot_1">
+                  <div class="card-inner">
+                    <span class="slot-badge badge-you">YOU</span>
+                    <div class="slot-image-container">
+                      <img id="matchmakerImg_1" src="assets/cards/chiikawa.png" alt="You" />
+                    </div>
+                    <div class="slot-name" id="matchmakerName_1">You</div>
+                  </div>
+                </div>
+
+                <!-- Slot 2: Searching / Bot 1 -->
+                <div class="matchmaking-card empty-slot" id="matchmakerSlot_2">
+                  <div class="card-inner">
+                    <div class="searching-pulse"></div>
+                    <div class="slot-status-text">SEARCHING...</div>
+                  </div>
+                </div>
+
+                <!-- Slot 3: Searching / Bot 2 -->
+                <div class="matchmaking-card empty-slot" id="matchmakerSlot_3">
+                  <div class="card-inner">
+                    <div class="searching-pulse"></div>
+                    <div class="slot-status-text">SEARCHING...</div>
+                  </div>
+                </div>
+
+                <!-- Slot 4: Searching / Bot 3 -->
+                <div class="matchmaking-card empty-slot" id="matchmakerSlot_4">
+                  <div class="card-inner">
+                    <div class="searching-pulse"></div>
+                    <div class="slot-status-text">SEARCHING...</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="matchmaking-actions">
+                <button id="cancelMatchmakingBtn" class="btn-cancel-matchmaking" type="button">CANCEL</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- VS Loading Screen Overlay -->
+          <div id="vsLoadingScreen" class="vs-screen-overlay hidden">
+            <div class="vs-teams-container">
+              <!-- Team A (Left side) -->
+              <div class="vs-team team-left">
+                <h3 class="vs-team-title team-a-glow">TEAM A</h3>
+                <div class="vs-team-cards">
+                  <!-- Team A Player 1 -->
+                  <div class="vs-character-card card-slide-left" id="vsCard_1">
+                    <div class="vs-card-inner card-pink">
+                      <div class="vs-image-wrap">
+                        <img id="vsImg_1" src="assets/cards/chiikawa.png" alt="Player 1" />
+                      </div>
+                      <div class="vs-card-footer">
+                        <span class="vs-player-name" id="vsName_1">You</span>
+                        <span class="vs-player-role role-you">P1</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Team A Player 2 -->
+                  <div class="vs-character-card card-slide-left" id="vsCard_2">
+                    <div class="vs-card-inner card-yellow">
+                      <div class="vs-image-wrap">
+                        <img id="vsImg_2" src="assets/cards/usagi.png" alt="Player 2" />
+                      </div>
+                      <div class="vs-card-footer">
+                        <span class="vs-player-name" id="vsName_2">Usagi CPU</span>
+                        <span class="vs-player-role role-cpu">P2</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- VS Divider (Center) -->
+              <div class="vs-divider">
+                <img src="assets/vs.png" alt="VS" class="vs-logo-img animate-vs" />
+              </div>
+
+              <!-- Team B (Right side) -->
+              <div class="vs-team team-right">
+                <h3 class="vs-team-title team-b-glow">TEAM B</h3>
+                <div class="vs-team-cards">
+                  <!-- Team B Player 3 -->
+                  <div class="vs-character-card card-slide-right" id="vsCard_3">
+                    <div class="vs-card-inner card-blue">
+                      <div class="vs-image-wrap">
+                        <img id="vsImg_3" src="assets/cards/hachiware.png" alt="Player 3" />
+                      </div>
+                      <div class="vs-card-footer">
+                        <span class="vs-player-name" id="vsName_3">Hachiware CPU</span>
+                        <span class="vs-player-role role-cpu">P3</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Team B Player 4 -->
+                  <div class="vs-character-card card-slide-right" id="vsCard_4">
+                    <div class="vs-card-inner card-purple">
+                      <div class="vs-image-wrap">
+                        <img id="vsImg_4" src="assets/cards/momonga.png" alt="Player 4" />
+                      </div>
+                      <div class="vs-card-footer">
+                        <span class="vs-player-name" id="vsName_4">Momonga CPU</span>
+                        <span class="vs-player-role role-cpu">P4</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loading Progress Bar -->
+            <div class="vs-loading-footer">
+              <div class="vs-loading-status" id="vsLoadingStatus">PREPARING ARENA... 0%</div>
+              <div class="vs-progress-bar-wrap">
+                <div class="vs-progress-bar-fill" id="vsProgressBarFill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Matchmaking Glass Dialog Popup (opened when clicking PLAY!) -->
+        <div id="matchmakingDialog" class="dialog-overlay hidden">
+          <div class="card glass dialog-card">
+            <h2>Online Matchmaking</h2>
+            <p>Set your nickname and choose how you want to join the battle.</p>
+            
+            <div class="dialog-fields">
+              <div class="field-group">
+                <label for="usernameInput">Your Nickname</label>
+                <input id="usernameInput" type="text" maxlength="12" placeholder="Enter nickname..." value="Friend" />
+              </div>
+
+              <div class="action-grid">
+                <button id="quickMatchBtn" class="btn btn-primary" type="button">Quick Match</button>
+                <button id="createRoomBtn" class="btn btn-secondary" type="button">Create Private Room</button>
+                
+                <div class="join-room-wrapper">
+                  <input id="joinCodeInput" type="text" maxlength="4" placeholder="Room Code (e.g. ABCD)" />
+                  <button id="joinRoomBtn" class="btn btn-accent" type="button">Join Room</button>
+                </div>
+              </div>
+            </div>
+            
+            <button id="closeDialogBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. LOBBY SCREEN -->
+      <section id="lobbyScreen" class="screen">
+        <div class="lobby-layout">
+          <!-- Room Status and Players -->
+          <div class="card glass lobby-players-panel">
+            <header class="lobby-header">
+              <div>
+                <h2>Lobby Room</h2>
+                <div class="room-code-badge">
+                  <span>Code:</span>
+                  <strong id="lobbyRoomCode">----</strong>
+                  <button id="copyCodeBtn" class="btn-icon" title="Copy Code" type="button">📋</button>
+                </div>
+              </div>
+              <div class="lobby-controls">
+                <button id="addBotBtn" class="btn btn-sm btn-secondary hidden" type="button">+ Add CPU Bot</button>
+                <button id="startGameBtn" class="btn btn-sm btn-primary hidden" type="button">Start Game</button>
+              </div>
+            </header>
+
+            <div id="lobbyPlayersList" class="lobby-players-grid">
+              <!-- Dynamically populated player cards -->
+            </div>
+
+            <!-- Map Voting Section (Multiplayer) -->
+            <div class="lobby-map-voting">
+              <div class="vote-header">Vote Map Design</div>
+              <div class="map-vote-cards">
+                <div class="map-vote-card" data-map="classic">
+                  <div class="map-vote-title">Classic Green</div>
+                  <div class="map-vote-preview preview-classic"></div>
+                  <div class="map-vote-count" id="voteCount_classic">0 votes</div>
+                </div>
+                <div class="map-vote-card" data-map="checkered">
+                  <div class="map-vote-title">Checkered Ice</div>
+                  <div class="map-vote-preview preview-checkered"></div>
+                  <div class="map-vote-count" id="voteCount_checkered">0 votes</div>
+                </div>
+                <div class="map-vote-card" data-map="colosseum">
+                  <div class="map-vote-title">Colosseum Clay</div>
+                  <div class="map-vote-preview preview-colosseum"></div>
+                  <div class="map-vote-count" id="voteCount_colosseum">0 votes</div>
+                </div>
+              </div>
+            </div>
+
+            <footer class="lobby-footer">
+              <button id="readyBtn" class="btn btn-accent" type="button">I'm Ready!</button>
+              <button id="leaveLobbyBtn" class="btn btn-danger" type="button">Leave Lobby</button>
+            </footer>
+          </div>
+
+          <!-- Lobby Chat -->
+          <div class="card glass lobby-chat-panel">
+            <h3>Lobby Chat</h3>
+            <div id="chatMessages" class="chat-messages">
+              <!-- Chat logs go here -->
+            </div>
+            <form id="lobbyChatForm" class="chat-form">
+              <input id="chatInput" type="text" maxlength="64" placeholder="Send a message..." autocomplete="off" />
+              <button id="sendChatBtn" class="btn btn-primary" type="submit">Send</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. GAMEPLAY SCREEN -->
+      <section id="gameScreen" class="screen">
+        <div class="game-layout">
+          <!-- Left Sidebar HUD: Player Stats -->
+          <aside class="game-hud-sidebar">
+            <div class="card glass game-info-card">
+              <div class="time-block">
+                <span class="label">Time Remaining</span>
+                <span id="roundTimer">02:30</span>
+              </div>
+              <div class="state-block">
+                <span class="label">Match State</span>
+                <span id="roundState">Ready</span>
+              </div>
+              <div class="room-block">
+                <span>Room:</span>
+                <strong id="gameRoomCode">----</strong>
+              </div>
+            </div>
+
+            <div class="hud-players-list" id="hudPlayersList">
+              <!-- Dynamically filled with player status cards (bombs, range, speed, alive) -->
+            </div>
+
+            <button id="leaveGameBtn" class="btn btn-sm btn-danger" type="button"><span>Exit Match</span></button>
+          </aside>
+
+          <!-- Center: Gameplay Canvas -->
+          <div class="arcade-cabinet">
+            <div class="arcade-screen">
+              <canvas id="game" width="960" height="720"></canvas>
+            </div>
+
+            <!-- In-game Controls Legend (floating) -->
+            <footer class="arcade-controller">
+              <div class="controls-legend">
+                <span>Move: <strong>WASD / Arrows</strong></span>
+                <span>Bomb: <strong>Space / Enter</strong></span>
+              </div>
+            </footer>
+          </div>
+
+          <!-- Mobile Virtual Gamepad -->
+          <div class="mobile-gamepad">
+            <div class="dpad">
+              <button id="btnTouchUp" class="gamepad-btn btn-up" type="button" aria-label="Up">
+                <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z" fill="currentColor"/></svg>
+              </button>
+              <button id="btnTouchLeft" class="gamepad-btn btn-left" type="button" aria-label="Left">
+                <svg viewBox="0 0 24 24"><path d="M4 12l8-8v6h8v4h-8v6z" fill="currentColor"/></svg>
+              </button>
+              <button id="btnTouchRight" class="gamepad-btn btn-right" type="button" aria-label="Right">
+                <svg viewBox="0 0 24 24"><path d="M20 12l-8 8v-6H4v-4h8V4z" fill="currentColor"/></svg>
+              </button>
+              <button id="btnTouchDown" class="gamepad-btn btn-down" type="button" aria-label="Down">
+                <svg viewBox="0 0 24 24"><path d="M12 20l8-8h-6V4h-4v8H4z" fill="currentColor"/></svg>
+              </button>
+            </div>
+            <div class="action-buttons">
+              <button id="btnTouchPunch" class="gamepad-btn btn-action-punch" type="button" aria-label="Punch">
+                <span>PUNCH</span>
+              </button>
+              <button id="btnTouchBomb" class="gamepad-btn btn-action-bomb" type="button" aria-label="Place Bomb">
+                <span>BOMB</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 4. TOURNAMENT RESULTS OVERLAY -->
+    <div id="tournamentOverlay" class="overlay hidden">
+      <canvas id="victoryConfettiCanvas" class="confetti-canvas"></canvas>
+      
+      <!-- Intermediate Round Results Card -->
+      <div id="roundResultsCard" class="results-card glass pop-in hidden">
+        <h2 class="results-title">Round Results</h2>
+        <div id="roundSummaryMessage" class="round-msg">Hachiware wins this round!</div>
+        <div id="resultsPlayersRow" class="results-players-row">
+          <!-- Dynamically populated player results cards -->
+        </div>
+        <div id="nextRoundCountdown" class="countdown-msg">Next round starts in 5s...</div>
+      </div>
+
+      <!-- Grand Tournament Victory Card -->
+      <div id="grandVictoryCard" class="victory-card glass pop-in hidden">
+        <div class="sparkles-container"></div>
+        <h1 class="victory-title">🏆 VICTORY! 🏆</h1>
+        <div id="grandWinnerMessage" class="winner-msg">Hachiware wins the Tournament!</div>
+        
+        <div class="victory-video-wrapper">
+          <video id="victoryVideo" src="hachiware-lobby.mp4" loop muted playsinline class="victory-video"></video>
+        </div>
+        
+        <button id="victoryLobbyBtn" class="btn-match-play btn-victory-lobby" type="button">Return to Lobby</button>
+      </div>
+    </div>
+
+    <!-- Friends List Popup UI -->
+    <div id="friendsPopup" class="dialog-overlay hidden">
+      <div class="dialog-card card friends-modal" style="width: 420px; padding: 24px;">
+        <button id="closeFriendsBtn" class="btn-close-dialog" type="button">&times;</button>
+        <h2 style="margin-top: 0; margin-bottom: 20px; text-align: center; text-transform: uppercase; font-family: inherit; font-size: 22px; letter-spacing: 1px;">Online Friends</h2>
+        <div class="friends-modal-body">
+          <ul class="friends-list">
+            <li class="friend-item">
+              <div class="friend-left">
+                <span class="friend-status online"></span>
+                <img class="friend-avatar" src="assets/cards/usagi.png" alt="Usagi" />
+                <span class="friend-name">Usagi</span>
+              </div>
+              <button class="btn-invite-friend" type="button" data-friend="Usagi">Invite</button>
+            </li>
+            <li class="friend-item">
+              <div class="friend-left">
+                <span class="friend-status online"></span>
+                <img class="friend-avatar" src="assets/cards/chiikawa.png" alt="Chiikawa" />
+                <span class="friend-name">Chiikawa</span>
+              </div>
+              <button class="btn-invite-friend" type="button" data-friend="Chiikawa">Invite</button>
+            </li>
+            <li class="friend-item">
+              <div class="friend-left">
+                <span class="friend-status online"></span>
+                <img class="friend-avatar" src="assets/cards/momonga.png" alt="Momonga" />
+                <span class="friend-name">Momonga</span>
+              </div>
+              <button class="btn-invite-friend" type="button" data-friend="Momonga">Invite</button>
+            </li>
+            <li class="friend-item">
+              <div class="friend-left">
+                <span class="friend-status offline"></span>
+                <span class="friend-avatar-placeholder">H</span>
+                <span class="friend-name">Hachiware (Offline)</span>
+              </div>
+              <button class="btn-invite-friend" type="button" disabled>Invite</button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    <!-- Orientation Lock Warning Overlay -->
+    <div id="orientationWarning" class="orientation-warning-overlay">
+      <div class="warning-content">
+        <div class="rotate-icon-wrapper">
+          <svg viewBox="0 0 24 24" class="rotate-icon">
+            <path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z" fill="#ffd84a"/>
+          </svg>
+        </div>
+        <h2>Please Rotate Your Device</h2>
+        <p>This game is best played in Landscape Mode.</p>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            console.log('ServiceWorker registration successful with scope: ', reg.scope);
+          }, (err) => {
+            console.warn('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
