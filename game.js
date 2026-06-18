@@ -3283,6 +3283,7 @@ if (cancelMatchmakingBtn) {
 
 // Keyboard event listeners
 window.addEventListener("keydown", (event) => {
+  if (!event || !event.key) return;
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
   keys.add(key);
 
@@ -3310,6 +3311,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("keyup", (event) => {
+  if (!event || !event.key) return;
   keys.delete(event.key.length === 1 ? event.key.toLowerCase() : event.key);
 });
 
