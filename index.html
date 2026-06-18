@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        alert("JavaScript Error:\n" + message + "\n\nFile: " + source + "\nLine: " + lineno + ":" + colno);
+        return false;
+      };
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chiikawa Park Bomb Battle Online</title>
