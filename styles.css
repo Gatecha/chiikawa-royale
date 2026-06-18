@@ -3718,6 +3718,22 @@ canvas#game {
 }
 
 /* Fullscreen stretching styles */
+.app-container:fullscreen,
+.app-container:-webkit-full-screen {
+  max-width: 100vw !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #221f25 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.app-container:fullscreen .yellow-console,
+.app-container:-webkit-full-screen .yellow-console,
 .yellow-console:fullscreen,
 .yellow-console:-webkit-full-screen {
   max-width: 100vw !important;
@@ -3728,6 +3744,12 @@ canvas#game {
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+}
+
+.app-container:fullscreen .screen,
+.app-container:-webkit-full-screen .screen {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Orientation Warning Overlay */

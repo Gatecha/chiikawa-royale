@@ -593,8 +593,16 @@ function connectWebSocket() {
     return;
   }
 
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = BACKEND_WS_URL || `${protocol}//${window.location.host}`;
+  let wsUrl = BACKEND_WS_URL;
+  if (!wsUrl) {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      wsUrl = `${protocol}//${window.location.host}`;
+    } else {
+      // If we are online (Vercel, APK, etc.), connect to the production Render server
+      wsUrl = "wss://chiikawa-royale.onrender.com";
+    }
+  }
 
   console.log("Connecting to WebSocket server:", wsUrl);
   if (connectionStatusIndicator) {
@@ -3629,8 +3637,17 @@ function startLocalGameWithMatchedBots() {
 if (lobbyMatchBtn) {
   lobbyMatchBtn.addEventListener("click", () => {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      if (matchmakingDialog) {
-        matchmakingDialog.classList.remove("hidden");
+      if (roomCode) {
+        // If already in a room/lobby, start matching for that room (only host can trigger)
+        if (localPlayerId === hostId) {
+          sendServerMessage("start_matchmaking");
+        } else {
+          alert("Only the room host can start matchmaking!");
+        }
+      } else {
+        if (matchmakingDialog) {
+          matchmakingDialog.classList.remove("hidden");
+        }
       }
     } else {
       startMatchmakingSearch();
@@ -3775,10 +3792,10 @@ function initTouchControls() {
 // Automatically enter fullscreen on first user touch/click for mobile devices
 function autoEnterFullscreen() {
   if (document.fullscreenElement) return;
-  const docEl = document.documentElement;
-  const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+  const appContainer = document.querySelector(".app-container") || document.documentElement;
+  const requestFS = appContainer.requestFullscreen || appContainer.webkitRequestFullscreen || appContainer.mozRequestFullScreen || appContainer.msRequestFullscreen;
   if (requestFS) {
-    requestFS.call(docEl).then(() => {
+    requestFS.call(appContainer).then(() => {
       if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock("landscape").catch(() => {});
       }
@@ -3815,15 +3832,18 @@ const fullscreenToggleBtn = document.getElementById("fullscreenToggleBtn");
 if (fullscreenToggleBtn) {
   fullscreenToggleBtn.addEventListener("click", () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock("landscape").catch((err) => {
-            console.log("Landscape lock not supported/allowed:", err);
-          });
-        }
-      }).catch((err) => {
-        console.warn(`Fullscreen error: ${err.message}`);
-      });
+      const appContainer = document.querySelector(".app-container");
+      if (appContainer) {
+        appContainer.requestFullscreen().then(() => {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock("landscape").catch((err) => {
+              console.log("Landscape lock not supported/allowed:", err);
+            });
+          }
+        }).catch((err) => {
+          console.warn(`Fullscreen error: ${err.message}`);
+        });
+      }
     } else {
       document.exitFullscreen().then(() => {
         if (screen.orientation && screen.orientation.unlock) {
@@ -4700,15 +4720,18 @@ function initMobileFullscreenPrompt() {
   // Wire up fullscreen reminder buttons
   document.getElementById("btnMobileFullscreenYes")?.addEventListener("click", () => {
     document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
-    document.documentElement.requestFullscreen().then(() => {
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock("landscape").catch((err) => {
-          console.log("Landscape lock error:", err);
-        });
-      }
-    }).catch((err) => {
-      console.warn("Fullscreen request failed:", err);
-    });
+    const appContainer = document.querySelector(".app-container");
+    if (appContainer) {
+      appContainer.requestFullscreen().then(() => {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock("landscape").catch((err) => {
+            console.log("Landscape lock error:", err);
+          });
+        }
+      }).catch((err) => {
+        console.warn("Fullscreen request failed:", err);
+      });
+    }
   });
 
   document.getElementById("btnMobileFullscreenNo")?.addEventListener("click", () => {

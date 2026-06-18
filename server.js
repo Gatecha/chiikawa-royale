@@ -22,7 +22,7 @@ const ROUND_SECONDS = 150;
 const TROPHIES_TO_WIN = 7;        // Team trophies needed to win (or trigger final vote)
 const STANDARD_MAX_PLAYERS = 4;   // Quick match / standard mode cap
 const TEAM_MAX_PLAYERS = 6;        // Team mode cap (3v3)
-const MATCHMAKING_FILL_ALONE = 30; // Seconds alone before CPU fill
+const MATCHMAKING_FILL_ALONE = 40; // Seconds alone before CPU fill
 const MATCHMAKING_FILL_PARTIAL = 40; // Seconds with 1-2 players before fill
 const FINAL_VOTE_SECONDS = 20;     // Vote timer duration
 
@@ -78,6 +78,7 @@ function handleMessage(ws, msg) {
 
   switch (type) {
     case "create_room": {
+      leaveRoom(ws);
       const roomCode = generateRoomCode();
       const room = createRoomObject(roomCode, ws.id, data.mode || "team");
       room.isPrivate = data.isPrivate || false;
@@ -93,8 +94,39 @@ function handleMessage(ws, msg) {
     case "start_matchmaking": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
-      room.isPrivate = false;
-      scheduleMatchmakingFill(room);
+
+      // Try to find another open lobby room that is public and has space for all human players of this room
+      const humanCount = room.players.filter(p => !p.ai).length;
+      let targetRoom = null;
+      for (const [code, r] of rooms.entries()) {
+        if (r.code === room.code) continue;
+        const maxPlayers = r.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+        if (r.state === "lobby" && !r.isPrivate && (r.players.length + humanCount) <= maxPlayers) {
+          targetRoom = r;
+          break;
+        }
+      }
+
+      if (targetRoom) {
+        console.log(`Matching room ${room.code} into existing public room ${targetRoom.code}`);
+        const clientsToMove = [];
+        wss.clients.forEach((client) => {
+          if (client.roomCode === room.code && client.readyState === WebSocket.OPEN) {
+            clientsToMove.push(client);
+          }
+        });
+
+        clientsToMove.forEach((client) => {
+          const playerInfo = room.players.find(p => p.id === client.id);
+          const name = playerInfo ? playerInfo.name : "Friend";
+          const kind = playerInfo ? playerInfo.kind : "hachiware";
+          leaveRoom(client);
+          joinPlayerToRoom(client, targetRoom, name, kind);
+        });
+      } else {
+        room.isPrivate = false;
+        scheduleMatchmakingFill(room);
+      }
       break;
     }
 
@@ -114,6 +146,8 @@ function handleMessage(ws, msg) {
         ws.send(JSON.stringify({ type: "error", data: { message: `Room is full (max ${maxPlayers} players)!` } }));
         return;
       }
+
+      leaveRoom(ws);
       joinPlayerToRoom(ws, room, data.name, data.kind);
       // Reset matchmaking timer to longer window when a real player joins
       if (room.matchmakingTimer) {
@@ -124,17 +158,19 @@ function handleMessage(ws, msg) {
         clearInterval(room.matchmakingCountdownInterval);
         room.matchmakingCountdownInterval = null;
       }
-      if (room.players.filter(p => !p.ai).length < STANDARD_MAX_PLAYERS) {
+      if (room.players.filter(p => !p.ai).length < maxPlayers) {
         scheduleMatchmakingFill(room);
       }
       break;
     }
 
     case "quick_match": {
-      // Find open lobby room with space (standard mode only)
+      leaveRoom(ws);
+      // Find open lobby room with space (allows team or standard mode)
       let foundRoom = null;
       for (const [code, r] of rooms.entries()) {
-        if (r.state === "lobby" && r.mode !== "team" && !r.isPrivate && r.players.length < STANDARD_MAX_PLAYERS) {
+        const maxPlayers = r.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+        if (r.state === "lobby" && !r.isPrivate && r.players.length < maxPlayers) {
           foundRoom = r;
           break;
         }
@@ -151,7 +187,8 @@ function handleMessage(ws, msg) {
           clearInterval(foundRoom.matchmakingCountdownInterval);
           foundRoom.matchmakingCountdownInterval = null;
         }
-        if (foundRoom.players.filter(p => !p.ai).length < STANDARD_MAX_PLAYERS) {
+        const maxPlayers = foundRoom.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+        if (foundRoom.players.filter(p => !p.ai).length < maxPlayers) {
           scheduleMatchmakingFill(foundRoom);
         }
       } else {
@@ -592,7 +629,8 @@ function broadcastToRoom(room, msg) {
 
 function scheduleMatchmakingFill(room) {
   const humanCount = room.players.filter(p => !p.ai).length;
-  if (humanCount >= STANDARD_MAX_PLAYERS || room.mode === "team") return;
+  const maxPlayers = room.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+  if (humanCount >= maxPlayers) return;
 
   const waitSeconds = humanCount <= 1 ? MATCHMAKING_FILL_ALONE : MATCHMAKING_FILL_PARTIAL;
   let secondsLeft = waitSeconds;
