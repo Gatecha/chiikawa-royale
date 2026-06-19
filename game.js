@@ -363,6 +363,7 @@ let localBombId = 0;
 let localCouchMode = false;
 let couchSlots = [];
 let couchTouchKeys = new Set();
+let couchPlayerTouchKeys = new Map();
 let couchTouchPlayerId = null;
 const couchCharacters = ["chiikawa", "hachiware", "usagi", "momonga"];
 const couchControlSchemes = [
@@ -1267,6 +1268,7 @@ function startLocalGame() {
   localMode = true;
   localCouchMode = false;
   couchTouchKeys.clear();
+  couchPlayerTouchKeys.clear();
   couchTouchPlayerId = null;
   roomCode = "LOCAL";
   localPlayerId = "local_player";
@@ -1406,6 +1408,7 @@ function startLocalFourPlayerGame() {
   hostId = localPlayerId;
   localBombId = 0;
   couchTouchKeys.clear();
+  couchPlayerTouchKeys.clear();
   couchTouchPlayerId = null;
 
   currentMapType = document.getElementById("localMapSelect")?.value || "classic";
@@ -1466,18 +1469,83 @@ function updateCouchControlPicker() {
   document.body.classList.toggle("local-couch-active", localCouchMode && humans.length > 0);
   picker.innerHTML = "";
   humans.forEach((player) => {
-    const btn = document.createElement("button");
     const slotNumber = (player.couchSlotIndex ?? humans.indexOf(player)) + 1;
-    btn.type = "button";
-    btn.className = `couch-control-btn slot-${slotNumber} ${player.id === couchTouchPlayerId ? "active" : ""}`;
-    btn.textContent = `P${slotNumber}`;
-    btn.addEventListener("click", () => {
+    const panel = document.createElement("div");
+    panel.className = `couch-control-panel slot-${slotNumber}`;
+    panel.innerHTML = `
+      <div class="couch-player-label">P${slotNumber}</div>
+      <div class="couch-mini-dpad" aria-label="P${slotNumber} movement controls">
+        <button class="couch-mini-btn couch-mini-up" type="button" data-dir="up" aria-label="P${slotNumber} up">▲</button>
+        <button class="couch-mini-btn couch-mini-left" type="button" data-dir="left" aria-label="P${slotNumber} left">◀</button>
+        <button class="couch-mini-btn couch-mini-right" type="button" data-dir="right" aria-label="P${slotNumber} right">▶</button>
+        <button class="couch-mini-btn couch-mini-down" type="button" data-dir="down" aria-label="P${slotNumber} down">▼</button>
+      </div>
+      <div class="couch-mini-actions">
+        <button class="couch-mini-action punch" type="button" data-action="punch" aria-label="P${slotNumber} punch">PUNCH</button>
+        <button class="couch-mini-action bomb" type="button" data-action="bomb" aria-label="P${slotNumber} bomb">BOMB</button>
+      </div>
+    `;
+    bindCouchControlPanel(panel, player);
+    picker.appendChild(panel);
+  });
+}
+
+function getCouchTouchKeys(playerId) {
+  if (!couchPlayerTouchKeys.has(playerId)) {
+    couchPlayerTouchKeys.set(playerId, new Set());
+  }
+  return couchPlayerTouchKeys.get(playerId);
+}
+
+function bindCouchPress(button, onStart, onEnd) {
+  const start = (event) => {
+    event.preventDefault();
+    button.classList.add("pressed");
+    onStart();
+  };
+  const end = (event) => {
+    event.preventDefault();
+    button.classList.remove("pressed");
+    onEnd?.();
+  };
+  button.addEventListener("touchstart", start, { passive: false });
+  button.addEventListener("touchend", end, { passive: false });
+  button.addEventListener("touchcancel", end, { passive: false });
+  button.addEventListener("mousedown", start);
+  button.addEventListener("mouseup", end);
+  button.addEventListener("mouseleave", end);
+}
+
+function bindCouchControlPanel(panel, player) {
+  const touchKeys = getCouchTouchKeys(player.id);
+  panel.querySelectorAll("[data-dir]").forEach((button) => {
+    const dir = button.dataset.dir;
+    bindCouchPress(
+      button,
+      () => {
+        couchTouchPlayerId = player.id;
+        localPlayerId = player.id;
+        touchKeys.add(dir);
+      },
+      () => touchKeys.delete(dir)
+    );
+  });
+  const bombBtn = panel.querySelector('[data-action="bomb"]');
+  if (bombBtn) {
+    bindCouchPress(bombBtn, () => {
       couchTouchPlayerId = player.id;
       localPlayerId = player.id;
-      updateCouchControlPicker();
+      triggerPlayerBomb(player);
     });
-    picker.appendChild(btn);
-  });
+  }
+  const punchBtn = panel.querySelector('[data-action="punch"]');
+  if (punchBtn) {
+    bindCouchPress(punchBtn, () => {
+      couchTouchPlayerId = player.id;
+      localPlayerId = player.id;
+      triggerPlayerPunch(player);
+    });
+  }
 }
 
 function buildLocalMap(mapType = "classic") {
@@ -3232,6 +3300,13 @@ function getCouchPlayerDirection(player, index) {
   const scheme = couchControlSchemes[index] || couchControlSchemes[0];
   const keyboardDir = getDirectionFromKeys(keys, scheme);
   if (keyboardDir.dx !== 0 || keyboardDir.dy !== 0) return keyboardDir;
+  const touchDir = getDirectionFromKeys(getCouchTouchKeys(player.id), {
+    up: ["up"],
+    down: ["down"],
+    left: ["left"],
+    right: ["right"],
+  });
+  if (touchDir.dx !== 0 || touchDir.dy !== 0) return touchDir;
   if (player.id === couchTouchPlayerId) {
     return getDirectionFromKeys(couchTouchKeys, couchControlSchemes[0]);
   }
@@ -4475,6 +4550,7 @@ function startLocalGameWithMatchedBots() {
   localMode = true;
   localCouchMode = false;
   couchTouchKeys.clear();
+  couchPlayerTouchKeys.clear();
   couchTouchPlayerId = null;
   roomCode = "LOCAL";
   localPlayerId = "local_player";
@@ -4586,6 +4662,7 @@ function getTouchKeySet() {
 function resetCouchControls() {
   localCouchMode = false;
   couchTouchKeys.clear();
+  couchPlayerTouchKeys.clear();
   couchTouchPlayerId = null;
   document.getElementById("couchControlPicker")?.classList.add("hidden");
   document.body.classList.remove("local-couch-active");
@@ -5210,6 +5287,7 @@ function localStartNextRound() {
   // Clear any inputs pressed during overlays
   keys.clear();
   couchTouchKeys.clear();
+  couchPlayerTouchKeys.clear();
 
   bombs = [];
   blasts = [];
