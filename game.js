@@ -162,6 +162,10 @@ const stateEl = document.getElementById("roundState");
 const gameRoomCode = document.getElementById("gameRoomCode");
 const hudPlayersList = document.getElementById("hudPlayersList");
 const leaveGameBtn = document.getElementById("leaveGameBtn");
+const surrenderVotePopup = document.getElementById("surrenderVotePopup");
+const surrenderVoteStatus = document.getElementById("surrenderVoteStatus");
+const surrenderYesBtn = document.getElementById("surrenderYesBtn");
+const surrenderNoBtn = document.getElementById("surrenderNoBtn");
 
 // Emotes buttons
 const emoteSmileBtn = document.getElementById("emoteSmileBtn");
@@ -296,6 +300,7 @@ let socket = null;
 let roomCode = null;
 let hostId = null;
 let localPlayerId = null;
+let reconnectToken = localStorage.getItem("chiikawaReconnectToken") || null;
 let players = [];
 let selectedCharacter = "chiikawa";
 let previewCharacter = selectedCharacter;
@@ -725,6 +730,16 @@ function connectWebSocket(forceReconnect = false) {
         connectionStatusIndicator.textContent = "Online";
         connectionStatusIndicator.className = "connection-status online";
       }
+      const savedRoomCode = localStorage.getItem("chiikawaRoomCode");
+      const savedPlayerId = localStorage.getItem("chiikawaPlayerId");
+      const savedToken = localStorage.getItem("chiikawaReconnectToken");
+      if (savedRoomCode && savedPlayerId && savedToken) {
+        sendServerMessage("reconnect_player", {
+          roomCode: savedRoomCode,
+          playerId: savedPlayerId,
+          reconnectToken: savedToken,
+        });
+      }
     };
 
     socket.onmessage = (event) => {
@@ -771,9 +786,22 @@ function handleServerMessage(msg) {
       alert(data.message);
       break;
 
+    case "reconnect_failed":
+      localStorage.removeItem("chiikawaRoomCode");
+      localStorage.removeItem("chiikawaPlayerId");
+      localStorage.removeItem("chiikawaReconnectToken");
+      reconnectToken = null;
+      break;
+
     case "room_joined":
       roomCode = data.roomCode;
       localPlayerId = data.playerId;
+      reconnectToken = data.reconnectToken || reconnectToken;
+      if (roomCode && localPlayerId && reconnectToken) {
+        localStorage.setItem("chiikawaRoomCode", roomCode);
+        localStorage.setItem("chiikawaPlayerId", localPlayerId);
+        localStorage.setItem("chiikawaReconnectToken", reconnectToken);
+      }
       localMode = false;
       
       // Close matchmaking dialog
@@ -843,10 +871,15 @@ function handleServerMessage(msg) {
         radius: 13,
       }));
 
-      bombs = [];
+      bombs = (data.bombs || []).map((bomb) => ({
+        ...bomb,
+        pulse: 0,
+        passableFor: new Set(players.map((p) => p.id)),
+      }));
       blasts = [];
-      pickups = [];
+      pickups = data.pickups || [];
       particles = [];
+      roundTime = typeof data.roundTime === "number" ? data.roundTime : roundTime;
       running = true;
       shakeTimer = 0;
       gameMessage = "";
@@ -1102,6 +1135,16 @@ function handleServerMessage(msg) {
       if (classicEl) classicEl.textContent = `${votes.classic || 0} votes`;
       if (checkeredEl) checkeredEl.textContent = `${votes.checkered || 0} votes`;
       if (colosseumEl) colosseumEl.textContent = `${votes.colosseum || 0} votes`;
+      break;
+    }
+
+    case "surrender_vote_updated": {
+      showSurrenderVotePopup(data);
+      break;
+    }
+
+    case "surrender_cancelled": {
+      if (surrenderVotePopup) surrenderVotePopup.classList.add("hidden");
       break;
     }
   }
@@ -1380,6 +1423,16 @@ function updateHudSidebar() {
       drawCharacterOnContext(hctx, p.kind, style, performance.now() / 1200);
     }
   });
+}
+
+function showSurrenderVotePopup(data = {}) {
+  if (!surrenderVotePopup) return;
+  const myTeam = getPlayerTeam(localPlayerId);
+  if (data.team && myTeam && data.team !== myTeam) return;
+  surrenderVotePopup.classList.remove("hidden");
+  if (surrenderVoteStatus) {
+    surrenderVoteStatus.textContent = `${data.yesVotes || 0}/${data.threshold || 3} teammates agreed.`;
+  }
 }
 
 function localPlaceBomb(player) {
@@ -2588,7 +2641,7 @@ function drawPlayer(player) {
   const style = characterStyle[player.kind];
   ctx.save();
   ctx.translate(player.x, player.y);
-  if (!player.alive) ctx.globalAlpha = 0.34;
+  if (!player.alive && currentRoomMode !== "team") ctx.globalAlpha = 0.34;
   if (player.invuln > 0 && Math.floor(player.invuln * 10) % 2 === 0) ctx.globalAlpha = 0.55;
   
   const isWalking = Math.hypot(player.dx, player.dy) > 0.1;
@@ -3551,7 +3604,7 @@ function startMatchmakingSearch() {
   }
   
   // Reset other slots to searching
-  for (let i = 2; i <= 4; i++) {
+  for (let i = 2; i <= TEAM_MAX_PLAYERS; i++) {
     const slot = document.getElementById(`matchmakerSlot_${i}`);
     if (slot) {
       slot.className = "matchmaking-card empty-slot";
@@ -3577,45 +3630,33 @@ function startMatchmakingSearch() {
     if (matchmakingTimer) matchmakingTimer.textContent = `${m}:${s}`;
   }, 1000);
   
-  // Choose 3 unique random bots from available characters (excluding player's character if possible)
+  // Choose bots from available characters (excluding player's character if possible)
   const pool = ["chiikawa", "hachiware", "usagi", "momonga"];
   const poolFiltered = pool.filter(c => c !== selectedCharacter);
   
   // Shuffle filtered pool, or if empty use default pool
   const shuffle = (arr) => arr.sort(() => Math.random() - 0.5);
-  const selectedBots = shuffle(poolFiltered.length >= 3 ? poolFiltered : pool).slice(0, 3);
+  const selectedBots = Array.from({ length: TEAM_MAX_PLAYERS - 1 }, (_, index) => {
+    const source = shuffle(poolFiltered.length ? [...poolFiltered] : [...pool]);
+    return source[index % source.length];
+  });
   matchedBots = selectedBots;
-  
-  // Stagger bot findings
-  // Bot 1 found after 0.8s
-  matchmakingTimeouts.push(setTimeout(() => {
-    revealMatchedBot(2, selectedBots[0], characterStyle[selectedBots[0]].label + " CPU");
-  }, 800));
-  
-  // Bot 2 found after 1.6s
-  matchmakingTimeouts.push(setTimeout(() => {
-    revealMatchedBot(3, selectedBots[1], characterStyle[selectedBots[1]].label + " CPU");
-  }, 1600));
-  
-  // Bot 3 found after 2.4s
-  matchmakingTimeouts.push(setTimeout(() => {
-    revealMatchedBot(4, selectedBots[2], characterStyle[selectedBots[2]].label + " CPU");
-    
-    // All found!
-    if (titleEl) titleEl.textContent = "MATCH FOUND!";
-    if (cancelMatchmakingBtn) cancelMatchmakingBtn.style.display = "none";
-    
-    // Transition to VS screen after 1s
+
+  selectedBots.forEach((botKind, index) => {
     matchmakingTimeouts.push(setTimeout(() => {
-      // Hide matchmaking popup
-      matchmakingPopup.classList.remove("active");
-      matchmakingPopup.classList.add("hidden");
-      clearInterval(matchmakingTimerInterval);
-      
-      // Start VS Screen
-      startVsScreen();
-    }, 1000));
-  }, 2400));
+      revealMatchedBot(index + 2, botKind, characterStyle[botKind].label + " CPU");
+      if (index === selectedBots.length - 1) {
+        if (titleEl) titleEl.textContent = "MATCH FOUND!";
+        if (cancelMatchmakingBtn) cancelMatchmakingBtn.style.display = "none";
+        matchmakingTimeouts.push(setTimeout(() => {
+          matchmakingPopup.classList.remove("active");
+          matchmakingPopup.classList.add("hidden");
+          clearInterval(matchmakingTimerInterval);
+          startVsScreen();
+        }, 1000));
+      }
+    }, 700 + index * 450));
+  });
 }
 
 function revealMatchedBot(slotNum, charKind, botName) {
@@ -3680,9 +3721,9 @@ function updateOnlineMatchmakingPopup() {
   enemies.forEach(p => sortedPlayers.push({ player: p, type: "ENEMY" }));
   bots.forEach(p => sortedPlayers.push({ player: p, type: "CPU" }));
 
-  const displayPlayers = sortedPlayers.slice(0, 4);
+  const displayPlayers = sortedPlayers.slice(0, TEAM_MAX_PLAYERS);
 
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= TEAM_MAX_PLAYERS; i++) {
     const slotIndex = i - 1;
     const slot = document.getElementById(`matchmakerSlot_${i}`);
     if (!slot) continue;
@@ -3719,15 +3760,6 @@ function updateOnlineMatchmakingPopup() {
   const isHost = localPlayerId === hostId;
   const realPlayersCount = players.filter(p => !p.ai).length;
 
-  const startBtn = document.getElementById("startMatchEarlyBtn");
-  if (startBtn) {
-    if (socket && socket.readyState === WebSocket.OPEN && isHost && realPlayersCount >= 2) {
-      startBtn.classList.remove("hidden");
-    } else {
-      startBtn.classList.add("hidden");
-    }
-  }
-
   if (cancelMatchmakingBtn) {
     if (socket && socket.readyState === WebSocket.OPEN) {
       cancelMatchmakingBtn.style.display = isHost ? "block" : "none";
@@ -3740,7 +3772,6 @@ function updateOnlineMatchmakingPopup() {
   if (players.length >= maxPlayers) {
     if (titleEl) titleEl.textContent = "MATCH FOUND!";
     if (cancelMatchmakingBtn) cancelMatchmakingBtn.style.display = "none";
-    if (startBtn) startBtn.classList.add("hidden");
   } else {
     if (titleEl) titleEl.textContent = "MATCHMAKING...";
   }

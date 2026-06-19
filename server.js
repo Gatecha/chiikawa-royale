@@ -25,6 +25,8 @@ const TEAM_MAX_PLAYERS = 6;        // Team mode cap (3v3)
 const MATCHMAKING_FILL_ALONE = 40; // Seconds alone before CPU fill
 const MATCHMAKING_FILL_PARTIAL = 40; // Seconds with 1-2 players before fill
 const FINAL_VOTE_SECONDS = 20;     // Vote timer duration
+const RECONNECT_GRACE_MS = 10 * 60 * 1000;
+const SURRENDER_THRESHOLD = 3;
 
 const starts = [
   { x: 1, y: 1 },
@@ -69,7 +71,7 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     console.log(`Socket disconnected: ${ws.id}`);
-    leaveRoom(ws);
+    markPlayerDisconnected(ws);
   });
 });
 
@@ -77,6 +79,37 @@ function handleMessage(ws, msg) {
   const { type, data } = msg;
 
   switch (type) {
+    case "reconnect_player": {
+      const roomCode = String(data.roomCode || "").toUpperCase();
+      const playerId = data.playerId;
+      const reconnectToken = data.reconnectToken;
+      const room = rooms.get(roomCode);
+      if (!room || !playerId || !reconnectToken) {
+        ws.send(JSON.stringify({ type: "reconnect_failed", data: { message: "Saved match was not found." } }));
+        return;
+      }
+      const player = room.players.find(p => p.id === playerId && p.reconnectToken === reconnectToken);
+      if (!player) {
+        ws.send(JSON.stringify({ type: "reconnect_failed", data: { message: "Saved player slot was not found." } }));
+        return;
+      }
+
+      ws.id = player.id;
+      ws.roomCode = room.code;
+      player.disconnected = false;
+      if (room.disconnectTimers[player.id]) {
+        clearTimeout(room.disconnectTimers[player.id]);
+        delete room.disconnectTimers[player.id];
+      }
+      ws.send(JSON.stringify({
+        type: "room_joined",
+        data: { roomCode: room.code, playerId: player.id, reconnectToken: player.reconnectToken, reconnected: true },
+      }));
+      broadcastLobbyUpdate(room);
+      sendRoomStateToClient(ws, room);
+      break;
+    }
+
     case "create_room": {
       leaveRoom(ws);
       const roomCode = generateRoomCode();
@@ -160,6 +193,11 @@ function handleMessage(ws, msg) {
         data: { secondsLeft: 0 }
       });
       broadcastLobbyUpdate(room);
+      break;
+    }
+
+    case "leave_room": {
+      leaveRoom(ws, true);
       break;
     }
 
@@ -276,6 +314,27 @@ function handleMessage(ws, msg) {
       if (room.matchmakingCountdownInterval) { clearInterval(room.matchmakingCountdownInterval); room.matchmakingCountdownInterval = null; }
 
       startRound(room, true);
+      break;
+    }
+
+    case "request_surrender": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.state !== "playing" || room.mode !== "team") return;
+      const team = getPlayerTeam(room, ws.id);
+      if (!team) return;
+      startOrUpdateSurrenderVote(room, team, ws.id);
+      break;
+    }
+
+    case "submit_surrender_vote": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.state !== "playing" || room.mode !== "team") return;
+      const team = getPlayerTeam(room, ws.id);
+      if (!team || !room.surrenderVotes?.[team]) return;
+      if (data.agree) room.surrenderVotes[team].add(ws.id);
+      else room.surrenderDeclines[team].add(ws.id);
+      broadcastSurrenderUpdate(room, team);
+      checkSurrenderResolved(room, team);
       break;
     }
 
@@ -427,6 +486,7 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
     teams: { A: [], B: [] },
     teamTrophies: { A: 0, B: 0 },
     rotationQueues: { A: [], B: [] },
+    roundPairQueues: { A: [], B: [] },
     activeRoundPlayers: [],
     usedThisCycle: { A: [], B: [] },
     roundNumber: 0,
@@ -440,7 +500,15 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
     matchmakingTimer: null,
     matchmakingCountdownInterval: null,
     matchmakingFillSecondsLeft: 0,
+    surrenderVotes: { A: null, B: null },
+    surrenderDeclines: { A: null, B: null },
+    surrenderTimers: { A: null, B: null },
+    disconnectTimers: {},
   };
+}
+
+function dataToken() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 // ----------------------------------------------------------------
@@ -458,6 +526,7 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
 
   const player = {
     id: ws.id,
+    reconnectToken: dataToken(),
     name: name || "Friend",
     kind: kind || "hachiware",
     ready: false,
@@ -471,6 +540,7 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
     range: 2,
     cooldown: 0,
     trophies: 0,
+    disconnected: false,
   };
 
   room.players.push(player);
@@ -485,7 +555,7 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
 
   ws.send(JSON.stringify({
     type: "room_joined",
-    data: { roomCode: room.code, playerId: ws.id },
+    data: { roomCode: room.code, playerId: ws.id, reconnectToken: player.reconnectToken },
   }));
 
   broadcastLobbyUpdate(room);
@@ -549,12 +619,27 @@ function removePlayerFromTeams(room, playerId) {
 }
 
 function resetRotationQueues(room) {
-  // Shuffle each team's player order for rotation
   room.rotationQueues = {
     A: shuffleArray([...room.teams.A]),
     B: shuffleArray([...room.teams.B])
   };
+  room.roundPairQueues = {
+    A: buildPairQueue(room.teams.A),
+    B: buildPairQueue(room.teams.B),
+  };
   room.usedThisCycle = { A: [], B: [] };
+}
+
+function buildPairQueue(teamIds) {
+  const ids = shuffleArray([...teamIds]);
+  if (ids.length <= 2) return ids.length ? [ids] : [];
+  const pairs = [];
+  for (let i = 0; i < ids.length; i += 1) {
+    for (let j = i + 1; j < ids.length; j += 1) {
+      pairs.push([ids[i], ids[j]]);
+    }
+  }
+  return shuffleArray(pairs);
 }
 
 function shuffleArray(arr) {
@@ -569,11 +654,15 @@ function shuffleArray(arr) {
 // LEAVE ROOM
 // ----------------------------------------------------------------
 
-function leaveRoom(ws) {
+function leaveRoom(ws, intentional = false) {
   if (!ws.roomCode) return;
   const room = rooms.get(ws.roomCode);
   if (!room) return;
 
+  if (room.disconnectTimers?.[ws.id]) {
+    clearTimeout(room.disconnectTimers[ws.id]);
+    delete room.disconnectTimers[ws.id];
+  }
   room.players = room.players.filter((p) => p.id !== ws.id);
   // Remove from team arrays
   removePlayerFromTeams(room, ws.id);
@@ -602,6 +691,29 @@ function leaveRoom(ws) {
   ws.roomCode = null;
 }
 
+function markPlayerDisconnected(ws) {
+  if (!ws.roomCode) return;
+  const room = rooms.get(ws.roomCode);
+  if (!room) return;
+  const player = room.players.find((p) => p.id === ws.id);
+  if (!player) return;
+
+  player.disconnected = true;
+  player.dx = 0;
+  player.dy = 0;
+  if (room.disconnectTimers?.[player.id]) clearTimeout(room.disconnectTimers[player.id]);
+  room.disconnectTimers[player.id] = setTimeout(() => {
+    if (!rooms.has(room.code) || !player.disconnected) return;
+    if (room.state === "playing" || room.state === "round_over" || room.state === "final_vote") {
+      delete room.disconnectTimers[player.id];
+      return;
+    }
+    const fakeSocket = { id: player.id, roomCode: room.code };
+    leaveRoom(fakeSocket, true);
+  }, RECONNECT_GRACE_MS);
+  broadcastLobbyUpdate(room);
+}
+
 function destroyRoom(room) {
   if (room.tickInterval) clearInterval(room.tickInterval);
   if (room.nextRoundTimeout) clearTimeout(room.nextRoundTimeout);
@@ -609,6 +721,8 @@ function destroyRoom(room) {
   if (room.matchmakingCountdownInterval) clearInterval(room.matchmakingCountdownInterval);
   if (room.voteTimer) clearTimeout(room.voteTimer);
   if (room.voteCountdownInterval) clearInterval(room.voteCountdownInterval);
+  Object.values(room.surrenderTimers || {}).forEach((timer) => { if (timer) clearTimeout(timer); });
+  Object.values(room.disconnectTimers || {}).forEach((timer) => { if (timer) clearTimeout(timer); });
   rooms.delete(room.code);
   console.log(`Room ${room.code} destroyed`);
 }
@@ -640,6 +754,128 @@ function broadcastToRoom(room, msg) {
       client.send(payload);
     }
   });
+}
+
+function sendRoomStateToClient(ws, room) {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  if (room.state === "playing") {
+    ws.send(JSON.stringify({
+      type: "game_started",
+      data: {
+        map: room.map,
+        players: room.players,
+        bombs: room.bombs,
+        pickups: room.pickups,
+        roundTime: room.roundTime,
+        mapType: room.currentMapType || "classic",
+        mode: room.mode,
+        teams: room.teams,
+        teamTrophies: room.teamTrophies,
+        activeRoundPlayers: room.activeRoundPlayers,
+        roundNumber: room.roundNumber,
+        isFinalRound: room.finalRoundActive,
+        reconnected: true,
+      },
+    }));
+  } else if (room.state === "final_vote") {
+    ws.send(JSON.stringify({
+      type: "final_vote_started",
+      data: {
+        teams: room.teams,
+        players: room.players,
+        teamTrophies: room.teamTrophies,
+        secondsLeft: FINAL_VOTE_SECONDS,
+      },
+    }));
+  } else {
+    broadcastLobbyUpdate(room);
+  }
+}
+
+function getPlayerTeam(room, playerId) {
+  if ((room.teams.A || []).includes(playerId)) return "A";
+  if ((room.teams.B || []).includes(playerId)) return "B";
+  return null;
+}
+
+function resetSurrenderVotes(room) {
+  Object.values(room.surrenderTimers || {}).forEach((timer) => { if (timer) clearTimeout(timer); });
+  room.surrenderVotes = { A: null, B: null };
+  room.surrenderDeclines = { A: null, B: null };
+  room.surrenderTimers = { A: null, B: null };
+}
+
+function startOrUpdateSurrenderVote(room, team, playerId) {
+  if (!room.surrenderVotes[team]) {
+    room.surrenderVotes[team] = new Set();
+    room.surrenderDeclines[team] = new Set();
+    if (room.surrenderTimers[team]) clearTimeout(room.surrenderTimers[team]);
+    room.surrenderTimers[team] = setTimeout(() => {
+      if (room.surrenderVotes[team]) {
+        room.surrenderVotes[team] = null;
+        room.surrenderDeclines[team] = null;
+        broadcastToRoom(room, { type: "surrender_cancelled", data: { team } });
+      }
+    }, 15000);
+  }
+  room.surrenderVotes[team].add(playerId);
+  broadcastSurrenderUpdate(room, team);
+  checkSurrenderResolved(room, team);
+}
+
+function broadcastSurrenderUpdate(room, team) {
+  const yesVotes = room.surrenderVotes[team] ? room.surrenderVotes[team].size : 0;
+  const noVotes = room.surrenderDeclines[team] ? room.surrenderDeclines[team].size : 0;
+  const threshold = Math.min(SURRENDER_THRESHOLD, room.teams[team]?.length || SURRENDER_THRESHOLD);
+  broadcastToRoom(room, {
+    type: "surrender_vote_updated",
+    data: { team, yesVotes, noVotes, threshold },
+  });
+}
+
+function checkSurrenderResolved(room, team) {
+  if (!room.surrenderVotes[team]) return;
+  const threshold = Math.min(SURRENDER_THRESHOLD, room.teams[team]?.length || SURRENDER_THRESHOLD);
+  if (room.surrenderVotes[team].size < threshold) return;
+
+  if (room.surrenderTimers[team]) {
+    clearTimeout(room.surrenderTimers[team]);
+    room.surrenderTimers[team] = null;
+  }
+  room.surrenderVotes[team] = null;
+  room.surrenderDeclines[team] = null;
+  const winnerTeam = team === "A" ? "B" : "A";
+  const winnerId = (room.teams[winnerTeam] || []).find(id => room.players.find(p => p.id === id)) || null;
+  endMatchBySurrender(room, winnerTeam, winnerId);
+}
+
+function endMatchBySurrender(room, winnerTeam, winnerId) {
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  if (room.nextRoundTimeout) { clearTimeout(room.nextRoundTimeout); room.nextRoundTimeout = null; }
+  room.state = "lobby";
+  room.finalRoundActive = false;
+  room.finalVoteActive = false;
+  room.activeRoundPlayers = [];
+  room.players.forEach((p) => {
+    p.ready = p.ai;
+    p.alive = true;
+    p.dx = 0;
+    p.dy = 0;
+  });
+  broadcastToRoom(room, {
+    type: "game_over",
+    data: {
+      message: `Team ${winnerTeam} wins by surrender!`,
+      players: room.players,
+      tournamentFinished: true,
+      winnerId,
+      winnerTeam,
+      teamTrophies: room.teamTrophies,
+      teams: room.teams,
+      surrendered: true,
+    },
+  });
+  broadcastLobbyUpdate(room);
 }
 
 // ----------------------------------------------------------------
@@ -1103,6 +1339,7 @@ function startFinalRound(room, championAId, championBId) {
 // ----------------------------------------------------------------
 
 function startRound(room, isNewTournament) {
+  resetSurrenderVotes(room);
   if (isNewTournament) {
     // Determine winning map from votes
     const votes = { classic: 0, checkered: 0, colosseum: 0 };
@@ -1124,24 +1361,15 @@ function startRound(room, isNewTournament) {
 
   // --- Pick active round players in team mode ---
   if (room.mode === "team" && !room._isFinalRound) {
-    const pickNextMany = (team, count) => {
-      const picked = [];
-      if (room.rotationQueues[team].length === 0) {
-        room.rotationQueues[team] = shuffleArray([...room.teams[team]]);
+    const pickPair = (team) => {
+      if (!room.roundPairQueues[team] || room.roundPairQueues[team].length === 0) {
+        room.roundPairQueues[team] = buildPairQueue(room.teams[team]);
       }
-      while (picked.length < count && room.rotationQueues[team].length > 0) {
-        const nextId = room.rotationQueues[team].shift();
-        if (nextId && !picked.includes(nextId)) picked.push(nextId);
-      }
-      if (picked.length < count) {
-        const fill = shuffleArray([...room.teams[team]].filter(id => !picked.includes(id)));
-        while (picked.length < count && fill.length > 0) picked.push(fill.shift());
-      }
-      return picked;
+      return (room.roundPairQueues[team].shift() || []).filter(id => room.teams[team].includes(id));
     };
     room.activeRoundPlayers = [
-      ...pickNextMany("A", Math.min(2, room.teams.A.length)),
-      ...pickNextMany("B", Math.min(2, room.teams.B.length)),
+      ...pickPair("A"),
+      ...pickPair("B"),
     ];
   }
   room._isFinalRound = false;

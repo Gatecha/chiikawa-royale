@@ -43,7 +43,7 @@ body {
   color: var(--ink);
   font-family: var(--font);
   background: #fdf1b9; /* Soft cream background */
-  overflow: hidden;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -109,8 +109,8 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0;
-  max-width: none;
+  padding: 24px;
+  max-width: 1360px;
   margin: 0 auto;
   width: 100%;
 }
@@ -119,7 +119,6 @@ body {
 .screen {
   display: none;
   width: 100%;
-  min-height: 100vh;
   animation: fadeIn 240ms ease-out forwards;
 }
 
@@ -157,28 +156,7 @@ body {
   user-select: none;
 }
 
-#menuScreen .yellow-console {
-  width: 100vw;
-  max-width: none;
-  height: 100vh;
-  min-height: 0;
-  aspect-ratio: auto;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
 
-#menuScreen .console-tabs {
-  display: none;
-}
-
-#menuScreen .console-title.normal-header-only {
-  display: none;
-}
-
-#menuScreen .lobby-back-btn {
-  display: none;
-}
 
 /* Console Header */
 .console-header {
@@ -1890,7 +1868,7 @@ input[type="text"]:focus {
 
 /* Dead State */
 .hud-player-card.dead {
-  opacity: 0.4;
+  opacity: 1;
 }
 
 .hud-player-card.dead .hud-avatar-box {

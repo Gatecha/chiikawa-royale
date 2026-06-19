@@ -155,7 +155,7 @@
 
       <!-- 1. MAIN LOBBY SCREEN (NEW - matches user screenshot) -->
       <section id="menuScreen" class="screen">
-        <div class="yellow-console squad-lobby-active">
+        <div class="yellow-console">
           <!-- Top Navigation Header -->
           <header class="console-header">
             <!-- Normal Header Elements -->
@@ -178,7 +178,7 @@
             <!-- Tabs (Normal Header only) -->
             <nav class="console-tabs normal-header-only">
               <span class="controller-key">LB</span>
-              <button class="tab-btn tab-play" data-tab="play" type="button" aria-label="Play">
+              <button class="tab-btn active tab-play" data-tab="play" type="button" aria-label="Play">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z" fill="white"/></svg>
                 </span>
@@ -190,7 +190,7 @@
                   </svg>
                 </span>
               </button>
-              <button class="tab-btn active tab-squad" data-tab="squad" type="button" aria-label="Squad">
+              <button class="tab-btn tab-squad" data-tab="squad" type="button" aria-label="Squad">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="4" y1="12" x2="20" y2="12"/>
@@ -249,7 +249,7 @@
           <!-- Main Content Area -->
           <div class="console-body">
             <!-- PLAY TAB CONTENT -->
-            <div class="tab-content" id="tabContent_play">
+            <div class="tab-content active" id="tabContent_play">
               <div class="left-column">
                 <img class="lobby-logo" src="chiikawa-royale-logo.png" alt="Chiikawa Royale" />
                 
@@ -402,7 +402,7 @@
             </div>
 
             <!-- SQUAD TAB CONTENT (Lobby interface matching mockup) -->
-            <div class="tab-content active" id="tabContent_squad">
+            <div class="tab-content" id="tabContent_squad">
               <div class="squad-lobby-container">
                 <!-- Animating swirly background layer -->
                 <div class="squad-lobby-bg-swirls" aria-hidden="true"></div>
@@ -601,10 +601,23 @@
                     <div class="slot-status-text">SEARCHING...</div>
                   </div>
                 </div>
+
+                <div class="matchmaking-card empty-slot" id="matchmakerSlot_5">
+                  <div class="card-inner">
+                    <div class="searching-pulse"></div>
+                    <div class="slot-status-text">SEARCHING...</div>
+                  </div>
+                </div>
+
+                <div class="matchmaking-card empty-slot" id="matchmakerSlot_6">
+                  <div class="card-inner">
+                    <div class="searching-pulse"></div>
+                    <div class="slot-status-text">SEARCHING...</div>
+                  </div>
+                </div>
               </div>
 
               <div class="matchmaking-actions" style="display: flex; gap: 15px;">
-                <button id="startMatchEarlyBtn" class="btn-start-match-early hidden" type="button">START</button>
                 <button id="cancelMatchmakingBtn" class="btn-cancel-matchmaking" type="button">CANCEL</button>
               </div>
             </div>
@@ -896,7 +909,7 @@
               <!-- Dynamically filled with player status cards (bombs, range, speed, alive) -->
             </div>
 
-            <button id="leaveGameBtn" class="btn btn-sm btn-danger" type="button"><span>Exit Match</span></button>
+            <button id="leaveGameBtn" class="btn btn-sm btn-danger" type="button"><span>Surrender</span></button>
           </aside>
 
           <!-- Center: Gameplay Canvas -->
@@ -941,6 +954,17 @@
           </div>
         </div>
       </section>
+
+      <div id="surrenderVotePopup" class="dialog-overlay hidden">
+        <div class="surrender-vote-box">
+          <h2>Do you want to surrender?</h2>
+          <p id="surrenderVoteStatus">Waiting for team votes...</p>
+          <div class="surrender-vote-actions">
+            <button id="surrenderYesBtn" class="btn btn-danger" type="button">Yes</button>
+            <button id="surrenderNoBtn" class="btn btn-secondary" type="button">No</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- 4. TOURNAMENT RESULTS OVERLAY -->
