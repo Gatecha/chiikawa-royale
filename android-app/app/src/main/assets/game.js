@@ -249,10 +249,10 @@ const starts = [
 ];
 
 const powerZoneStarts = [
-  { x: 1, y: 1 },
-  { x: 1, y: ROWS - 2 },
-  { x: 3, y: 1 },
-  { x: 3, y: ROWS - 2 },
+  { x: 3, y: 3 },
+  { x: COLS - 4, y: ROWS - 4 },
+  { x: COLS - 4, y: 3 },
+  { x: 3, y: ROWS - 4 },
 ];
 
 // Character styles
@@ -1838,8 +1838,8 @@ function buildLocalMap(mapType = "classic") {
       if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) return "wall";
       
       if (mapType === "powerzone") {
-        if (x >= COLS - 3) return "grass";
-        if (x % 2 === 0 && y % 2 === 0 && x <= COLS - 5) return "wall";
+        if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
+        if (x % 2 === 0 && y % 2 === 0) return "wall";
         return Math.random() < 0.72 ? "crate" : "grass";
       } else if (mapType === "colosseum") {
         // Open center, only corner pillars
@@ -1876,33 +1876,25 @@ function getStartsForMap(mapType = currentMapType) {
 }
 
 function getPowerZonePickupType(x, y) {
-  if (x === COLS - 2) {
-    if (y === 1 || y === ROWS - 2) return "bomb";
-    if (y === 2 || y === ROWS - 3) return "flame";
-    if (y === 3 || y === ROWS - 4) return "speed";
-    if (y === 4 || y === ROWS - 5) return "slide";
-    if (y === 5 || y === ROWS - 6) return "punch";
-    if (y === 6) return "full_fire";
-    return "bomb";
-  }
-  if (x === COLS - 3) {
-    if (y === 1 || y === ROWS - 2) return "speed";
-    if (y === 2 || y === ROWS - 3) return "bomb";
-    if (y === 3 || y === ROWS - 4) return "flame";
-    if (y === 4 || y === ROWS - 5) return "punch";
-    if (y === 5 || y === ROWS - 6) return "slide";
-    if (y === 6) return "full_fire";
-  }
-  return "flame";
+  const types = ["bomb", "flame", "speed", "full_fire", "punch", "slide"];
+  let perimeterIndex = 0;
+  if (y === 1) perimeterIndex = x - 1;
+  else if (x === COLS - 2) perimeterIndex = (COLS - 2) + (y - 2);
+  else if (y === ROWS - 2) perimeterIndex = (COLS - 2) + (ROWS - 3) + (COLS - 2 - x);
+  else perimeterIndex = (COLS - 2) * 2 + (ROWS - 3) + (ROWS - 2 - y);
+  return types[((perimeterIndex % types.length) + types.length) % types.length];
 }
 
 function seedLocalPowerZonePickups() {
   if (currentMapType !== "powerzone") return;
+  for (let x = 1; x <= COLS - 2; x += 1) {
+    pickups.push({ x, y: 1, type: getPowerZonePickupType(x, 1) });
+    pickups.push({ x, y: ROWS - 2, type: getPowerZonePickupType(x, ROWS - 2) });
+  }
   for (let y = 1; y <= ROWS - 2; y += 1) {
+    if (y === 1 || y === ROWS - 2) continue;
+    pickups.push({ x: 1, y, type: getPowerZonePickupType(1, y) });
     pickups.push({ x: COLS - 2, y, type: getPowerZonePickupType(COLS - 2, y) });
-    if (y % 2 === 1) {
-      pickups.push({ x: COLS - 3, y, type: getPowerZonePickupType(COLS - 3, y) });
-    }
   }
 }
 
@@ -3095,7 +3087,7 @@ function drawMiniMapPreview(canvas, mapType) {
           drawWall = true;
         }
       } else if (mapType === "powerzone") {
-        if (x % 2 === 0 && y % 2 === 0 && x <= cols - 5) {
+        if (x % 2 === 0 && y % 2 === 0) {
           drawWall = true;
         }
       } else {
@@ -3125,11 +3117,11 @@ function drawMiniMapPreview(canvas, mapType) {
         // 3. Draw soft blocks (crates) / items / spawn areas
         let isCrate = false;
         if (mapType === "powerzone") {
-          const isPowerLane = x >= cols - 3;
+          const isPowerLane = x === 1 || y === 1 || x === cols - 2 || y === rows - 2;
           if (!isPowerLane) {
             if ((x * y + x + y) % 3 !== 0) isCrate = true;
           } else {
-            // Draw mini power-ups in the right-side power lane.
+            // Draw mini power-ups around the full perimeter power lane.
             let itemColor = null;
             if ((x + y) % 4 === 0) itemColor = "#ff7c55"; // Flame
             else if ((x + y) % 4 === 1) itemColor = "#7466e8"; // Bomb
