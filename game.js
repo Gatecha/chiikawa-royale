@@ -845,14 +845,16 @@ function handleServerMessage(msg) {
       refreshSocialData();
       
       if (lobbyRoomCode) lobbyRoomCode.textContent = roomCode;
-      gameRoomCode.textContent = roomCode;
-      chatMessages.innerHTML = ""; // Clear chat
+      if (gameRoomCode) gameRoomCode.textContent = roomCode;
+      if (chatMessages) chatMessages.innerHTML = ""; // Clear chat
       addChatMessage("System", `Joined Room ${roomCode}!`, true);
       
       readyState = false;
-      readyBtn.textContent = "Ready Up!";
-      readyBtn.classList.remove("btn-primary");
-      readyBtn.classList.add("btn-accent");
+      if (readyBtn) {
+        readyBtn.textContent = "Ready Up!";
+        readyBtn.classList.remove("btn-primary");
+        readyBtn.classList.add("btn-accent");
+      }
 
       if (playerUuidLabel) {
         playerUuidLabel.textContent = localPlayerId;
@@ -1229,7 +1231,7 @@ function startLocalGame() {
   gameMessage = "";
   timerEl.textContent = formatTime(roundTime);
   stateEl.textContent = "Battle!";
-  gameRoomCode.textContent = roomCode;
+  if (gameRoomCode) gameRoomCode.textContent = roomCode;
   updateHudSidebar();
   switchScreen(gameScreen);
 }
@@ -1305,16 +1307,22 @@ function buildLocalMap(mapType = "classic") {
 }
 
 function updateLobbyUI() {
+  if (!lobbyPlayersList) {
+    syncSquadLobbyInterface();
+    return;
+  }
+
   lobbyPlayersList.innerHTML = "";
   const isHost = localPlayerId === hostId;
   const isTeamMode = currentRoomMode === "team";
 
   if (isHost) {
+    if (!addBotBtn || !startGameBtn) return;
     addBotBtn.classList.remove("hidden");
     startGameBtn.classList.remove("hidden");
   } else {
-    addBotBtn.classList.add("hidden");
-    startGameBtn.classList.add("hidden");
+    addBotBtn?.classList.add("hidden");
+    startGameBtn?.classList.add("hidden");
   }
 
   // In team mode, insert Team A / Team B dividers
