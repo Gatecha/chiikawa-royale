@@ -3110,7 +3110,7 @@ function loop(now) {
     drawCharacterCardPreviews();
     drawCardAvatars();
   }
-  if (lobbyScreen.classList.contains("active")) {
+  if (lobbyScreen && lobbyScreen.classList.contains("active")) {
     drawLobbyAvatars();
   }
 
