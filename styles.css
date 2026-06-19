@@ -2209,6 +2209,7 @@ canvas#game {
     height: 240px;
     border: 3.5px solid #000;
     border-radius: 16px;
+    aspect-ratio: auto;
   }
   .lobby-card.card-yellow {
     box-shadow: 
@@ -2438,6 +2439,7 @@ canvas#game {
   justify-content: space-between;
   padding: 22px 24px;
   box-sizing: border-box;
+  container-type: size;
 }
 
 /* Dynamic animating background overlay layers */
@@ -2496,8 +2498,8 @@ canvas#game {
 }
 
 .lobby-card {
-  width: clamp(210px, 15vw, 292px);
-  height: clamp(360px, 26vw, 504px);
+  height: clamp(260px, 70cqh, 380px);
+  aspect-ratio: 0.58;
   border: 6px solid #000;
   border-radius: 24px;
   position: relative;
