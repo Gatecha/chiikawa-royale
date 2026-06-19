@@ -174,8 +174,6 @@ const emoteAngryBtn = document.getElementById("emoteAngryBtn");
 const emoteShockBtn = document.getElementById("emoteShockBtn");
 const emoteYayBtn = document.getElementById("emoteYayBtn");
 
-// PWA Install Button
-const installBtn = document.getElementById("installBtn");
 
 // Spotlight canvas in lobby
 const spotlightCanvas = document.getElementById("spotlightCanvas");
@@ -672,26 +670,6 @@ wardrobeTabs.forEach((tab) => {
   });
 });
 
-// PWA Installation handling
-let deferredPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  installBtn.classList.remove("hidden");
-});
-
-installBtn.addEventListener("click", () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === "accepted") {
-        console.log("User accepted the install prompt");
-      }
-      deferredPrompt = null;
-      installBtn.classList.add("hidden");
-    });
-  }
-});
 
 // ----------------------------------------------------------------
 // NETWORK SOCKET HANDLING (WITH SAFE FILE:// FALLBACKS)
