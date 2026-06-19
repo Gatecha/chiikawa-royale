@@ -838,10 +838,12 @@ function handleServerMessage(msg) {
       localMode = false;
       
       // Close matchmaking dialog
-      matchmakingDialog.classList.add("hidden");
+      matchmakingDialog?.classList.add("hidden");
       
       switchScreen(menuScreen);
-      document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+      if (!isOnlineMatchmakingActive) {
+        document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+      }
       refreshSocialData();
       
       if (lobbyRoomCode) lobbyRoomCode.textContent = roomCode;
@@ -871,7 +873,11 @@ function handleServerMessage(msg) {
       updateLobbyUI();
 
       if (socket && socket.readyState === WebSocket.OPEN) {
-        if (!data.isPrivate && data.state === "lobby") {
+        if (isOnlineMatchmakingActive && data.state === "lobby") {
+          showOnlineMatchmakingSearch();
+          startOnlineMatchmakingTimer();
+          updateOnlineMatchmakingPopup();
+        } else if (!data.isPrivate && data.state === "lobby") {
           startOnlineMatchmakingTimer();
           updateOnlineMatchmakingPopup();
         } else {
@@ -912,6 +918,7 @@ function handleServerMessage(msg) {
       particles = [];
       roundTime = typeof data.roundTime === "number" ? data.roundTime : roundTime;
       running = true;
+      isOnlineMatchmakingActive = false;
       shakeTimer = 0;
       gameMessage = "";
 
@@ -3783,6 +3790,7 @@ function startMatchmakingSearch() {
 function showOnlineMatchmakingSearch() {
   if (!matchmakingPopup) return;
 
+  isOnlineMatchmakingActive = true;
   matchmakingDialog?.classList.add("hidden");
   clearInterval(matchmakingTimerInterval);
   matchmakingTimeouts.forEach(clearTimeout);
@@ -3790,7 +3798,7 @@ function showOnlineMatchmakingSearch() {
 
   matchmakingPopup.classList.remove("hidden");
   matchmakingPopup.classList.add("active");
-  if (matchmakingTimer) matchmakingTimer.textContent = "00:00";
+  if (matchmakingTimer && !onlineMatchmakingInterval) matchmakingTimer.textContent = "00:00";
   const titleEl = matchmakingPopup.querySelector(".matchmaking-title");
   if (titleEl) titleEl.textContent = "MATCHMAKING...";
   if (cancelMatchmakingBtn) {
@@ -3843,6 +3851,7 @@ function revealMatchedBot(slotNum, charKind, botName) {
 }
 
 let onlineMatchmakingInterval = null;
+let isOnlineMatchmakingActive = false;
 
 function startOnlineMatchmakingTimer() {
   if (onlineMatchmakingInterval) return;
@@ -3945,6 +3954,7 @@ function updateOnlineMatchmakingPopup() {
 }
 
 function cancelMatchmaking() {
+  isOnlineMatchmakingActive = false;
   if (socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("cancel_matchmaking");
     sendServerMessage("leave_room");
