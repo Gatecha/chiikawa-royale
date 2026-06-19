@@ -414,9 +414,10 @@
                    <!-- Card 2: User Center -->
                     <div class="lobby-card card-pink" id="squadCard_user">
                       <div class="card-inner-skew">
-                        <!-- Image Container for sliding animation -->
+                        <!-- Animated selected character preview -->
                         <div class="squad-card-image-container">
-                          <img id="squadLobbyCharImg" src="assets/cards/usagi.png" alt="Character Art" />
+                          <video id="squadLobbyVideo" src="assets/chiikawa/chiikawa_character_animation.mp4" muted loop playsinline preload="auto"></video>
+                          <canvas id="squadLobbyCanvas" width="420" height="520" aria-label="Selected character preview"></canvas>
                         </div>
 
                         <div class="card-footer-bar">
@@ -703,15 +704,14 @@
           </div>
         </div>
 
-        <!-- Mobile Fullscreen Reminder Dialog -->
+        <!-- Mobile/Tablet Fullscreen Reminder Dialog -->
         <div id="mobileFullscreenReminder" class="dialog-overlay hidden">
           <div class="card glass dialog-card" style="padding: 24px; text-align: center; max-width: 380px;">
             <div style="font-size: 48px; margin-bottom: 12px;">📱</div>
-            <h2 style="font-family: var(--font); color: var(--yellow); margin-bottom: 10px; font-size: 20px;">FULLSCREEN REMINDER</h2>
-            <p style="font-family: var(--font-clean); color: #fff; font-size: 15px; margin-bottom: 24px; line-height: 1.5;">This game is better in fullscreen. Would you like to fullscreen the app?</p>
+            <h2 style="font-family: var(--font); color: var(--yellow); margin-bottom: 10px; font-size: 20px;">FULLSCREEN REQUIRED</h2>
+            <p style="font-family: var(--font-clean); color: #fff; font-size: 15px; margin-bottom: 24px; line-height: 1.5;">This game is optimized for landscape fullscreen. Please enable fullscreen to play!</p>
             <div style="display: flex; gap: 16px; justify-content: center;">
-              <button id="btnMobileFullscreenYes" class="btn btn-primary" style="padding: 8px 20px;">Yes</button>
-              <button id="btnMobileFullscreenNo" class="btn btn-secondary" style="padding: 8px 20px;">No</button>
+              <button id="btnMobileFullscreenYes" class="btn btn-primary" style="padding: 8px 20px; width: 100%;">Go Fullscreen</button>
             </div>
           </div>
         </div>

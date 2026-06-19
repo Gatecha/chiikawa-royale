@@ -160,6 +160,7 @@ function handleMessage(ws, msg) {
       } else {
         room.isPrivate = false;
         scheduleMatchmakingFill(room);
+        broadcastLobbyUpdate(room);
       }
       break;
     }
@@ -667,6 +668,23 @@ function leaveRoom(ws, intentional = false) {
   if (!ws.roomCode) return;
   const room = rooms.get(ws.roomCode);
   if (!room) return;
+
+  if (intentional && room.state === "lobby" && room.hostId === ws.id) {
+    room.isPrivate = true;
+    room.matchmakingFillSecondsLeft = 0;
+    if (room.matchmakingTimer) {
+      clearTimeout(room.matchmakingTimer);
+      room.matchmakingTimer = null;
+    }
+    if (room.matchmakingCountdownInterval) {
+      clearInterval(room.matchmakingCountdownInterval);
+      room.matchmakingCountdownInterval = null;
+    }
+    broadcastToRoom(room, {
+      type: "matchmaking_countdown",
+      data: { secondsLeft: 0 }
+    });
+  }
 
   if (room.disconnectTimers?.[ws.id]) {
     clearTimeout(room.disconnectTimers[ws.id]);

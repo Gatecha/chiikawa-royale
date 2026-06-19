@@ -203,6 +203,8 @@ body {
   display: flex;
   gap: 10px;
   justify-self: end;
+  align-items: center;
+  min-width: 0;
 }
 
 .stat-badge {
@@ -2046,19 +2048,53 @@ canvas#game {
     aspect-ratio: auto;
   }
   .console-header {
-    height: auto;
-    min-height: 52px;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 10px;
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 0 8px;
+    overflow: hidden;
+    flex-shrink: 0;
   }
   .console-tabs {
     justify-content: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+  }
+  .console-tabs .tab-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    flex-shrink: 0;
   }
   .console-stats {
-    justify-content: center;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+  .stat-badge {
+    height: 30px;
+    padding: 4px 8px;
+    gap: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .stat-badge strong {
+    display: none;
+  }
+  .header-fullscreen-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    margin-left: 0;
+    margin-right: 0;
   }
   #tabContent_play {
     grid-template-columns: 1fr;
@@ -2083,6 +2119,64 @@ canvas#game {
   .right-column {
     justify-content: center;
     padding-bottom: 22px;
+  }
+}
+
+@media (max-width: 720px), (max-height: 520px) and (pointer: coarse) {
+  .console-header {
+    height: max(44px, calc(40px + env(safe-area-inset-top, 0px)));
+    min-height: max(44px, calc(40px + env(safe-area-inset-top, 0px)));
+    padding: env(safe-area-inset-top, 0px) max(6px, env(safe-area-inset-right, 0px)) 0 max(6px, env(safe-area-inset-left, 0px));
+    gap: 4px;
+  }
+  .console-title {
+    display: none;
+  }
+  .controller-key {
+    display: none;
+  }
+  .console-tabs {
+    gap: 4px;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+  .console-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .console-tabs .tab-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-width: 2px;
+    border-radius: 7px;
+  }
+  .tab-btn.active {
+    transform: none;
+  }
+  .tab-icon,
+  .svg-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .console-stats {
+    gap: 4px;
+  }
+  .stat-badge {
+    height: 28px;
+    min-width: 42px;
+    padding: 3px 6px;
+    font-size: 11px;
+    border-radius: 14px;
+  }
+  .svg-stat-icon {
+    width: 12px;
+    height: 12px;
+  }
+  .header-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
   }
 }
 
@@ -3606,14 +3700,18 @@ canvas#game {
   transform: skewX(-13deg); /* Make the character box slanted parallel to card */
 }
 
-#squadLobbyCharImg {
+#squadLobbyVideo {
+  display: none;
+}
+
+#squadLobbyCanvas {
   position: absolute;
-  bottom: -2px; /* Sit right at the bottom of the black box */
+  bottom: -2px;
   left: 50%;
-  transform: skewX(13deg) translate(-50%, 0); /* Un-slant and keep the full art centered */
+  transform: skewX(13deg) translate(-50%, 0);
   transform-origin: bottom center;
-  width: auto;
-  height: 96%;
+  width: 118%;
+  height: 112%;
   object-fit: contain;
   transition: transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.22s ease;
   pointer-events: none;

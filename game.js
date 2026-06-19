@@ -182,6 +182,9 @@ const spotlightVideo = document.getElementById("spotlightVideo");
 const characterSelectVideo = document.getElementById("characterSelectVideo");
 const characterSelectCanvas = document.getElementById("characterSelectCanvas");
 const characterSelectCtx = characterSelectCanvas ? characterSelectCanvas.getContext("2d") : null;
+const squadLobbyVideo = document.getElementById("squadLobbyVideo");
+const squadLobbyCanvas = document.getElementById("squadLobbyCanvas");
+const squadLobbyCtx = squadLobbyCanvas ? squadLobbyCanvas.getContext("2d") : null;
 const characterSelectName = document.getElementById("characterSelectName");
 const characterSelectState = document.getElementById("characterSelectState");
 const confirmCharacterBtn = document.getElementById("confirmCharacterBtn");
@@ -226,13 +229,17 @@ const hachiwareImages = {
   walk_front1: new Image(),
   walk_front2: new Image(),
   walk_back1: new Image(),
-  walk_back2: new Image()
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
 };
 hachiwareImages.idle.src = "assets/hachiware/hachiware_idle.png";
 hachiwareImages.walk_front1.src = "assets/hachiware/hachiware_walk_front1.png";
 hachiwareImages.walk_front2.src = "assets/hachiware/hachiware_walk_front2.png";
 hachiwareImages.walk_back1.src = "assets/hachiware/hachiware_walk_back1.png";
 hachiwareImages.walk_back2.src = "assets/hachiware/hachiware_walk_back2.png";
+hachiwareImages.walk_side1.src = "assets/hachiware/hachiware_walk_side1.png";
+hachiwareImages.walk_side2.src = "assets/hachiware/hachiware_walk_side2.png";
 
 // Load Usagi Images
 const usagiImages = {
@@ -240,13 +247,17 @@ const usagiImages = {
   walk_front1: new Image(),
   walk_front2: new Image(),
   walk_back1: new Image(),
-  walk_back2: new Image()
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
 };
 usagiImages.idle.src = "assets/usagi/usagi_idle.png";
 usagiImages.walk_front1.src = "assets/usagi/usagi_walk_front1.png";
 usagiImages.walk_front2.src = "assets/usagi/usagi_walk_front2.png";
 usagiImages.walk_back1.src = "assets/usagi/usagi_walk_back1.png";
 usagiImages.walk_back2.src = "assets/usagi/usagi_walk_back2.png";
+usagiImages.walk_side1.src = "assets/usagi/usagi_walk_side1.png";
+usagiImages.walk_side2.src = "assets/usagi/usagi_walk_side2.png";
 
 // Load Chiikawa Images
 const chiikawaImages = {
@@ -254,13 +265,17 @@ const chiikawaImages = {
   walk_front1: new Image(),
   walk_front2: new Image(),
   walk_back1: new Image(),
-  walk_back2: new Image()
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
 };
 chiikawaImages.idle.src = "assets/chiikawa/chiikawa_idle.png";
 chiikawaImages.walk_front1.src = "assets/chiikawa/chiikawa_walk_front1.png";
 chiikawaImages.walk_front2.src = "assets/chiikawa/chiikawa_walk_front2.png";
 chiikawaImages.walk_back1.src = "assets/chiikawa/chiikawa_walk_back1.png";
 chiikawaImages.walk_back2.src = "assets/chiikawa/chiikawa_walk_back2.png";
+chiikawaImages.walk_side1.src = "assets/chiikawa/chiikawa_walk_side1.png";
+chiikawaImages.walk_side2.src = "assets/chiikawa/chiikawa_walk_sid2.png";
 
 // Load Momonga Images
 const momongaImages = {
@@ -268,13 +283,17 @@ const momongaImages = {
   walk_front1: new Image(),
   walk_front2: new Image(),
   walk_back1: new Image(),
-  walk_back2: new Image()
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
 };
 momongaImages.idle.src = "assets/momonga/momonga_idle.png";
 momongaImages.walk_front1.src = "assets/momonga/momonga_walk_front1.png";
 momongaImages.walk_front2.src = "assets/momonga/momonga_walk_front2.png";
 momongaImages.walk_back1.src = "assets/momonga/momonga_walk_back1.png";
 momongaImages.walk_back2.src = "assets/momonga/momonga_walk_back2.png";
+momongaImages.walk_side1.src = "assets/momonga/momonga_walk_side1.png";
+momongaImages.walk_side2.src = "assets/momonga/momonga_walk_side2.png";
 
 
 // Emote symbols
@@ -631,10 +650,20 @@ function syncLobbySpotlightVideo(kind) {
   playMutedLoop(spotlightVideo);
 }
 
+function syncSquadLobbyVideo(kind) {
+  if (!squadLobbyVideo || !characterSelectVideos[kind]) return;
+  if (!squadLobbyVideo.src.endsWith(characterSelectVideos[kind])) {
+    squadLobbyVideo.src = characterSelectVideos[kind];
+    squadLobbyVideo.load();
+  }
+  playMutedLoop(squadLobbyVideo);
+}
+
 function confirmCharacterSelection() {
   selectedCharacter = previewCharacter;
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
+  syncSquadLobbyVideo(selectedCharacter);
   syncSquadLobbyInterface();
   if (socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("select_character", { kind: selectedCharacter });
@@ -644,6 +673,7 @@ function confirmCharacterSelection() {
 playMutedLoop(characterSelectVideo);
 syncCharacterSelectPreview(selectedCharacter);
 syncLobbySpotlightVideo(selectedCharacter);
+syncSquadLobbyVideo(selectedCharacter);
 syncSquadLobbyInterface();
 
 // Setup wardrobe character selection click handlers
@@ -2048,7 +2078,8 @@ function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0,
     
     // Check if we are drawing on the main game board canvas vs a UI canvas
     const isGameboard = (actx === ctx);
-    const isBackPose = (dy < 0);
+    const isBackPose = dy < 0 && Math.abs(dy) >= Math.abs(dx);
+    const isSidePose = Math.abs(dx) > Math.abs(dy);
     
     let size;
     if (isGameboard) {
@@ -2061,19 +2092,17 @@ function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0,
     if (isWalking) {
       // Walking animation
       let frame1, frame2;
-      if (isBackPose) {
+      if (isSidePose && spriteSet.walk_side1 && spriteSet.walk_side2) {
+        frame1 = spriteSet.walk_side1;
+        frame2 = spriteSet.walk_side2;
+      } else if (isBackPose) {
         // Walking UP (back) - keep at good size
         frame1 = spriteSet.walk_back1;
         frame2 = spriteSet.walk_back2;
       } else {
-        // Walking DOWN or SIDEWARDS (front) - make bigger
+        // Walking DOWN - make bigger
         frame1 = spriteSet.walk_front1;
         frame2 = spriteSet.walk_front2;
-        if (dx < 0) {
-          rotation = Math.PI / 2;
-        } else if (dx > 0) {
-          rotation = -Math.PI / 2;
-        }
       }
       
       // Time-based walking cycle for smooth constant leg-switch and bounce timing
@@ -2086,11 +2115,13 @@ function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0,
       const bobY = -bobFactor * 1.8; 
       const wiggleAngle = 0; 
       
-      if (rotation !== 0) {
-        actx.rotate(rotation);
-      }
       actx.translate(0, bobY);
       actx.rotate(wiggleAngle);
+      if (isSidePose && dx < 0) {
+        actx.scale(-1, 1);
+      } else if (rotation !== 0) {
+        actx.rotate(rotation);
+      }
       actx.scale(bounceScaleX, bounceScaleY);
       
     } else {
@@ -2820,6 +2851,23 @@ function drawCharacterSelectPreview() {
   removeGreenScreenFromCanvas(characterSelectCtx, width, height);
 }
 
+function drawSquadLobbyCharacter() {
+  if (!squadLobbyCtx || !squadLobbyCanvas || !squadLobbyVideo || squadLobbyVideo.readyState < 2) return;
+
+  const width = squadLobbyCanvas.width;
+  const height = squadLobbyCanvas.height;
+  squadLobbyCtx.clearRect(0, 0, width, height);
+
+  const scale = Math.min(width / squadLobbyVideo.videoWidth, height / squadLobbyVideo.videoHeight) * 1.62;
+  const drawW = squadLobbyVideo.videoWidth * scale;
+  const drawH = squadLobbyVideo.videoHeight * scale;
+  const drawX = (width - drawW) / 2;
+  const drawY = height - drawH * 0.95;
+
+  squadLobbyCtx.drawImage(squadLobbyVideo, drawX, drawY, drawW, drawH);
+  removeGreenScreenFromCanvas(squadLobbyCtx, width, height);
+}
+
 function drawCharacterCardPreviews() {
   characterCards.forEach((card) => {
     const video = card.querySelector("video");
@@ -3085,6 +3133,7 @@ function loop(now) {
   if (menuScreen.classList.contains("active")) {
     drawSpotlightCharacter();
     drawCharacterSelectPreview();
+    drawSquadLobbyCharacter();
     drawCharacterCardPreviews();
     drawCardAvatars();
   }
@@ -3172,23 +3221,10 @@ function changeSquadLobbyCharacter(direction) {
   previewCharacter = nextCharacter;
   selectedCharacter = nextCharacter;
 
-  // Trigger sliding animation & update image
-  const img = document.getElementById("squadLobbyCharImg");
-  if (img) {
-    // Add slide out class
-    img.className = direction === "next" ? "slide-out-left" : "slide-out-right";
-
-    setTimeout(() => {
-      // Update src to new character card image
-      img.src = `assets/cards/${nextCharacter}.png`;
-      // Run slide in animation
-      img.className = direction === "next" ? "slide-in-right" : "slide-in-left";
-    }, 120);
-  }
-
   // Update selection globally in the wardrobe too
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
+  syncSquadLobbyVideo(selectedCharacter);
   syncSquadLobbyInterface();
   if (socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("select_character", { kind: selectedCharacter });
@@ -3209,6 +3245,7 @@ function syncSquadLobbyInterface() {
   if (img && !img.src.endsWith(`/${selectedCharacter}.png`)) {
     img.src = `assets/cards/${selectedCharacter}.png`;
   }
+  syncSquadLobbyVideo(selectedCharacter);
 
   // Teammates-only filtering: must share the same squadCode and not be bots
   const localPlayer = players.find(p => p.id === localPlayerId);
@@ -3741,7 +3778,11 @@ function revealMatchedBot(slotNum, charKind, botName) {
 let onlineMatchmakingInterval = null;
 
 function startOnlineMatchmakingTimer() {
-  if (onlineMatchmakingInterval) return;
+  // Always clear previous interval before starting a new one
+  if (onlineMatchmakingInterval) {
+    clearInterval(onlineMatchmakingInterval);
+    onlineMatchmakingInterval = null;
+  }
   let elapsedSeconds = 0;
   if (matchmakingTimer) matchmakingTimer.textContent = "00:00";
   onlineMatchmakingInterval = setInterval(() => {
@@ -3843,7 +3884,13 @@ function updateOnlineMatchmakingPopup() {
 function cancelMatchmaking() {
   if (socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("cancel_matchmaking");
+    sendServerMessage("leave_room");
   }
+  // Reset local room state so the player fully leaves matchmaking
+  roomCode = null;
+  localPlayerId = null;
+  hostId = null;
+  players = [];
   stopOnlineMatchmakingTimer();
   if (matchmakingPopup) {
     matchmakingPopup.classList.remove("active");
@@ -4182,24 +4229,40 @@ function initTouchControls() {
   }
 }
 
-// Automatically enter fullscreen on first user touch/click for mobile devices
-function autoEnterFullscreen() {
-  if (document.fullscreenElement) return;
-  const appContainer = document.querySelector(".app-container") || document.documentElement;
-  const requestFS = appContainer.requestFullscreen || appContainer.webkitRequestFullscreen || appContainer.mozRequestFullScreen || appContainer.msRequestFullscreen;
+// Cross-browser safe fullscreen request helper
+function isFullscreenActive() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+}
+
+function getFullscreenTarget() {
+  return document.querySelector(".app-container") || document.documentElement;
+}
+
+function safeRequestFullscreen(el) {
+  const target = el || getFullscreenTarget();
+  const requestFS = target.requestFullscreen || target.webkitRequestFullscreen || target.mozRequestFullScreen || target.msRequestFullscreen;
   if (requestFS) {
-    requestFS.call(appContainer).then(() => {
+    const result = requestFS.call(target);
+    return Promise.resolve(result).then(() => {
       if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock("landscape").catch(() => {});
       }
-    }).catch(() => {});
+      return isFullscreenActive();
+    }).catch(() => false);
   }
+  return Promise.resolve(false);
+}
+
+// Automatically enter fullscreen on first user touch/click for mobile/tablet devices
+function autoEnterFullscreen() {
+  if (isFullscreenActive()) return;
+  safeRequestFullscreen();
   document.removeEventListener("touchstart", autoEnterFullscreen);
   document.removeEventListener("click", autoEnterFullscreen);
 }
 
-// Setup listeners for mobile auto fullscreen
-if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+// Setup listeners for mobile/tablet auto fullscreen
+if (/Mobi|Android|iPhone|iPad|Tablet/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth <= 1366)) {
   document.addEventListener("touchstart", autoEnterFullscreen, { once: true });
   document.addEventListener("click", autoEnterFullscreen, { once: true });
 }
@@ -4224,25 +4287,17 @@ if (window.location.protocol === "http:" || window.location.protocol === "https:
 const fullscreenToggleBtn = document.getElementById("fullscreenToggleBtn");
 if (fullscreenToggleBtn) {
   fullscreenToggleBtn.addEventListener("click", () => {
-    if (!document.fullscreenElement) {
-      const appContainer = document.querySelector(".app-container");
-      if (appContainer) {
-        appContainer.requestFullscreen().then(() => {
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock("landscape").catch((err) => {
-              console.log("Landscape lock not supported/allowed:", err);
-            });
-          }
-        }).catch((err) => {
-          console.warn(`Fullscreen error: ${err.message}`);
-        });
-      }
+    if (!isFullscreenActive()) {
+      safeRequestFullscreen();
     } else {
-      document.exitFullscreen().then(() => {
-        if (screen.orientation && screen.orientation.unlock) {
-          screen.orientation.unlock();
-        }
-      }).catch(() => {});
+      const exitFS = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exitFS) {
+        Promise.resolve(exitFS.call(document)).then(() => {
+          if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+          }
+        }).catch(() => {});
+      }
     }
   });
 }
@@ -5173,37 +5228,40 @@ function initIntroSequence() {
 }
 
 function initMobileFullscreenPrompt() {
-  const isMobile = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent) || window.innerWidth <= 800;
-  if (isMobile) {
+  const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
+  const isMobileOrTablet = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Tablet/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth <= 1366) || isCoarsePointer;
+  if (isMobileOrTablet) {
     document.body.classList.add("is-mobile");
-    if (!sessionStorage.getItem("fullscreen_prompted")) {
-      sessionStorage.setItem("fullscreen_prompted", "true");
-      setTimeout(() => {
+    // Always show fullscreen prompt on mobile/tablet (no session check - it's required)
+    setTimeout(() => {
+      const overlay = document.getElementById("mobileFullscreenReminder");
+      if (overlay && !isFullscreenActive()) {
+        overlay.classList.remove("hidden");
+      }
+    }, 1200);
+
+    // Re-show fullscreen prompt if user exits fullscreen
+    document.addEventListener("fullscreenchange", () => {
+      if (!isFullscreenActive()) {
         const overlay = document.getElementById("mobileFullscreenReminder");
         if (overlay) overlay.classList.remove("hidden");
-      }, 1200); // delay so it appears smoothly after splash screen loads
-    }
+      }
+    });
+    document.addEventListener("webkitfullscreenchange", () => {
+      if (!isFullscreenActive()) {
+        const overlay = document.getElementById("mobileFullscreenReminder");
+        if (overlay) overlay.classList.remove("hidden");
+      }
+    });
   }
 
-  // Wire up fullscreen reminder buttons
+  // Wire up fullscreen reminder button (no decline option)
   document.getElementById("btnMobileFullscreenYes")?.addEventListener("click", () => {
-    document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
-    const appContainer = document.querySelector(".app-container");
-    if (appContainer) {
-      appContainer.requestFullscreen().then(() => {
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock("landscape").catch((err) => {
-            console.log("Landscape lock error:", err);
-          });
-        }
-      }).catch((err) => {
-        console.warn("Fullscreen request failed:", err);
-      });
-    }
-  });
-
-  document.getElementById("btnMobileFullscreenNo")?.addEventListener("click", () => {
-    document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+    safeRequestFullscreen().then((enteredFullscreen) => {
+      if (enteredFullscreen || isFullscreenActive()) {
+        document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+      }
+    });
   });
 }
 
