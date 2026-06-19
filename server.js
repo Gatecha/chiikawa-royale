@@ -31,6 +31,23 @@ const FINAL_VOTE_SECONDS = 20;     // Vote timer duration
 const RECONNECT_GRACE_MS = 10 * 60 * 1000;
 const SURRENDER_THRESHOLD = 3;
 
+function getMatchMaxPlayers(mode, isChallenge = false) {
+  if (isChallenge && mode === "solo") return 2; // Solo challenges are 1v1
+  if (mode === "trio" || mode === "team") return 6;
+  return 4; // solo, duo, standard
+}
+
+function getLobbyCapacity(mode) {
+  if (mode === "solo") return 1;
+  if (mode === "duo") return 2;
+  if (mode === "trio") return 3;
+  return 3; // default
+}
+
+function isTeamMode(mode) {
+  return mode === "team" || mode === "duo" || mode === "trio";
+}
+
 const starts = [
   { x: 1, y: 1 },
   { x: COLS - 2, y: ROWS - 2 },
@@ -116,7 +133,7 @@ function handleMessage(ws, msg) {
     case "create_room": {
       leaveRoom(ws);
       const roomCode = generateRoomCode();
-      const room = createRoomObject(roomCode, ws.id, data.mode || "team");
+      const room = createRoomObject(roomCode, ws.id, data.mode || "trio");
       room.isPrivate = data.isPrivate !== false;
       rooms.set(roomCode, room);
       joinPlayerToRoom(ws, room, data.name, data.kind);
@@ -127,13 +144,17 @@ function handleMessage(ws, msg) {
       const room = rooms.get(ws.roomCode);
       if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
 
+      const chosenMode = data.mode || room.mode || "trio";
+      room.mode = chosenMode;
+      room.isPrivate = false;
+
       // Try to find another open lobby room that is public and has space for all human players of this room
       const humanCount = room.players.filter(p => !p.ai).length;
       let targetRoom = null;
       for (const [code, r] of rooms.entries()) {
         if (r.code === room.code) continue;
-        const maxPlayers = r.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
-        if (r.state === "lobby" && !r.isPrivate && (r.players.length + humanCount) <= maxPlayers) {
+        const maxPlayers = getMatchMaxPlayers(chosenMode, r.isChallenge);
+        if (r.state === "lobby" && !r.isPrivate && r.mode === chosenMode && (r.players.length + humanCount) <= maxPlayers) {
           targetRoom = r;
           break;
         }
@@ -157,8 +178,8 @@ function handleMessage(ws, msg) {
           joinPlayerToRoom(client, targetRoom, name, kind, originalSquadCode);
         });
       } else {
-        room.isPrivate = false;
         broadcastLobbyUpdate(room);
+        startMatchmakingTimers(room);
       }
       break;
     }
@@ -178,15 +199,7 @@ function handleMessage(ws, msg) {
       const room = rooms.get(ws.roomCode);
       if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
       room.isPrivate = true;
-      if (room.matchmakingTimer) {
-        clearTimeout(room.matchmakingTimer);
-        room.matchmakingTimer = null;
-      }
-      if (room.matchmakingCountdownInterval) {
-        clearInterval(room.matchmakingCountdownInterval);
-        room.matchmakingCountdownInterval = null;
-      }
-      room.matchmakingFillSecondsLeft = 0;
+      clearMatchmakingTimers(room);
       broadcastToRoom(room, {
         type: "matchmaking_countdown",
         data: { secondsLeft: 0 }
@@ -211,33 +224,25 @@ function handleMessage(ws, msg) {
         ws.send(JSON.stringify({ type: "error", data: { message: "Game already started in this room!" } }));
         return;
       }
-      const maxPlayers = room.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
-      if (room.players.length >= maxPlayers) {
-        ws.send(JSON.stringify({ type: "error", data: { message: `Room is full (max ${maxPlayers} players)!` } }));
+      const lobbyCap = getLobbyCapacity(room.mode);
+      const humanCount = room.players.filter(p => !p.ai).length;
+      if (humanCount >= lobbyCap) {
+        ws.send(JSON.stringify({ type: "error", data: { message: `Squad is full for ${room.mode.toUpperCase()} mode!` } }));
         return;
       }
 
       leaveRoom(ws);
       joinPlayerToRoom(ws, room, data.name, data.kind);
-      // Reset matchmaking timer to longer window when a real player joins
-      if (room.matchmakingTimer) {
-        clearTimeout(room.matchmakingTimer);
-        room.matchmakingTimer = null;
-      }
-      if (room.matchmakingCountdownInterval) {
-        clearInterval(room.matchmakingCountdownInterval);
-        room.matchmakingCountdownInterval = null;
-      }
       break;
     }
 
     case "quick_match": {
       leaveRoom(ws);
-      // Find open lobby room with space (allows team or standard mode)
+      const chosenMode = data.mode || "solo";
       let foundRoom = null;
       for (const [code, r] of rooms.entries()) {
-        const maxPlayers = r.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
-        if (r.state === "lobby" && !r.isPrivate && r.players.length < maxPlayers) {
+        const maxPlayers = getMatchMaxPlayers(chosenMode, r.isChallenge);
+        if (r.state === "lobby" && !r.isPrivate && r.mode === chosenMode && r.players.length < maxPlayers) {
           foundRoom = r;
           break;
         }
@@ -245,23 +250,51 @@ function handleMessage(ws, msg) {
 
       if (foundRoom) {
         joinPlayerToRoom(ws, foundRoom, data.name, data.kind);
-        // Reset fill timer now that another real player joined
-        if (foundRoom.matchmakingTimer) {
-          clearTimeout(foundRoom.matchmakingTimer);
-          foundRoom.matchmakingTimer = null;
-        }
-        if (foundRoom.matchmakingCountdownInterval) {
-          clearInterval(foundRoom.matchmakingCountdownInterval);
-          foundRoom.matchmakingCountdownInterval = null;
+        // Reset matchmaking ticker elapsed time when a new player joins
+        if (foundRoom.matchmakingInterval) {
+          foundRoom.matchmakingElapsed = 0;
         }
       } else {
-        // Create new room
         const roomCode = generateRoomCode();
-        const room = createRoomObject(roomCode, ws.id, "team");
+        const room = createRoomObject(roomCode, ws.id, chosenMode);
         room.isPrivate = false;
         rooms.set(roomCode, room);
         joinPlayerToRoom(ws, room, data.name, data.kind);
+        startMatchmakingTimers(room);
       }
+      break;
+    }
+
+    case "challenge_player": {
+      const targetId = data.targetId;
+      const challengeMode = data.mode || "solo";
+
+      let targetClient = null;
+      wss.clients.forEach(c => {
+        if (c.id === targetId) targetClient = c;
+      });
+      if (!targetClient) {
+        ws.send(JSON.stringify({ type: "error", data: { message: "Player is offline!" } }));
+        return;
+      }
+
+      leaveRoom(ws);
+      const roomCode = generateRoomCode();
+      const room = createRoomObject(roomCode, ws.id, challengeMode);
+      room.isPrivate = true;
+      room.isChallenge = true;
+      rooms.set(roomCode, room);
+      joinPlayerToRoom(ws, room, data.name, data.kind);
+
+      targetClient.send(JSON.stringify({
+        type: "challenge_received",
+        data: {
+          challengerName: data.name || "A player",
+          challengerId: ws.id,
+          roomCode: roomCode,
+          mode: challengeMode
+        }
+      }));
       break;
     }
 
@@ -420,14 +453,14 @@ function handleMessage(ws, msg) {
 
     case "vote_map": {
       const room = rooms.get(ws.roomCode);
-      if (!room || room.state !== "lobby") return;
+      if (!room || room.state !== "map_voting") return;
       const mapChoice = data.map;
       if (["classic", "checkered", "colosseum"].includes(mapChoice)) {
         if (!room.mapVotes) room.mapVotes = {};
         room.mapVotes[ws.id] = mapChoice;
         const votes = { classic: 0, checkered: 0, colosseum: 0 };
         Object.values(room.mapVotes).forEach((v) => { if (votes[v] !== undefined) votes[v]++; });
-        broadcastToRoom(room, { type: "map_votes_updated", data: { votes } });
+        broadcastToRoom(room, { type: "map_votes_updated", data: { votes, voterMap: room.mapVotes } });
       }
       break;
     }
@@ -527,7 +560,7 @@ function dataToken() {
 // ----------------------------------------------------------------
 
 function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
-  const maxPlayers = room.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+  const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
   if (room.players.length >= maxPlayers) {
     ws.send(JSON.stringify({ type: "error", data: { message: "Room is full!" } }));
     return;
@@ -562,10 +595,7 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
   room.players.push(player);
   console.log(`Player ${ws.id} joined room ${room.code} (${room.players.length} players)`);
 
-  // Check if this triggers team mode (5th or 6th player joins)
-  if (room.players.length >= 5 && room.mode !== "team") {
-    activateTeamMode(room);
-  } else if (room.mode === "team") {
+  if (isTeamMode(room.mode)) {
     assignPlayerToTeam(room, player);
   }
 
@@ -576,19 +606,12 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
 
   broadcastLobbyUpdate(room);
 
-  // Auto-start if lobby is full of real players
+  // Auto-start map voting if lobby is full of real players
   if (room.players.length >= maxPlayers) {
-    if (room.matchmakingTimer) {
-      clearTimeout(room.matchmakingTimer);
-      room.matchmakingTimer = null;
-    }
-    if (room.matchmakingCountdownInterval) {
-      clearInterval(room.matchmakingCountdownInterval);
-      room.matchmakingCountdownInterval = null;
-    }
+    clearMatchmakingTimers(room);
     setTimeout(() => {
       if (room.state === "lobby") {
-        startRound(room, true);
+        startMapVoting(room);
       }
     }, 2000);
   }
@@ -776,6 +799,8 @@ function broadcastLobbyUpdate(room) {
       teamTrophies: room.teamTrophies,
       isPrivate: room.isPrivate,
       state: room.state,
+      isChallenge: room.isChallenge || false,
+      maxPlayers: getMatchMaxPlayers(room.mode, room.isChallenge),
     },
   });
 }
@@ -925,30 +950,143 @@ function endMatchBySurrender(room, winnerTeam, winnerId) {
 // MATCHMAKING FILL TIMERS
 // ----------------------------------------------------------------
 
-function scheduleMatchmakingFill(room) {
-  if (room.matchmakingCountdownInterval) clearInterval(room.matchmakingCountdownInterval);
-  if (room.matchmakingTimer) clearTimeout(room.matchmakingTimer);
-  room.matchmakingCountdownInterval = null;
-  room.matchmakingTimer = null;
-  room.matchmakingFillSecondsLeft = 0;
-  broadcastToRoom(room, { type: "matchmaking_countdown", data: { secondsLeft: 0 } });
+function startMatchmakingTimers(room) {
+  if (room.matchmakingInterval) return;
+
+  room.matchmakingElapsed = 0;
+  room.matchmakingInterval = setInterval(() => {
+    room.matchmakingElapsed++;
+    
+    // Broadcast matchmaking countdown (max 40s)
+    broadcastToRoom(room, {
+      type: "matchmaking_countdown",
+      data: { secondsLeft: Math.max(0, 40 - room.matchmakingElapsed), elapsed: room.matchmakingElapsed }
+    });
+
+    const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
+
+    // 30 seconds incomplete check
+    if (room.matchmakingElapsed === 30) {
+      console.log(`Matchmaking 30s check for room ${room.code}. Filling incomplete squad.`);
+      fillIncompleteMatchWithBots(room);
+    }
+    
+    // 40 seconds regardless check
+    if (room.matchmakingElapsed >= 40) {
+      console.log(`Matchmaking 40s timeout for room ${room.code}. Filling remaining slots.`);
+      fillAllRemainingWithBots(room);
+    }
+  }, 1000);
 }
 
-function fillWithBots(room) {
-  const maxPlayers = room.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
-  while (room.players.length < maxPlayers && room.state === "lobby") {
-    addBotToRoom(room);
+function clearMatchmakingTimers(room) {
+  if (room.matchmakingInterval) {
+    clearInterval(room.matchmakingInterval);
+    room.matchmakingInterval = null;
+  }
+}
+
+function fillIncompleteMatchWithBots(room) {
+  if (room.state !== "lobby") return;
+  
+  if (room.mode === "solo") {
+    const realCount = room.players.filter(p => !p.ai).length;
+    if (realCount >= 2) {
+      while (room.players.length < 4) {
+        addBotToRoom(room);
+      }
+      broadcastLobbyUpdate(room);
+      startMapVoting(room);
+    }
+  } else if (room.mode === "duo") {
+    const realA = room.teams.A.filter(id => !room.players.find(p => p.id === id)?.ai).length;
+    const realB = room.teams.B.filter(id => !room.players.find(p => p.id === id)?.ai).length;
+    
+    if (realA > 0 && TeamBIsEmptyOrCPUsOnly(room)) {
+      addCPUTeamToTeam(room, "B", 2);
+      broadcastLobbyUpdate(room);
+      startMapVoting(room);
+    } else if (realB > 0 && TeamAIsEmptyOrCPUsOnly(room)) {
+      addCPUTeamToTeam(room, "A", 2);
+      broadcastLobbyUpdate(room);
+      startMapVoting(room);
+    }
+  } else if (room.mode === "trio") {
+    const realA = room.teams.A.filter(id => !room.players.find(p => p.id === id)?.ai).length;
+    const realB = room.teams.B.filter(id => !room.players.find(p => p.id === id)?.ai).length;
+    
+    if (realA > 0 && TeamBIsEmptyOrCPUsOnly(room)) {
+      addCPUTeamToTeam(room, "B", 3);
+      broadcastLobbyUpdate(room);
+      startMapVoting(room);
+    } else if (realB > 0 && TeamAIsEmptyOrCPUsOnly(room)) {
+      addCPUTeamToTeam(room, "A", 3);
+      broadcastLobbyUpdate(room);
+      startMapVoting(room);
+    }
+  }
+}
+
+function fillAllRemainingWithBots(room) {
+  if (room.state !== "lobby") return;
+
+  const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
+  if (room.mode === "solo") {
+    while (room.players.length < maxPlayers) {
+      addBotToRoom(room);
+    }
+  } else if (room.mode === "duo") {
+    fillTeamToSize(room, "A", 2);
+    fillTeamToSize(room, "B", 2);
+  } else if (room.mode === "trio" || room.mode === "team") {
+    fillTeamToSize(room, "A", 3);
+    fillTeamToSize(room, "B", 3);
   }
   broadcastLobbyUpdate(room);
-  // Auto-start after 2s
-  setTimeout(() => {
-    if (room.state === "lobby") {
-      startRound(room, true);
-    }
-  }, 2000);
+  startMapVoting(room);
 }
 
-function addBotToRoom(room) {
+function TeamBIsEmptyOrCPUsOnly(room) {
+  if (room.teams.B.length === 0) return true;
+  return room.teams.B.every(id => {
+    const p = room.players.find(pl => pl.id === id);
+    return !p || p.ai;
+  });
+}
+
+function TeamAIsEmptyOrCPUsOnly(room) {
+  if (room.teams.A.length === 0) return true;
+  return room.teams.A.every(id => {
+    const p = room.players.find(pl => pl.id === id);
+    return !p || p.ai;
+  });
+}
+
+function addCPUTeamToTeam(room, team, size) {
+  room.teams[team] = room.teams[team].filter(id => {
+    const p = room.players.find(pl => pl.id === id);
+    return p && !p.ai;
+  });
+  room.players = room.players.filter(p => !p.ai || !room.teams[team].includes(p.id));
+
+  while (room.teams[team].length < size) {
+    const bot = createBotObject(room);
+    room.players.push(bot);
+    room.teams[team].push(bot.id);
+  }
+  resetRotationQueues(room);
+}
+
+function fillTeamToSize(room, team, size) {
+  while (room.teams[team].length < size) {
+    const bot = createBotObject(room);
+    room.players.push(bot);
+    room.teams[team].push(bot.id);
+  }
+  resetRotationQueues(room);
+}
+
+function createBotObject(room) {
   const botKinds = ["momonga", "chiikawa", "usagi", "hachiware"];
   const usedKinds = room.players.map((p) => p.kind);
   const kind = botKinds.find((k) => !usedKinds.includes(k)) || botKinds[Math.floor(Math.random() * botKinds.length)];
@@ -956,7 +1094,7 @@ function addBotToRoom(room) {
   const botNames = ["Momonga Bot", "Chiikawa Bot", "Hachiware Bot", "Usagi Bot"];
   const name = botNames[Math.floor(Math.random() * botNames.length)] + " (CPU)";
 
-  const bot = {
+  return {
     id: botId, name, kind,
     ready: true, ai: true,
     x: 0, y: 0, dx: 0, dy: 0,
@@ -964,17 +1102,77 @@ function addBotToRoom(room) {
     hasPunch: false, hasSlide: false,
     aiThink: 0, aiDir: { x: 0, y: 0 }, aiTarget: null, aiBombCooldown: 0,
   };
-  room.players.push(bot);
+}
 
-  // Assign to team if team mode
-  if (room.mode === "team") {
-    if (room.teams.A.length <= room.teams.B.length) {
-      room.teams.A.push(botId);
-    } else {
-      room.teams.B.push(botId);
-    }
-    resetRotationQueues(room);
+function addBotToRoom(room) {
+  const bot = createBotObject(room);
+  room.players.push(bot);
+  if (isTeamMode(room.mode)) {
+    assignPlayerToTeam(room, bot);
   }
+}
+
+function startMapVoting(room) {
+  clearMatchmakingTimers(room);
+  room.state = "map_voting";
+  room.mapVotes = {};
+
+  let timeLeft = 10;
+  broadcastToRoom(room, {
+    type: "map_voting_started",
+    data: { timer: timeLeft }
+  });
+
+  if (room.mapVoteInterval) clearInterval(room.mapVoteInterval);
+  room.mapVoteInterval = setInterval(() => {
+    timeLeft--;
+    broadcastToRoom(room, {
+      type: "map_vote_timer_update",
+      data: { timer: timeLeft }
+    });
+
+    if (timeLeft <= 0) {
+      clearInterval(room.mapVoteInterval);
+      room.mapVoteInterval = null;
+      resolveMapVote(room);
+    }
+  }, 1000);
+}
+
+function resolveMapVote(room) {
+  if (room.mapVoteInterval) {
+    clearInterval(room.mapVoteInterval);
+    room.mapVoteInterval = null;
+  }
+
+  const votes = { classic: 0, checkered: 0, colosseum: 0 };
+  Object.values(room.mapVotes || {}).forEach((v) => { if (votes[v] !== undefined) votes[v]++; });
+
+  let maxVotes = -1;
+  let candidates = [];
+  for (const [mapType, count] of Object.entries(votes)) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      candidates = [mapType];
+    } else if (count === maxVotes) {
+      candidates.push(mapType);
+    }
+  }
+
+  const winningMap = candidates[Math.floor(Math.random() * candidates.length)] || "classic";
+  room.currentMapType = winningMap;
+  room.mapVotes = {};
+
+  broadcastToRoom(room, {
+    type: "map_voting_ended",
+    data: { winningMap }
+  });
+
+  setTimeout(() => {
+    if (room.state === "map_voting") {
+      startRound(room, false);
+    }
+  }, 3000);
 }
 
 // ----------------------------------------------------------------
@@ -1217,7 +1415,7 @@ function endRound(room, winnerId) {
     if (winner) winner.trophies = (winner.trophies || 0) + 1;
   }
 
-  if (room.mode === "team") {
+  if (isTeamMode(room.mode)) {
     // Award team trophy
     let winnerTeam = null;
     if (winnerId) {
@@ -1253,8 +1451,8 @@ function endRound(room, winnerId) {
     const scoreA = room.teamTrophies.A;
     const scoreB = room.teamTrophies.B;
 
-    // Check if either team reaches the win threshold → Final Vote
-    if (scoreA >= TROPHIES_TO_WIN || scoreB >= TROPHIES_TO_WIN) {
+    if (room.mode === "trio" && (scoreA >= 7 || scoreB >= 7)) {
+      // Trigger Final Round Vote in Trio mode at 7 trophies
       room.state = "round_over";
       broadcastToRoom(room, {
         type: "game_over",
@@ -1268,10 +1466,26 @@ function endRound(room, winnerId) {
           isFinalVoteTriggered: true,
         },
       });
-      // Start final vote after brief delay
       room.nextRoundTimeout = setTimeout(() => {
         startFinalVote(room);
       }, 5000);
+    } else if ((room.mode === "duo" || room.mode === "team") && (scoreA >= 8 || scoreB >= 8)) {
+      // Direct victory for team mode / duo mode at 8 trophies
+      const winningTeam = scoreA >= 8 ? "A" : "B";
+      room.state = "lobby";
+      room.players.forEach((p) => { p.ready = p.ai; });
+      broadcastToRoom(room, {
+        type: "game_over",
+        data: {
+          message: `Team ${winningTeam} wins the match! 🏆`,
+          players: room.players,
+          tournamentFinished: true,
+          winnerId: winner ? winner.id : null,
+          teamTrophies: room.teamTrophies,
+          teams: room.teams,
+        },
+      });
+      broadcastLobbyUpdate(room);
     } else {
       // Normal next round
       room.state = "round_over";
@@ -1418,7 +1632,7 @@ function startRound(room, isNewTournament) {
     room.currentMapType = winningMap;
     room.mapVotes = {};
     room.roundNumber = 0;
-    if (room.mode === "team") {
+    if (isTeamMode(room.mode)) {
       room.teamTrophies = { A: 0, B: 0 };
       resetRotationQueues(room);
     }
@@ -1427,17 +1641,49 @@ function startRound(room, isNewTournament) {
   room.roundNumber = (room.roundNumber || 0) + 1;
 
   // --- Pick active round players in team mode ---
-  if (room.mode === "team" && !room._isFinalRound) {
-    const pickPair = (team) => {
-      if (!room.roundPairQueues[team] || room.roundPairQueues[team].length === 0) {
-        room.roundPairQueues[team] = buildPairQueue(room.teams[team]);
-      }
-      return (room.roundPairQueues[team].shift() || []).filter(id => room.teams[team].includes(id));
-    };
-    room.activeRoundPlayers = [
-      ...pickPair("A"),
-      ...pickPair("B"),
-    ];
+  if (isTeamMode(room.mode) && !room._isFinalRound) {
+    if (room.mode === "trio") {
+      // 1v1 rotation for Trio mode
+      const pickSingle = (team) => {
+        if (!room.rotationQueues[team] || room.rotationQueues[team].length === 0) {
+          room.rotationQueues[team] = shuffleArray([...room.teams[team]]);
+        }
+        let nextId = null;
+        while (room.rotationQueues[team].length > 0) {
+          const id = room.rotationQueues[team].shift();
+          if (room.teams[team].includes(id)) {
+            nextId = id;
+            break;
+          }
+        }
+        if (!nextId && room.teams[team].length > 0) {
+          room.rotationQueues[team] = shuffleArray([...room.teams[team]]);
+          nextId = room.rotationQueues[team].shift();
+        }
+        return nextId;
+      };
+      
+      const pA = pickSingle("A");
+      const pB = pickSingle("B");
+      room.activeRoundPlayers = [];
+      if (pA) room.activeRoundPlayers.push(pA);
+      if (pB) room.activeRoundPlayers.push(pB);
+    } else if (room.mode === "duo") {
+      // All players active in Duo mode
+      room.activeRoundPlayers = [...room.teams.A, ...room.teams.B];
+    } else {
+      // Original 2v2 rotation for old Team mode
+      const pickPair = (team) => {
+        if (!room.roundPairQueues[team] || room.roundPairQueues[team].length === 0) {
+          room.roundPairQueues[team] = buildPairQueue(room.teams[team]);
+        }
+        return (room.roundPairQueues[team].shift() || []).filter(id => room.teams[team].includes(id));
+      };
+      room.activeRoundPlayers = [
+        ...pickPair("A"),
+        ...pickPair("B"),
+      ];
+    }
   }
   room._isFinalRound = false;
 
@@ -1446,8 +1692,8 @@ function startRound(room, isNewTournament) {
 
   // Position players (only active ones at the main spawn corners; spectators off-map or same spawn)
   room.players.forEach((p, index) => {
-    const isActive = room.mode !== "team" || room.activeRoundPlayers.includes(p.id);
-    const spawnIndex = room.mode === "team"
+    const isActive = !isTeamMode(room.mode) || room.activeRoundPlayers.includes(p.id);
+    const spawnIndex = isTeamMode(room.mode)
       ? room.activeRoundPlayers.indexOf(p.id)
       : index;
     const spawn = starts[(spawnIndex >= 0 ? spawnIndex : index) % starts.length];

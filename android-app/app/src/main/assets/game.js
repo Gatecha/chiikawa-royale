@@ -426,6 +426,8 @@ function finishStartup() {
 let currentMapType = "classic";
 let myLastVote = null;
 let currentRoomMode = "standard";
+let currentRoomIsChallenge = false;
+let currentRoomMaxPlayers = 4;
 let currentTeams = { A: [], B: [] };
 let currentTeamTrophies = { A: 0, B: 0 };
 let currentActiveRoundPlayers = [];
@@ -923,6 +925,8 @@ function handleServerMessage(msg) {
       if (data.mode) currentRoomMode = data.mode;
       if (data.teams) currentTeams = data.teams;
       if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
+      if (data.isChallenge !== undefined) currentRoomIsChallenge = data.isChallenge;
+      if (data.maxPlayers !== undefined) currentRoomMaxPlayers = data.maxPlayers;
       updateLobbyUI();
 
       if (socket && socket.readyState === WebSocket.OPEN) {
@@ -941,7 +945,138 @@ function handleServerMessage(msg) {
           }
         }
       }
+    case "map_voting_started": {
+      stopOnlineMatchmakingTimer();
+      if (matchmakingPopup) {
+        matchmakingPopup.classList.remove("active");
+        matchmakingPopup.classList.add("hidden");
+      }
+      
+      const mapVoteOverlay = document.getElementById("mapVoteOverlay");
+      if (mapVoteOverlay) {
+        mapVoteOverlay.classList.remove("hidden");
+        mapVoteOverlay.classList.add("active");
+      }
+      
+      const timerEl = document.getElementById("mapVoteTimer");
+      if (timerEl) timerEl.textContent = data.timer;
+      
+      document.querySelectorAll(".map-vote-card").forEach(c => {
+        c.classList.remove("voted", "winning-map");
+        const countEl = c.querySelector(".map-vote-count");
+        if (countEl) countEl.textContent = "0";
+        const votersEl = c.querySelector(".map-vote-voters");
+        if (votersEl) votersEl.innerHTML = "";
+      });
       break;
+    }
+
+    case "map_vote_timer_update": {
+      const timerEl = document.getElementById("mapVoteTimer");
+      if (timerEl) timerEl.textContent = data.timer;
+      break;
+    }
+
+    case "map_votes_updated": {
+      const { votes, voterMap } = data;
+      for (const [mapType, count] of Object.entries(votes)) {
+        const countEl = document.getElementById(`mapVoteCount_${mapType}`);
+        if (countEl) countEl.textContent = count;
+        
+        const votersEl = document.getElementById(`mapVoteVoters_${mapType}`);
+        if (votersEl) {
+          votersEl.innerHTML = "";
+          if (voterMap) {
+            Object.entries(voterMap).forEach(([voterId, chosenMap]) => {
+              if (chosenMap === mapType) {
+                const voter = players.find(p => p.id === voterId);
+                if (voter) {
+                  const img = document.createElement("img");
+                  img.src = `assets/cards/${voter.kind}.png`;
+                  img.style.width = "24px";
+                  img.style.height = "24px";
+                  img.style.borderRadius = "50%";
+                  img.style.border = "2px solid var(--ink)";
+                  img.style.boxShadow = "1px 1px 0 var(--ink)";
+                  img.title = voter.name;
+                  votersEl.appendChild(img);
+                }
+              }
+            });
+          }
+        }
+      }
+      
+      if (voterMap && voterMap[localPlayerId]) {
+        const myVote = voterMap[localPlayerId];
+        document.querySelectorAll(".map-vote-card").forEach(c => {
+          if (c.getAttribute("data-map") === myVote) {
+            c.classList.add("voted");
+          } else {
+            c.classList.remove("voted");
+          }
+        });
+      }
+      break;
+    }
+
+    case "map_voting_ended": {
+      const winningMap = data.winningMap;
+      document.querySelectorAll(".map-vote-card").forEach(c => {
+        if (c.getAttribute("data-map") === winningMap) {
+          c.classList.add("winning-map");
+        } else {
+          c.classList.remove("winning-map");
+        }
+      });
+      
+      setTimeout(() => {
+        const mapVoteOverlay = document.getElementById("mapVoteOverlay");
+        if (mapVoteOverlay) {
+          mapVoteOverlay.classList.remove("active");
+          mapVoteOverlay.classList.add("hidden");
+        }
+      }, 2500);
+      break;
+    }
+
+    case "challenge_received": {
+      const challengerName = data.challengerName;
+      const chCode = data.roomCode;
+      const chMode = data.mode;
+      
+      const inviteOverlay = document.getElementById("roomInviteOverlay");
+      const titleEl = document.getElementById("inviteOverlayTitle");
+      const textEl = document.getElementById("inviteOverlayText");
+      const acceptBtn = document.getElementById("inviteOverlayAccept");
+      const declineBtn = document.getElementById("inviteOverlayDecline");
+      
+      if (inviteOverlay && titleEl && textEl && acceptBtn && declineBtn) {
+        titleEl.textContent = "BATTLE CHALLENGE!";
+        textEl.innerHTML = `<strong>${escapeHTML(challengerName)}</strong> has challenged you to a <strong>${chMode.toUpperCase()}</strong> match!`;
+        
+        const newAccept = acceptBtn.cloneNode(true);
+        const newDecline = declineBtn.cloneNode(true);
+        acceptBtn.parentNode.replaceChild(newAccept, acceptBtn);
+        declineBtn.parentNode.replaceChild(newDecline, declineBtn);
+        
+        newAccept.addEventListener("click", () => {
+          inviteOverlay.classList.remove("active");
+          inviteOverlay.classList.add("hidden");
+          const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+          sendServerMessage("join_room", { name, kind: selectedCharacter, roomCode: chCode });
+        });
+        
+        newDecline.addEventListener("click", () => {
+          inviteOverlay.classList.remove("active");
+          inviteOverlay.classList.add("hidden");
+        });
+        
+        inviteOverlay.classList.remove("hidden");
+        inviteOverlay.classList.add("active");
+      }
+      break;
+    }
 
     case "game_started":
       map = data.map;
@@ -992,7 +1127,7 @@ function handleServerMessage(msg) {
       }
 
       // Show round header in team mode
-      if (currentRoomMode === "team" && currentActiveRoundPlayers.length >= 2) {
+      if (isTeamMode(currentRoomMode) && currentActiveRoundPlayers.length >= 2) {
         const teamANames = currentActiveRoundPlayers
           .filter(id => (currentTeams?.A || []).includes(id))
           .map(id => players.find(p => p.id === id)?.name)
@@ -1157,7 +1292,7 @@ function handleServerMessage(msg) {
       saveProgression();
 
       // Show team score banner in round results
-      if (currentRoomMode === "team" && data.teamTrophies) {
+      if (isTeamMode(currentRoomMode) && data.teamTrophies) {
         const banner = document.getElementById("teamScoreBanner");
         if (banner) {
           banner.classList.remove("hidden");
@@ -1726,7 +1861,7 @@ function updateLobbyUI() {
 
   lobbyPlayersList.innerHTML = "";
   const isHost = localPlayerId === hostId;
-  const isTeamMode = currentRoomMode === "team";
+  const isTeamModeVal = isTeamMode(currentRoomMode);
 
   if (isHost) {
     if (!addBotBtn || !startGameBtn) return;
@@ -1738,7 +1873,7 @@ function updateLobbyUI() {
   }
 
   // In team mode, insert Team A / Team B dividers
-  if (isTeamMode && currentTeams) {
+  if (isTeamModeVal && currentTeams) {
     // Team score display
     const scoreRow = document.createElement("div");
     scoreRow.className = "lobby-team-score-row";
@@ -1819,6 +1954,10 @@ function appendLobbyPlayerCard(p, isHost) {
   }
 }
 
+function isTeamMode(mode) {
+  return mode === "team" || mode === "duo" || mode === "trio";
+}
+
 function updateHudSidebar() {
   hudPlayersList.innerHTML = "";
   if (hudPlayersList) hudPlayersList.style.display = 'none';
@@ -1826,7 +1965,7 @@ function updateHudSidebar() {
   // Update Team Trophies Panel
   const teamPanel = document.getElementById("teamTrophiesPanel");
   if (teamPanel) {
-    if (currentRoomMode === "team") {
+    if (isTeamMode(currentRoomMode)) {
       teamPanel.classList.remove("hidden");
       const scoreA = currentTeamTrophies?.A || 0;
       const scoreB = currentTeamTrophies?.B || 0;
@@ -1852,7 +1991,7 @@ function updateHudSidebar() {
     const canvasId = `hud_avatar_${p.id}`;
 
     let badgeHTML = `<div class="hud-wins-count">${p.trophies || 0}</div>`;
-    if (currentRoomMode === "team") {
+    if (isTeamMode(currentRoomMode)) {
       const pTeam = (currentTeams?.A || []).includes(p.id) ? "A" : "B";
       const teamColor = pTeam === "A" ? "#3b82f6" : "#f97316";
       badgeHTML = `<div class="hud-wins-count" style="background:${teamColor}; color:#fff; border-radius:50%; width:20px; height:20px; font-size:11px; display:flex; justify-content:center; align-items:center; border:2px solid #000; font-weight:800; font-family:var(--font);">${pTeam}</div>`;
@@ -3174,7 +3313,7 @@ function drawBlast(blast) {
 
 function drawPlayer(player) {
   // Hide spectators in team mode
-  if (currentRoomMode === "team" && !currentActiveRoundPlayers.includes(player.id)) {
+  if (isTeamMode(currentRoomMode) && !currentActiveRoundPlayers.includes(player.id)) {
     return;
   }
   const style = characterStyle[player.kind];
@@ -3844,65 +3983,77 @@ function syncSquadLobbyInterface() {
   const localSquadCode = localPlayer ? localPlayer.squadCode : null;
   const otherTeammates = players.filter(p => p.id !== localPlayerId && (localSquadCode ? p.squadCode === localSquadCode : true) && !p.ai);
 
+  const mode = currentRoomMode || "trio";
+
   // Left Card
   const leftCard = document.getElementById("squadInviteCard_left");
   if (leftCard) {
-    if (otherTeammates[0]) {
-      const p = otherTeammates[0];
-      leftCard.innerHTML = `
-        <div class="card-inner-skew">
-          <div class="squad-card-image-container">
-            <img src="assets/cards/${p.kind}.png" alt="Character Art" />
-          </div>
-          <div class="card-footer-bar">
-            <div class="avatar-circle">
-              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-            </div>
-            <div class="user-info">
-              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
-              <div class="user-level">${escapeHTML(p.name)}</div>
-            </div>
-          </div>
-        </div>
-      `;
+    if (mode === "solo") {
+      leftCard.style.display = "none";
     } else {
-      leftCard.innerHTML = `
-        <div class="card-inner-skew">
-          <button class="invite-btn" type="button">+</button>
-        </div>
-      `;
-      leftCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+      leftCard.style.display = "block";
+      if (otherTeammates[0]) {
+        const p = otherTeammates[0];
+        leftCard.innerHTML = `
+          <div class="card-inner-skew">
+            <div class="squad-card-image-container">
+              <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+            </div>
+            <div class="card-footer-bar">
+              <div class="avatar-circle">
+                <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+              </div>
+              <div class="user-info">
+                <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+                <div class="user-level">${escapeHTML(p.name)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        leftCard.innerHTML = `
+          <div class="card-inner-skew">
+            <button class="invite-btn" type="button">+</button>
+          </div>
+        `;
+        leftCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+      }
     }
   }
 
   // Right Card
   const rightCard = document.getElementById("squadInviteCard_right");
   if (rightCard) {
-    if (otherTeammates[1]) {
-      const p = otherTeammates[1];
-      rightCard.innerHTML = `
-        <div class="card-inner-skew">
-          <div class="squad-card-image-container">
-            <img src="assets/cards/${p.kind}.png" alt="Character Art" />
-          </div>
-          <div class="card-footer-bar">
-            <div class="avatar-circle">
-              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-            </div>
-            <div class="user-info">
-              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
-              <div class="user-level">${escapeHTML(p.name)}</div>
-            </div>
-          </div>
-        </div>
-      `;
+    if (mode === "solo" || mode === "duo") {
+      rightCard.style.display = "none";
     } else {
-      rightCard.innerHTML = `
-        <div class="card-inner-skew">
-          <button class="invite-btn" type="button">+</button>
-        </div>
-      `;
-      rightCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+      rightCard.style.display = "block";
+      if (otherTeammates[1]) {
+        const p = otherTeammates[1];
+        rightCard.innerHTML = `
+          <div class="card-inner-skew">
+            <div class="squad-card-image-container">
+              <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+            </div>
+            <div class="card-footer-bar">
+              <div class="avatar-circle">
+                <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+              </div>
+              <div class="user-info">
+                <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+                <div class="user-level">${escapeHTML(p.name)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        rightCard.innerHTML = `
+          <div class="card-inner-skew">
+            <button class="invite-btn" type="button">+</button>
+          </div>
+        `;
+        rightCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+      }
     }
   }
 
@@ -4031,7 +4182,7 @@ leaveLobbyBtn?.addEventListener("click", () => {
 
 // Exit Match
 leaveGameBtn?.addEventListener("click", () => {
-  if (!localMode && running && socket && socket.readyState === WebSocket.OPEN && currentRoomMode === "team") {
+  if (!localMode && running && socket && socket.readyState === WebSocket.OPEN && isTeamMode(currentRoomMode)) {
     sendServerMessage("request_surrender");
     showSurrenderVotePopup({
       team: getPlayerTeam(localPlayerId),
@@ -4563,7 +4714,7 @@ function updateOnlineMatchmakingPopup() {
     }
   }
 
-  const maxPlayers = currentRoomMode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+  const maxPlayers = currentRoomMaxPlayers;
   if (players.length >= maxPlayers) {
     if (titleEl) titleEl.textContent = "MATCH FOUND!";
     if (cancelMatchmakingBtn) cancelMatchmakingBtn.style.display = "none";
@@ -4762,25 +4913,85 @@ function startLocalGameWithMatchedBots() {
 }
 
 // Hook up matchmaking buttons
-if (lobbyMatchBtn) {
-  lobbyMatchBtn.addEventListener("click", () => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      if (roomCode) {
-        // If already in a room/lobby, start matching for that room (only host can trigger)
-        if (localPlayerId === hostId) {
-          showOnlineMatchmakingSearch();
-          sendServerMessage("start_matchmaking");
-        } else {
-          alert("Only the room host can start matchmaking!");
-        }
-      } else {
+const matchmakingModeSelectDialog = document.getElementById("matchmakingModeSelectDialog");
+const btnModeSelectSolo = document.getElementById("btnModeSelectSolo");
+const btnModeSelectDuo = document.getElementById("btnModeSelectDuo");
+const btnModeSelectTrio = document.getElementById("btnModeSelectTrio");
+const closeMatchmakingModeBtn = document.getElementById("closeMatchmakingModeBtn");
+
+function showMatchmakingModeSelection() {
+  if (!matchmakingModeSelectDialog) return;
+
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  const localSquadCode = localPlayer ? localPlayer.squadCode : null;
+  const squadSize = players.filter(p => (localSquadCode ? p.squadCode === localSquadCode : p.id === localPlayerId) && !p.ai).length;
+
+  if (btnModeSelectSolo) {
+    if (squadSize > 1) {
+      btnModeSelectSolo.disabled = true;
+      btnModeSelectSolo.style.opacity = "0.5";
+      btnModeSelectSolo.style.pointerEvents = "none";
+    } else {
+      btnModeSelectSolo.disabled = false;
+      btnModeSelectSolo.style.opacity = "1";
+      btnModeSelectSolo.style.pointerEvents = "auto";
+    }
+  }
+
+  if (btnModeSelectDuo) {
+    if (squadSize > 2) {
+      btnModeSelectDuo.disabled = true;
+      btnModeSelectDuo.style.opacity = "0.5";
+      btnModeSelectDuo.style.pointerEvents = "none";
+    } else {
+      btnModeSelectDuo.disabled = false;
+      btnModeSelectDuo.style.opacity = "1";
+      btnModeSelectDuo.style.pointerEvents = "auto";
+    }
+  }
+
+  matchmakingModeSelectDialog.classList.remove("hidden");
+  matchmakingModeSelectDialog.classList.add("active");
+}
+
+function handleModeSelection(chosenMode) {
+  if (matchmakingModeSelectDialog) {
+    matchmakingModeSelectDialog.classList.remove("active");
+    matchmakingModeSelectDialog.classList.add("hidden");
+  }
+
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    if (roomCode) {
+      if (localPlayerId === hostId) {
         showOnlineMatchmakingSearch();
-        const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
-        sendServerMessage("quick_match", { name, kind: selectedCharacter });
+        sendServerMessage("start_matchmaking", { mode: chosenMode });
+      } else {
+        alert("Only the room host can start matchmaking!");
       }
     } else {
-      startMatchmakingSearch();
+      showOnlineMatchmakingSearch();
+      const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+      sendServerMessage("quick_match", { name, kind: selectedCharacter, mode: chosenMode });
     }
+  } else {
+    startMatchmakingSearch();
+  }
+}
+
+if (lobbyMatchBtn) {
+  lobbyMatchBtn.addEventListener("click", () => {
+    showMatchmakingModeSelection();
+  });
+}
+
+if (btnModeSelectSolo) btnModeSelectSolo.addEventListener("click", () => handleModeSelection("solo"));
+if (btnModeSelectDuo) btnModeSelectDuo.addEventListener("click", () => handleModeSelection("duo"));
+if (btnModeSelectTrio) btnModeSelectTrio.addEventListener("click", () => handleModeSelection("trio"));
+
+if (closeMatchmakingModeBtn) {
+  closeMatchmakingModeBtn.addEventListener("click", () => {
+    matchmakingModeSelectDialog?.classList.remove("active");
+    matchmakingModeSelectDialog?.classList.add("hidden");
   });
 }
 if (cancelMatchmakingBtn) {
@@ -5318,7 +5529,7 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
     if (resultsRow) {
       resultsRow.innerHTML = "";
       
-      if (currentRoomMode === "team") {
+      if (isTeamMode(currentRoomMode)) {
         // Render 2 big team cards instead of individual player cards
         const teamA = currentTeams?.A || [];
         const teamB = currentTeams?.B || [];
@@ -6116,6 +6327,7 @@ function startTitleScreenLoading() {
 // State
 let presenceChannel = null;
 let onlinePresenceMap = {}; // userId -> { username, character, status }
+let challengeTargetUserId = null;
 let myFriendIds = new Set();
 let myFriendshipMap = {}; // friendId -> { friendshipId, username, character }
 let pendingRequests = []; // incoming friend requests
@@ -6449,6 +6661,7 @@ function makeStatusInfo(userId) {
 
 function buildSocialUserItem(userId, username, character, statusInfo, isFriend, showInvite) {
   const charImg = `assets/cards/${character || "chiikawa"}.png`;
+  const isOnline = statusInfo.dot !== "offline";
   const li = document.createElement("li");
   li.className = "social-user-item";
   li.innerHTML = `
@@ -6460,10 +6673,16 @@ function buildSocialUserItem(userId, username, character, statusInfo, isFriend, 
     <div class="social-action-btns">
       ${isFriend ? `<span class="btn-friend-already">✓ Friend</span>` : `<button class="btn-add-friend" data-uid="${userId}">+ Add</button>`}
       ${showInvite ? `<button class="btn-invite-to-room" data-uid="${userId}" data-uname="${escapeHTML(username)}">Invite</button>` : ""}
+      ${isOnline ? `<button class="btn-challenge-player" data-uid="${userId}">Challenge</button>` : ""}
     </div>
   `;
   li.querySelector(".btn-add-friend")?.addEventListener("click", () => sendFriendRequest(userId));
   li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(userId, username));
+  li.querySelector(".btn-challenge-player")?.addEventListener("click", () => {
+    challengeTargetUserId = userId;
+    closeSocialModal();
+    showMatchmakingModeSelection();
+  });
   return li;
 }
 
@@ -6498,6 +6717,7 @@ function renderFriendsTab() {
     const presence = onlinePresenceMap[friendId];
     const charImg = presence?.character || info.character || "chiikawa";
     const statusInfo = makeStatusInfo(friendId);
+    const isOnline = statusInfo.dot !== "offline";
     const li = document.createElement("li");
     li.className = "social-user-item";
     li.innerHTML = `
@@ -6508,9 +6728,15 @@ function renderFriendsTab() {
       </div>
       <div class="social-action-btns">
         ${roomCode ? `<button class="btn-invite-to-room" data-uid="${friendId}" data-uname="${escapeHTML(info.username)}">Invite</button>` : ""}
+        ${isOnline ? `<button class="btn-challenge-player" data-uid="${friendId}">Challenge</button>` : ""}
       </div>
     `;
     li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(friendId, info.username));
+    li.querySelector(".btn-challenge-player")?.addEventListener("click", () => {
+      challengeTargetUserId = friendId;
+      closeSocialModal();
+      showMatchmakingModeSelection();
+    });
     list.appendChild(li);
   });
 }
@@ -6819,5 +7045,15 @@ document.addEventListener("DOMContentLoaded", () => {
     switchScreen(menuScreen);
     connectWebSocket(true);
     tryPlayMusic();
+  });
+
+  // Map vote card click listeners
+  document.querySelectorAll(".map-vote-card").forEach(c => {
+    c.addEventListener("click", () => {
+      const mapType = c.getAttribute("data-map");
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        sendServerMessage("vote_map", { map: mapType });
+      }
+    });
   });
 });

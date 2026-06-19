@@ -913,51 +913,52 @@
       <!-- 3. GAMEPLAY SCREEN -->
       <section id="gameScreen" class="screen">
         <div class="game-layout">
-          <!-- Left Sidebar HUD: Player Stats -->
-          <aside class="game-hud-sidebar">
-            <div class="card glass game-info-card">
-              <div class="time-block">
-                <span class="label">Time Remaining</span>
-                <span id="roundTimer">02:30</span>
+          <!-- NEW GAMEPLAY HUD LAYOUT -->
+          <div class="hud-top-bar hidden" id="teamTrophiesPanel">
+            <!-- Top Left: Team A Info -->
+            <div id="hudTeamAInfo" class="hud-team-panel team-a-hud">
+              <div class="hud-team-header">
+                <span class="hud-team-label team-a-color">🔵 TEAM A</span>
+                <span class="hud-team-trophies"><span id="teamTrophyCount_A">0</span>/8 🏆</span>
               </div>
-              <div class="state-block">
-                <span class="label">Match State</span>
-                <span id="roundState">Ready</span>
-              </div>
-              <div class="room-block">
-                <span>Room:</span>
-                <strong id="gameRoomCode">----</strong>
+              <div class="hud-team-bar-wrap">
+                <div id="teamTrophyBar_A" class="hud-team-bar-fill team-a-bg" style="width: 0%;"></div>
               </div>
             </div>
 
-            <!-- Team Trophies Panel (visible in team mode) -->
-            <div id="teamTrophiesPanel" class="card glass team-trophies-panel hidden">
-              <div class="team-trophy-row">
-                <div class="team-trophy-header-row">
-                  <span class="team-trophy-label team-a-color">🔵 TEAM A</span>
-                  <span class="team-trophy-count"><span id="teamTrophyCount_A">0</span>/8</span>
-                </div>
-                <div class="team-trophy-bar-wrap">
-                  <div id="teamTrophyBar_A" class="team-trophy-bar-fill team-a-bg" style="width: 0%;"></div>
-                </div>
+            <!-- Dummy/empty space for center alignment -->
+            <div style="flex-grow: 1; pointer-events: none;"></div>
+
+            <!-- Top Right: Team B Info -->
+            <div id="hudTeamBInfo" class="hud-team-panel team-b-hud">
+              <div class="hud-team-header">
+                <span class="hud-team-trophies">🏆 <span id="teamTrophyCount_B">0</span>/8</span>
+                <span class="hud-team-label team-b-color">TEAM B 🟠</span>
               </div>
-              <div class="team-trophy-row" style="margin-top: 10px;">
-                <div class="team-trophy-header-row">
-                  <span class="team-trophy-label team-b-color">🟠 TEAM B</span>
-                  <span class="team-trophy-count"><span id="teamTrophyCount_B">0</span>/8</span>
-                </div>
-                <div class="team-trophy-bar-wrap">
-                  <div id="teamTrophyBar_B" class="team-trophy-bar-fill team-b-bg" style="width: 0%;"></div>
-                </div>
+              <div class="hud-team-bar-wrap">
+                <div id="teamTrophyBar_B" class="hud-team-bar-fill team-b-bg" style="width: 0%;"></div>
               </div>
             </div>
+          </div>
 
-            <div class="hud-players-list" id="hudPlayersList">
-              <!-- Dynamically filled with player status cards (bombs, range, speed, alive) -->
+          <!-- Top Center Timer and Round State -->
+          <div class="hud-center-panel">
+            <div class="hud-center-row">
+              <div id="hudRoundNumberDisplay" class="hud-round-label">ROUND 1</div>
+              <div class="hud-time-display" id="roundTimer">02:30</div>
+              <div class="hud-room-code-label">ROOM: <strong id="gameRoomCode">----</strong></div>
             </div>
+            <div class="hud-status-label" id="roundState">Ready</div>
+          </div>
 
+          <!-- Bottom Center Area -->
+          <div class="hud-bottom-bar">
             <button id="leaveGameBtn" class="btn btn-sm btn-danger" type="button"><span>Surrender</span></button>
-          </aside>
+            <div id="hudGeneralMessage" class="hud-general-msg hidden"></div>
+          </div>
+
+          <!-- Hidden Dummies for compatibility -->
+          <div id="hudPlayersList" style="display: none !important;"></div>
 
           <!-- Center: Gameplay Canvas -->
           <div class="arcade-cabinet">
@@ -1109,6 +1110,40 @@
       </div>
     </div>
 
+    <!-- Pre-Match Map Voting Screen Overlay -->
+    <div id="mapVoteOverlay" class="overlay hidden">
+      <div class="lobby-map-voting" style="max-width: 480px; width: 90%; margin: auto; text-align: center; color: var(--ink);">
+        <div class="vote-header" style="font-size: 24px; margin-bottom: 8px;">MAP VOTING</div>
+        <div id="mapVoteTimer" style="font-family: var(--font); font-size: 20px; font-weight: 800; color: #ff3399; margin-bottom: 20px;">10</div>
+        
+        <div class="map-vote-cards">
+          <!-- Classic Green Map -->
+          <div class="map-vote-card" data-map="classic">
+            <span class="map-vote-title">Classic Green</span>
+            <div class="map-vote-preview preview-classic"></div>
+            <span class="map-vote-count" id="mapVoteCount_classic">0</span>
+            <div class="map-vote-voters" id="mapVoteVoters_classic" style="display:flex; gap:4px; margin-top:8px; justify-content:center; flex-wrap:wrap;"></div>
+          </div>
+          
+          <!-- Checkered Ice Map -->
+          <div class="map-vote-card" data-map="checkered">
+            <span class="map-vote-title">Checkered Ice</span>
+            <div class="map-vote-preview preview-checkered"></div>
+            <span class="map-vote-count" id="mapVoteCount_checkered">0</span>
+            <div class="map-vote-voters" id="mapVoteVoters_checkered" style="display:flex; gap:4px; margin-top:8px; justify-content:center; flex-wrap:wrap;"></div>
+          </div>
+          
+          <!-- Colosseum Clay Map -->
+          <div class="map-vote-card" data-map="colosseum">
+            <span class="map-vote-title">Colosseum Clay</span>
+            <div class="map-vote-preview preview-colosseum"></div>
+            <span class="map-vote-count" id="mapVoteCount_colosseum">0</span>
+            <div class="map-vote-voters" id="mapVoteVoters_colosseum" style="display:flex; gap:4px; margin-top:8px; justify-content:center; flex-wrap:wrap;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Social Modal (Friends + Online Users) -->
     <div id="socialModal" class="dialog-overlay hidden">
       <div class="social-modal-card card glass">
@@ -1187,6 +1222,36 @@
         </div>
         
         <button id="closeStartModeBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- Online Matchmaking Mode Selection Dialog Popup -->
+    <div id="matchmakingModeSelectDialog" class="dialog-overlay hidden">
+      <div class="card glass dialog-card server-select-card" style="max-width: 480px !important;">
+        <h2>Select Match Mode</h2>
+        <p>Select your matchmaking battle format:</p>
+        
+        <div class="server-options-grid" style="display: flex; flex-direction: column; gap: 12px; margin: 20px 0; width: 100%;">
+          <button id="btnModeSelectSolo" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 16px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer;">
+            <span class="option-icon" style="font-size: 24px;">👤</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Solo (1p ffa)</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; opacity: 0.8;">4 players free-for-all. No squad invites allowed.</span>
+          </button>
+          
+          <button id="btnModeSelectDuo" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 16px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer;">
+            <span class="option-icon" style="font-size: 24px;">👥</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Duo (2v2)</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; opacity: 0.8;">2v2 team match. Shared trophies. Up to 2 players per squad.</span>
+          </button>
+          
+          <button id="btnModeSelectTrio" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 16px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer;">
+            <span class="option-icon" style="font-size: 24px;">⚔️</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Trio (3v3)</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; opacity: 0.8;">3v3 team rotation duels. Decisive 1v1 final round. Up to 3 players.</span>
+          </button>
+        </div>
+        
+        <button id="closeMatchmakingModeBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
       </div>
     </div>
 
