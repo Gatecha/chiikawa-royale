@@ -1367,9 +1367,11 @@ function handleServerMessage(msg) {
       const classicEl = document.getElementById("voteCount_classic");
       const checkeredEl = document.getElementById("voteCount_checkered");
       const colosseumEl = document.getElementById("voteCount_colosseum");
+      const powerzoneEl = document.getElementById("voteCount_powerzone");
       if (classicEl) classicEl.textContent = `${votes.classic || 0} votes`;
       if (checkeredEl) checkeredEl.textContent = `${votes.checkered || 0} votes`;
       if (colosseumEl) colosseumEl.textContent = `${votes.colosseum || 0} votes`;
+      if (powerzoneEl) powerzoneEl.textContent = `${votes.powerzone || 0} votes`;
       break;
     }
 
@@ -3000,7 +3002,7 @@ function drawBunting(x, y, w) {
 }
 
 function drawMap() {
-  ctx.fillStyle = currentMapType === "checkered" ? "#80e1fe" : currentMapType === "colosseum" ? "#df9376" : "#9fe39e";
+  ctx.fillStyle = (currentMapType === "checkered" || currentMapType === "powerzone") ? "#80e1fe" : currentMapType === "colosseum" ? "#df9376" : "#9fe39e";
   roundedRect(0, 0, COLS * TILE, ROWS * TILE, 12, true, false);
   for (let y = 0; y < ROWS; y += 1) {
     for (let x = 0; x < COLS; x += 1) {
@@ -3040,6 +3042,16 @@ function drawTile(x, y, type) {
       ctx.lineTo(px + 28, py + 20);
       ctx.stroke();
     }
+  } else if (currentMapType === "powerzone") {
+    // Cyan / Blue Checkered Floor
+    const isLight = (x + y) % 2 === 0;
+    ctx.fillStyle = isLight ? "#80e1fe" : "#00bfff";
+    ctx.fillRect(px, py, TILE, TILE);
+    
+    // Draw grid lines
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px, py, TILE, TILE);
   } else if (currentMapType === "colosseum") {
     // Clay / Terracotta Floor
     const isLight = (x + y) % 2 === 0;
@@ -3097,7 +3109,7 @@ function drawTile(x, y, type) {
   if (type === "wall") {
     ctx.save();
     // Skinned Wall 3D Block
-    if (currentMapType === "checkered") {
+    if (currentMapType === "checkered" || currentMapType === "powerzone") {
       // Golden Treasure Wall Block
       ctx.fillStyle = "#d1a31d"; // Dark Gold border
       roundedRect(px + 3, py + 3, TILE - 6, TILE - 6, 8, true, true);

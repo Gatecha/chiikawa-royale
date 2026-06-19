@@ -455,10 +455,10 @@ function handleMessage(ws, msg) {
       const room = rooms.get(ws.roomCode);
       if (!room || room.state !== "map_voting") return;
       const mapChoice = data.map;
-      if (["classic", "checkered", "colosseum"].includes(mapChoice)) {
+      if (["classic", "checkered", "colosseum", "powerzone"].includes(mapChoice)) {
         if (!room.mapVotes) room.mapVotes = {};
         room.mapVotes[ws.id] = mapChoice;
-        const votes = { classic: 0, checkered: 0, colosseum: 0 };
+        const votes = { classic: 0, checkered: 0, colosseum: 0, powerzone: 0 };
         Object.values(room.mapVotes).forEach((v) => { if (votes[v] !== undefined) votes[v]++; });
         broadcastToRoom(room, { type: "map_votes_updated", data: { votes, voterMap: room.mapVotes } });
       }
@@ -725,7 +725,7 @@ function leaveRoom(ws, intentional = false) {
   if (room.mapVotes) {
     delete room.mapVotes[ws.id];
     if (room.state === "lobby") {
-      const votes = { classic: 0, checkered: 0, colosseum: 0 };
+      const votes = { classic: 0, checkered: 0, colosseum: 0, powerzone: 0 };
       Object.values(room.mapVotes).forEach((v) => { if (votes[v] !== undefined) votes[v]++; });
       broadcastToRoom(room, { type: "map_votes_updated", data: { votes } });
     }
@@ -1145,7 +1145,7 @@ function resolveMapVote(room) {
     room.mapVoteInterval = null;
   }
 
-  const votes = { classic: 0, checkered: 0, colosseum: 0 };
+  const votes = { classic: 0, checkered: 0, colosseum: 0, powerzone: 0 };
   Object.values(room.mapVotes || {}).forEach((v) => { if (votes[v] !== undefined) votes[v]++; });
 
   let maxVotes = -1;
@@ -1623,12 +1623,13 @@ function startRound(room, isNewTournament) {
   resetSurrenderVotes(room);
   if (isNewTournament) {
     // Determine winning map from votes
-    const votes = { classic: 0, checkered: 0, colosseum: 0 };
+    const votes = { classic: 0, checkered: 0, colosseum: 0, powerzone: 0 };
     Object.values(room.mapVotes || {}).forEach((v) => { if (votes[v] !== undefined) votes[v]++; });
     let winningMap = "classic";
     let maxVotes = votes.classic;
     if (votes.checkered > maxVotes) { winningMap = "checkered"; maxVotes = votes.checkered; }
-    if (votes.colosseum > maxVotes) winningMap = "colosseum";
+    if (votes.colosseum > maxVotes) { winningMap = "colosseum"; maxVotes = votes.colosseum; }
+    if (votes.powerzone > maxVotes) { winningMap = "powerzone"; maxVotes = votes.powerzone; }
     room.currentMapType = winningMap;
     room.mapVotes = {};
     room.roundNumber = 0;
@@ -1709,6 +1710,17 @@ function startRound(room, isNewTournament) {
   });
 
   room.bombs = []; room.blasts = []; room.pickups = [];
+  if (mapType === "powerzone") {
+    // Generate power-ups around the outer ring
+    for (let x = 1; x <= COLS - 2; x++) {
+      spawnOuterPickup(room, x, 1);
+      spawnOuterPickup(room, x, ROWS - 2);
+    }
+    for (let y = 2; y <= ROWS - 3; y++) {
+      spawnOuterPickup(room, 1, y);
+      spawnOuterPickup(room, COLS - 2, y);
+    }
+  }
   room.roundTime = ROUND_SECONDS;
   room.zoneActive = false;
   room.zoneLayer = 0;
@@ -2056,11 +2068,62 @@ function wouldBombThreatenTile(room, bombTile, x, y, range) {
 // MAP GENERATION
 // ----------------------------------------------------------------
 
+function spawnOuterPickup(room, x, y) {
+  let type = "bomb";
+  
+  // Corners
+  if ((x === 1 && y === 1) || (x === COLS - 2 && y === 1) || (x === 1 && y === ROWS - 2) || (x === COLS - 2 && y === ROWS - 2)) {
+    type = "bomb";
+  }
+  // Center-top/bottom
+  else if (x === 7 && (y === 1 || y === ROWS - 2)) {
+    type = "full_fire";
+  }
+  // Next to center-top/bottom
+  else if ((x === 6 || x === 8) && (y === 1 || y === ROWS - 2)) {
+    type = "speed";
+  }
+  // Other top/bottom slots
+  else if ((x === 2 || x === 12) && (y === 1 || y === ROWS - 2)) {
+    type = "bomb";
+  }
+  else if ((x === 3 || x === 11) && (y === 1 || y === ROWS - 2)) {
+    type = "speed";
+  }
+  else if ((x === 4 || x === 10) && (y === 1 || y === ROWS - 2)) {
+    type = "flame";
+  }
+  else if ((x === 5 || x === 9) && (y === 1 || y === ROWS - 2)) {
+    type = "flame";
+  }
+  // Left/Right columns (excl. corners)
+  else if (x === 1 || x === COLS - 2) {
+    if (y === 2 || y === ROWS - 3) {
+      type = "bomb";
+    } else if (y === 3 || y === ROWS - 4) {
+      type = "flame";
+    } else if (y === 4 || y === ROWS - 5) {
+      type = "speed";
+    } else if (y === 5 || y === ROWS - 6) {
+      type = "slide";
+    } else if (y === 6) {
+      type = "punch"; // Boxing glove at y=6
+    }
+  }
+  
+  room.pickups.push({ x, y, type });
+}
+
 function generateMap(mapType) {
   const nextMap = Array.from({ length: ROWS }, (_, y) =>
     Array.from({ length: COLS }, (_, x) => {
       if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) return "wall";
-      if (mapType === "colosseum") {
+      
+      if (mapType === "powerzone") {
+        if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
+        if (x % 2 === 0 && y % 2 === 0) return "wall";
+        return Math.random() < 0.75 ? "crate" : "grass";
+      } else if (mapType === "colosseum") {
         if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
         return Math.random() < 0.5 ? "crate" : "grass";
       } else if (mapType === "checkered") {

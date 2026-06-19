@@ -3587,6 +3587,10 @@ body.local-four-lobby-active .lobby-card {
   background: repeating-linear-gradient(45deg, #df9376, #df9376 10px, #c67050 10px, #c67050 20px);
 }
 
+.preview-powerzone {
+  background: repeating-linear-gradient(45deg, #80e1fe, #80e1fe 10px, #00bfff 10px, #00bfff 20px);
+}
+
 .map-vote-count {
   font-size: 10px;
   font-weight: 800;
