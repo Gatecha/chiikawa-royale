@@ -248,6 +248,13 @@ const starts = [
   { x: 1, y: ROWS - 2 },
 ];
 
+const powerZoneStarts = [
+  { x: 1, y: 1 },
+  { x: 1, y: ROWS - 2 },
+  { x: 3, y: 1 },
+  { x: 3, y: ROWS - 2 },
+];
+
 // Character styles
 const characterStyle = {
   hachiware: { body: "#ffffff", accent: "#80b2c9", blush: "#ffb5c6", label: "Hachiware" },
@@ -1419,14 +1426,15 @@ function startLocalGame() {
   const mapSelect = document.getElementById("localMapSelect");
   currentMapType = mapSelect ? mapSelect.value : "classic";
   map = buildLocalMap(currentMapType);
+  const activeStarts = getStartsForMap(currentMapType);
 
   const localNickname = localStorage.getItem("local_username") || "You";
 
   players = [
-    makeLocalPlayer("local_player", localNickname, selectedCharacter, starts[0], false),
-    makeLocalPlayer("cpu_usagi", "Usagi CPU", "usagi", starts[1], true),
-    makeLocalPlayer("cpu_momonga", "Momonga CPU", "momonga", starts[2], true),
-    makeLocalPlayer("cpu_chiikawa", "Chiikawa CPU", "chiikawa", starts[3], true),
+    makeLocalPlayer("local_player", localNickname, selectedCharacter, activeStarts[0], false),
+    makeLocalPlayer("cpu_usagi", "Usagi CPU", "usagi", activeStarts[1], true),
+    makeLocalPlayer("cpu_momonga", "Momonga CPU", "momonga", activeStarts[2], true),
+    makeLocalPlayer("cpu_chiikawa", "Chiikawa CPU", "chiikawa", activeStarts[3], true),
   ];
   players.forEach((p) => {
     p.trophies = 0;
@@ -1436,6 +1444,7 @@ function startLocalGame() {
   bombs = [];
   blasts = [];
   pickups = [];
+  seedLocalPowerZonePickups();
   particles = [];
   roundTime = 150;
   running = true;
@@ -1602,17 +1611,17 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
         <div class="local-four-empty-label">P${index + 1}</div>
       </div>
     `;
-    const addPlayer = () => {
-      const kind = couchCharacters[index % couchCharacters.length];
-      couchSlots[index] = { human: true, name: `P${index + 1}`, kind, playerId: `couch_p${index + 1}` };
-      renderLocalFourPlayerLobby();
+    const openInvitePanel = (event) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+      if (!localFourPlayerLobbyActive && typeof openFriendsList === "function" && socket && socket.readyState === WebSocket.OPEN) {
+        openFriendsList(event);
+      } else {
+        showToastMsg("Invite a friend first. Empty slots stay empty until someone joins.");
+      }
     };
-    card.onclick = addPlayer;
-    card.querySelector(".invite-btn")?.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      addPlayer();
-    });
+    card.onclick = openInvitePanel;
+    card.querySelector(".invite-btn")?.addEventListener("click", openInvitePanel);
   }
 }
 
@@ -1643,6 +1652,7 @@ function startLocalFourPlayerGame() {
 
   currentMapType = document.getElementById("localMapSelect")?.value || "classic";
   map = buildLocalMap(currentMapType);
+  const activeStarts = getStartsForMap(currentMapType);
 
   const usedKinds = [];
   players = Array.from({ length: 4 }, (_, index) => {
@@ -1652,9 +1662,9 @@ function startLocalFourPlayerGame() {
     usedKinds.push(kind);
     let player;
     if (slot?.human) {
-      player = makeLocalPlayer(`couch_p${index + 1}`, slot.name || `P${index + 1}`, kind, starts[index], false);
+      player = makeLocalPlayer(`couch_p${index + 1}`, slot.name || `P${index + 1}`, kind, activeStarts[index % activeStarts.length], false);
     } else {
-      player = makeLocalPlayer(`couch_cpu_${index + 1}`, `${characterStyle[kind].label} CPU`, kind, starts[index], true);
+      player = makeLocalPlayer(`couch_cpu_${index + 1}`, `${characterStyle[kind].label} CPU`, kind, activeStarts[index % activeStarts.length], true);
     }
     player.couchSlotIndex = index;
     return player;
@@ -1673,6 +1683,7 @@ function startLocalFourPlayerGame() {
   bombs = [];
   blasts = [];
   pickups = [];
+  seedLocalPowerZonePickups();
   particles = [];
   roundTime = 150;
   running = true;
@@ -1826,7 +1837,11 @@ function buildLocalMap(mapType = "classic") {
       // Outer walls
       if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) return "wall";
       
-      if (mapType === "colosseum") {
+      if (mapType === "powerzone") {
+        if (x >= COLS - 3) return "grass";
+        if (x % 2 === 0 && y % 2 === 0 && x <= COLS - 5) return "wall";
+        return Math.random() < 0.72 ? "crate" : "grass";
+      } else if (mapType === "colosseum") {
         // Open center, only corner pillars
         if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
         return Math.random() < 0.5 ? "crate" : "grass";
@@ -1844,7 +1859,7 @@ function buildLocalMap(mapType = "classic") {
     })
   );
 
-  starts.forEach((s) => {
+  getStartsForMap(mapType).forEach((s) => {
     const clearSafe = (x, y) => {
       if (nextMap[y] && nextMap[y][x] && nextMap[y][x] !== "wall") nextMap[y][x] = "grass";
     };
@@ -1854,6 +1869,41 @@ function buildLocalMap(mapType = "classic") {
   });
 
   return nextMap;
+}
+
+function getStartsForMap(mapType = currentMapType) {
+  return mapType === "powerzone" ? powerZoneStarts : starts;
+}
+
+function getPowerZonePickupType(x, y) {
+  if (x === COLS - 2) {
+    if (y === 1 || y === ROWS - 2) return "bomb";
+    if (y === 2 || y === ROWS - 3) return "flame";
+    if (y === 3 || y === ROWS - 4) return "speed";
+    if (y === 4 || y === ROWS - 5) return "slide";
+    if (y === 5 || y === ROWS - 6) return "punch";
+    if (y === 6) return "full_fire";
+    return "bomb";
+  }
+  if (x === COLS - 3) {
+    if (y === 1 || y === ROWS - 2) return "speed";
+    if (y === 2 || y === ROWS - 3) return "bomb";
+    if (y === 3 || y === ROWS - 4) return "flame";
+    if (y === 4 || y === ROWS - 5) return "punch";
+    if (y === 5 || y === ROWS - 6) return "slide";
+    if (y === 6) return "full_fire";
+  }
+  return "flame";
+}
+
+function seedLocalPowerZonePickups() {
+  if (currentMapType !== "powerzone") return;
+  for (let y = 1; y <= ROWS - 2; y += 1) {
+    pickups.push({ x: COLS - 2, y, type: getPowerZonePickupType(COLS - 2, y) });
+    if (y % 2 === 1) {
+      pickups.push({ x: COLS - 3, y, type: getPowerZonePickupType(COLS - 3, y) });
+    }
+  }
 }
 
 function updateLobbyUI() {
@@ -3044,6 +3094,10 @@ function drawMiniMapPreview(canvas, mapType) {
         if ((x === 3 || x === cols - 4) && (y === 3 || y === rows - 4)) {
           drawWall = true;
         }
+      } else if (mapType === "powerzone") {
+        if (x % 2 === 0 && y % 2 === 0 && x <= cols - 5) {
+          drawWall = true;
+        }
       } else {
         if (x % 2 === 0 && y % 2 === 0) {
           drawWall = true;
@@ -3071,11 +3125,11 @@ function drawMiniMapPreview(canvas, mapType) {
         // 3. Draw soft blocks (crates) / items / spawn areas
         let isCrate = false;
         if (mapType === "powerzone") {
-          const isOuter = x === 1 || y === 1 || x === cols - 2 || y === rows - 2;
-          if (!isOuter) {
+          const isPowerLane = x >= cols - 3;
+          if (!isPowerLane) {
             if ((x * y + x + y) % 3 !== 0) isCrate = true;
           } else {
-            // Draw mini power-ups on the outer ring
+            // Draw mini power-ups in the right-side power lane.
             let itemColor = null;
             if ((x + y) % 4 === 0) itemColor = "#ff7c55"; // Flame
             else if ((x + y) % 4 === 1) itemColor = "#7466e8"; // Bomb
@@ -5005,16 +5059,17 @@ function startLocalGameWithMatchedBots() {
   const mapSelect = document.getElementById("localMapSelect");
   currentMapType = mapSelect ? mapSelect.value : "classic";
   map = buildLocalMap(currentMapType);
+  const activeStarts = getStartsForMap(currentMapType);
   
   const cpu1 = matchedBots[0] || "usagi";
   const cpu2 = matchedBots[1] || "momonga";
   const cpu3 = matchedBots[2] || "chiikawa";
   
   players = [
-    makeLocalPlayer("local_player", (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You", selectedCharacter, starts[0], false),
-    makeLocalPlayer("cpu_1", characterStyle[cpu1].label + " CPU", cpu1, starts[1], true),
-    makeLocalPlayer("cpu_2", characterStyle[cpu2].label + " CPU", cpu2, starts[2], true),
-    makeLocalPlayer("cpu_3", characterStyle[cpu3].label + " CPU", cpu3, starts[3], true),
+    makeLocalPlayer("local_player", (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You", selectedCharacter, activeStarts[0], false),
+    makeLocalPlayer("cpu_1", characterStyle[cpu1].label + " CPU", cpu1, activeStarts[1], true),
+    makeLocalPlayer("cpu_2", characterStyle[cpu2].label + " CPU", cpu2, activeStarts[2], true),
+    makeLocalPlayer("cpu_3", characterStyle[cpu3].label + " CPU", cpu3, activeStarts[3], true),
   ];
   
   players.forEach((p) => {
@@ -5025,6 +5080,7 @@ function startLocalGameWithMatchedBots() {
   bombs = [];
   blasts = [];
   pickups = [];
+  seedLocalPowerZonePickups();
   particles = [];
   roundTime = 150;
   running = true;
@@ -5761,10 +5817,11 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
 
 function localStartNextRound() {
   map = buildLocalMap(currentMapType);
+  const activeStarts = getStartsForMap(currentMapType);
   
   // Reposition players and reset alive state while preserving trophies
   players.forEach((p, index) => {
-    const spawn = starts[index % starts.length];
+    const spawn = activeStarts[index % activeStarts.length];
     p.x = spawn.x * TILE + TILE / 2;
     p.y = spawn.y * TILE + TILE / 2;
     p.targetX = p.x;
@@ -5801,6 +5858,7 @@ function localStartNextRound() {
   bombs = [];
   blasts = [];
   pickups = [];
+  seedLocalPowerZonePickups();
   particles = [];
   roundTime = 150;
   running = true;

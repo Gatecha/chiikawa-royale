@@ -55,6 +55,13 @@ const starts = [
   { x: 1, y: ROWS - 2 },
 ];
 
+const powerZoneStarts = [
+  { x: 1, y: 1 },
+  { x: 1, y: ROWS - 2 },
+  { x: 3, y: 1 },
+  { x: 3, y: ROWS - 2 },
+];
+
 // In-memory Room storage
 const rooms = new Map();
 
@@ -1697,7 +1704,8 @@ function startRound(room, isNewTournament) {
     const spawnIndex = isTeamMode(room.mode)
       ? room.activeRoundPlayers.indexOf(p.id)
       : index;
-    const spawn = starts[(spawnIndex >= 0 ? spawnIndex : index) % starts.length];
+    const activeStarts = getStartsForMap(mapType);
+    const spawn = activeStarts[(spawnIndex >= 0 ? spawnIndex : index) % activeStarts.length];
     p.x = spawn.x * TILE + TILE / 2;
     p.y = spawn.y * TILE + TILE / 2;
     p.dx = 0; p.dy = 0;
@@ -1711,15 +1719,7 @@ function startRound(room, isNewTournament) {
 
   room.bombs = []; room.blasts = []; room.pickups = [];
   if (mapType === "powerzone") {
-    // Generate power-ups around the outer ring
-    for (let x = 1; x <= COLS - 2; x++) {
-      spawnOuterPickup(room, x, 1);
-      spawnOuterPickup(room, x, ROWS - 2);
-    }
-    for (let y = 2; y <= ROWS - 3; y++) {
-      spawnOuterPickup(room, 1, y);
-      spawnOuterPickup(room, COLS - 2, y);
-    }
+    spawnPowerZonePickups(room);
   }
   room.roundTime = ROUND_SECONDS;
   room.zoneActive = false;
@@ -2068,50 +2068,38 @@ function wouldBombThreatenTile(room, bombTile, x, y, range) {
 // MAP GENERATION
 // ----------------------------------------------------------------
 
-function spawnOuterPickup(room, x, y) {
-  let type = "bomb";
-  
-  // Corners
-  if ((x === 1 && y === 1) || (x === COLS - 2 && y === 1) || (x === 1 && y === ROWS - 2) || (x === COLS - 2 && y === ROWS - 2)) {
-    type = "bomb";
+function getStartsForMap(mapType) {
+  return mapType === "powerzone" ? powerZoneStarts : starts;
+}
+
+function getPowerZonePickupType(x, y) {
+  if (x === COLS - 2) {
+    if (y === 1 || y === ROWS - 2) return "bomb";
+    if (y === 2 || y === ROWS - 3) return "flame";
+    if (y === 3 || y === ROWS - 4) return "speed";
+    if (y === 4 || y === ROWS - 5) return "slide";
+    if (y === 5 || y === ROWS - 6) return "punch";
+    if (y === 6) return "full_fire";
+    return "bomb";
   }
-  // Center-top/bottom
-  else if (x === 7 && (y === 1 || y === ROWS - 2)) {
-    type = "full_fire";
+  if (x === COLS - 3) {
+    if (y === 1 || y === ROWS - 2) return "speed";
+    if (y === 2 || y === ROWS - 3) return "bomb";
+    if (y === 3 || y === ROWS - 4) return "flame";
+    if (y === 4 || y === ROWS - 5) return "punch";
+    if (y === 5 || y === ROWS - 6) return "slide";
+    if (y === 6) return "full_fire";
   }
-  // Next to center-top/bottom
-  else if ((x === 6 || x === 8) && (y === 1 || y === ROWS - 2)) {
-    type = "speed";
-  }
-  // Other top/bottom slots
-  else if ((x === 2 || x === 12) && (y === 1 || y === ROWS - 2)) {
-    type = "bomb";
-  }
-  else if ((x === 3 || x === 11) && (y === 1 || y === ROWS - 2)) {
-    type = "speed";
-  }
-  else if ((x === 4 || x === 10) && (y === 1 || y === ROWS - 2)) {
-    type = "flame";
-  }
-  else if ((x === 5 || x === 9) && (y === 1 || y === ROWS - 2)) {
-    type = "flame";
-  }
-  // Left/Right columns (excl. corners)
-  else if (x === 1 || x === COLS - 2) {
-    if (y === 2 || y === ROWS - 3) {
-      type = "bomb";
-    } else if (y === 3 || y === ROWS - 4) {
-      type = "flame";
-    } else if (y === 4 || y === ROWS - 5) {
-      type = "speed";
-    } else if (y === 5 || y === ROWS - 6) {
-      type = "slide";
-    } else if (y === 6) {
-      type = "punch"; // Boxing glove at y=6
+  return "flame";
+}
+
+function spawnPowerZonePickups(room) {
+  for (let y = 1; y <= ROWS - 2; y++) {
+    room.pickups.push({ x: COLS - 2, y, type: getPowerZonePickupType(COLS - 2, y) });
+    if (y % 2 === 1) {
+      room.pickups.push({ x: COLS - 3, y, type: getPowerZonePickupType(COLS - 3, y) });
     }
   }
-  
-  room.pickups.push({ x, y, type });
 }
 
 function generateMap(mapType) {
@@ -2120,9 +2108,9 @@ function generateMap(mapType) {
       if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) return "wall";
       
       if (mapType === "powerzone") {
-        if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
-        if (x % 2 === 0 && y % 2 === 0) return "wall";
-        return Math.random() < 0.75 ? "crate" : "grass";
+        if (x >= COLS - 3) return "grass";
+        if (x % 2 === 0 && y % 2 === 0 && x <= COLS - 5) return "wall";
+        return Math.random() < 0.72 ? "crate" : "grass";
       } else if (mapType === "colosseum") {
         if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
         return Math.random() < 0.5 ? "crate" : "grass";
@@ -2136,7 +2124,7 @@ function generateMap(mapType) {
       }
     })
   );
-  starts.forEach((s) => {
+  getStartsForMap(mapType).forEach((s) => {
     const clearSafe = (x, y) => { if (nextMap[y] && nextMap[y][x] && nextMap[y][x] !== "wall") nextMap[y][x] = "grass"; };
     clearSafe(s.x, s.y);
     clearSafe(s.x + Math.sign(COLS / 2 - s.x), s.y);
