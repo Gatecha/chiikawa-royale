@@ -2,7 +2,7 @@
   color-scheme: light;
   --ink: #221f25;
   --white: #ffffff;
-  --panel: rgba(255, 255, 255, 0.85);
+  --panel: rgba(20, 18, 24, 0.92);
   
   /* Cute Pastel Palette */
   --pink: #ff3399;
@@ -1288,7 +1288,8 @@ body {
 
 .dialog-card {
   width: 460px;
-  background: var(--panel);
+  background: rgba(20, 18, 24, 0.92);
+  color: #fff;
   position: relative;
   animation: dialogPop 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
@@ -1602,21 +1603,21 @@ label {
 }
 
 .btn-primary {
-  background: var(--pink-light);
-  color: var(--ink);
+  background: #2ecc71;
+  color: #fff;
 }
 .btn-primary:hover {
-  background: var(--pink);
-  color: var(--white);
+  background: #27ae60;
+  color: #fff;
 }
 
 .btn-secondary {
-  background: var(--blue-light);
-  color: var(--ink);
+  background: #ff3399;
+  color: #fff;
 }
 .btn-secondary:hover {
-  background: var(--blue);
-  color: var(--white);
+  background: #e0285a;
+  color: #fff;
 }
 
 .btn-accent {
@@ -1839,7 +1840,8 @@ input[type="text"]:focus {
 
 .chat-messages {
   flex: 1;
-  background: var(--white);
+  background: #121015;
+  color: #fff;
   border: 3px solid var(--ink);
   border-radius: var(--radius-sm);
   padding: 12px;
@@ -3194,7 +3196,8 @@ body.local-four-lobby-active .lobby-card {
 .results-card {
   position: relative;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(22, 20, 28, 0.95);
+  color: #fff;
   border: 6px solid #18161a;
   border-radius: 20px;
   box-shadow: 12px 12px 0px #18161a;
@@ -3238,7 +3241,8 @@ body.local-four-lobby-active .lobby-card {
 }
 
 .result-player-card {
-  background: #ffffff;
+  background: #1a1820;
+  color: #fff;
   border: 4px solid #18161a;
   border-radius: 16px;
   padding: 16px;
@@ -3260,7 +3264,8 @@ body.local-four-lobby-active .lobby-card {
 
 /* 3v3 Team Tournament Results Card */
 .result-team-card {
-  background: #ffffff;
+  background: #1a1820;
+  color: #fff;
   border: 4px solid #18161a;
   border-radius: 18px;
   padding: 20px 24px;
@@ -3393,7 +3398,8 @@ body.local-four-lobby-active .lobby-card {
 .victory-card {
   position: relative;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(22, 20, 28, 0.95);
+  color: #fff;
   border: 6px solid #18161a;
   border-radius: 24px;
   box-shadow: 14px 14px 0px #18161a;
@@ -3440,7 +3446,7 @@ body.local-four-lobby-active .lobby-card {
   border: 6px solid #18161a;
   overflow: hidden;
   box-shadow: 0px 8px 24px rgba(254, 198, 26, 0.35);
-  background: #ffffff;
+  background: #1a1820;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3862,13 +3868,12 @@ body.local-four-lobby-active .lobby-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: #1e1c22;
   border: 3px solid #000;
   border-radius: 12px;
   padding: 8px 12px;
-  background: #fdfdfd;
   box-shadow: 0 4px 0 #000;
-  color: #000;
+  color: #fff;
 }
 
 .friend-left {
@@ -5544,7 +5549,8 @@ body.is-mobile .arcade-controller {
   border-radius: var(--radius);
   padding: 0;
   overflow: hidden;
-  background: rgba(255,255,255,0.97);
+  background: rgba(20, 18, 24, 0.97);
+  color: #fff;
   border: var(--border);
   box-shadow: var(--shadow);
 }
@@ -5715,7 +5721,8 @@ body.is-mobile .arcade-controller {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #fafafa;
+  background: #1e1c22;
+  color: #fff;
   border: 2px solid rgba(34,31,37,0.1);
   border-radius: 12px;
   padding: 10px 14px;
@@ -5723,7 +5730,7 @@ body.is-mobile .arcade-controller {
 }
 
 .social-user-item:hover {
-  background: #fffbe6;
+  background: #2a2830;
   border-color: var(--yellow);
 }
 
@@ -5849,7 +5856,8 @@ body.is-mobile .arcade-controller {
   flex-direction: column;
   border-radius: var(--radius);
   overflow: hidden;
-  background: rgba(255,255,255,0.97);
+  background: rgba(20, 18, 24, 0.97);
+  color: #fff;
   border: var(--border);
   box-shadow: var(--shadow);
 }
@@ -5884,7 +5892,7 @@ body.is-mobile .arcade-controller {
   flex-direction: column;
   gap: 8px;
   min-height: 200px;
-  background: #fafafa;
+  background: #121015;
 }
 
 .global-chat-msg {
@@ -5940,7 +5948,7 @@ body.is-mobile .arcade-controller {
   gap: 8px;
   padding: 12px 16px;
   border-top: 3px solid var(--ink);
-  background: #fff;
+  background: #1a1820;
 }
 
 #globalChatInput {
@@ -5948,9 +5956,10 @@ body.is-mobile .arcade-controller {
   font-family: var(--font-clean);
   font-size: 14px;
   padding: 8px 12px;
-  border: 2px solid var(--ink);
+  border: 2px solid #333;
   border-radius: 8px;
-  background: #fafafa;
+  background: #121015;
+  color: #fff;
   outline: none;
 }
 
@@ -7137,4 +7146,7 @@ body.graphics-low .yellow-console {
   .gamepad-btn {
     backdrop-filter: none !important;
   }
+}
+.hud-players-list {
+  display: none !important;
 }

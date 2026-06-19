@@ -23,6 +23,10 @@ class MainActivity : Activity() {
         settings.allowFileAccess = true
         settings.allowContentAccess = true
         settings.databaseEnabled = true
+        @Suppress("DEPRECATION")
+        settings.allowFileAccessFromFileURLs = true
+        @Suppress("DEPRECATION")
+        settings.allowUniversalAccessFromFileURLs = true
         settings.mediaPlaybackRequiresUserGesture = false
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         

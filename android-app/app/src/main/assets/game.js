@@ -1275,6 +1275,8 @@ function startLocalGame() {
   localPlayerId = "local_player";
   hostId = localPlayerId;
   localBombId = 0;
+  currentRoomMode = "classic";
+  currentActiveRoundPlayers = [];
   
   const mapSelect = document.getElementById("localMapSelect");
   currentMapType = mapSelect ? mapSelect.value : "classic";
@@ -1495,6 +1497,8 @@ function startLocalFourPlayerGame() {
   localPlayerId = "couch_p1";
   hostId = localPlayerId;
   localBombId = 0;
+  currentRoomMode = "classic";
+  currentActiveRoundPlayers = [];
   couchTouchKeys.clear();
   couchPlayerTouchKeys.clear();
   couchTouchPlayerId = null;
@@ -1817,6 +1821,7 @@ function appendLobbyPlayerCard(p, isHost) {
 
 function updateHudSidebar() {
   hudPlayersList.innerHTML = "";
+  if (hudPlayersList) hudPlayersList.style.display = 'none';
 
   // Update Team Trophies Panel
   const teamPanel = document.getElementById("teamTrophiesPanel");
@@ -4958,18 +4963,22 @@ function getFullscreenTarget() {
 }
 
 function safeRequestFullscreen(el) {
-  const target = el || getFullscreenTarget();
-  const requestFS = target.requestFullscreen || target.webkitRequestFullscreen || target.mozRequestFullScreen || target.msRequestFullscreen;
-  if (requestFS) {
-    const result = requestFS.call(target);
-    return Promise.resolve(result).then(() => {
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock("landscape").catch(() => {});
-      }
-      return isFullscreenActive();
-    }).catch(() => false);
-  }
-  return Promise.resolve(false);
+  return Promise.resolve().then(() => {
+    const target = el || getFullscreenTarget();
+    const requestFS = target.requestFullscreen || target.webkitRequestFullscreen || target.mozRequestFullScreen || target.msRequestFullscreen;
+    if (requestFS) {
+      return requestFS.call(target);
+    }
+    throw new Error("Fullscreen API not supported");
+  }).then(() => {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock("landscape").catch(() => {});
+    }
+    return isFullscreenActive();
+  }).catch((err) => {
+    console.warn("Fullscreen request warning/error:", err);
+    return false;
+  });
 }
 
 // Automatically enter fullscreen on first user touch/click for mobile/tablet devices
@@ -5976,10 +5985,44 @@ function initIntroSequence() {
 function initMobileFullscreenPrompt() {
   const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
   const isMobileOrTablet = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Tablet/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth <= 1366) || isCoarsePointer;
+  
   if (isMobileOrTablet) {
     document.body.classList.add("is-mobile");
+    
+    // Only show fullscreen prompt in web browser (not in Android APK where protocol is file:)
+    if (window.location.protocol !== "file:") {
+      const reminder = document.getElementById("mobileFullscreenReminder");
+      const btn = document.getElementById("btnMobileFullscreenYes");
+      
+      const updatePrompt = () => {
+        if (isFullscreenActive()) {
+          reminder?.classList.add("hidden");
+        } else {
+          reminder?.classList.remove("hidden");
+        }
+      };
+      
+      if (btn && !btn.dataset.bound) {
+        btn.dataset.bound = "true";
+        btn.addEventListener("click", () => {
+          safeRequestFullscreen().then(updatePrompt);
+        });
+      }
+      
+      // Listen to fullscreen changes
+      document.addEventListener("fullscreenchange", updatePrompt);
+      document.addEventListener("webkitfullscreenchange", updatePrompt);
+      document.addEventListener("mozfullscreenchange", updatePrompt);
+      document.addEventListener("MSFullscreenChange", updatePrompt);
+      
+      // Run initial check
+      updatePrompt();
+    } else {
+      document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+    }
+  } else {
+    document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
   }
-  document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
 }
 
 async function checkInitialSession() {
