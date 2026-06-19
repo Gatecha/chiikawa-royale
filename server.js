@@ -606,8 +606,8 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
 
   broadcastLobbyUpdate(room);
 
-  // Auto-start map voting if lobby is full of real players
-  if (room.players.length >= maxPlayers) {
+  // Auto-start map voting if lobby is full of real players and we are in public matchmaking
+  if (!room.isPrivate && room.players.length >= maxPlayers) {
     clearMatchmakingTimers(room);
     setTimeout(() => {
       if (room.state === "lobby") {

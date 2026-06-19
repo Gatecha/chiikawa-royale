@@ -3001,6 +3001,119 @@ function drawBunting(x, y, w) {
   }
 }
 
+function drawMiniMapPreview(canvas, mapType) {
+  const ctx = canvas.getContext("2d");
+  const cols = 15;
+  const rows = 13;
+  const tw = canvas.width / cols;
+  const th = canvas.height / rows;
+
+  // Clear background
+  ctx.fillStyle = "#221f25";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const px = x * tw;
+      const py = y * th;
+      const isWall = x === 0 || y === 0 || x === cols - 1 || y === rows - 1;
+
+      // 1. Draw floor
+      let floorColor = "#93dc99";
+      const isLight = (x + y) % 2 === 0;
+      if (mapType === "classic") {
+        floorColor = isLight ? "#a8e8a4" : "#93dc99";
+      } else if (mapType === "checkered") {
+        floorColor = isLight ? "#b0ecff" : "#8adcf8";
+      } else if (mapType === "colosseum") {
+        floorColor = isLight ? "#e8a88e" : "#d4927a";
+      } else if (mapType === "powerzone") {
+        floorColor = isLight ? "#80e1fe" : "#00bfff";
+      }
+
+      ctx.fillStyle = floorColor;
+      ctx.fillRect(px, py, tw, th);
+
+      // 2. Draw wall blocks
+      let drawWall = false;
+
+      if (isWall) {
+        drawWall = true;
+      } else if (mapType === "colosseum") {
+        if ((x === 3 || x === cols - 4) && (y === 3 || y === rows - 4)) {
+          drawWall = true;
+        }
+      } else {
+        if (x % 2 === 0 && y % 2 === 0) {
+          drawWall = true;
+        }
+      }
+
+      if (drawWall) {
+        if (mapType === "checkered" || mapType === "powerzone") {
+          ctx.fillStyle = "#d1a31d";
+          ctx.fillRect(px, py, tw, th);
+          ctx.fillStyle = "#ffd84a";
+          ctx.fillRect(px + 1, py + 1, tw - 2, th - 2);
+        } else if (mapType === "colosseum") {
+          ctx.fillStyle = "#555562";
+          ctx.fillRect(px, py, tw, th);
+          ctx.fillStyle = "#8a8a9a";
+          ctx.fillRect(px + 1, py + 1, tw - 2, th - 2);
+        } else {
+          ctx.fillStyle = "#5c3d24";
+          ctx.fillRect(px, py, tw, th);
+          ctx.fillStyle = "#8b5e3c";
+          ctx.fillRect(px + 1, py + 1, tw - 2, th - 2);
+        }
+      } else {
+        // 3. Draw soft blocks (crates) / items / spawn areas
+        let isCrate = false;
+        if (mapType === "powerzone") {
+          const isOuter = x === 1 || y === 1 || x === cols - 2 || y === rows - 2;
+          if (!isOuter) {
+            if ((x * y + x + y) % 3 !== 0) isCrate = true;
+          } else {
+            // Draw mini power-ups on the outer ring
+            let itemColor = null;
+            if ((x + y) % 4 === 0) itemColor = "#ff7c55"; // Flame
+            else if ((x + y) % 4 === 1) itemColor = "#7466e8"; // Bomb
+            else if ((x + y) % 4 === 2) itemColor = "#ffe140"; // Speed
+            else itemColor = "#ff69b4"; // Punch
+
+            ctx.fillStyle = itemColor;
+            ctx.beginPath();
+            ctx.arc(px + tw / 2, py + th / 2, Math.min(tw, th) / 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#221f25";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        } else {
+          const isSpawn = (x <= 2 && y <= 2) || (x >= cols - 3 && y <= 2) || (x <= 2 && y >= rows - 3) || (x >= cols - 3 && y >= rows - 3);
+          if (!isSpawn && (x * y) % 2 === 0) {
+            isCrate = true;
+          }
+        }
+
+        if (isCrate) {
+          if (mapType === "powerzone" || mapType === "checkered") {
+            ctx.fillStyle = "#9a2a2a";
+            ctx.fillRect(px + 1, py + 1, tw - 2, th - 2);
+            ctx.fillStyle = "#d9534f";
+            ctx.fillRect(px + 2, py + 2, tw - 4, th - 4);
+          } else {
+            ctx.fillStyle = "#8c6239";
+            ctx.fillRect(px + 1, py + 1, tw - 2, th - 2);
+            ctx.fillStyle = "#c69c6d";
+            ctx.fillRect(px + 2, py + 2, tw - 4, th - 4);
+          }
+        }
+      }
+    }
+  }
+}
+
 function drawMap() {
   ctx.fillStyle = (currentMapType === "checkered" || currentMapType === "powerzone") ? "#80e1fe" : currentMapType === "colosseum" ? "#df9376" : "#9fe39e";
   roundedRect(0, 0, COLS * TILE, ROWS * TILE, 12, true, false);
@@ -7067,5 +7180,11 @@ document.addEventListener("DOMContentLoaded", () => {
         sendServerMessage("vote_map", { map: mapType });
       }
     });
+  });
+
+  // Render mini map previews onto the voting canvasses
+  document.querySelectorAll(".map-vote-preview-canvas").forEach(canvas => {
+    const mapType = canvas.getAttribute("data-map");
+    drawMiniMapPreview(canvas, mapType);
   });
 });
