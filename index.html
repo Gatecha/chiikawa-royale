@@ -2,10 +2,99 @@
 <html lang="en">
   <head>
     <script>
-      window.onerror = function(message, source, lineno, colno, error) {
-        alert("JavaScript Error:\n" + message + "\n\nFile: " + source + "\nLine: " + lineno + ":" + colno);
-        return false;
-      };
+      (function () {
+        const errorLog = [];
+        const maxErrors = 25;
+
+        function shortSource(source) {
+          if (!source) return "unknown";
+          try {
+            return new URL(source, window.location.href).pathname.split("/").pop() || source;
+          } catch (err) {
+            return String(source);
+          }
+        }
+
+        function normalizeError(input) {
+          if (input instanceof Error) return input;
+          if (input && input.reason instanceof Error) return input.reason;
+          if (input && typeof input.reason === "string") return new Error(input.reason);
+          return new Error(String(input || "Unknown error"));
+        }
+
+        function render() {
+          const panel = document.getElementById("appErrorPanel");
+          const list = document.getElementById("appErrorList");
+          const count = document.getElementById("appErrorCount");
+          const launcher = document.getElementById("appErrorLauncher");
+          if (count) count.textContent = String(errorLog.length);
+          if (launcher) launcher.classList.toggle("hidden", errorLog.length === 0);
+          if (!list) return;
+          list.innerHTML = errorLog.map((entry, index) => `
+            <article class="app-error-item">
+              <div class="app-error-item-head">
+                <strong>${entry.title}</strong>
+                <span>${entry.time}</span>
+              </div>
+              <p>${entry.message}</p>
+              <code>${entry.location}</code>
+              ${entry.stack ? `<pre>${entry.stack}</pre>` : ""}
+            </article>
+          `).join("");
+          if (panel && errorLog.length) panel.classList.remove("hidden");
+        }
+
+        function report(title, message, options) {
+          const opts = options || {};
+          const safeMessage = String(message || "Unknown error");
+          errorLog.unshift({
+            title: String(title || "App Error").replace(/[<>]/g, ""),
+            message: safeMessage.replace(/[<>]/g, ""),
+            location: `${shortSource(opts.source)}${opts.line ? `:${opts.line}` : ""}${opts.column ? `:${opts.column}` : ""}`,
+            stack: String(opts.stack || "").replace(/[<>]/g, "").slice(0, 1200),
+            time: new Date().toLocaleTimeString(),
+          });
+          if (errorLog.length > maxErrors) errorLog.length = maxErrors;
+          render();
+        }
+
+        window.ChiikawaErrorUI = {
+          report,
+          getLogText() {
+            return errorLog.map((entry, index) => [
+              `#${index + 1} ${entry.title} at ${entry.time}`,
+              entry.message,
+              entry.location,
+              entry.stack,
+            ].filter(Boolean).join("\n")).join("\n\n");
+          },
+          clear() {
+            errorLog.length = 0;
+            render();
+            document.getElementById("appErrorPanel")?.classList.add("hidden");
+          },
+          show() {
+            render();
+            document.getElementById("appErrorPanel")?.classList.remove("hidden");
+          },
+          hide() {
+            document.getElementById("appErrorPanel")?.classList.add("hidden");
+          },
+        };
+
+        window.onerror = function (message, source, lineno, colno, error) {
+          const err = error || new Error(message);
+          report("JavaScript Error", message, { source, line: lineno, column: colno, stack: err && err.stack });
+          return false;
+        };
+
+        window.onunhandledrejection = function (event) {
+          const err = normalizeError(event);
+          report("Promise Error", err.message, { source: "promise", stack: err.stack });
+        };
+
+        document.addEventListener("DOMContentLoaded", render);
+      })();
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -1122,6 +1211,29 @@
           <input id="globalChatInput" type="text" maxlength="128" placeholder="Say something..." autocomplete="off" />
           <button class="btn btn-primary btn-sm" type="submit">Send</button>
         </form>
+      </div>
+    </div>
+
+    <!-- App Error Reporter -->
+    <button id="appErrorLauncher" class="app-error-launcher hidden" type="button" onclick="window.ChiikawaErrorUI?.show()" aria-label="Open error log">
+      <span>ERROR</span>
+      <strong id="appErrorCount">0</strong>
+    </button>
+    <div id="appErrorPanel" class="app-error-panel hidden" role="dialog" aria-modal="true" aria-labelledby="appErrorTitle">
+      <div class="app-error-card">
+        <div class="app-error-header">
+          <div>
+            <span class="app-error-kicker">App Debug</span>
+            <h2 id="appErrorTitle">Error Found</h2>
+          </div>
+          <button class="app-error-close" type="button" onclick="window.ChiikawaErrorUI?.hide()" aria-label="Close error log">&times;</button>
+        </div>
+        <p class="app-error-help">This shows JavaScript, promise, server, and connection errors so you can find what broke faster.</p>
+        <div id="appErrorList" class="app-error-list"></div>
+        <div class="app-error-actions">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="window.ChiikawaErrorUI?.clear()">Clear</button>
+          <button class="btn btn-primary btn-sm" type="button" onclick="navigator.clipboard?.writeText(window.ChiikawaErrorUI?.getLogText() || '')">Copy Errors</button>
+        </div>
       </div>
     </div>
     <!-- Orientation Lock Warning Overlay -->

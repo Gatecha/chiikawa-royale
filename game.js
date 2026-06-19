@@ -770,6 +770,7 @@ function connectWebSocket(forceReconnect = false) {
         handleServerMessage(msg);
       } catch (err) {
         console.error("Error handling server message:", err);
+        reportAppError("Server Message Error", err.message, { source: "websocket", stack: err.stack });
       }
     };
 
@@ -783,9 +784,11 @@ function connectWebSocket(forceReconnect = false) {
 
     socket.onerror = (err) => {
       console.error("WebSocket error:", err);
+      reportAppError("Connection Error", "WebSocket connection failed. The online server may be offline or blocked.", { source: "websocket" });
     };
   } catch (e) {
     console.error("Failed to establish WebSocket connection:", e);
+    reportAppError("Connection Error", e.message, { source: "websocket", stack: e.stack });
     if (connectionStatusIndicator) {
       connectionStatusIndicator.textContent = "Offline";
       connectionStatusIndicator.className = "connection-status offline";
@@ -800,12 +803,20 @@ function sendServerMessage(type, data = {}) {
   }
 }
 
+function reportAppError(title, message, options = {}) {
+  if (window.ChiikawaErrorUI && typeof window.ChiikawaErrorUI.report === "function") {
+    window.ChiikawaErrorUI.report(title, message, options);
+  } else {
+    console.error(title, message, options);
+  }
+}
+
 function handleServerMessage(msg) {
   const { type, data } = msg;
 
   switch (type) {
     case "error":
-      alert(data.message);
+      reportAppError("Server Error", data.message || "Unknown server error", { source: "server" });
       break;
 
     case "reconnect_failed":

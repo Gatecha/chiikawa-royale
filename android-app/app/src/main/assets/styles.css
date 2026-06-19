@@ -1276,6 +1276,205 @@ body {
   animation: dialogPop 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
+.app-error-launcher {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  z-index: 100200;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 3px solid #000;
+  border-radius: 10px;
+  background: #ff4757;
+  color: #fff;
+  font-family: var(--font);
+  font-weight: 900;
+  box-shadow: 0 4px 0 #000;
+  cursor: pointer;
+}
+
+.app-error-launcher span {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.app-error-launcher strong {
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  color: #ff4757;
+  font-size: 12px;
+}
+
+.app-error-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 100300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(5, 5, 8, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.app-error-card {
+  width: min(680px, 96vw);
+  max-height: min(720px, 92vh);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 5px solid #000;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 10px 10px 0 #000;
+  color: #17151c;
+}
+
+.app-error-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-error-kicker {
+  display: block;
+  margin-bottom: 2px;
+  color: #ff2f78;
+  font-family: var(--font-clean);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.app-error-header h2 {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.app-error-close {
+  width: 34px;
+  height: 34px;
+  border: 3px solid #000;
+  border-radius: 8px;
+  background: #fff;
+  color: #000;
+  font-family: var(--font);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #000;
+}
+
+.app-error-help {
+  margin: 0;
+  color: #55515f;
+  font-family: var(--font-clean);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.app-error-list {
+  min-height: 130px;
+  max-height: 44vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.app-error-item {
+  padding: 10px;
+  border: 3px solid #221f25;
+  border-radius: 10px;
+  background: #fff4f6;
+  box-shadow: 0 3px 0 #221f25;
+  font-family: var(--font-clean);
+}
+
+.app-error-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: #221f25;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.app-error-item p {
+  margin: 0 0 6px;
+  color: #d9254f;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.app-error-item code,
+.app-error-item pre {
+  display: block;
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #2a2730;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 11px;
+}
+
+.app-error-item pre {
+  max-height: 150px;
+  margin-top: 8px;
+  padding: 8px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #17151c;
+  color: #ffe8ef;
+}
+
+.app-error-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .app-error-panel {
+    align-items: flex-end;
+  }
+
+  .app-error-card {
+    width: 100%;
+    max-height: 88vh;
+    padding: 14px;
+    border-width: 4px;
+    border-radius: 12px;
+    box-shadow: 0 7px 0 #000;
+  }
+
+  .app-error-header h2 {
+    font-size: 20px;
+  }
+
+  .app-error-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @keyframes dialogPop {
   from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
