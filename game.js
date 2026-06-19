@@ -361,6 +361,7 @@ let serverMode = "online"; // "online" or "local"
 let pendingLocalConnect = false;
 let localBombId = 0;
 let localCouchMode = false;
+let localFourPlayerLobbyActive = false;
 let couchSlots = [];
 let couchTouchKeys = new Set();
 let couchPlayerTouchKeys = new Map();
@@ -1348,20 +1349,30 @@ function makeLocalPlayer(id, name, kind, spawn, ai) {
 
 function openLocalFourPlayerLobby() {
   const nickname = localStorage.getItem("local_username") || usernameInput?.value.trim() || "Friend";
+  localFourPlayerLobbyActive = true;
+  localMode = false;
+  roomCode = "4P";
+  hostId = "couch_p1";
+  localPlayerId = "couch_p1";
   couchSlots = [
     { human: true, name: nickname || "P1", kind: selectedCharacter, playerId: "couch_p1" },
     null,
     null,
     null,
   ];
+  switchScreen(menuScreen);
+  document.body.classList.add("local-four-lobby-active");
+  document.querySelector('.tab-btn[data-tab="squad"]')?.click();
   renderLocalFourPlayerLobby();
-  document.getElementById("localFourPlayerLobbyDialog")?.classList.remove("hidden");
+  syncSquadLobbyInterface();
 }
 
 function renderLocalFourPlayerLobby() {
   const grid = document.getElementById("fourPlayerCards");
-  if (!grid) return;
-  grid.innerHTML = "";
+  if (grid) {
+    grid.innerHTML = "";
+  }
+  const cardIds = ["squadCard_user", "squadInviteCard_left", "squadInviteCard_right", "squadInviteCard_fourth"];
   for (let i = 0; i < 4; i += 1) {
     const slot = couchSlots[i];
     const card = document.createElement("button");
@@ -1396,13 +1407,90 @@ function renderLocalFourPlayerLobby() {
         renderLocalFourPlayerLobby();
       });
     }
-    grid.appendChild(card);
+    if (grid) grid.appendChild(card);
+    renderLocalFourPlayerSquadCard(cardIds[i], i);
   }
+}
+
+function renderLocalFourPlayerSquadCard(cardId, index) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const slot = couchSlots[index];
+  card.classList.toggle("local-four-empty", !slot);
+  card.classList.toggle("local-four-filled", !!slot);
+  if (slot) {
+    const style = characterStyle[slot.kind] || characterStyle.chiikawa;
+    card.innerHTML = `
+      <div class="card-inner-skew">
+        <button class="local-four-remove" type="button" aria-label="Remove P${index + 1}" ${index === 0 ? "hidden" : ""}>x</button>
+        <div class="squad-card-image-container">
+          <img src="assets/cards/${slot.kind}.png" alt="${escapeHTML(style.label)}" />
+        </div>
+        <div class="card-footer-bar">
+          <div class="avatar-circle">
+            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          </div>
+          <div class="user-info">
+            <div class="user-name">P${index + 1} ${escapeHTML(style.label)}</div>
+            <div class="user-level">${escapeHTML(slot.name || `Player ${index + 1}`)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    card.onclick = (event) => {
+      if (event.target.closest(".local-four-remove")) return;
+      const currentIndex = couchCharacters.indexOf(slot.kind);
+      slot.kind = couchCharacters[(currentIndex + 1) % couchCharacters.length];
+      if (index === 0) {
+        selectedCharacter = slot.kind;
+        syncCharacterSelectPreview(selectedCharacter);
+      }
+      renderLocalFourPlayerLobby();
+    };
+    card.querySelector(".local-four-remove")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (index > 0) {
+        couchSlots[index] = null;
+        renderLocalFourPlayerLobby();
+      }
+    });
+  } else {
+    card.innerHTML = `
+      <div class="card-inner-skew">
+        <button class="invite-btn" type="button">+</button>
+        <div class="local-four-empty-label">P${index + 1}</div>
+      </div>
+    `;
+    const addPlayer = () => {
+      const kind = couchCharacters[index % couchCharacters.length];
+      couchSlots[index] = { human: true, name: `P${index + 1}`, kind, playerId: `couch_p${index + 1}` };
+      renderLocalFourPlayerLobby();
+    };
+    card.onclick = addPlayer;
+    card.querySelector(".invite-btn")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      addPlayer();
+    });
+  }
+}
+
+function closeLocalFourPlayerLobby() {
+  localFourPlayerLobbyActive = false;
+  localCouchMode = false;
+  roomCode = null;
+  hostId = null;
+  localPlayerId = null;
+  document.body.classList.remove("local-four-lobby-active");
+  syncSquadLobbyInterface();
 }
 
 function startLocalFourPlayerGame() {
   localMode = true;
   localCouchMode = true;
+  localFourPlayerLobbyActive = false;
+  document.body.classList.remove("local-four-lobby-active");
   roomCode = "4P";
   localPlayerId = "couch_p1";
   hostId = localPlayerId;
@@ -1473,12 +1561,12 @@ function updateCouchControlPicker() {
     const panel = document.createElement("div");
     panel.className = `couch-control-panel slot-${slotNumber}`;
     panel.innerHTML = `
-      <div class="couch-player-label">P${slotNumber}</div>
-      <div class="couch-mini-dpad" aria-label="P${slotNumber} movement controls">
-        <button class="couch-mini-btn couch-mini-up" type="button" data-dir="up" aria-label="P${slotNumber} up">▲</button>
-        <button class="couch-mini-btn couch-mini-left" type="button" data-dir="left" aria-label="P${slotNumber} left">◀</button>
-        <button class="couch-mini-btn couch-mini-right" type="button" data-dir="right" aria-label="P${slotNumber} right">▶</button>
-        <button class="couch-mini-btn couch-mini-down" type="button" data-dir="down" aria-label="P${slotNumber} down">▼</button>
+      <div class="couch-player-label" data-kind="${player.kind}">
+        <img src="assets/cards/${player.kind}.png" alt="${escapeHTML(player.name)}" />
+        <span>${player.trophies || 0}</span>
+      </div>
+      <div class="couch-joystick" aria-label="P${slotNumber} movement joystick">
+        <div class="couch-joystick-knob"></div>
       </div>
       <div class="couch-mini-actions">
         <button class="couch-mini-action punch" type="button" data-action="punch" aria-label="P${slotNumber} punch">PUNCH</button>
@@ -1518,18 +1606,8 @@ function bindCouchPress(button, onStart, onEnd) {
 
 function bindCouchControlPanel(panel, player) {
   const touchKeys = getCouchTouchKeys(player.id);
-  panel.querySelectorAll("[data-dir]").forEach((button) => {
-    const dir = button.dataset.dir;
-    bindCouchPress(
-      button,
-      () => {
-        couchTouchPlayerId = player.id;
-        localPlayerId = player.id;
-        touchKeys.add(dir);
-      },
-      () => touchKeys.delete(dir)
-    );
-  });
+  const joystick = panel.querySelector(".couch-joystick");
+  if (joystick) bindCouchJoystick(joystick, player, touchKeys);
   const bombBtn = panel.querySelector('[data-action="bomb"]');
   if (bombBtn) {
     bindCouchPress(bombBtn, () => {
@@ -1546,6 +1624,58 @@ function bindCouchControlPanel(panel, player) {
       triggerPlayerPunch(player);
     });
   }
+}
+
+function bindCouchJoystick(joystick, player, touchKeys) {
+  const knob = joystick.querySelector(".couch-joystick-knob");
+  let activePointerId = null;
+
+  const setDirectionFromPoint = (clientX, clientY) => {
+    const rect = joystick.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = clientX - cx;
+    const dy = clientY - cy;
+    const max = rect.width * 0.28;
+    const distance = Math.hypot(dx, dy);
+    const scale = distance > max ? max / distance : 1;
+    const knobX = dx * scale;
+    const knobY = dy * scale;
+    if (knob) knob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+    touchKeys.clear();
+    if (distance < rect.width * 0.12) return;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      touchKeys.add(dx < 0 ? "left" : "right");
+    } else {
+      touchKeys.add(dy < 0 ? "up" : "down");
+    }
+    couchTouchPlayerId = player.id;
+    localPlayerId = player.id;
+  };
+
+  const resetJoystick = () => {
+    touchKeys.clear();
+    if (knob) knob.style.transform = "translate(0, 0)";
+    activePointerId = null;
+    joystick.classList.remove("active");
+  };
+
+  joystick.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    activePointerId = event.pointerId;
+    joystick.setPointerCapture?.(event.pointerId);
+    joystick.classList.add("active");
+    setDirectionFromPoint(event.clientX, event.clientY);
+  });
+  joystick.addEventListener("pointermove", (event) => {
+    if (activePointerId !== event.pointerId) return;
+    event.preventDefault();
+    setDirectionFromPoint(event.clientX, event.clientY);
+  });
+  joystick.addEventListener("pointerup", resetJoystick);
+  joystick.addEventListener("pointercancel", resetJoystick);
+  joystick.addEventListener("lostpointercapture", resetJoystick);
 }
 
 function buildLocalMap(mapType = "classic") {
@@ -3667,6 +3797,28 @@ function changeSquadLobbyCharacter(direction) {
 }
 
 function syncSquadLobbyInterface() {
+  if (localFourPlayerLobbyActive) {
+    renderLocalFourPlayerLobby();
+    const lobbyMatchBtn = document.getElementById("lobbyMatchBtn");
+    const squadAddBotBtn = document.getElementById("squadAddBotBtn");
+    const squadStartGameBtn = document.getElementById("squadStartGameBtn");
+    const squadReadyBtn = document.getElementById("squadReadyBtn");
+    const squadLeaveLobbyBtn = document.getElementById("leaveLobbyBtn");
+    const squadLobbyRoomCodeBadge = document.getElementById("squadLobbyRoomCodeBadge");
+    const squadLobbyRoomCodeText = document.getElementById("squadLobbyRoomCodeText");
+    if (lobbyMatchBtn) lobbyMatchBtn.style.display = "none";
+    if (squadAddBotBtn) squadAddBotBtn.style.display = "none";
+    if (squadReadyBtn) squadReadyBtn.style.display = "none";
+    if (squadStartGameBtn) {
+      squadStartGameBtn.style.display = "inline-block";
+      squadStartGameBtn.textContent = "START";
+    }
+    if (squadLeaveLobbyBtn) squadLeaveLobbyBtn.style.display = "inline-block";
+    if (squadLobbyRoomCodeBadge) squadLobbyRoomCodeBadge.style.display = "inline-flex";
+    if (squadLobbyRoomCodeText) squadLobbyRoomCodeText.textContent = "4P";
+    return;
+  }
+
   // Center Card (User)
   const charNameEl = document.getElementById("squadLobbyCharName");
   if (charNameEl) {
@@ -3848,6 +4000,12 @@ readyBtn?.addEventListener("click", () => {
 
 // Leave Lobby
 leaveLobbyBtn?.addEventListener("click", () => {
+  if (localFourPlayerLobbyActive) {
+    closeLocalFourPlayerLobby();
+    switchScreen(menuScreen);
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+    return;
+  }
   if (roomCode && socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("leave_room");
   } else if (socket) {
@@ -3946,6 +4104,11 @@ document.getElementById("squadAddBotBtn")?.addEventListener("click", () => {
 
 // Squad Lobby Private Room Start Button
 document.getElementById("squadStartGameBtn")?.addEventListener("click", () => {
+  if (localFourPlayerLobbyActive) {
+    startLocalFourPlayerGame();
+    tryPlayMusic();
+    return;
+  }
   sendServerMessage("start_game");
 });
 
@@ -5815,37 +5978,8 @@ function initMobileFullscreenPrompt() {
   const isMobileOrTablet = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Tablet/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth <= 1366) || isCoarsePointer;
   if (isMobileOrTablet) {
     document.body.classList.add("is-mobile");
-    // Always show fullscreen prompt on mobile/tablet (no session check - it's required)
-    setTimeout(() => {
-      const overlay = document.getElementById("mobileFullscreenReminder");
-      if (overlay && !isFullscreenActive()) {
-        overlay.classList.remove("hidden");
-      }
-    }, 1200);
-
-    // Re-show fullscreen prompt if user exits fullscreen
-    document.addEventListener("fullscreenchange", () => {
-      if (!isFullscreenActive()) {
-        const overlay = document.getElementById("mobileFullscreenReminder");
-        if (overlay) overlay.classList.remove("hidden");
-      }
-    });
-    document.addEventListener("webkitfullscreenchange", () => {
-      if (!isFullscreenActive()) {
-        const overlay = document.getElementById("mobileFullscreenReminder");
-        if (overlay) overlay.classList.remove("hidden");
-      }
-    });
   }
-
-  // Wire up fullscreen reminder button (no decline option)
-  document.getElementById("btnMobileFullscreenYes")?.addEventListener("click", () => {
-    safeRequestFullscreen().then((enteredFullscreen) => {
-      if (enteredFullscreen || isFullscreenActive()) {
-        document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
-      }
-    });
-  });
+  document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
 }
 
 async function checkInitialSession() {

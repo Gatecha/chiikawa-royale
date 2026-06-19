@@ -1923,7 +1923,7 @@ input[type="text"]:focus {
   top: 20px;
   left: 20px;
   bottom: 20px;
-  width: 90px;
+  width: 132px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1980,6 +1980,8 @@ input[type="text"]:focus {
   flex-direction: column;
   gap: 12px;
   flex: 1;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .hud-player-card {
@@ -1995,6 +1997,8 @@ input[type="text"]:focus {
   color: #fff;
   overflow: visible;
   transition: opacity 250ms ease;
+  width: 104px;
+  max-width: 104px;
 }
 
 .hud-player-card > * {
@@ -2965,6 +2969,67 @@ canvas#game {
   position: relative;
   box-shadow: 0 3px 0px #000;
   transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.card-green {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 25%, rgba(0, 0, 0, 0.1) 75%, rgba(0, 0, 0, 0.35) 100%),
+    repeating-radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08) 6px, transparent 6px, transparent 12px),
+    #22c55e;
+  box-shadow:
+    inset 0 8px 0px rgba(255, 255, 255, 0.4),
+    inset 8px 0px 0px rgba(255, 255, 255, 0.2),
+    inset 0 -8px 0px rgba(0, 0, 0, 0.35),
+    inset -8px 0px 0px rgba(0, 0, 0, 0.35),
+    0 12px 24px rgba(0, 0, 0, 0.6);
+}
+
+.local-four-only {
+  display: none;
+}
+
+body.local-four-lobby-active .local-four-only {
+  display: block;
+}
+
+body.local-four-lobby-active .lobby-cards-row {
+  gap: clamp(10px, 1.8vw, 24px);
+}
+
+body.local-four-lobby-active .lobby-card {
+  height: clamp(230px, 60cqh, 340px);
+}
+
+.local-four-empty-label {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  font-family: var(--font);
+  font-size: 16px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.local-four-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #000;
+  border-radius: 50%;
+  background: #fff;
+  color: #111114;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#mobileFullscreenReminder {
+  display: none !important;
 }
 
 .lobby-leave-btn {
@@ -6808,6 +6873,35 @@ body.local-couch-active .mobile-gamepad {
   display: none !important;
 }
 
+body.local-couch-active .game-hud-sidebar {
+  top: 12px;
+  left: 14px;
+  bottom: 12px;
+  width: 132px;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start;
+}
+
+body.local-couch-active .hud-players-list {
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+  width: 112px;
+  gap: 10px;
+}
+
+body.local-couch-active .hud-player-card {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  width: 104px;
+}
+
+body.local-couch-active canvas#game {
+  max-width: calc(100vw - 156px);
+  transform: translateX(78px);
+}
+
 .couch-control-panel {
   position: absolute;
   width: 132px;
@@ -6841,34 +6935,71 @@ body.local-couch-active .mobile-gamepad {
 }
 
 .couch-player-label {
-  min-width: 44px;
-  height: 30px;
+  min-width: 64px;
+  height: 32px;
   border: 2px solid #000;
-  border-radius: 8px;
-  background: #ffd84a;
+  border-radius: 999px;
+  background: rgba(18, 18, 22, 0.94);
   color: #111114;
   font-family: var(--font);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   box-shadow: 2px 2px 0 #000;
 }
 
-.couch-mini-dpad {
-  width: 96px;
-  height: 96px;
-  display: grid;
-  grid-template-areas:
-    ". up ."
-    "left . right"
-    ". down .";
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 4px;
+.couch-player-label img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ffd84a;
+  background: #fff;
 }
 
-.couch-mini-btn,
+.couch-player-label span {
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.couch-mini-dpad {
+  display: none;
+}
+
+.couch-joystick {
+  width: 96px;
+  height: 96px;
+  border: 3px solid #000;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12) 0 14%, transparent 15%),
+    rgba(18, 18, 22, 0.78);
+  box-shadow: 3px 3px 0 #000;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.couch-joystick-knob {
+  width: 42px;
+  height: 42px;
+  border: 3px solid #000;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff 0%, #d7e7ff 100%);
+  box-shadow: 2px 2px 0 #000;
+  transition: transform 60ms linear;
+}
+
+.couch-joystick.active .couch-joystick-knob {
+  background: linear-gradient(180deg, #ffd84a 0%, #ff9fc3 100%);
+}
+
 .couch-mini-action {
   border: 2px solid #000;
   color: #fff;
@@ -6880,18 +7011,6 @@ body.local-couch-active .mobile-gamepad {
   user-select: none;
   -webkit-user-select: none;
 }
-
-.couch-mini-btn {
-  border-radius: 50%;
-  background: rgba(18, 18, 22, 0.88);
-  font-size: 16px;
-  line-height: 1;
-}
-
-.couch-mini-up { grid-area: up; }
-.couch-mini-left { grid-area: left; }
-.couch-mini-right { grid-area: right; }
-.couch-mini-down { grid-area: down; }
 
 .couch-mini-actions {
   display: flex;
@@ -6914,8 +7033,6 @@ body.local-couch-active .mobile-gamepad {
   background: rgba(255, 51, 153, 0.92);
 }
 
-.couch-mini-btn.pressed,
-.couch-mini-btn:active,
 .couch-mini-action:active {
   transform: translate(1px, 1px) scale(0.94);
   box-shadow: 1px 1px 0 #000;
@@ -6949,19 +7066,24 @@ body.local-couch-active .mobile-gamepad {
   }
 
   .couch-player-label {
-    min-width: 38px;
-    height: 25px;
+    min-width: 54px;
+    height: 27px;
     font-size: 10px;
   }
 
-  .couch-mini-dpad {
-    width: 78px;
-    height: 78px;
-    gap: 3px;
+  .couch-player-label img {
+    width: 23px;
+    height: 23px;
   }
 
-  .couch-mini-btn {
-    font-size: 13px;
+  .couch-joystick {
+    width: 78px;
+    height: 78px;
+  }
+
+  .couch-joystick-knob {
+    width: 34px;
+    height: 34px;
   }
 
   .couch-mini-action {
