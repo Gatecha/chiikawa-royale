@@ -1269,6 +1269,10 @@ body {
   display: none;
 }
 
+#matchmakingDialog {
+  display: none !important;
+}
+
 .dialog-card {
   width: 460px;
   background: var(--panel);

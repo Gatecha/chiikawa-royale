@@ -3772,6 +3772,52 @@ function startMatchmakingSearch() {
   });
 }
 
+function showOnlineMatchmakingSearch() {
+  if (!matchmakingPopup) return;
+
+  matchmakingDialog?.classList.add("hidden");
+  clearInterval(matchmakingTimerInterval);
+  matchmakingTimeouts.forEach(clearTimeout);
+  matchmakingTimeouts = [];
+
+  matchmakingPopup.classList.remove("hidden");
+  matchmakingPopup.classList.add("active");
+  if (matchmakingTimer) matchmakingTimer.textContent = "00:00";
+  const titleEl = matchmakingPopup.querySelector(".matchmaking-title");
+  if (titleEl) titleEl.textContent = "MATCHMAKING...";
+  if (cancelMatchmakingBtn) {
+    cancelMatchmakingBtn.style.display = "block";
+    cancelMatchmakingBtn.disabled = false;
+  }
+
+  const playerName = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+  for (let i = 1; i <= TEAM_MAX_PLAYERS; i++) {
+    const slot = document.getElementById(`matchmakerSlot_${i}`);
+    if (!slot) continue;
+    if (i === 1) {
+      slot.className = "matchmaking-card player-slot active";
+      slot.innerHTML = `
+        <div class="card-inner">
+          <span class="slot-badge badge-you">YOU</span>
+          <div class="slot-image-container">
+            <img src="assets/cards/${selectedCharacter}.png" alt="${escapeHTML(playerName)}" />
+          </div>
+          <div class="slot-name">${escapeHTML(playerName)}</div>
+        </div>
+      `;
+    } else {
+      slot.className = "matchmaking-card empty-slot";
+      slot.innerHTML = `
+        <div class="card-inner">
+          <div class="searching-pulse"></div>
+          <div class="slot-status-text">SEARCHING...</div>
+        </div>
+      `;
+    }
+  }
+  startOnlineMatchmakingTimer();
+}
+
 function revealMatchedBot(slotNum, charKind, botName) {
   const slot = document.getElementById(`matchmakerSlot_${slotNum}`);
   if (!slot) return;
@@ -4081,14 +4127,15 @@ if (lobbyMatchBtn) {
       if (roomCode) {
         // If already in a room/lobby, start matching for that room (only host can trigger)
         if (localPlayerId === hostId) {
+          showOnlineMatchmakingSearch();
           sendServerMessage("start_matchmaking");
         } else {
           alert("Only the room host can start matchmaking!");
         }
       } else {
-        if (matchmakingDialog) {
-          matchmakingDialog.classList.remove("hidden");
-        }
+        showOnlineMatchmakingSearch();
+        const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+        sendServerMessage("quick_match", { name, kind: selectedCharacter });
       }
     } else {
       startMatchmakingSearch();
