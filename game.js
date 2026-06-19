@@ -199,6 +199,8 @@ const OFFSET_Y = 72;
 const SUDDEN_DEATH_TIME = 60;
 const ZONE_STEP_SECONDS = 4;
 const MAX_ZONE_LAYER = 4;
+const STANDARD_MAX_PLAYERS = 4;
+const TEAM_MAX_PLAYERS = 6;
 
 const starts = [
   { x: 1, y: 1 },
@@ -866,15 +868,19 @@ function handleServerMessage(msg) {
       }
 
       // Show round header in team mode
-      if (currentRoomMode === "team" && currentActiveRoundPlayers.length === 2) {
-        const pA = players.find(p => p.id === currentActiveRoundPlayers[0]);
-        const pB = players.find(p => p.id === currentActiveRoundPlayers[1]);
-        if (pA && pB) {
-          stateEl.textContent = `${pA.name} vs ${pB.name}`;
-          setTimeout(() => { if (running) stateEl.textContent = "Battle!"; }, 3000);
-        } else {
-          stateEl.textContent = "Battle!";
-        }
+      if (currentRoomMode === "team" && currentActiveRoundPlayers.length >= 2) {
+        const teamANames = currentActiveRoundPlayers
+          .filter(id => (currentTeams?.A || []).includes(id))
+          .map(id => players.find(p => p.id === id)?.name)
+          .filter(Boolean)
+          .join(" + ");
+        const teamBNames = currentActiveRoundPlayers
+          .filter(id => (currentTeams?.B || []).includes(id))
+          .map(id => players.find(p => p.id === id)?.name)
+          .filter(Boolean)
+          .join(" + ");
+        stateEl.textContent = teamANames && teamBNames ? `${teamANames} vs ${teamBNames}` : "Team Battle!";
+        setTimeout(() => { if (running) stateEl.textContent = "Battle!"; }, 3000);
       } else {
         stateEl.textContent = "Battle!";
       }
@@ -1065,12 +1071,14 @@ function handleServerMessage(msg) {
     }
 
     case "matchmaking_countdown": {
-      const notice = document.getElementById("matchmakingFillNotice");
-      const timerEl2 = document.getElementById("matchmakingFillTimer");
-      if (notice && timerEl2) {
-        notice.classList.remove("hidden");
-        timerEl2.textContent = data.secondsLeft;
-        if (data.secondsLeft <= 0) notice.classList.add("hidden");
+      if (matchmakingPopup && socket && socket.readyState === WebSocket.OPEN) {
+        if (data.secondsLeft > 0) {
+          updateOnlineMatchmakingPopup();
+          const titleEl = matchmakingPopup.querySelector(".matchmaking-title");
+          if (titleEl) titleEl.textContent = "MATCHMAKING...";
+        } else {
+          updateOnlineMatchmakingPopup();
+        }
       }
       break;
     }
@@ -2859,7 +2867,7 @@ function update(dt) {
     }
 
     const isHost = localPlayerId === hostId;
-    if (isHost) {
+    if (localMode && isHost) {
       players.forEach((p) => {
         if (p.ai && p.alive) {
           updateAi(p, dt);

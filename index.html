@@ -155,7 +155,7 @@
 
       <!-- 1. MAIN LOBBY SCREEN (NEW - matches user screenshot) -->
       <section id="menuScreen" class="screen">
-        <div class="yellow-console">
+        <div class="yellow-console squad-lobby-active">
           <!-- Top Navigation Header -->
           <header class="console-header">
             <!-- Normal Header Elements -->
@@ -178,7 +178,7 @@
             <!-- Tabs (Normal Header only) -->
             <nav class="console-tabs normal-header-only">
               <span class="controller-key">LB</span>
-              <button class="tab-btn active tab-play" data-tab="play" type="button" aria-label="Play">
+              <button class="tab-btn tab-play" data-tab="play" type="button" aria-label="Play">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z" fill="white"/></svg>
                 </span>
@@ -190,7 +190,7 @@
                   </svg>
                 </span>
               </button>
-              <button class="tab-btn tab-squad" data-tab="squad" type="button" aria-label="Squad">
+              <button class="tab-btn active tab-squad" data-tab="squad" type="button" aria-label="Squad">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="4" y1="12" x2="20" y2="12"/>
@@ -249,7 +249,7 @@
           <!-- Main Content Area -->
           <div class="console-body">
             <!-- PLAY TAB CONTENT -->
-            <div class="tab-content active" id="tabContent_play">
+            <div class="tab-content" id="tabContent_play">
               <div class="left-column">
                 <img class="lobby-logo" src="chiikawa-royale-logo.png" alt="Chiikawa Royale" />
                 
@@ -402,7 +402,7 @@
             </div>
 
             <!-- SQUAD TAB CONTENT (Lobby interface matching mockup) -->
-            <div class="tab-content" id="tabContent_squad">
+            <div class="tab-content active" id="tabContent_squad">
               <div class="squad-lobby-container">
                 <!-- Animating swirly background layer -->
                 <div class="squad-lobby-bg-swirls" aria-hidden="true"></div>
@@ -1034,12 +1034,6 @@
           Tap a player card to vote for your champion!
         </div>
       </div>
-    </div>
-
-    <!-- 6. MATCHMAKING COUNTDOWN NOTIFICATION (shown in matchmaking dialog) -->
-    <div id="matchmakingFillNotice" class="matchmaking-fill-notice hidden">
-      <span class="fill-notice-icon">🤖</span>
-      <span id="matchmakingFillText">Filling with CPU in <strong id="matchmakingFillTimer">30</strong>s</span>
     </div>
 
     <!-- Social Modal (Friends + Online Users) -->

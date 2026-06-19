@@ -43,7 +43,7 @@ body {
   color: var(--ink);
   font-family: var(--font);
   background: #fdf1b9; /* Soft cream background */
-  overflow-x: hidden;
+  overflow: hidden;
   position: relative;
 }
 
@@ -109,8 +109,8 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 24px;
-  max-width: 1360px;
+  padding: 0;
+  max-width: none;
   margin: 0 auto;
   width: 100%;
 }
@@ -119,6 +119,7 @@ body {
 .screen {
   display: none;
   width: 100%;
+  min-height: 100vh;
   animation: fadeIn 240ms ease-out forwards;
 }
 
@@ -154,6 +155,29 @@ body {
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+}
+
+#menuScreen .yellow-console {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  min-height: 0;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#menuScreen .console-tabs {
+  display: none;
+}
+
+#menuScreen .console-title.normal-header-only {
+  display: none;
+}
+
+#menuScreen .lobby-back-btn {
+  display: none;
 }
 
 /* Console Header */
@@ -2485,7 +2509,7 @@ canvas#game {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: clamp(24px, 3vw, 48px);
   flex: 1;
   margin-top: 10px;
   margin-bottom: 10px;
@@ -2494,8 +2518,8 @@ canvas#game {
 }
 
 .lobby-card {
-  width: 220px;
-  height: 380px;
+  width: clamp(210px, 15vw, 292px);
+  height: clamp(360px, 26vw, 504px);
   border: 6px solid #000;
   border-radius: 24px;
   position: relative;
@@ -3672,10 +3696,10 @@ canvas#game {
 /* Squad card character image container fitting */
 .squad-card-image-container {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  right: 14px;
-  bottom: 84px; /* Sits nicely above the footer bar */
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  bottom: 92px; /* Sits nicely above the footer bar */
   background-color: #0c0c0e;
   background-image: 
     radial-gradient(rgba(255, 255, 255, 0.1) 1.5px, transparent 1.5px),
@@ -3690,12 +3714,12 @@ canvas#game {
 
 #squadLobbyCharImg {
   position: absolute;
-  bottom: 0px; /* Sit right at the bottom of the black box */
+  bottom: -2px; /* Sit right at the bottom of the black box */
   left: 50%;
-  transform: skewX(13deg) translate(-36%, 0); /* Un-slant and center the character image slightly to the right */
+  transform: skewX(13deg) translate(-50%, 0); /* Un-slant and keep the full art centered */
   transform-origin: bottom center;
   width: auto;
-  height: 98%;
+  height: 96%;
   object-fit: contain;
   transition: transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.22s ease;
   pointer-events: none;
@@ -3704,12 +3728,12 @@ canvas#game {
 
 .squad-card-image-container img {
   position: absolute;
-  bottom: 0px;
+  bottom: -2px;
   left: 50%;
-  transform: skewX(13deg) translate(-36%, 0);
+  transform: skewX(13deg) translate(-50%, 0);
   transform-origin: bottom center;
   width: auto;
-  height: 98%;
+  height: 96%;
   object-fit: contain;
   pointer-events: none;
   filter: drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.45));
@@ -3717,12 +3741,12 @@ canvas#game {
 
 /* Sliding animation classes keeping the un-skew */
 .slide-out-left {
-  transform: skewX(13deg) translate(-140%, 0) !important;
+  transform: skewX(13deg) translate(-160%, 0) !important;
   opacity: 0;
 }
 
 .slide-out-right {
-  transform: skewX(13deg) translate(40%, 0) !important;
+  transform: skewX(13deg) translate(60%, 0) !important;
   opacity: 0;
 }
 
@@ -3735,13 +3759,13 @@ canvas#game {
 }
 
 @keyframes slideInLeft {
-  from { transform: skewX(13deg) translate(-140%, 0); opacity: 0; }
-  to { transform: skewX(13deg) translate(-36%, 0); opacity: 1; }
+  from { transform: skewX(13deg) translate(-160%, 0); opacity: 0; }
+  to { transform: skewX(13deg) translate(-50%, 0); opacity: 1; }
 }
 
 @keyframes slideInRight {
-  from { transform: skewX(13deg) translate(40%, 0); opacity: 0; }
-  to { transform: skewX(13deg) translate(-36%, 0); opacity: 1; }
+  from { transform: skewX(13deg) translate(60%, 0); opacity: 0; }
+  to { transform: skewX(13deg) translate(-50%, 0); opacity: 1; }
 }
 
 /* Fullscreen Toggle Header Button */
@@ -6166,6 +6190,7 @@ body.is-mobile .arcade-controller {
    ================================================================ */
 
 .matchmaking-fill-notice {
+  display: none !important;
   position: fixed;
   bottom: 20px;
   left: 50%;

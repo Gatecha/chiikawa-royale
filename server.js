@@ -227,7 +227,7 @@ function handleMessage(ws, msg) {
       } else {
         // Create new room
         const roomCode = generateRoomCode();
-        const room = createRoomObject(roomCode, ws.id, "standard");
+        const room = createRoomObject(roomCode, ws.id, "team");
         room.isPrivate = false;
         rooms.set(roomCode, room);
         joinPlayerToRoom(ws, room, data.name, data.kind);
@@ -338,24 +338,7 @@ function handleMessage(ws, msg) {
       if (room.mode === "team" && room.activeRoundPlayers && !room.activeRoundPlayers.includes(playerId)) return;
 
       const player = room.players.find((p) => p.id === playerId);
-      if (player && player.alive && player.cooldown <= 0) {
-        const tileX = Math.floor(player.x / TILE);
-        const tileY = Math.floor(player.y / TILE);
-        const activeBombsCount = room.bombs.filter((b) => b.ownerId === player.id).length;
-        const tileHasBomb = room.bombs.some((b) => b.x === tileX && b.y === tileY);
-        if (activeBombsCount < player.bombs && !tileHasBomb) {
-          const bomb = {
-            id: "bomb_" + Math.random().toString(36).substr(2, 9),
-            x: tileX, y: tileY,
-            ownerId: player.id,
-            range: player.range,
-            timer: 2.25,
-          };
-          room.bombs.push(bomb);
-          player.cooldown = 0.25;
-          broadcastToRoom(room, { type: "bomb_placed", data: { bomb } });
-        }
-      }
+      placeServerBomb(room, player);
       break;
     }
 
@@ -731,6 +714,7 @@ function addBotToRoom(room) {
     ready: true, ai: true,
     x: 0, y: 0, dx: 0, dy: 0,
     alive: true, speed: 142, bombs: 1, range: 2, cooldown: 0, trophies: 0,
+    aiThink: 0, aiDir: { x: 0, y: 0 }, aiTarget: null, aiBombCooldown: 0,
   };
   room.players.push(bot);
 
@@ -788,7 +772,10 @@ function tickRoom(room) {
 
   room.players.forEach((p) => {
     if (p.cooldown > 0) p.cooldown = Math.max(0, p.cooldown - dt);
+    if (p.aiBombCooldown > 0) p.aiBombCooldown = Math.max(0, p.aiBombCooldown - dt);
   });
+
+  updateServerBots(room, dt);
 
   // Update sliding bombs
   room.bombs.forEach((bomb) => {
@@ -897,12 +884,13 @@ function checkGameEnd(room) {
   if (room.state !== "playing") return;
 
   if (room.mode === "team") {
-    // In team mode, only active round players matter
     const activePlayers = room.players.filter(p => room.activeRoundPlayers.includes(p.id));
     const alive = activePlayers.filter(p => p.alive);
-    if (alive.length <= 1) {
-      const winnerId = alive.length === 1 ? alive[0].id : null;
-      endRound(room, winnerId);
+    const aliveA = alive.filter(p => room.teams.A.includes(p.id));
+    const aliveB = alive.filter(p => room.teams.B.includes(p.id));
+    if (aliveA.length === 0 || aliveB.length === 0) {
+      const winner = aliveA.length > 0 ? aliveA[0] : aliveB.length > 0 ? aliveB[0] : null;
+      endRound(room, winner ? winner.id : null);
     }
   } else {
     const alive = room.players.filter((p) => p.alive);
@@ -1136,14 +1124,25 @@ function startRound(room, isNewTournament) {
 
   // --- Pick active round players in team mode ---
   if (room.mode === "team" && !room._isFinalRound) {
-    const pickNext = (team) => {
+    const pickNextMany = (team, count) => {
+      const picked = [];
       if (room.rotationQueues[team].length === 0) {
-        // Cycle exhausted — reshuffle from full team
         room.rotationQueues[team] = shuffleArray([...room.teams[team]]);
       }
-      return room.rotationQueues[team].shift();
+      while (picked.length < count && room.rotationQueues[team].length > 0) {
+        const nextId = room.rotationQueues[team].shift();
+        if (nextId && !picked.includes(nextId)) picked.push(nextId);
+      }
+      if (picked.length < count) {
+        const fill = shuffleArray([...room.teams[team]].filter(id => !picked.includes(id)));
+        while (picked.length < count && fill.length > 0) picked.push(fill.shift());
+      }
+      return picked;
     };
-    room.activeRoundPlayers = [pickNext("A"), pickNext("B")];
+    room.activeRoundPlayers = [
+      ...pickNextMany("A", Math.min(2, room.teams.A.length)),
+      ...pickNextMany("B", Math.min(2, room.teams.B.length)),
+    ];
   }
   room._isFinalRound = false;
 
@@ -1186,6 +1185,226 @@ function startRound(room, isNewTournament) {
 
   if (room.tickInterval) clearInterval(room.tickInterval);
   room.tickInterval = setInterval(() => tickRoom(room), 50);
+}
+
+// ----------------------------------------------------------------
+// SERVER CPU BOT AI
+// ----------------------------------------------------------------
+
+function placeServerBomb(room, player) {
+  if (!player || !player.alive || player.cooldown > 0) return false;
+  const tileX = Math.floor(player.x / TILE);
+  const tileY = Math.floor(player.y / TILE);
+  const activeBombsCount = room.bombs.filter((b) => b.ownerId === player.id).length;
+  const tileHasBomb = room.bombs.some((b) => b.x === tileX && b.y === tileY);
+  if (activeBombsCount >= player.bombs || tileHasBomb) return false;
+
+  const bomb = {
+    id: "bomb_" + Math.random().toString(36).substr(2, 9),
+    x: tileX, y: tileY,
+    ownerId: player.id,
+    range: player.range,
+    timer: 2.25,
+  };
+  room.bombs.push(bomb);
+  player.cooldown = 0.25;
+  broadcastToRoom(room, { type: "bomb_placed", data: { bomb } });
+  return true;
+}
+
+function updateServerBots(room, dt) {
+  if (!room.map || room.map.length === 0) return;
+  const activeSet = new Set(room.mode === "team" ? room.activeRoundPlayers : room.players.map(p => p.id));
+  room.players.forEach((bot) => {
+    if (!bot.ai || !bot.alive || !activeSet.has(bot.id)) return;
+
+    bot.aiThink = (bot.aiThink || 0) - dt;
+    const tile = gridAtServer(bot.x, bot.y);
+    const danger = isDangerTileServer(room, tile.x, tile.y);
+
+    if (danger || bot.aiThink <= 0 || !bot.aiDir) {
+      const dirs = [
+        { x: 0, y: -1 },
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+      ];
+      const ranked = dirs
+        .map((dir) => ({ ...dir, score: scoreServerBotMove(room, bot, tile.x + dir.x, tile.y + dir.y) }))
+        .sort((a, b) => b.score - a.score);
+      bot.aiDir = { x: ranked[0].x, y: ranked[0].y };
+      bot.aiThink = danger ? 0.08 : 0.16 + Math.random() * 0.18;
+    }
+
+    moveServerActor(room, bot, bot.aiDir.x, bot.aiDir.y, dt);
+    checkPickupCollision(room, bot);
+
+    const nowTile = gridAtServer(bot.x, bot.y);
+    const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && (
+      hasEnemyInBombLine(room, bot, nowTile) ||
+      hasAdjacentCrate(room, nowTile.x, nowTile.y)
+    );
+    if (shouldBomb && hasEscapeTile(room, bot, nowTile)) {
+      if (placeServerBomb(room, bot)) {
+        bot.aiBombCooldown = 0.8 + Math.random() * 0.45;
+        bot.aiThink = 0;
+      }
+    }
+  });
+}
+
+function gridAtServer(px, py) {
+  return { x: Math.floor(px / TILE), y: Math.floor(py / TILE) };
+}
+
+function isMapSolidServer(room, tileX, tileY) {
+  if (!room.map[tileY] || !room.map[tileY][tileX]) return true;
+  const cell = room.map[tileY][tileX];
+  return cell === "wall" || cell === "crate" || cell === "zone";
+}
+
+function isSolidServer(room, tileX, tileY, actor = null) {
+  if (isMapSolidServer(room, tileX, tileY)) return true;
+  const actorTile = actor ? gridAtServer(actor.x, actor.y) : null;
+  return room.bombs.some((bomb) => {
+    if (actorTile && bomb.x === actorTile.x && bomb.y === actorTile.y) return false;
+    return bomb.x === tileX && bomb.y === tileY;
+  });
+}
+
+function canMoveServer(room, px, py, actor) {
+  const radius = 13;
+  const points = [
+    [px - radius, py - radius],
+    [px + radius, py - radius],
+    [px - radius, py + radius],
+    [px + radius, py + radius],
+  ];
+  return points.every(([x, y]) => {
+    const tile = gridAtServer(x, y);
+    return !isSolidServer(room, tile.x, tile.y, actor);
+  });
+}
+
+function moveServerActor(room, actor, dx, dy, dt) {
+  if (dx !== 0 && dy !== 0) dy = 0;
+  const speed = actor.speed || 142;
+  let nextX = actor.x + dx * speed * dt;
+  let nextY = actor.y + dy * speed * dt;
+
+  if (dx !== 0 && canMoveServer(room, nextX, actor.y, actor)) {
+    actor.x = nextX;
+  } else if (dx !== 0) {
+    dx = 0;
+  }
+  if (dy !== 0 && canMoveServer(room, actor.x, nextY, actor)) {
+    actor.y = nextY;
+  } else if (dy !== 0) {
+    dy = 0;
+  }
+  actor.dx = dx;
+  actor.dy = dy;
+}
+
+function scoreServerBotMove(room, bot, x, y) {
+  if (isSolidServer(room, x, y, bot)) return -9999;
+  let score = 0;
+  const here = gridAtServer(bot.x, bot.y);
+  if (x === here.x && y === here.y) score -= 28;
+  if (isDangerTileServer(room, x, y)) score -= 900;
+  if (room.pickups.some(p => p.x === x && p.y === y)) score += 80;
+  if (hasAdjacentCrate(room, x, y)) score += 18;
+
+  const enemies = getServerBotEnemies(room, bot);
+  if (enemies.length > 0) {
+    const nearest = enemies
+      .map(enemy => ({ enemy, dist: Math.abs(gridAtServer(enemy.x, enemy.y).x - x) + Math.abs(gridAtServer(enemy.x, enemy.y).y - y) }))
+      .sort((a, b) => a.dist - b.dist)[0];
+    score += Math.max(0, 70 - nearest.dist * 10);
+  }
+  score += Math.random() * 8;
+  return score;
+}
+
+function getServerBotEnemies(room, bot) {
+  if (room.mode !== "team") {
+    return room.players.filter(p => p.id !== bot.id && p.alive);
+  }
+  const botTeam = room.teams.A.includes(bot.id) ? "A" : "B";
+  const enemyTeam = botTeam === "A" ? room.teams.B : room.teams.A;
+  const activeSet = new Set(room.activeRoundPlayers || []);
+  return room.players.filter(p => p.alive && activeSet.has(p.id) && enemyTeam.includes(p.id));
+}
+
+function hasEnemyInBombLine(room, bot, tile) {
+  return getServerBotEnemies(room, bot).some((enemy) => {
+    const enemyTile = gridAtServer(enemy.x, enemy.y);
+    if (enemyTile.x !== tile.x && enemyTile.y !== tile.y) return false;
+    const dx = Math.sign(enemyTile.x - tile.x);
+    const dy = Math.sign(enemyTile.y - tile.y);
+    const distance = Math.abs(enemyTile.x - tile.x) + Math.abs(enemyTile.y - tile.y);
+    if (distance > (bot.range || 2)) return false;
+    for (let i = 1; i < distance; i += 1) {
+      if (isMapSolidServer(room, tile.x + dx * i, tile.y + dy * i)) return false;
+    }
+    return true;
+  });
+}
+
+function hasAdjacentCrate(room, x, y) {
+  return [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ].some(dir => room.map[y + dir.y]?.[x + dir.x] === "crate");
+}
+
+function hasEscapeTile(room, bot, tile) {
+  return [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ].some(dir => {
+    const x = tile.x + dir.x;
+    const y = tile.y + dir.y;
+    return !isSolidServer(room, x, y, bot) && !wouldBombThreatenTile(room, tile, x, y, bot.range || 2);
+  });
+}
+
+function isDangerTileServer(room, x, y) {
+  return room.bombs.some((bomb) => bombThreatensTile(room, bomb, x, y));
+}
+
+function bombThreatensTile(room, bomb, x, y) {
+  if (bomb.x === x && bomb.y === y) return true;
+  if (bomb.x !== x && bomb.y !== y) return false;
+  const dx = Math.sign(x - bomb.x);
+  const dy = Math.sign(y - bomb.y);
+  const distance = Math.abs(x - bomb.x) + Math.abs(y - bomb.y);
+  if (distance > bomb.range) return false;
+  for (let i = 1; i <= distance; i += 1) {
+    const cell = room.map[bomb.y + dy * i]?.[bomb.x + dx * i];
+    if (!cell || cell === "wall") return false;
+    if (cell === "crate") return i === distance;
+  }
+  return true;
+}
+
+function wouldBombThreatenTile(room, bombTile, x, y, range) {
+  if (bombTile.x === x && bombTile.y === y) return true;
+  if (bombTile.x !== x && bombTile.y !== y) return false;
+  const dx = Math.sign(x - bombTile.x);
+  const dy = Math.sign(y - bombTile.y);
+  const distance = Math.abs(x - bombTile.x) + Math.abs(y - bombTile.y);
+  if (distance > range) return false;
+  for (let i = 1; i <= distance; i += 1) {
+    const cell = room.map[bombTile.y + dy * i]?.[bombTile.x + dx * i];
+    if (!cell || cell === "wall" || cell === "crate") return false;
+  }
+  return true;
 }
 
 // ----------------------------------------------------------------

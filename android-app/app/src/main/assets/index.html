@@ -155,7 +155,7 @@
 
       <!-- 1. MAIN LOBBY SCREEN (NEW - matches user screenshot) -->
       <section id="menuScreen" class="screen">
-        <div class="yellow-console">
+        <div class="yellow-console squad-lobby-active">
           <!-- Top Navigation Header -->
           <header class="console-header">
             <!-- Normal Header Elements -->
@@ -178,7 +178,7 @@
             <!-- Tabs (Normal Header only) -->
             <nav class="console-tabs normal-header-only">
               <span class="controller-key">LB</span>
-              <button class="tab-btn active tab-play" data-tab="play" type="button" aria-label="Play">
+              <button class="tab-btn tab-play" data-tab="play" type="button" aria-label="Play">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z" fill="white"/></svg>
                 </span>
@@ -190,7 +190,7 @@
                   </svg>
                 </span>
               </button>
-              <button class="tab-btn tab-squad" data-tab="squad" type="button" aria-label="Squad">
+              <button class="tab-btn active tab-squad" data-tab="squad" type="button" aria-label="Squad">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="4" y1="12" x2="20" y2="12"/>
@@ -249,7 +249,7 @@
           <!-- Main Content Area -->
           <div class="console-body">
             <!-- PLAY TAB CONTENT -->
-            <div class="tab-content active" id="tabContent_play">
+            <div class="tab-content" id="tabContent_play">
               <div class="left-column">
                 <img class="lobby-logo" src="chiikawa-royale-logo.png" alt="Chiikawa Royale" />
                 
@@ -402,7 +402,7 @@
             </div>
 
             <!-- SQUAD TAB CONTENT (Lobby interface matching mockup) -->
-            <div class="tab-content" id="tabContent_squad">
+            <div class="tab-content active" id="tabContent_squad">
               <div class="squad-lobby-container">
                 <!-- Animating swirly background layer -->
                 <div class="squad-lobby-bg-swirls" aria-hidden="true"></div>
@@ -1036,12 +1036,6 @@
       </div>
     </div>
 
-    <!-- 6. MATCHMAKING COUNTDOWN NOTIFICATION (shown in matchmaking dialog) -->
-    <div id="matchmakingFillNotice" class="matchmaking-fill-notice hidden">
-      <span class="fill-notice-icon">🤖</span>
-      <span id="matchmakingFillText">Filling with CPU in <strong id="matchmakingFillTimer">30</strong>s</span>
-    </div>
-
     <!-- Social Modal (Friends + Online Users) -->
     <div id="socialModal" class="dialog-overlay hidden">
       <div class="social-modal-card card glass">
@@ -1097,6 +1091,62 @@
           </div>
 
         </div>
+      </div>
+    </div>
+
+    <!-- Start Mode Selection Dialog Popup -->
+    <div id="startModeSelectionDialog" class="dialog-overlay hidden">
+      <div class="card glass dialog-card server-select-card" style="max-width: 480px !important;">
+        <h2>Select Game Mode</h2>
+        <p>Choose how you want to play Chiikawa Royale.</p>
+        
+        <div class="server-options-grid" style="display: flex; flex-direction: column; gap: 16px; margin: 20px 0; width: 100%;">
+          <button id="btnSelectOnline" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 16px 20px; border-radius: 12px; text-align: center; gap: 6px; cursor: pointer; transition: transform 0.2s;">
+            <span class="option-icon" style="font-size: 28px;">🌐</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 18px; font-weight: 700; text-transform: uppercase;">Online Play</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 12px; font-weight: 500; opacity: 0.8; line-height: 1.4;">Connect to global multiplayer battles and track progress.</span>
+          </button>
+          <button id="btnSelectLocal" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 16px 20px; border-radius: 12px; text-align: center; gap: 6px; cursor: pointer; transition: transform 0.2s;">
+            <span class="option-icon" style="font-size: 28px;">🏠</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 18px; font-weight: 700; text-transform: uppercase;">Local Play</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 12px; font-weight: 500; opacity: 0.8; line-height: 1.4;">Play offline Solo (vs Bots) or Local Multiplayer (LAN).</span>
+          </button>
+        </div>
+        
+        <button id="closeStartModeBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- Local Play Setup Dialog Popup -->
+    <div id="localPlaySetupDialog" class="dialog-overlay hidden">
+      <div class="card glass dialog-card local-setup-card" style="max-width: 420px !important; text-align: center;">
+        <h2>Local Play Setup</h2>
+        <p>Configure your offline or LAN options.</p>
+        
+        <div class="dialog-fields" style="display: flex; flex-direction: column; gap: 16px; margin: 20px 0; width: 100%; text-align: left;">
+          <div class="field-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="localNicknameInput" style="font-family: var(--font); font-size: 14px; color: #ffd84a; text-transform: uppercase;">Your Nickname</label>
+            <input id="localNicknameInput" type="text" maxlength="12" placeholder="Enter nickname..." value="Friend" style="width: 100%; padding: 10px; border-radius: 8px; border: 3px solid #ffd84a; font-family: var(--font-clean); font-size: 14px; background: rgba(255,255,255,0.9); color: #222;" />
+          </div>
+
+          <div class="field-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-family: var(--font); font-size: 14px; color: #ffd84a; text-transform: uppercase;">Choose Play Mode</label>
+            <div class="mode-select-buttons" style="display: flex; gap: 12px; margin-top: 4px;">
+              <button id="btnLocalSinglePlayer" class="btn btn-primary" type="button" style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 12px 6px; gap: 4px; border-radius: 8px; cursor: pointer; transition: transform 0.2s; height: auto !important;">
+                <span style="font-size: 24px;">🤖</span>
+                <strong style="font-family: var(--font); font-size: 13px; text-transform: uppercase; color: #fff;">Single Player</strong>
+                <span style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff; line-height: 1.2; font-weight: normal;">Solo vs Bots</span>
+              </button>
+              <button id="btnLocalMultiplayer" class="btn btn-accent" type="button" style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 12px 6px; gap: 4px; border-radius: 8px; cursor: pointer; transition: transform 0.2s; height: auto !important;">
+                <span style="font-size: 24px;">👥</span>
+                <strong style="font-family: var(--font); font-size: 13px; text-transform: uppercase; color: #fff;">LAN Server</strong>
+                <span style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff; line-height: 1.2; font-weight: normal;">Connect to Local Server</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <button id="closeLocalSetupBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
       </div>
     </div>
 
