@@ -196,16 +196,50 @@ const connectionStatusIndicator = document.getElementById("connectionStatusIndic
 const playerUuidLabel = document.getElementById("playerUuidLabel");
 
 // Game settings
+const CANVAS_WIDTH = 960;
+const CANVAS_HEIGHT = 720;
 const TILE = 48;
 const COLS = 15;
 const ROWS = 13;
-const OFFSET_X = (canvas.width - COLS * TILE) / 2;
+const OFFSET_X = (CANVAS_WIDTH - COLS * TILE) / 2;
 const OFFSET_Y = 72;
 const SUDDEN_DEATH_TIME = 90;
 const ZONE_STEP_SECONDS = 10;
 const MAX_ZONE_LAYER = 4;
 const STANDARD_MAX_PLAYERS = 4;
 const TEAM_MAX_PLAYERS = 6;
+
+const graphicsProfiles = {
+  high: { fps: 60, menuFps: 18, effectDensity: 1, animateMenus: true },
+  medium: { fps: 45, menuFps: 10, effectDensity: 0.55, animateMenus: true },
+  low: { fps: 30, menuFps: 4, effectDensity: 0.25, animateMenus: false },
+};
+let graphicsQuality = localStorage.getItem("graphicsQuality") || (window.matchMedia?.("(pointer: coarse)")?.matches ? "medium" : "high");
+let renderScale = Number(localStorage.getItem("renderScale") || (window.matchMedia?.("(pointer: coarse)")?.matches ? 0.85 : 1));
+let activeGraphics = graphicsProfiles[graphicsQuality] || graphicsProfiles.high;
+let lastFrameTime = 0;
+let lastMenuDrawTime = 0;
+
+function clampRenderScale(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(1, Math.max(0.55, parsed));
+}
+
+function applyGraphicsSettings() {
+  activeGraphics = graphicsProfiles[graphicsQuality] || graphicsProfiles.high;
+  renderScale = clampRenderScale(renderScale);
+  const targetWidth = Math.max(1, Math.round(CANVAS_WIDTH * renderScale));
+  const targetHeight = Math.max(1, Math.round(CANVAS_HEIGHT * renderScale));
+  if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+  }
+  document.body.classList.toggle("graphics-low", graphicsQuality === "low");
+  document.body.classList.toggle("graphics-medium", graphicsQuality === "medium");
+}
+
+applyGraphicsSettings();
 
 const starts = [
   { x: 1, y: 1 },
@@ -1431,9 +1465,10 @@ function updateCouchControlPicker() {
   picker.innerHTML = "";
   humans.forEach((player) => {
     const btn = document.createElement("button");
+    const slotNumber = (player.couchSlotIndex ?? humans.indexOf(player)) + 1;
     btn.type = "button";
-    btn.className = `couch-control-btn ${player.id === couchTouchPlayerId ? "active" : ""}`;
-    btn.textContent = `P${(player.couchSlotIndex ?? humans.indexOf(player)) + 1}`;
+    btn.className = `couch-control-btn slot-${slotNumber} ${player.id === couchTouchPlayerId ? "active" : ""}`;
+    btn.textContent = `P${slotNumber}`;
     btn.addEventListener("click", () => {
       couchTouchPlayerId = player.id;
       localPlayerId = player.id;
@@ -2583,19 +2618,22 @@ function tailOnContext(actx, x, y, color, size = 8) {
 
 function drawBackground() {
   ctx.fillStyle = "#fdf1b9";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
   
   ctx.fillStyle = "rgba(255, 127, 174, 0.45)";
-  for (let i = 0; i < 34; i += 1) {
-    const x = (i * 137) % canvas.width;
-    const y = 22 + ((i * 79) % (canvas.height - 44));
+  const confettiCount = Math.max(8, Math.round(34 * activeGraphics.effectDensity));
+  for (let i = 0; i < confettiCount; i += 1) {
+    const x = (i * 137) % CANVAS_WIDTH;
+    const y = 22 + ((i * 79) % (CANVAS_HEIGHT - 44));
     ctx.fillRect(x, y, 8, 8);
   }
   
-  ctx.strokeStyle = "#221f25";
-  ctx.lineWidth = 3;
-  drawBunting(28, 38, 250);
-  drawBunting(690, 42, 250);
+  if (activeGraphics.effectDensity > 0.3) {
+    ctx.strokeStyle = "#221f25";
+    ctx.lineWidth = 3;
+    drawBunting(28, 38, 250);
+    drawBunting(690, 42, 250);
+  }
 }
 
 function drawBunting(x, y, w) {
@@ -3021,10 +3059,10 @@ function drawMessage(message) {
   ctx.font = "900 42px Fredoka";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(message, canvas.width / 2, 326);
+  ctx.fillText(message, CANVAS_WIDTH / 2, 326);
   ctx.fillStyle = "#221f25";
   ctx.font = "900 18px Fredoka";
-  ctx.fillText("Round Over! Returning to lobby...", canvas.width / 2, 366);
+  ctx.fillText("Round Over! Returning to lobby...", CANVAS_WIDTH / 2, 366);
   ctx.restore();
 }
 
@@ -3384,6 +3422,7 @@ function update(dt) {
 
 function render() {
   ctx.save();
+  ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
 
   if (shakeTimer > 0) {
     const shakeIntensity = 5;
@@ -3392,7 +3431,7 @@ function render() {
     ctx.translate(dx, dy);
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
   drawBackground();
 
   ctx.save();
@@ -3417,33 +3456,52 @@ function render() {
 }
 
 function loop(now) {
+  const targetInterval = 1000 / activeGraphics.fps;
+  if (lastFrameTime && now - lastFrameTime < targetInterval) {
+    requestAnimationFrame(loop);
+    return;
+  }
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
+  lastFrameTime = now;
+  const gameVisible = gameScreen?.classList.contains("active");
+  if (gameVisible || running || gameMessage) {
+    update(dt);
+    render();
+  }
   
-  update(dt);
-  render();
-  
+  const shouldDrawMenu = now - lastMenuDrawTime >= 1000 / activeGraphics.menuFps;
+  if (shouldDrawMenu) {
+    lastMenuDrawTime = now;
+  }
+
   // Smoothly animate the yellow-console swirls background on active console screens
-  document.querySelectorAll(".yellow-console").forEach((el) => {
-    const offset = (now / 50) % 40;
-    el.style.setProperty('--grad-offset', `${offset}px`);
-  });
-  
+  if (activeGraphics.animateMenus && shouldDrawMenu) {
+    document.querySelectorAll(".yellow-console").forEach((el) => {
+      const offset = (now / 90) % 40;
+      el.style.setProperty('--grad-offset', `${offset}px`);
+    });
+  }
+
   // Update spotlight character animation frame in lobby
   if (menuScreen.classList.contains("active")) {
-    drawSpotlightCharacter();
-    drawCharacterSelectPreview();
-    drawSquadLobbyCharacter();
-    drawCharacterCardPreviews();
-    drawCardAvatars();
+    if (shouldDrawMenu) {
+      drawSpotlightCharacter();
+      drawCharacterSelectPreview();
+      drawSquadLobbyCharacter();
+      if (activeGraphics.animateMenus) {
+        drawCharacterCardPreviews();
+        drawCardAvatars();
+      }
+    }
   }
-  if (lobbyScreen && lobbyScreen.classList.contains("active")) {
+  if (lobbyScreen && lobbyScreen.classList.contains("active") && shouldDrawMenu) {
     drawLobbyAvatars();
   }
 
   // Draw and animate character cards in the results overlay if visible
   const overlay = document.getElementById("tournamentOverlay");
-  if (overlay && !overlay.classList.contains("hidden")) {
+  if (overlay && !overlay.classList.contains("hidden") && shouldDrawMenu) {
     drawResultsAvatars();
   }
   
@@ -4753,6 +4811,8 @@ function initAudioSettings() {
   const sfxVolumeSlider = document.getElementById("sfxVolumeSlider");
   const bgMusicToggle = document.getElementById("bgMusicToggle");
   const bgMusicVolumeSlider = document.getElementById("bgMusicVolumeSlider");
+  const graphicsQualitySelect = document.getElementById("graphicsQualitySelect");
+  const renderScaleSelect = document.getElementById("renderScaleSelect");
   
   if (sfxVolumeSlider) {
     sfxVolumeSlider.value = sfxVolume;
@@ -4787,6 +4847,27 @@ function initAudioSettings() {
       bgMusicVolume = parseInt(e.target.value);
       localStorage.setItem("bgMusicVolume", bgMusicVolume);
       bgMusic.volume = bgMusicVolume / 100;
+    });
+  }
+
+  if (graphicsQualitySelect) {
+    graphicsQualitySelect.value = graphicsProfiles[graphicsQuality] ? graphicsQuality : "high";
+    graphicsQualitySelect.addEventListener("change", (e) => {
+      graphicsQuality = graphicsProfiles[e.target.value] ? e.target.value : "high";
+      localStorage.setItem("graphicsQuality", graphicsQuality);
+      applyGraphicsSettings();
+    });
+  }
+
+  if (renderScaleSelect) {
+    renderScaleSelect.value = String(renderScale);
+    if (!Array.from(renderScaleSelect.options).some((option) => option.value === renderScaleSelect.value)) {
+      renderScaleSelect.value = "1";
+    }
+    renderScaleSelect.addEventListener("change", (e) => {
+      renderScale = clampRenderScale(e.target.value);
+      localStorage.setItem("renderScale", String(renderScale));
+      applyGraphicsSettings();
     });
   }
 }
