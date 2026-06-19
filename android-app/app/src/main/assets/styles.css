@@ -109,9 +109,9 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 24px;
-  max-width: 1360px;
-  margin: 0 auto;
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
   width: 100%;
 }
 
@@ -142,14 +142,15 @@ body {
 /* 1. YELLOW LOBBY CONSOLE STYLING (MATCHES SCREENSHOT) */
 .yellow-console {
   position: relative;
-  width: 100%;
-  max-width: 1120px;
-  min-height: 650px;
-  aspect-ratio: 16 / 9;
-  border: 4px solid var(--ink);
-  border-radius: 12px;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  max-width: 100%;
+  aspect-ratio: auto;
+  border: none;
+  border-radius: 0;
   background: repeating-radial-gradient(circle at 50% 55%, #ffd338 var(--grad-offset, 0px), #ffd338 calc(var(--grad-offset, 0px) + 20px), #fec61a calc(var(--grad-offset, 0px) + 20px), #fec61a calc(var(--grad-offset, 0px) + 40px));
-  box-shadow: 10px 10px 0px var(--ink);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1713,15 +1714,14 @@ input[type="text"]:focus {
 #gameScreen.active {
   display: block;
   position: relative;
-  width: 100%;
-  max-width: 1120px;
-  aspect-ratio: 16 / 9;
+  width: 100vw;
+  height: 100vh;
   background: #0d0c10;
-  border: 4px solid var(--ink);
-  border-radius: 12px;
-  box-shadow: 10px 10px 0px var(--ink);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
-  margin: 0 auto;
+  margin: 0;
   z-index: 99;
 }
 
