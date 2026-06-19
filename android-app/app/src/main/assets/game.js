@@ -817,16 +817,21 @@ function connectWebSocket(forceReconnect = false) {
 
   let wsUrl;
   if (serverMode === "local") {
-    if (window.location.protocol === "file:") {
+    const isLocalPageHost = isLanLikeHostname(window.location.hostname);
+    if (window.location.protocol === "file:" || !isLocalPageHost) {
       const targetIP = promptForLocalServerAddress();
       if (targetIP) {
+        if (window.location.protocol === "https:") {
+          showToastMsg("Opening the LAN server page. Use HTTP for same-Wi-Fi play.");
+          window.location.href = `http://${targetIP}`;
+          return;
+        }
         wsUrl = `ws://${targetIP}`;
       } else {
         return;
       }
     } else {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      wsUrl = `${protocol}//${window.location.host}`;
+      wsUrl = `ws://${window.location.host}`;
     }
   } else {
     wsUrl = BACKEND_WS_URL || "wss://chiikawa-royale.onrender.com";
@@ -1547,7 +1552,7 @@ function makeLocalPlayer(id, name, kind, spawn, ai) {
     alive: true,
     speed: ai ? 178 : 142,
     bombs: ai ? 2 : 1,
-    range: ai ? 3 : 2,
+    range: getStartingBombRange(ai),
     cooldown: 0,
     invuln: 1.2,
     emote: null,
@@ -1978,6 +1983,10 @@ function buildLocalMap(mapType = "classic") {
 
 function getStartsForMap(mapType = currentMapType) {
   return mapType === "powerzone" ? powerZoneStarts : starts;
+}
+
+function getStartingBombRange(ai = false, mapType = currentMapType) {
+  return mapType === "powerzone" ? 1 : (ai ? 3 : 2);
 }
 
 function getPowerZonePickupType(x, y) {
@@ -3330,7 +3339,11 @@ function drawMiniMapPreview(canvas, mapType) {
 
             ctx.fillStyle = itemColor;
             ctx.beginPath();
-            ctx.arc(px + tw / 2, py + th / 2, Math.min(tw, th) / 2.45, 0, Math.PI * 2);
+            ctx.moveTo(px + tw / 2, py + th * 0.12);
+            ctx.lineTo(px + tw * 0.88, py + th / 2);
+            ctx.lineTo(px + tw / 2, py + th * 0.88);
+            ctx.lineTo(px + tw * 0.12, py + th / 2);
+            ctx.closePath();
             ctx.fill();
             ctx.strokeStyle = "#221f25";
             ctx.lineWidth = 1.5;
@@ -6205,7 +6218,7 @@ function localStartNextRound() {
     p.alive = true;
     p.speed = p.ai ? 178 : 142;
     p.bombs = p.ai ? 2 : 1;
-    p.range = p.ai ? 3 : 2;
+    p.range = getStartingBombRange(p.ai);
     p.cooldown = 0;
     p.invuln = 1.2;
     p.hasPunch = false;

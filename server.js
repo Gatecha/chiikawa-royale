@@ -1758,7 +1758,7 @@ function startRound(room, isNewTournament) {
     p.alive = isActive; // spectators start dead
     p.speed = p.ai ? 178 : 142;
     p.bombs = p.ai ? 2 : 1;
-    p.range = p.ai ? 3 : 2;
+    p.range = getStartingBombRange(p.ai, mapType);
     p.cooldown = 0; p.hasPunch = false; p.hasSlide = false;
     if (isNewTournament) p.trophies = 0;
   });
@@ -1778,6 +1778,7 @@ function startRound(room, isNewTournament) {
     data: {
       map: room.map,
       players: room.players,
+      pickups: room.pickups,
       mapType,
       mode: room.mode,
       teams: room.teams,
@@ -2176,6 +2177,10 @@ function wouldBombThreatenTile(room, bombTile, x, y, range) {
 
 function getStartsForMap(mapType) {
   return mapType === "powerzone" ? powerZoneStarts : starts;
+}
+
+function getStartingBombRange(ai = false, mapType = "classic") {
+  return mapType === "powerzone" ? 1 : (ai ? 3 : 2);
 }
 
 function getPowerZonePickupType(x, y) {
