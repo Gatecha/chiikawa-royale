@@ -56,10 +56,10 @@ const starts = [
 ];
 
 const powerZoneStarts = [
-  { x: 3, y: 3 },
-  { x: COLS - 4, y: ROWS - 4 },
-  { x: COLS - 4, y: 3 },
-  { x: 3, y: ROWS - 4 },
+  { x: 5, y: 5 },
+  { x: COLS - 6, y: ROWS - 6 },
+  { x: COLS - 6, y: 5 },
+  { x: 5, y: ROWS - 6 },
 ];
 
 // In-memory Room storage
@@ -1105,7 +1105,7 @@ function createBotObject(room) {
     id: botId, name, kind,
     ready: true, ai: true,
     x: 0, y: 0, dx: 0, dy: 0,
-    alive: true, speed: 166, bombs: 2, range: 3, cooldown: 0, trophies: 0,
+    alive: true, speed: 178, bombs: 2, range: 3, cooldown: 0, trophies: 0,
     hasPunch: false, hasSlide: false,
     aiThink: 0, aiDir: { x: 0, y: 0 }, aiTarget: null, aiBombCooldown: 0,
   };
@@ -1710,7 +1710,7 @@ function startRound(room, isNewTournament) {
     p.y = spawn.y * TILE + TILE / 2;
     p.dx = 0; p.dy = 0;
     p.alive = isActive; // spectators start dead
-    p.speed = p.ai ? 166 : 142;
+    p.speed = p.ai ? 178 : 142;
     p.bombs = p.ai ? 2 : 1;
     p.range = p.ai ? 3 : 2;
     p.cooldown = 0; p.hasPunch = false; p.hasSlide = false;
@@ -1793,10 +1793,13 @@ function updateServerBots(room, dt) {
         .map((dir) => ({ ...dir, score: scoreServerBotMove(room, bot, tile.x + dir.x, tile.y + dir.y) }))
         .sort((a, b) => b.score - a.score);
       bot.aiDir = { x: ranked[0].x, y: ranked[0].y };
-      bot.aiThink = danger ? 0.06 : 0.10 + Math.random() * 0.14;
+      bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
     }
 
+    const before = gridAtServer(bot.x, bot.y);
     moveServerActor(room, bot, bot.aiDir.x, bot.aiDir.y, dt);
+    const after = gridAtServer(bot.x, bot.y);
+    if (before.x === after.x && before.y === after.y && (bot.aiDir.x !== 0 || bot.aiDir.y !== 0)) bot.aiThink = 0;
     checkPickupCollision(room, bot);
 
     const nowTile = gridAtServer(bot.x, bot.y);
@@ -1805,13 +1808,16 @@ function updateServerBots(room, dt) {
       return;
     }
 
-    const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && (
-      hasEnemyInBombLine(room, bot, nowTile) ||
-      hasAdjacentCrate(room, nowTile.x, nowTile.y)
-    );
+    const canAttackEnemy = hasEnemyInBombLine(room, bot, nowTile);
+    const nearbyCrate = hasAdjacentCrate(room, nowTile.x, nowTile.y);
+    const nearbyEnemy = getServerBotEnemies(room, bot).some((enemy) => {
+      const enemyTile = gridAtServer(enemy.x, enemy.y);
+      return Math.abs(enemyTile.x - nowTile.x) + Math.abs(enemyTile.y - nowTile.y) <= Math.max(2, bot.range || 2);
+    });
+    const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy);
     if (shouldBomb && hasEscapeTile(room, bot, nowTile)) {
       if (placeServerBomb(room, bot)) {
-        bot.aiBombCooldown = 0.45 + Math.random() * 0.35;
+        bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
         bot.aiThink = 0;
       }
     }
@@ -1899,37 +1905,90 @@ function tryKickBombServer(room, actor, tile, dir) {
 
 function scoreServerBotMove(room, bot, x, y) {
   if (isSolidServer(room, x, y, bot)) return -9999;
-  let score = 0;
+  let score = Math.random() * 2;
   const here = gridAtServer(bot.x, bot.y);
-  if (x === here.x && y === here.y) score -= 42;
-  if (isDangerTileServer(room, x, y)) score -= 1200;
-  if (room.map[y]?.[x] === "zone") score -= 2000;
-  if (room.pickups.some(p => p.x === x && p.y === y)) score += 120;
-  if (hasAdjacentCrate(room, x, y)) score += 26;
+  if (x === here.x && y === here.y) score -= 56;
+
+  const threat = getServerBotThreatScore(room, x, y);
+  score -= threat;
+  if (threat >= 1200) return score;
+
+  const safeExits = countServerSafeExits(room, bot, x, y);
+  score += safeExits * 34;
+  if (safeExits === 0) score -= 280;
+
+  const pickup = room.pickups.find(p => p.x === x && p.y === y);
+  if (pickup) score += pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 190 : 135;
+  if (hasAdjacentCrate(room, x, y)) score += hasEscapeTile(room, bot, { x, y }) ? 42 : -80;
 
   const enemies = getServerBotEnemies(room, bot);
   if (enemies.length > 0) {
     const nearest = enemies
       .map(enemy => ({ enemy, dist: Math.abs(gridAtServer(enemy.x, enemy.y).x - x) + Math.abs(gridAtServer(enemy.x, enemy.y).y - y) }))
       .sort((a, b) => a.dist - b.dist)[0];
-    score += Math.max(0, 110 - nearest.dist * 13);
-    if (nearest.dist <= (bot.range || 2) && (x === gridAtServer(nearest.enemy.x, nearest.enemy.y).x || y === gridAtServer(nearest.enemy.x, nearest.enemy.y).y)) {
-      score += 36;
+    score += Math.max(0, 125 - nearest.dist * 14);
+    if (nearest.dist <= (bot.range || 2) && (x === gridAtServer(nearest.enemy.x, nearest.enemy.y).x || y === gridAtServer(nearest.enemy.x, nearest.enemy.y).y) && hasEscapeTile(room, bot, { x, y })) {
+      score += 62;
     }
   }
 
   const target = findServerBotTarget(room, bot, here);
   if (target) {
     const dist = Math.abs(target.x - x) + Math.abs(target.y - y);
-    score += Math.max(0, 80 - dist * 12);
+    score += Math.max(0, 110 - dist * 13);
   }
-  score += Math.random() * 5;
   return score;
+}
+
+function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy) {
+  if (canAttackEnemy) return true;
+  if (nearbyEnemy && Math.random() < 0.42) return true;
+  if (nearbyCrate && countServerSafeExits(room, bot, tile.x, tile.y) >= 2) return Math.random() < 0.34;
+  return false;
+}
+
+function getServerBotThreatScore(room, x, y) {
+  if (room.map[y]?.[x] === "zone") return 2200;
+  let score = 0;
+  room.blasts.forEach((blast) => {
+    if (blast.cells?.some((cell) => cell.x === x && cell.y === y)) score = Math.max(score, 2600);
+  });
+  room.bombs.forEach((bomb) => {
+    if (!bombThreatensTileAnyTimer(room, bomb, x, y)) return;
+    if (bomb.timer < 0.75) score = Math.max(score, 2400);
+    else if (bomb.timer < 1.35) score = Math.max(score, 1500);
+    else score = Math.max(score, 420);
+  });
+  return score;
+}
+
+function bombThreatensTileAnyTimer(room, bomb, x, y) {
+  if (bomb.x === x && bomb.y === y) return true;
+  if (bomb.x !== x && bomb.y !== y) return false;
+  const dx = Math.sign(x - bomb.x);
+  const dy = Math.sign(y - bomb.y);
+  const distance = Math.abs(x - bomb.x) + Math.abs(y - bomb.y);
+  if (distance > bomb.range) return false;
+  for (let i = 1; i <= distance; i += 1) {
+    const cell = room.map[bomb.y + dy * i]?.[bomb.x + dx * i];
+    if (!cell || cell === "wall") return false;
+    if (cell === "crate") return i === distance;
+  }
+  return true;
+}
+
+function countServerSafeExits(room, bot, x, y) {
+  return [
+    { x: x + 1, y },
+    { x: x - 1, y },
+    { x, y: y + 1 },
+    { x, y: y - 1 },
+  ].filter((n) => !isSolidServer(room, n.x, n.y, bot) && getServerBotThreatScore(room, n.x, n.y) < 1000).length;
 }
 
 function findServerBotTarget(room, bot, here) {
   const enemies = getServerBotEnemies(room, bot).map(enemy => ({ ...gridAtServer(enemy.x, enemy.y), weight: 3 }));
-  const loot = room.pickups.map(pickup => ({ x: pickup.x, y: pickup.y, weight: pickup.type === "punch" || pickup.type === "full_fire" ? 4 : 2 }));
+  const loot = room.pickups.map(pickup => ({ x: pickup.x, y: pickup.y, weight: pickup.type === "punch" || pickup.type === "full_fire" || pickup.type === "slide" ? 5 : 3 }));
   const crates = [];
   for (let y = 1; y < ROWS - 1; y += 1) {
     for (let x = 1; x < COLS - 1; x += 1) {
@@ -1937,8 +1996,9 @@ function findServerBotTarget(room, bot, here) {
     }
   }
   return [...loot, ...enemies, ...crates]
+    .filter(target => getServerBotThreatScore(room, target.x, target.y) < 1000)
     .map(target => ({ ...target, dist: Math.abs(target.x - here.x) + Math.abs(target.y - here.y) }))
-    .sort((a, b) => (b.weight * 18 - b.dist) - (a.weight * 18 - a.dist))[0] || null;
+    .sort((a, b) => (b.weight * 24 - b.dist) - (a.weight * 24 - a.dist))[0] || null;
 }
 
 function tryServerBotPunch(room, bot, tile) {
@@ -2017,7 +2077,7 @@ function hasEscapeTile(room, bot, tile) {
     if (current.depth > 0 && !wouldBombThreatenTile(room, tile, current.x, current.y, bot.range || 2) && !isDangerTileServer(room, current.x, current.y)) {
       return true;
     }
-    if (current.depth >= 4) continue;
+    if (current.depth >= 6) continue;
     dirs.forEach((dir) => {
       const x = current.x + dir.x;
       const y = current.y + dir.y;
@@ -2101,8 +2161,9 @@ function generateMap(mapType) {
       
       if (mapType === "powerzone") {
         if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
+        if (x === 2 || y === 2 || x === COLS - 3 || y === ROWS - 3) return "crate";
         if (x % 2 === 0 && y % 2 === 0) return "wall";
-        return Math.random() < 0.72 ? "crate" : "grass";
+        return Math.random() < 0.68 ? "crate" : "grass";
       } else if (mapType === "colosseum") {
         if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
         return Math.random() < 0.5 ? "crate" : "grass";

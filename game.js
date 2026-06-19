@@ -249,10 +249,10 @@ const starts = [
 ];
 
 const powerZoneStarts = [
-  { x: 3, y: 3 },
-  { x: COLS - 4, y: ROWS - 4 },
-  { x: COLS - 4, y: 3 },
-  { x: 3, y: ROWS - 4 },
+  { x: 5, y: 5 },
+  { x: COLS - 6, y: ROWS - 6 },
+  { x: COLS - 6, y: 5 },
+  { x: 5, y: ROWS - 6 },
 ];
 
 // Character styles
@@ -440,6 +440,8 @@ let currentTeamTrophies = { A: 0, B: 0 };
 let currentActiveRoundPlayers = [];
 let finalVoteSecondsTotal = 20;
 let finalVoteSelection = null;
+let pendingLocalMapChoice = null;
+let localMapVoteState = null;
 
 // Game World State
 let map = [];
@@ -1424,7 +1426,8 @@ function startLocalGame() {
   currentActiveRoundPlayers = [];
   
   const mapSelect = document.getElementById("localMapSelect");
-  currentMapType = mapSelect ? mapSelect.value : "classic";
+  currentMapType = pendingLocalMapChoice || (mapSelect ? mapSelect.value : "classic");
+  pendingLocalMapChoice = null;
   map = buildLocalMap(currentMapType);
   const activeStarts = getStartsForMap(currentMapType);
 
@@ -1477,7 +1480,7 @@ function makeLocalPlayer(id, name, kind, spawn, ai) {
     dx: 0,
     dy: 0,
     alive: true,
-    speed: ai ? 166 : 142,
+    speed: ai ? 178 : 142,
     bombs: ai ? 2 : 1,
     range: ai ? 3 : 2,
     cooldown: 0,
@@ -1635,6 +1638,41 @@ function closeLocalFourPlayerLobby() {
   syncSquadLobbyInterface();
 }
 
+function getLocalSingleVoteActors() {
+  return [
+    { id: "local_player", kind: selectedCharacter, name: localStorage.getItem("local_username") || "You" },
+    { id: "cpu_usagi", kind: "usagi", name: "Usagi CPU" },
+    { id: "cpu_momonga", kind: "momonga", name: "Momonga CPU" },
+    { id: "cpu_chiikawa", kind: "chiikawa", name: "Chiikawa CPU" },
+  ];
+}
+
+function getLocalFourVoteActors() {
+  return Array.from({ length: 4 }, (_, index) => {
+    const slot = couchSlots[index];
+    const kind = slot?.kind || couchCharacters[index % couchCharacters.length];
+    return {
+      id: slot?.playerId || `couch_cpu_${index + 1}`,
+      kind,
+      name: slot?.name || `${characterStyle[kind]?.label || "CPU"} CPU`,
+    };
+  });
+}
+
+function startLocalSingleWithMapVote() {
+  startLocalMapVote(getLocalSingleVoteActors(), () => {
+    startLocalGame();
+    tryPlayMusic();
+  });
+}
+
+function startLocalFourWithMapVote() {
+  startLocalMapVote(getLocalFourVoteActors(), () => {
+    startLocalFourPlayerGame();
+    tryPlayMusic();
+  });
+}
+
 function startLocalFourPlayerGame() {
   localMode = true;
   localCouchMode = true;
@@ -1650,7 +1688,8 @@ function startLocalFourPlayerGame() {
   couchPlayerTouchKeys.clear();
   couchTouchPlayerId = null;
 
-  currentMapType = document.getElementById("localMapSelect")?.value || "classic";
+  currentMapType = pendingLocalMapChoice || document.getElementById("localMapSelect")?.value || "classic";
+  pendingLocalMapChoice = null;
   map = buildLocalMap(currentMapType);
   const activeStarts = getStartsForMap(currentMapType);
 
@@ -1839,8 +1878,9 @@ function buildLocalMap(mapType = "classic") {
       
       if (mapType === "powerzone") {
         if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
+        if (x === 2 || y === 2 || x === COLS - 3 || y === ROWS - 3) return "crate";
         if (x % 2 === 0 && y % 2 === 0) return "wall";
-        return Math.random() < 0.72 ? "crate" : "grass";
+        return Math.random() < 0.68 ? "crate" : "grass";
       } else if (mapType === "colosseum") {
         // Open center, only corner pillars
         if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
@@ -2602,10 +2642,11 @@ function updateAi(bot, dt) {
       .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
       .sort((a, b) => b.score - a.score);
     bot.aiDir = useful[0];
-    bot.aiThink = danger ? 0.06 : 0.10 + Math.random() * 0.14;
+    bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
   }
 
-  moveActor(bot, bot.aiDir.x, bot.aiDir.y, dt);
+  const moved = moveActor(bot, bot.aiDir.x, bot.aiDir.y, dt);
+  if (!moved) bot.aiThink = 0;
 
   if (localMode) {
     localCheckPickup(bot);
@@ -2621,31 +2662,116 @@ function updateAi(bot, dt) {
 
   const tile = gridAt(bot.x, bot.y);
   const nearbyCrate = neighbors(tile.x, tile.y).some((n) => map[n.y]?.[n.x] === "crate");
-  const nearbyEnemy = players.some((other) => other !== bot && other.alive && distanceTiles(tile, gridAt(other.x, other.y)) <= Math.max(2, bot.range || 2));
+  const nearbyEnemy = getLocalBotEnemies(bot).some((other) => other.alive && distanceTiles(tile, gridAt(other.x, other.y)) <= Math.max(2, bot.range || 2));
+  const canAttackEnemy = hasEnemyInBombLineLocal(bot, tile);
   
-  if ((hasEnemyInBombLineLocal(bot, tile) || nearbyCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && Math.random() < 0.16) {
+  if ((canAttackEnemy || nearbyCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && shouldLocalBotBomb(bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy)) {
     if (localMode) localPlaceBomb(bot);
     else sendServerMessage("place_bomb", { id: bot.id });
+    bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
+    bot.aiThink = 0;
   }
 }
 
 function scoreAiMove(bot, x, y) {
   if (isSolid(x, y, bot)) return -9999;
-  let score = Math.random() * 3;
+  let score = Math.random() * 2;
   const here = gridAt(bot.x, bot.y);
-  if (x === here.x && y === here.y) score -= 30;
-  if (isDanger(x, y)) score -= 900;
-  if (pickups.some((p) => p.x === x && p.y === y)) score += 90;
-  if (neighbors(x, y).some((n) => map[n.y]?.[n.x] === "crate")) score += 18;
+  if (x === here.x && y === here.y) score -= 56;
+
+  const threat = getLocalBotThreatScore(x, y);
+  score -= threat;
+  if (threat >= 1200) return score;
+
+  const safeExits = countLocalSafeExits(bot, x, y);
+  score += safeExits * 34;
+  if (safeExits === 0) score -= 280;
+
+  const pickup = pickups.find((p) => p.x === x && p.y === y);
+  if (pickup) score += pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 190 : 135;
+  if (neighbors(x, y).some((n) => map[n.y]?.[n.x] === "crate")) score += hasEscapeTileLocal(bot, { x, y }) ? 42 : -80;
   
-  const enemies = players.filter((other) => other !== bot && other.alive);
+  const enemies = getLocalBotEnemies(bot);
   if (enemies.length) {
     const nearest = enemies
       .map((enemy) => ({ enemy, dist: distanceTiles({ x, y }, gridAt(enemy.x, enemy.y)) }))
       .sort((a, b) => a.dist - b.dist)[0];
-    score += Math.max(0, 95 - nearest.dist * 12);
+    score += Math.max(0, 125 - nearest.dist * 14);
+    const enemyTile = gridAt(nearest.enemy.x, nearest.enemy.y);
+    if (nearest.dist <= (bot.range || 2) && (x === enemyTile.x || y === enemyTile.y) && hasEscapeTileLocal(bot, { x, y })) {
+      score += 62;
+    }
+  }
+
+  const target = findLocalBotTarget(bot, here);
+  if (target) {
+    const dist = Math.abs(target.x - x) + Math.abs(target.y - y);
+    score += Math.max(0, 110 - dist * 13);
   }
   return score;
+}
+
+function shouldLocalBotBomb(bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy) {
+  if ((bot.aiBombCooldown || 0) > 0) return false;
+  if (canAttackEnemy) return true;
+  if (nearbyEnemy && Math.random() < 0.42) return true;
+  if (nearbyCrate && countLocalSafeExits(bot, tile.x, tile.y) >= 2) return Math.random() < 0.34;
+  return false;
+}
+
+function getLocalBotEnemies(bot) {
+  return players.filter((other) => other !== bot && other.alive);
+}
+
+function getLocalBotThreatScore(x, y) {
+  if (map[y]?.[x] === "zone") return 2200;
+  if (blasts.some((blast) => blast.cells.some((cell) => cell.x === x && cell.y === y))) return 2600;
+  let score = 0;
+  bombs.forEach((bomb) => {
+    if (!localBombThreatensTileAnyTimer(bomb, x, y)) return;
+    if (bomb.timer < 0.75) score = Math.max(score, 2400);
+    else if (bomb.timer < 1.35) score = Math.max(score, 1500);
+    else score = Math.max(score, 420);
+  });
+  return score;
+}
+
+function localBombThreatensTileAnyTimer(bomb, x, y) {
+  if (bomb.x === x && bomb.y === y) return true;
+  if (bomb.x !== x && bomb.y !== y) return false;
+  const distance = Math.abs(bomb.x - x) + Math.abs(bomb.y - y);
+  if (distance > bomb.range) return false;
+  const stepX = Math.sign(x - bomb.x);
+  const stepY = Math.sign(y - bomb.y);
+  for (let i = 1; i <= distance; i += 1) {
+    const tile = map[bomb.y + stepY * i]?.[bomb.x + stepX * i];
+    if (tile === "wall") return false;
+    if (tile === "crate") return i === distance;
+  }
+  return true;
+}
+
+function countLocalSafeExits(bot, x, y) {
+  return neighbors(x, y).filter((n) => !isSolid(n.x, n.y, bot) && getLocalBotThreatScore(n.x, n.y) < 1000).length;
+}
+
+function findLocalBotTarget(bot, here) {
+  const enemies = getLocalBotEnemies(bot).map((enemy) => ({ ...gridAt(enemy.x, enemy.y), weight: 4 }));
+  const loot = pickups.map((pickup) => ({
+    x: pickup.x,
+    y: pickup.y,
+    weight: pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 5 : 3,
+  }));
+  const crates = [];
+  for (let y = 1; y < ROWS - 1; y += 1) {
+    for (let x = 1; x < COLS - 1; x += 1) {
+      if (map[y][x] === "crate") crates.push({ x, y, weight: 1 });
+    }
+  }
+  return [...loot, ...enemies, ...crates]
+    .filter((target) => getLocalBotThreatScore(target.x, target.y) < 1000)
+    .map((target) => ({ ...target, dist: Math.abs(target.x - here.x) + Math.abs(target.y - here.y) }))
+    .sort((a, b) => (b.weight * 24 - b.dist) - (a.weight * 24 - a.dist))[0] || null;
 }
 
 function hasEnemyInBombLineLocal(bot, tile) {
@@ -2673,7 +2799,7 @@ function hasEscapeTileLocal(bot, tile) {
     if (current.depth > 0 && !wouldLocalBombThreatenTile(tile, current.x, current.y, bot.range || 2) && !isDanger(current.x, current.y)) {
       return true;
     }
-    if (current.depth >= 4) continue;
+    if (current.depth >= 6) continue;
     dirs.forEach((dir) => {
       const x = current.x + dir.x;
       const y = current.y + dir.y;
@@ -3045,6 +3171,7 @@ function drawBunting(x, y, w) {
 }
 
 function drawMiniMapPreview(canvas, mapType) {
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const cols = 15;
   const rows = 13;
@@ -3087,7 +3214,9 @@ function drawMiniMapPreview(canvas, mapType) {
           drawWall = true;
         }
       } else if (mapType === "powerzone") {
-        if (x % 2 === 0 && y % 2 === 0) {
+        const isPowerLane = x === 1 || y === 1 || x === cols - 2 || y === rows - 2;
+        const isCrateRing = x === 2 || y === 2 || x === cols - 3 || y === rows - 3;
+        if (!isPowerLane && !isCrateRing && x % 2 === 0 && y % 2 === 0) {
           drawWall = true;
         }
       } else {
@@ -3118,8 +3247,9 @@ function drawMiniMapPreview(canvas, mapType) {
         let isCrate = false;
         if (mapType === "powerzone") {
           const isPowerLane = x === 1 || y === 1 || x === cols - 2 || y === rows - 2;
+          const isCrateRing = x === 2 || y === 2 || x === cols - 3 || y === rows - 3;
           if (!isPowerLane) {
-            if ((x * y + x + y) % 3 !== 0) isCrate = true;
+            if (isCrateRing || (x * y + x + y) % 3 !== 0) isCrate = true;
           } else {
             // Draw mini power-ups around the full perimeter power lane.
             let itemColor = null;
@@ -3934,6 +4064,7 @@ function update(dt) {
     if (localMode) {
       players.forEach((p) => {
         if (p.cooldown > 0) p.cooldown = Math.max(0, p.cooldown - dt);
+        if (p.aiBombCooldown > 0) p.aiBombCooldown = Math.max(0, p.aiBombCooldown - dt);
         if (p.invuln > 0) p.invuln = Math.max(0, p.invuln - dt);
         if (p.alive) localCheckPickup(p);
       });
@@ -4153,7 +4284,7 @@ function syncSquadLobbyInterface() {
   // Teammates-only filtering: must share the same squadCode and not be bots
   const localPlayer = players.find(p => p.id === localPlayerId);
   const localSquadCode = localPlayer ? localPlayer.squadCode : null;
-  const otherTeammates = players.filter(p => p.id !== localPlayerId && (localSquadCode ? p.squadCode === localSquadCode : true) && !p.ai);
+  const otherTeammates = players.filter(p => p.id !== localPlayerId && localSquadCode && p.squadCode === localSquadCode && !p.ai);
 
   const mode = currentRoomMode || "trio";
 
@@ -4433,8 +4564,7 @@ document.getElementById("squadAddBotBtn")?.addEventListener("click", () => {
 // Squad Lobby Private Room Start Button
 document.getElementById("squadStartGameBtn")?.addEventListener("click", () => {
   if (localFourPlayerLobbyActive) {
-    startLocalFourPlayerGame();
-    tryPlayMusic();
+    startLocalFourWithMapVote();
     return;
   }
   sendServerMessage("start_game");
@@ -4502,6 +4632,10 @@ document.querySelectorAll(".map-vote-card").forEach((card) => {
     myLastVote = mapChoice;
     document.querySelectorAll(".map-vote-card").forEach((c) => c.classList.remove("voted"));
     card.classList.add("voted");
+    if (localMapVoteState) {
+      submitLocalMapVote(mapChoice);
+      return;
+    }
     sendServerMessage("vote_map", { map: mapChoice });
   });
 });
@@ -5049,7 +5183,8 @@ function startLocalGameWithMatchedBots() {
   localBombId = 0;
   
   const mapSelect = document.getElementById("localMapSelect");
-  currentMapType = mapSelect ? mapSelect.value : "classic";
+  currentMapType = pendingLocalMapChoice || (mapSelect ? mapSelect.value : "classic");
+  pendingLocalMapChoice = null;
   map = buildLocalMap(currentMapType);
   const activeStarts = getStartsForMap(currentMapType);
   
@@ -5641,6 +5776,117 @@ function updateVoteCountdown(secondsLeft) {
   }
 }
 
+function startLocalMapVote(voters, onResolved) {
+  const maps = ["classic", "checkered", "colosseum", "powerzone"];
+  const overlay = document.getElementById("mapVoteOverlay");
+  const timerEl = document.getElementById("mapVoteTimer");
+  const voteActors = voters && voters.length ? voters : [{ id: "local_player", kind: selectedCharacter, name: "You" }];
+  localMapVoteState = {
+    voters: voteActors,
+    votes: {},
+    secondsLeft: 8,
+    onResolved,
+    interval: null,
+  };
+  myLastVote = null;
+
+  document.querySelectorAll(".map-vote-card").forEach((card) => {
+    card.classList.remove("voted", "winning-map");
+    const mapType = card.getAttribute("data-map");
+    const countEl = card.querySelector(".map-vote-count");
+    const votersEl = card.querySelector(".map-vote-voters");
+    if (countEl) countEl.textContent = "0";
+    if (votersEl) votersEl.innerHTML = "";
+    if (mapType) drawMiniMapPreview(card.querySelector(".map-vote-preview-canvas"), mapType);
+  });
+
+  overlay?.classList.remove("hidden");
+  overlay?.classList.add("active");
+  if (timerEl) timerEl.textContent = localMapVoteState.secondsLeft;
+
+  voteActors.slice(1).forEach((voter, index) => {
+    const mapChoice = maps[(index + Math.floor(Math.random() * maps.length)) % maps.length];
+    localMapVoteState.votes[voter.id] = mapChoice;
+  });
+  updateLocalMapVoteUI();
+
+  localMapVoteState.interval = setInterval(() => {
+    if (!localMapVoteState) return;
+    localMapVoteState.secondsLeft -= 1;
+    if (timerEl) timerEl.textContent = localMapVoteState.secondsLeft;
+    if (localMapVoteState.secondsLeft <= 0) {
+      finishLocalMapVote();
+    }
+  }, 1000);
+}
+
+function submitLocalMapVote(mapChoice) {
+  if (!localMapVoteState || !mapChoice) return;
+  const voterId = localMapVoteState.voters[0]?.id || localPlayerId || "local_player";
+  localMapVoteState.votes[voterId] = mapChoice;
+  myLastVote = mapChoice;
+  updateLocalMapVoteUI();
+}
+
+function updateLocalMapVoteUI() {
+  if (!localMapVoteState) return;
+  const counts = { classic: 0, checkered: 0, colosseum: 0, powerzone: 0 };
+  Object.values(localMapVoteState.votes).forEach((mapType) => {
+    counts[mapType] = (counts[mapType] || 0) + 1;
+  });
+  Object.keys(counts).forEach((mapType) => {
+    const countEl = document.getElementById(`mapVoteCount_${mapType}`);
+    const votersEl = document.getElementById(`mapVoteVoters_${mapType}`);
+    if (countEl) countEl.textContent = String(counts[mapType]);
+    if (votersEl) {
+      votersEl.innerHTML = "";
+      localMapVoteState.voters.forEach((voter) => {
+        if (localMapVoteState.votes[voter.id] !== mapType) return;
+        const img = document.createElement("img");
+        img.src = `assets/cards/${voter.kind || "chiikawa"}.png`;
+        img.style.width = "24px";
+        img.style.height = "24px";
+        img.style.borderRadius = "50%";
+        img.style.border = "2px solid var(--ink)";
+        img.style.boxShadow = "1px 1px 0 var(--ink)";
+        img.title = voter.name || voter.id;
+        votersEl.appendChild(img);
+      });
+    }
+  });
+  document.querySelectorAll(".map-vote-card").forEach((card) => {
+    card.classList.toggle("voted", card.getAttribute("data-map") === myLastVote);
+  });
+}
+
+function finishLocalMapVote() {
+  if (!localMapVoteState) return;
+  clearInterval(localMapVoteState.interval);
+  const maps = ["classic", "checkered", "colosseum", "powerzone"];
+  if (!localMapVoteState.votes[localMapVoteState.voters[0]?.id || "local_player"]) {
+    submitLocalMapVote(document.getElementById("localMapSelect")?.value || "classic");
+  }
+  const counts = maps.map((mapType) => ({
+    mapType,
+    count: Object.values(localMapVoteState.votes).filter((vote) => vote === mapType).length,
+  }));
+  const maxVotes = Math.max(...counts.map((entry) => entry.count));
+  const winners = counts.filter((entry) => entry.count === maxVotes).map((entry) => entry.mapType);
+  const winningMap = winners[Math.floor(Math.random() * winners.length)] || "classic";
+  pendingLocalMapChoice = winningMap;
+  document.querySelectorAll(".map-vote-card").forEach((card) => {
+    card.classList.toggle("winning-map", card.getAttribute("data-map") === winningMap);
+  });
+  const callback = localMapVoteState.onResolved;
+  localMapVoteState = null;
+  setTimeout(() => {
+    const overlay = document.getElementById("mapVoteOverlay");
+    overlay?.classList.remove("active");
+    overlay?.classList.add("hidden");
+    callback?.(winningMap);
+  }, 650);
+}
+
 function showTournamentResults(playersList, winnerId, tournamentFinished) {
   const overlay = document.getElementById("tournamentOverlay");
   const roundCard = document.getElementById("roundResultsCard");
@@ -5821,7 +6067,7 @@ function localStartNextRound() {
     p.dx = 0;
     p.dy = 0;
     p.alive = true;
-    p.speed = p.ai ? 166 : 142;
+    p.speed = p.ai ? 178 : 142;
     p.bombs = p.ai ? 2 : 1;
     p.range = p.ai ? 3 : 2;
     p.cooldown = 0;
@@ -6849,16 +7095,10 @@ function buildSocialUserItem(userId, username, character, statusInfo, isFriend, 
     <div class="social-action-btns">
       ${isFriend ? `<span class="btn-friend-already">✓ Friend</span>` : `<button class="btn-add-friend" data-uid="${userId}">+ Add</button>`}
       ${showInvite ? `<button class="btn-invite-to-room" data-uid="${userId}" data-uname="${escapeHTML(username)}">Invite</button>` : ""}
-      ${isOnline ? `<button class="btn-challenge-player" data-uid="${userId}">Challenge</button>` : ""}
     </div>
   `;
   li.querySelector(".btn-add-friend")?.addEventListener("click", () => sendFriendRequest(userId));
   li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(userId, username));
-  li.querySelector(".btn-challenge-player")?.addEventListener("click", () => {
-    challengeTargetUserId = userId;
-    closeSocialModal();
-    showMatchmakingModeSelection();
-  });
   return li;
 }
 
@@ -6904,15 +7144,9 @@ function renderFriendsTab() {
       </div>
       <div class="social-action-btns">
         ${roomCode ? `<button class="btn-invite-to-room" data-uid="${friendId}" data-uname="${escapeHTML(info.username)}">Invite</button>` : ""}
-        ${isOnline ? `<button class="btn-challenge-player" data-uid="${friendId}">Challenge</button>` : ""}
       </div>
     `;
     li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(friendId, info.username));
-    li.querySelector(".btn-challenge-player")?.addEventListener("click", () => {
-      challengeTargetUserId = friendId;
-      closeSocialModal();
-      showMatchmakingModeSelection();
-    });
     list.appendChild(li);
   });
 }
@@ -7173,7 +7407,7 @@ document.addEventListener("DOMContentLoaded", () => {
     startModeSelectionDialog?.classList.remove("hidden");
   });
 
-  // Local Single Player (Offline Solo against bots, starts immediately)
+  // Local Single Player (Offline Solo against bots, with local map voting)
   btnLocalSinglePlayer?.addEventListener("click", () => {
     const nickname = (localNicknameInput?.value.trim()) || "Friend";
     localStorage.setItem("local_username", nickname);
@@ -7182,8 +7416,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     serverMode = "local";
     localPlaySetupDialog?.classList.add("hidden");
-    startLocalGame();
-    tryPlayMusic();
+    startLocalSingleWithMapVote();
   });
 
   // Local 4 Players (same screen couch battle with empty slots filled by bots)
@@ -7205,8 +7438,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   startFourPlayerMatchBtn?.addEventListener("click", () => {
-    startLocalFourPlayerGame();
-    tryPlayMusic();
+    startLocalFourWithMapVote();
   });
 
   // Local Multiplayer (LAN mode, connects to server and goes to menu lobby)
@@ -7221,16 +7453,6 @@ document.addEventListener("DOMContentLoaded", () => {
     switchScreen(menuScreen);
     connectWebSocket(true);
     tryPlayMusic();
-  });
-
-  // Map vote card click listeners
-  document.querySelectorAll(".map-vote-card").forEach(c => {
-    c.addEventListener("click", () => {
-      const mapType = c.getAttribute("data-map");
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        sendServerMessage("vote_map", { map: mapType });
-      }
-    });
   });
 
   // Render mini map previews onto the voting canvasses
