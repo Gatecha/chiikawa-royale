@@ -17,6 +17,9 @@ const TILE = 48;
 const COLS = 15;
 const ROWS = 13;
 const ROUND_SECONDS = 150;
+const SUDDEN_DEATH_TIME = 90;
+const ZONE_STEP_SECONDS = 10;
+const MAX_ZONE_LAYER = 4;
 
 // Tournament config
 const TROPHIES_TO_WIN = 8;        // Team trophies needed to win (or trigger final vote)
@@ -337,8 +340,13 @@ function handleMessage(ws, msg) {
       if (!room || room.state !== "playing" || room.mode !== "team") return;
       const team = getPlayerTeam(room, ws.id);
       if (!team || !room.surrenderVotes?.[team]) return;
-      if (data.agree) room.surrenderVotes[team].add(ws.id);
-      else room.surrenderDeclines[team].add(ws.id);
+      if (data.agree) {
+        room.surrenderDeclines[team].delete(ws.id);
+        room.surrenderVotes[team].add(ws.id);
+      } else {
+        room.surrenderVotes[team].delete(ws.id);
+        room.surrenderDeclines[team].add(ws.id);
+      }
       broadcastSurrenderUpdate(room, team);
       checkSurrenderResolved(room, team);
       break;
@@ -483,6 +491,9 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
     blasts: [],
     pickups: [],
     roundTime: ROUND_SECONDS,
+    zoneActive: false,
+    zoneLayer: 0,
+    zoneStepTimer: 0,
     tickInterval: null,
     nextRoundTimeout: null,
     hostId,
@@ -509,6 +520,7 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
     surrenderVotes: { A: null, B: null },
     surrenderDeclines: { A: null, B: null },
     surrenderTimers: { A: null, B: null },
+    surrenderVoteExpiresAt: { A: 0, B: 0 },
     disconnectTimers: {},
   };
 }
@@ -830,6 +842,7 @@ function resetSurrenderVotes(room) {
   room.surrenderVotes = { A: null, B: null };
   room.surrenderDeclines = { A: null, B: null };
   room.surrenderTimers = { A: null, B: null };
+  room.surrenderVoteExpiresAt = { A: 0, B: 0 };
 }
 
 function startOrUpdateSurrenderVote(room, team, playerId) {
@@ -837,15 +850,18 @@ function startOrUpdateSurrenderVote(room, team, playerId) {
     room.surrenderVotes[team] = new Set();
     room.surrenderDeclines[team] = new Set();
     if (room.surrenderTimers[team]) clearTimeout(room.surrenderTimers[team]);
+    room.surrenderVoteExpiresAt[team] = Date.now() + 15000;
     room.surrenderTimers[team] = setTimeout(() => {
       if (room.surrenderVotes[team]) {
         room.surrenderVotes[team] = null;
         room.surrenderDeclines[team] = null;
+        room.surrenderVoteExpiresAt[team] = 0;
         broadcastToRoom(room, { type: "surrender_cancelled", data: { team } });
       }
     }, 15000);
   }
   room.surrenderVotes[team].add(playerId);
+  room.surrenderDeclines[team].delete(playerId);
   room.teams[team].forEach((id) => {
     const teammate = room.players.find((p) => p.id === id);
     if (teammate?.ai) room.surrenderVotes[team].add(id);
@@ -858,9 +874,10 @@ function broadcastSurrenderUpdate(room, team) {
   const yesVotes = room.surrenderVotes[team] ? room.surrenderVotes[team].size : 0;
   const noVotes = room.surrenderDeclines[team] ? room.surrenderDeclines[team].size : 0;
   const threshold = Math.min(SURRENDER_THRESHOLD, room.teams[team]?.length || SURRENDER_THRESHOLD);
+  const secondsLeft = Math.max(0, Math.ceil(((room.surrenderVoteExpiresAt?.[team] || Date.now()) - Date.now()) / 1000));
   broadcastToRoom(room, {
     type: "surrender_vote_updated",
-    data: { team, yesVotes, noVotes, threshold },
+    data: { team, yesVotes, noVotes, threshold, secondsLeft },
   });
 }
 
@@ -875,6 +892,7 @@ function checkSurrenderResolved(room, team) {
   }
   room.surrenderVotes[team] = null;
   room.surrenderDeclines[team] = null;
+  room.surrenderVoteExpiresAt[team] = 0;
   const winnerTeam = team === "A" ? "B" : "A";
   const winnerId = (room.teams[winnerTeam] || []).find(id => room.players.find(p => p.id === id)) || null;
   endMatchBySurrender(room, winnerTeam, winnerId);
@@ -1043,6 +1061,7 @@ function tickRoom(room) {
   });
 
   updateServerBots(room, dt);
+  updateServerZone(room, dt);
 
   // Update sliding bombs
   room.bombs.forEach((bomb) => {
@@ -1084,10 +1103,63 @@ function tickRoom(room) {
   broadcastToRoom(room, {
     type: "state_update",
     data: {
-      players: room.players.map((p) => ({ id: p.id, x: p.x, y: p.y, dx: p.dx, dy: p.dy, alive: p.alive, speed: p.speed, bombs: p.bombs, range: p.range })),
+      players: room.players.map((p) => ({ id: p.id, x: p.x, y: p.y, dx: p.dx, dy: p.dy, alive: p.alive, speed: p.speed, bombs: p.bombs, range: p.range, hasPunch: !!p.hasPunch })),
+      map: room.map,
       roundTime: room.roundTime,
     },
   });
+}
+
+function updateServerZone(room, dt) {
+  if (room.roundTime > SUDDEN_DEATH_TIME || room.zoneLayer >= MAX_ZONE_LAYER) return;
+
+  if (!room.zoneActive) {
+    room.zoneActive = true;
+    room.zoneStepTimer = 0;
+  }
+
+  room.zoneStepTimer -= dt;
+  if (room.zoneStepTimer > 0) return;
+
+  room.zoneLayer += 1;
+  applyServerZoneLayer(room, room.zoneLayer);
+  room.zoneStepTimer = ZONE_STEP_SECONDS;
+  checkGameEnd(room);
+}
+
+function applyServerZoneLayer(room, layer) {
+  const left = layer;
+  const right = COLS - 1 - layer;
+  const top = layer;
+  const bottom = ROWS - 1 - layer;
+
+  for (let x = left; x <= right; x += 1) {
+    setServerZoneTile(room, x, top);
+    setServerZoneTile(room, x, bottom);
+  }
+
+  for (let y = top; y <= bottom; y += 1) {
+    setServerZoneTile(room, left, y);
+    setServerZoneTile(room, right, y);
+  }
+
+  room.pickups = room.pickups.filter((pickup) => room.map[pickup.y]?.[pickup.x] !== "zone");
+  room.bombs = room.bombs.filter((bomb) => room.map[bomb.y]?.[bomb.x] !== "zone");
+  room.players.forEach((player) => {
+    if (!player.alive) return;
+    const tile = gridAtServer(player.x, player.y);
+    if (room.map[tile.y]?.[tile.x] === "zone") {
+      player.alive = false;
+      player.dx = 0;
+      player.dy = 0;
+    }
+  });
+}
+
+function setServerZoneTile(room, x, y) {
+  if (!room.map[y] || !room.map[y][x]) return;
+  if (room.map[y][x] === "wall") return;
+  room.map[y][x] = "zone";
 }
 
 // ----------------------------------------------------------------
@@ -1425,6 +1497,9 @@ function startRound(room, isNewTournament) {
 
   room.bombs = []; room.blasts = []; room.pickups = [];
   room.roundTime = ROUND_SECONDS;
+  room.zoneActive = false;
+  room.zoneLayer = 0;
+  room.zoneStepTimer = 0;
   room.state = "playing";
 
   broadcastToRoom(room, {
@@ -1493,20 +1568,25 @@ function updateServerBots(room, dt) {
         .map((dir) => ({ ...dir, score: scoreServerBotMove(room, bot, tile.x + dir.x, tile.y + dir.y) }))
         .sort((a, b) => b.score - a.score);
       bot.aiDir = { x: ranked[0].x, y: ranked[0].y };
-      bot.aiThink = danger ? 0.08 : 0.16 + Math.random() * 0.18;
+      bot.aiThink = danger ? 0.06 : 0.10 + Math.random() * 0.14;
     }
 
     moveServerActor(room, bot, bot.aiDir.x, bot.aiDir.y, dt);
     checkPickupCollision(room, bot);
 
     const nowTile = gridAtServer(bot.x, bot.y);
+    if (bot.hasPunch && tryServerBotPunch(room, bot, nowTile)) {
+      bot.aiThink = 0;
+      return;
+    }
+
     const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && (
       hasEnemyInBombLine(room, bot, nowTile) ||
       hasAdjacentCrate(room, nowTile.x, nowTile.y)
     );
     if (shouldBomb && hasEscapeTile(room, bot, nowTile)) {
       if (placeServerBomb(room, bot)) {
-        bot.aiBombCooldown = 0.8 + Math.random() * 0.45;
+        bot.aiBombCooldown = 0.45 + Math.random() * 0.35;
         bot.aiThink = 0;
       }
     }
@@ -1570,20 +1650,72 @@ function scoreServerBotMove(room, bot, x, y) {
   if (isSolidServer(room, x, y, bot)) return -9999;
   let score = 0;
   const here = gridAtServer(bot.x, bot.y);
-  if (x === here.x && y === here.y) score -= 28;
-  if (isDangerTileServer(room, x, y)) score -= 900;
-  if (room.pickups.some(p => p.x === x && p.y === y)) score += 80;
-  if (hasAdjacentCrate(room, x, y)) score += 18;
+  if (x === here.x && y === here.y) score -= 42;
+  if (isDangerTileServer(room, x, y)) score -= 1200;
+  if (room.map[y]?.[x] === "zone") score -= 2000;
+  if (room.pickups.some(p => p.x === x && p.y === y)) score += 120;
+  if (hasAdjacentCrate(room, x, y)) score += 26;
 
   const enemies = getServerBotEnemies(room, bot);
   if (enemies.length > 0) {
     const nearest = enemies
       .map(enemy => ({ enemy, dist: Math.abs(gridAtServer(enemy.x, enemy.y).x - x) + Math.abs(gridAtServer(enemy.x, enemy.y).y - y) }))
       .sort((a, b) => a.dist - b.dist)[0];
-    score += Math.max(0, 70 - nearest.dist * 10);
+    score += Math.max(0, 110 - nearest.dist * 13);
+    if (nearest.dist <= (bot.range || 2) && (x === gridAtServer(nearest.enemy.x, nearest.enemy.y).x || y === gridAtServer(nearest.enemy.x, nearest.enemy.y).y)) {
+      score += 36;
+    }
   }
-  score += Math.random() * 8;
+
+  const target = findServerBotTarget(room, bot, here);
+  if (target) {
+    const dist = Math.abs(target.x - x) + Math.abs(target.y - y);
+    score += Math.max(0, 80 - dist * 12);
+  }
+  score += Math.random() * 5;
   return score;
+}
+
+function findServerBotTarget(room, bot, here) {
+  const enemies = getServerBotEnemies(room, bot).map(enemy => ({ ...gridAtServer(enemy.x, enemy.y), weight: 3 }));
+  const loot = room.pickups.map(pickup => ({ x: pickup.x, y: pickup.y, weight: pickup.type === "punch" || pickup.type === "full_fire" ? 4 : 2 }));
+  const crates = [];
+  for (let y = 1; y < ROWS - 1; y += 1) {
+    for (let x = 1; x < COLS - 1; x += 1) {
+      if (room.map[y][x] === "crate") crates.push({ x, y, weight: 1 });
+    }
+  }
+  return [...loot, ...enemies, ...crates]
+    .map(target => ({ ...target, dist: Math.abs(target.x - here.x) + Math.abs(target.y - here.y) }))
+    .sort((a, b) => (b.weight * 18 - b.dist) - (a.weight * 18 - a.dist))[0] || null;
+}
+
+function tryServerBotPunch(room, bot, tile) {
+  const enemies = getServerBotEnemies(room, bot);
+  const dirs = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+  const dir = dirs.find((d) => {
+    const bomb = room.bombs.find((b) => b.x === tile.x + d.x && b.y === tile.y + d.y && (!b.vx || (b.vx === 0 && b.vy === 0)));
+    if (!bomb || isTileSolidForBombServer(room, bomb.x + d.x, bomb.y + d.y)) return false;
+    return enemies.some((enemy) => {
+      const enemyTile = gridAtServer(enemy.x, enemy.y);
+      return (d.x !== 0 && enemyTile.y === bomb.y && Math.sign(enemyTile.x - bomb.x) === d.x) ||
+        (d.y !== 0 && enemyTile.x === bomb.x && Math.sign(enemyTile.y - bomb.y) === d.y);
+    });
+  });
+  if (!dir) return false;
+  const bomb = room.bombs.find((b) => b.x === tile.x + dir.x && b.y === tile.y + dir.y && (!b.vx || (b.vx === 0 && b.vy === 0)));
+  if (!bomb) return false;
+  bomb.vx = dir.x;
+  bomb.vy = dir.y;
+  bomb.slideX = bomb.x;
+  bomb.slideY = bomb.y;
+  broadcastToRoom(room, { type: "bomb_punched", data: { bombId: bomb.id, vx: dir.x, vy: dir.y } });
+  return true;
 }
 
 function getServerBotEnemies(room, bot) {
@@ -1621,19 +1753,34 @@ function hasAdjacentCrate(room, x, y) {
 }
 
 function hasEscapeTile(room, bot, tile) {
-  return [
+  const queue = [{ x: tile.x, y: tile.y, depth: 0 }];
+  const seen = new Set([`${tile.x},${tile.y}`]);
+  const dirs = [
     { x: 1, y: 0 },
     { x: -1, y: 0 },
     { x: 0, y: 1 },
     { x: 0, y: -1 },
-  ].some(dir => {
-    const x = tile.x + dir.x;
-    const y = tile.y + dir.y;
-    return !isSolidServer(room, x, y, bot) && !wouldBombThreatenTile(room, tile, x, y, bot.range || 2);
-  });
+  ];
+  while (queue.length) {
+    const current = queue.shift();
+    if (current.depth > 0 && !wouldBombThreatenTile(room, tile, current.x, current.y, bot.range || 2) && !isDangerTileServer(room, current.x, current.y)) {
+      return true;
+    }
+    if (current.depth >= 4) continue;
+    dirs.forEach((dir) => {
+      const x = current.x + dir.x;
+      const y = current.y + dir.y;
+      const key = `${x},${y}`;
+      if (seen.has(key) || isSolidServer(room, x, y, bot)) return;
+      seen.add(key);
+      queue.push({ x, y, depth: current.depth + 1 });
+    });
+  }
+  return false;
 }
 
 function isDangerTileServer(room, x, y) {
+  if (room.map[y]?.[x] === "zone") return true;
   return room.bombs.some((bomb) => bombThreatensTile(room, bomb, x, y));
 }
 

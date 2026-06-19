@@ -201,8 +201,8 @@ const COLS = 15;
 const ROWS = 13;
 const OFFSET_X = (canvas.width - COLS * TILE) / 2;
 const OFFSET_Y = 72;
-const SUDDEN_DEATH_TIME = 60;
-const ZONE_STEP_SECONDS = 4;
+const SUDDEN_DEATH_TIME = 90;
+const ZONE_STEP_SECONDS = 10;
 const MAX_ZONE_LAYER = 4;
 const STANDARD_MAX_PLAYERS = 4;
 const TEAM_MAX_PLAYERS = 6;
@@ -962,6 +962,9 @@ function handleServerMessage(msg) {
 
     case "state_update":
       roundTime = data.roundTime;
+      if (Array.isArray(data.map)) {
+        map = data.map;
+      }
       data.players.forEach((serverPlayer) => {
         const localP = players.find((p) => p.id === serverPlayer.id);
         if (localP) {
@@ -969,6 +972,7 @@ function handleServerMessage(msg) {
           localP.speed = serverPlayer.speed;
           localP.bombs = serverPlayer.bombs;
           localP.range = serverPlayer.range;
+          localP.hasPunch = !!serverPlayer.hasPunch;
 
           if (serverPlayer.id !== localPlayerId) {
             localP.prevX = localP.targetX !== undefined ? localP.targetX : serverPlayer.x;
@@ -1044,6 +1048,7 @@ function handleServerMessage(msg) {
         collector.range = data.playerStats.range;
         collector.bombs = data.playerStats.bombs;
         collector.speed = data.playerStats.speed;
+        collector.hasPunch = !!data.playerStats.hasPunch;
         burstSparkles(collector.x, collector.y);
       }
       updateHudSidebar();
@@ -1477,7 +1482,8 @@ function showSurrenderVotePopup(data = {}) {
   if (data.team && myTeam && data.team !== myTeam) return;
   surrenderVotePopup.classList.remove("hidden");
   if (surrenderVoteStatus) {
-    surrenderVoteStatus.textContent = `${data.yesVotes || 0}/${data.threshold || 3} teammates agreed.`;
+    const seconds = data.secondsLeft ? ` ${data.secondsLeft}s left.` : "";
+    surrenderVoteStatus.textContent = `${data.yesVotes || 0}/${data.threshold || 3} teammates agreed.${seconds}`;
   }
 }
 
@@ -3347,12 +3353,17 @@ function syncSquadLobbyInterface() {
   const squadAddBotBtn = document.getElementById("squadAddBotBtn");
   const squadStartGameBtn = document.getElementById("squadStartGameBtn");
   const squadReadyBtn = document.getElementById("squadReadyBtn");
+  const squadLeaveLobbyBtn = document.getElementById("leaveLobbyBtn");
   const squadLobbyRoomCodeBadge = document.getElementById("squadLobbyRoomCodeBadge");
   const squadLobbyRoomCodeText = document.getElementById("squadLobbyRoomCodeText");
 
   if (roomCode) {
     // We are in a private lobby room
     if (lobbyMatchBtn) lobbyMatchBtn.style.display = "none";
+    if (squadLeaveLobbyBtn) {
+      const hasOtherHuman = players.some((p) => p.id !== localPlayerId && !p.ai);
+      squadLeaveLobbyBtn.style.display = hasOtherHuman || players.length > 1 ? "inline-block" : "none";
+    }
     if (squadLobbyRoomCodeBadge) squadLobbyRoomCodeBadge.style.display = "inline-flex";
     if (squadLobbyRoomCodeText) squadLobbyRoomCodeText.textContent = roomCode;
 
@@ -3383,6 +3394,7 @@ function syncSquadLobbyInterface() {
     if (squadAddBotBtn) squadAddBotBtn.style.display = "none";
     if (squadStartGameBtn) squadStartGameBtn.style.display = "none";
     if (squadReadyBtn) squadReadyBtn.style.display = "none";
+    if (squadLeaveLobbyBtn) squadLeaveLobbyBtn.style.display = "none";
   }
 }
 
@@ -3436,16 +3448,40 @@ readyBtn?.addEventListener("click", () => {
 
 // Leave Lobby
 leaveLobbyBtn?.addEventListener("click", () => {
-  if (socket) socket.close();
-  if (window.location.protocol === "http:" || window.location.protocol === "https:") connectWebSocket();
+  if (roomCode && socket && socket.readyState === WebSocket.OPEN) {
+    sendServerMessage("leave_room");
+  } else if (socket) {
+    socket.close();
+  }
+  localStorage.removeItem("chiikawaRoomCode");
+  localStorage.removeItem("chiikawaPlayerId");
+  localStorage.removeItem("chiikawaReconnectToken");
+  roomCode = null;
+  localPlayerId = null;
+  reconnectToken = null;
+  hostId = null;
+  players = [];
+  readyState = false;
+  syncSquadLobbyInterface();
   switchScreen(menuScreen);
 });
 
 // Exit Match
 leaveGameBtn?.addEventListener("click", () => {
+  if (!localMode && running && socket && socket.readyState === WebSocket.OPEN && currentRoomMode === "team") {
+    sendServerMessage("request_surrender");
+    showSurrenderVotePopup({
+      team: getPlayerTeam(localPlayerId),
+      yesVotes: 1,
+      threshold: 3,
+      secondsLeft: 15,
+    });
+    return;
+  }
+
   running = false;
   localMode = false;
-  
+
   // Hide results overlay and clean up victory video/confetti/countdown
   document.getElementById("tournamentOverlay").classList.add("hidden");
   stopConfetti();
@@ -3461,6 +3497,19 @@ leaveGameBtn?.addEventListener("click", () => {
   if (socket) socket.close();
   if (window.location.protocol === "http:" || window.location.protocol === "https:") connectWebSocket();
   switchScreen(menuScreen);
+});
+
+surrenderYesBtn?.addEventListener("click", () => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendServerMessage("submit_surrender_vote", { agree: true });
+  }
+});
+
+surrenderNoBtn?.addEventListener("click", () => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendServerMessage("submit_surrender_vote", { agree: false });
+  }
+  surrenderVotePopup?.classList.add("hidden");
 });
 
 // Return to Lobby after Victory
@@ -4191,7 +4240,7 @@ window.addEventListener("keydown", (event) => {
         if (localMode) localPlaceBomb(localPlayer);
         else sendServerMessage("place_bomb");
       }
-      if (key === "x" || key === "shift") {
+      if (key === "z" || key === "x" || key === "shift") {
         if (localMode) {
           triggerLocalPunch(localPlayer);
         } else if (localPlayer.hasPunch) {
