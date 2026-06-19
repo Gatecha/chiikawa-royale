@@ -1123,6 +1123,8 @@ function handleServerMessage(msg) {
 
     case "matchmaking_countdown": {
       if (matchmakingPopup && socket && socket.readyState === WebSocket.OPEN) {
+        if (!roomCode || players.length === 0) break;
+        if (data.secondsLeft <= 0 && matchmakingPopup.classList.contains("hidden")) break;
         if (data.secondsLeft > 0) {
           updateOnlineMatchmakingPopup();
           const titleEl = matchmakingPopup.querySelector(".matchmaking-title");
@@ -2117,7 +2119,7 @@ function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0,
       
       actx.translate(0, bobY);
       actx.rotate(wiggleAngle);
-      if (isSidePose && dx < 0) {
+      if (isSidePose && dx > 0) {
         actx.scale(-1, 1);
       } else if (rotation !== 0) {
         actx.rotate(rotation);
@@ -3778,11 +3780,7 @@ function revealMatchedBot(slotNum, charKind, botName) {
 let onlineMatchmakingInterval = null;
 
 function startOnlineMatchmakingTimer() {
-  // Always clear previous interval before starting a new one
-  if (onlineMatchmakingInterval) {
-    clearInterval(onlineMatchmakingInterval);
-    onlineMatchmakingInterval = null;
-  }
+  if (onlineMatchmakingInterval) return;
   let elapsedSeconds = 0;
   if (matchmakingTimer) matchmakingTimer.textContent = "00:00";
   onlineMatchmakingInterval = setInterval(() => {

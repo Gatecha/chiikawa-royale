@@ -114,7 +114,7 @@ function handleMessage(ws, msg) {
       leaveRoom(ws);
       const roomCode = generateRoomCode();
       const room = createRoomObject(roomCode, ws.id, data.mode || "team");
-      room.isPrivate = data.isPrivate || false;
+      room.isPrivate = data.isPrivate !== false;
       rooms.set(roomCode, room);
       joinPlayerToRoom(ws, room, data.name, data.kind);
       // Start matchmaking fill timer only if not private
@@ -230,7 +230,7 @@ function handleMessage(ws, msg) {
         clearInterval(room.matchmakingCountdownInterval);
         room.matchmakingCountdownInterval = null;
       }
-      if (room.players.filter(p => !p.ai).length < maxPlayers) {
+      if (!room.isPrivate && room.players.filter(p => !p.ai).length < maxPlayers) {
         scheduleMatchmakingFill(room);
       }
       break;
