@@ -2270,135 +2270,182 @@ canvas#game {
     aspect-ratio: auto;
   }
   .console-header {
-    height: 48px;
-    min-height: 48px;
-    max-height: 48px;
-    display: flex;
-    flex-direction: row;
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 0 8px;
+    gap: 8px;
+    padding: 0 12px;
     overflow: hidden;
     flex-shrink: 0;
   }
   .console-tabs {
     justify-content: center;
     flex-wrap: nowrap;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
+    gap: 8px;
+    overflow: visible;
     flex-shrink: 0;
   }
   .console-tabs .tab-btn {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
     flex-shrink: 0;
+  }
+  .tab-icon, .svg-icon {
+    width: 20px;
+    height: 20px;
   }
   .console-stats {
     justify-content: flex-end;
     flex-shrink: 0;
-    gap: 6px;
+    gap: 8px;
   }
   .stat-badge {
-    height: 30px;
-    padding: 4px 8px;
-    gap: 4px;
-    font-size: 12px;
+    height: 40px;
+    padding: 6px 14px;
+    gap: 6px;
+    font-size: 13px;
     white-space: nowrap;
   }
   .stat-badge strong {
-    display: none;
+    display: inline;
   }
   .header-fullscreen-btn {
-    width: 30px;
-    height: 30px;
-    min-width: 30px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     margin-left: 0;
     margin-right: 0;
   }
   #tabContent_play {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    gap: 16px;
-    overflow-y: auto;
+    grid-template-columns: 1fr 1.3fr 1fr;
+    grid-template-rows: 1fr;
+    gap: 8px;
+    overflow: hidden;
+    padding: 12px;
   }
   .left-column {
-    padding-top: 18px;
+    padding-top: 10px;
   }
   .left-column, .spotlight-area, .right-column {
     align-items: center;
     text-align: center;
+    height: 100%;
+  }
+  .lobby-logo {
+    max-width: min(100%, 230px);
+    margin-bottom: 12px;
+  }
+  .progress-section {
+    margin-top: 12px;
+    width: 100%;
   }
   .spotlight-area {
     min-width: 0;
-    min-height: 390px;
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
   }
+  .spotlight-area canvas {
+    height: 110%;
+    max-height: 110%;
+    transform: translateY(-15px);
+  }
   .right-column {
     justify-content: center;
-    padding-bottom: 22px;
+    padding-bottom: 20px;
+  }
+  .btn-giant-play {
+    font-size: 36px;
+    padding: 12px 54px;
+  }
+  .map-dropdown {
+    font-size: 18px;
+    padding: 10px 14px;
   }
 }
 
 @media (max-width: 720px), (max-height: 520px) and (pointer: coarse) {
   .console-header {
-    height: max(44px, calc(40px + env(safe-area-inset-top, 0px)));
-    min-height: max(44px, calc(40px + env(safe-area-inset-top, 0px)));
-    padding: env(safe-area-inset-top, 0px) max(6px, env(safe-area-inset-right, 0px)) 0 max(6px, env(safe-area-inset-left, 0px));
-    gap: 4px;
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 8px;
+    gap: 6px;
   }
   .console-title {
-    display: none;
+    display: block;
+    font-size: 16px;
   }
   .controller-key {
-    display: none;
+    display: inline-flex;
   }
   .console-tabs {
-    gap: 4px;
-    flex: 1 1 auto;
-    justify-content: flex-start;
-    scrollbar-width: none;
-  }
-  .console-tabs::-webkit-scrollbar {
-    display: none;
+    gap: 6px;
+    flex: none;
+    justify-content: center;
   }
   .console-tabs .tab-btn {
-    width: 30px;
-    height: 30px;
-    min-width: 30px;
-    border-width: 2px;
-    border-radius: 7px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-width: 3px;
+    border-radius: 10px;
   }
   .tab-btn.active {
     transform: none;
   }
   .tab-icon,
   .svg-icon {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
   }
   .console-stats {
-    gap: 4px;
+    gap: 6px;
   }
   .stat-badge {
-    height: 28px;
-    min-width: 42px;
-    padding: 3px 6px;
-    font-size: 11px;
-    border-radius: 14px;
+    height: 40px;
+    min-width: auto;
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 18px;
+  }
+  .stat-badge strong {
+    display: inline;
   }
   .svg-stat-icon {
-    width: 12px;
-    height: 12px;
+    width: 15px;
+    height: 15px;
   }
   .header-fullscreen-btn {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+  /* Footer responsive button resizing for mobile */
+  .lobby-footer-btn {
+    font-size: 13px !important;
+    padding: 8px 20px !important;
+  }
+  .lobby-footer-btn.mic-btn,
+  .lobby-footer-btn.selector-btn {
+    width: 42px !important;
+    height: 42px !important;
+  }
+  .lobby-online-pill {
+    font-size: 12px !important;
+    padding: 8px 16px !important;
+  }
+  .btn-match-play {
+    font-size: 18px !important;
+    padding: 12px 34px !important;
   }
 }
 
@@ -2528,13 +2575,13 @@ canvas#game {
     height: 8px;
   }
   .lobby-footer-row {
-    flex-direction: column;
-    height: auto;
-    gap: 12px;
-    padding: 12px 0;
-  }
-  .lobby-footer-center {
-    order: 3;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 12px 0 0 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    gap: 8px !important;
   }
 }
 

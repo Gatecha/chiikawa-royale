@@ -945,6 +945,7 @@ function handleServerMessage(msg) {
           }
         }
       }
+      break;
     case "map_voting_started": {
       stopOnlineMatchmakingTimer();
       if (matchmakingPopup) {
@@ -3642,11 +3643,11 @@ function drawSquadLobbyCharacter() {
   const height = squadLobbyCanvas.height;
   squadLobbyCtx.clearRect(0, 0, width, height);
 
-  const scale = Math.min(width / squadLobbyVideo.videoWidth, height / squadLobbyVideo.videoHeight) * 1.62;
+  const scale = Math.min(width / squadLobbyVideo.videoWidth, height / squadLobbyVideo.videoHeight) * 2.1;
   const drawW = squadLobbyVideo.videoWidth * scale;
   const drawH = squadLobbyVideo.videoHeight * scale;
-  const drawX = (width - drawW) / 2;
-  const drawY = height - drawH * 0.95;
+  const drawX = (width - drawW) / 2 + 65;
+  const drawY = height - drawH * 0.93;
 
   squadLobbyCtx.drawImage(squadLobbyVideo, drawX, drawY, drawW, drawH);
   removeGreenScreenFromCanvas(squadLobbyCtx, width, height);
