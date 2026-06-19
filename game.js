@@ -406,8 +406,10 @@ tabButtons.forEach((btn) => {
     if (consoleEl) {
       if (tabName === "squad") {
         consoleEl.classList.add("squad-lobby-active");
+        if (currentSocialUserId) updateMyPresenceStatus("in-lobby");
       } else {
         consoleEl.classList.remove("squad-lobby-active");
+        if (currentSocialUserId) updateMyPresenceStatus("menu");
       }
       consoleEl.classList.toggle("character-select-active", tabName === "look");
     }
@@ -419,6 +421,18 @@ tabButtons.forEach((btn) => {
 const lobbyBackBtn = document.getElementById("lobbyBackBtn");
 if (lobbyBackBtn) {
   lobbyBackBtn.addEventListener("click", () => {
+    if (roomCode) {
+      sendServerMessage("leave_room");
+      localStorage.removeItem("chiikawaRoomCode");
+      localStorage.removeItem("chiikawaPlayerId");
+      localStorage.removeItem("chiikawaReconnectToken");
+      roomCode = null;
+      localPlayerId = null;
+      reconnectToken = null;
+      hostId = null;
+      readyState = false;
+      syncSquadLobbyInterface();
+    }
     const playTabBtn = document.querySelector('.tab-btn[data-tab="play"]');
     if (playTabBtn) {
       playTabBtn.click();
@@ -807,15 +821,11 @@ function handleServerMessage(msg) {
       // Close matchmaking dialog
       matchmakingDialog.classList.add("hidden");
       
-      const consoleEl = document.querySelector(".yellow-console");
-      if (consoleEl && consoleEl.classList.contains("squad-lobby-active")) {
-        switchScreen(menuScreen);
-      } else {
-        switchScreen(lobbyScreen);
-      }
+      switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="squad"]')?.click();
       refreshSocialData();
       
-      lobbyRoomCode.textContent = roomCode;
+      if (lobbyRoomCode) lobbyRoomCode.textContent = roomCode;
       gameRoomCode.textContent = roomCode;
       chatMessages.innerHTML = ""; // Clear chat
       addChatMessage("System", `Joined Room ${roomCode}!`, true);
@@ -3288,6 +3298,49 @@ function syncSquadLobbyInterface() {
       rightCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
     }
   }
+
+  // Private Room Sync Logic
+  const lobbyMatchBtn = document.getElementById("lobbyMatchBtn");
+  const squadAddBotBtn = document.getElementById("squadAddBotBtn");
+  const squadStartGameBtn = document.getElementById("squadStartGameBtn");
+  const squadReadyBtn = document.getElementById("squadReadyBtn");
+  const squadLobbyRoomCodeBadge = document.getElementById("squadLobbyRoomCodeBadge");
+  const squadLobbyRoomCodeText = document.getElementById("squadLobbyRoomCodeText");
+
+  if (roomCode) {
+    // We are in a private lobby room
+    if (lobbyMatchBtn) lobbyMatchBtn.style.display = "none";
+    if (squadLobbyRoomCodeBadge) squadLobbyRoomCodeBadge.style.display = "inline-flex";
+    if (squadLobbyRoomCodeText) squadLobbyRoomCodeText.textContent = roomCode;
+
+    // Check if host
+    if (localPlayerId === hostId) {
+      if (squadAddBotBtn) squadAddBotBtn.style.display = "inline-block";
+      if (squadStartGameBtn) squadStartGameBtn.style.display = "inline-block";
+      if (squadReadyBtn) squadReadyBtn.style.display = "none";
+    } else {
+      if (squadAddBotBtn) squadAddBotBtn.style.display = "none";
+      if (squadStartGameBtn) squadStartGameBtn.style.display = "none";
+      if (squadReadyBtn) {
+        squadReadyBtn.style.display = "inline-block";
+        const me = players.find(p => p.id === localPlayerId);
+        if (me && me.ready) {
+          squadReadyBtn.textContent = "UNREADY";
+          squadReadyBtn.style.background = "#ff3399";
+        } else {
+          squadReadyBtn.textContent = "READY";
+          squadReadyBtn.style.background = "#3b9dfb";
+        }
+      }
+    }
+  } else {
+    // Normal / Out of room state
+    if (lobbyMatchBtn) lobbyMatchBtn.style.display = "inline-block";
+    if (squadLobbyRoomCodeBadge) squadLobbyRoomCodeBadge.style.display = "none";
+    if (squadAddBotBtn) squadAddBotBtn.style.display = "none";
+    if (squadStartGameBtn) squadStartGameBtn.style.display = "none";
+    if (squadReadyBtn) squadReadyBtn.style.display = "none";
+  }
 }
 
 // Quick Match
@@ -3381,9 +3434,41 @@ document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
   }
 
   if (localMode) {
+    roomCode = null;
+    localPlayerId = null;
+    hostId = null;
+    localMode = false;
     switchScreen(menuScreen);
   } else {
-    switchScreen(lobbyScreen);
+    switchScreen(menuScreen);
+    document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+  }
+});
+
+// Squad Lobby Private Room Bot Button
+document.getElementById("squadAddBotBtn")?.addEventListener("click", () => {
+  sendServerMessage("add_bot");
+});
+
+// Squad Lobby Private Room Start Button
+document.getElementById("squadStartGameBtn")?.addEventListener("click", () => {
+  sendServerMessage("start_game");
+});
+
+// Squad Lobby Private Room Ready Button
+document.getElementById("squadReadyBtn")?.addEventListener("click", () => {
+  readyState = !readyState;
+  sendServerMessage("player_ready", { ready: readyState });
+});
+
+// Squad Lobby Room Code Badge clipboard copy
+document.getElementById("squadLobbyRoomCodeBadge")?.addEventListener("click", () => {
+  if (roomCode) {
+    navigator.clipboard.writeText(roomCode).then(() => {
+      showToastMsg("Room Code copied to clipboard!");
+    }).catch(err => {
+      console.error("Failed to copy room code: ", err);
+    });
   }
 });
 
@@ -5277,8 +5362,7 @@ document.querySelectorAll(".social-tab-btn").forEach((btn) => {
 
 // Wire FRIENDS button in squad lobby
 document.querySelector(".friends-btn")?.addEventListener("click", () => {
-  openSocialModal();
-  document.querySelector('[data-social-tab="friends"]')?.click();
+  openFriendsList();
 });
 
 // ----------------------------------------------------------------
@@ -5773,9 +5857,16 @@ const _baseSwitchScreen = switchScreen;
 switchScreen = function(screen) {
   _baseSwitchScreen(screen);
   if (!currentSocialUserId) return;
-  if (screen === gameScreen)  updateMyPresenceStatus("in-game");
-  else if (screen === lobbyScreen) updateMyPresenceStatus("in-lobby");
-  else if (screen === menuScreen)  updateMyPresenceStatus("menu");
+  if (screen === gameScreen) {
+    updateMyPresenceStatus("in-game");
+  } else if (screen === menuScreen) {
+    const consoleEl = document.querySelector(".yellow-console");
+    if (consoleEl && consoleEl.classList.contains("squad-lobby-active")) {
+      updateMyPresenceStatus("in-lobby");
+    } else {
+      updateMyPresenceStatus("menu");
+    }
+  }
 };
 
 // ----------------------------------------------------------------

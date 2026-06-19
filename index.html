@@ -173,6 +173,9 @@
                 <svg viewBox="0 0 24 24" class="svg-home-icon"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
                 <span>Lobby</span>
               </div>
+              <div id="squadLobbyRoomCodeBadge" class="lobby-badge-btn" style="display: none; background: #ff2fa7; border-color: #ffd84a; cursor: pointer;" title="Click to copy Room Code">
+                <span>CODE: <strong id="squadLobbyRoomCodeText">----</strong></span>
+              </div>
             </div>
 
             <!-- Tabs (Normal Header only) -->
@@ -495,6 +498,9 @@
                        <span class="online-dot"></span>
                        ONLINE 24/50
                      </div>
+                     <button id="squadAddBotBtn" class="lobby-footer-btn" type="button" style="display: none; background: #6c757d; margin-right: 8px;">+ BOT</button>
+                     <button id="squadStartGameBtn" class="btn-match-play" type="button" style="display: none; background: #28a745; margin-right: 8px;">START</button>
+                     <button id="squadReadyBtn" class="btn-match-play" type="button" style="display: none; background: #3b9dfb; margin-right: 8px;">READY</button>
                      <button id="lobbyMatchBtn" class="btn-match-play" type="button">MATCH</button>
                    </div>
                  </div>
@@ -797,71 +803,7 @@
         </div>
       </section>
 
-      <!-- 2. LOBBY SCREEN -->
-      <section id="lobbyScreen" class="screen">
-        <div class="lobby-layout">
-          <!-- Room Status and Players -->
-          <div class="card glass lobby-players-panel">
-            <header class="lobby-header">
-              <div>
-                <h2>Lobby Room</h2>
-                <div class="room-code-badge">
-                  <span>Code:</span>
-                  <strong id="lobbyRoomCode">----</strong>
-                  <button id="copyCodeBtn" class="btn-icon" title="Copy Code" type="button">📋</button>
-                </div>
-              </div>
-              <div class="lobby-controls">
-                <button id="addBotBtn" class="btn btn-sm btn-secondary hidden" type="button">+ Add CPU Bot</button>
-                <button id="startGameBtn" class="btn btn-sm btn-primary hidden" type="button">Start Game</button>
-              </div>
-            </header>
 
-            <div id="lobbyPlayersList" class="lobby-players-grid">
-              <!-- Dynamically populated player cards -->
-            </div>
-
-            <!-- Map Voting Section (Multiplayer) -->
-            <div class="lobby-map-voting">
-              <div class="vote-header">Vote Map Design</div>
-              <div class="map-vote-cards">
-                <div class="map-vote-card" data-map="classic">
-                  <div class="map-vote-title">Classic Green</div>
-                  <div class="map-vote-preview preview-classic"></div>
-                  <div class="map-vote-count" id="voteCount_classic">0 votes</div>
-                </div>
-                <div class="map-vote-card" data-map="checkered">
-                  <div class="map-vote-title">Checkered Ice</div>
-                  <div class="map-vote-preview preview-checkered"></div>
-                  <div class="map-vote-count" id="voteCount_checkered">0 votes</div>
-                </div>
-                <div class="map-vote-card" data-map="colosseum">
-                  <div class="map-vote-title">Colosseum Clay</div>
-                  <div class="map-vote-preview preview-colosseum"></div>
-                  <div class="map-vote-count" id="voteCount_colosseum">0 votes</div>
-                </div>
-              </div>
-            </div>
-
-            <footer class="lobby-footer">
-              <button id="readyBtn" class="btn btn-accent" type="button">I'm Ready!</button>
-              <button id="leaveLobbyBtn" class="btn btn-danger" type="button">Leave Lobby</button>
-            </footer>
-          </div>
-
-          <!-- Lobby Chat -->
-          <div class="card glass lobby-chat-panel">
-            <h3>Lobby Chat</h3>
-            <div id="chatMessages" class="chat-messages">
-              <!-- Chat logs go here -->
-            </div>
-            <form id="lobbyChatForm" class="chat-form">
-              <input id="chatInput" type="text" maxlength="64" placeholder="Send a message..." autocomplete="off" />
-              <button id="sendChatBtn" class="btn btn-primary" type="submit">Send</button>
-            </form>
-          </div>
-        </div>
-      </section>
 
       <!-- 3. GAMEPLAY SCREEN -->
       <section id="gameScreen" class="screen">

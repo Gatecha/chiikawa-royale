@@ -281,6 +281,11 @@ function handleMessage(ws, msg) {
       if (room.players.length >= maxPlayers) return;
       addBotToRoom(room);
       broadcastLobbyUpdate(room);
+      if (room.players.length >= maxPlayers) {
+        setTimeout(() => {
+          if (room.state === "lobby") startRound(room, true);
+        }, 1200);
+      }
       break;
     }
 
@@ -526,7 +531,6 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
 
   const player = {
     id: ws.id,
-    reconnectToken: dataToken(),
     name: name || "Friend",
     kind: kind || "hachiware",
     ready: false,
@@ -542,6 +546,11 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
     trophies: 0,
     disconnected: false,
   };
+  Object.defineProperty(player, "reconnectToken", {
+    value: dataToken(),
+    enumerable: false,
+    writable: true,
+  });
 
   room.players.push(player);
   console.log(`Player ${ws.id} joined room ${room.code} (${room.players.length} players)`);
@@ -819,6 +828,10 @@ function startOrUpdateSurrenderVote(room, team, playerId) {
     }, 15000);
   }
   room.surrenderVotes[team].add(playerId);
+  room.teams[team].forEach((id) => {
+    const teammate = room.players.find((p) => p.id === id);
+    if (teammate?.ai) room.surrenderVotes[team].add(id);
+  });
   broadcastSurrenderUpdate(room, team);
   checkSurrenderResolved(room, team);
 }
