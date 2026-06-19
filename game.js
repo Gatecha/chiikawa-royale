@@ -1259,6 +1259,7 @@ function switchScreen(targetScreen) {
   if (targetScreen) targetScreen.classList.add("active");
   if (targetScreen !== gameScreen) {
     document.getElementById("couchControlPicker")?.classList.add("hidden");
+    document.body.classList.remove("local-couch-active");
   }
 }
 
@@ -1462,6 +1463,7 @@ function updateCouchControlPicker() {
   if (!picker) return;
   const humans = localCouchMode ? players.filter((p) => !p.ai) : [];
   picker.classList.toggle("hidden", humans.length === 0);
+  document.body.classList.toggle("local-couch-active", localCouchMode && humans.length > 0);
   picker.innerHTML = "";
   humans.forEach((player) => {
     const btn = document.createElement("button");
@@ -4586,6 +4588,7 @@ function resetCouchControls() {
   couchTouchKeys.clear();
   couchTouchPlayerId = null;
   document.getElementById("couchControlPicker")?.classList.add("hidden");
+  document.body.classList.remove("local-couch-active");
 }
 
 // Keyboard event listeners

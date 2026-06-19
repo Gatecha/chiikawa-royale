@@ -6648,8 +6648,8 @@ body.is-mobile .arcade-controller {
 
 .couch-control-btn {
   position: absolute;
-  min-width: 54px;
-  height: 42px;
+  width: 58px;
+  height: 46px;
   border: 3px solid #000;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.92);
@@ -6663,23 +6663,23 @@ body.is-mobile .arcade-controller {
 }
 
 .couch-control-btn.slot-1 {
-  top: 18px;
-  left: 18px;
+  top: 48px;
+  left: 28px;
 }
 
 .couch-control-btn.slot-2 {
-  right: 18px;
-  bottom: 18px;
+  right: 28px;
+  bottom: clamp(126px, 20vh, 190px);
 }
 
 .couch-control-btn.slot-3 {
-  top: 18px;
-  right: 18px;
+  top: 48px;
+  right: 28px;
 }
 
 .couch-control-btn.slot-4 {
-  left: 18px;
-  bottom: 18px;
+  left: 28px;
+  bottom: clamp(126px, 20vh, 190px);
 }
 
 .couch-control-btn.active {
@@ -6703,29 +6703,104 @@ body.is-mobile .arcade-controller {
   }
 
   .couch-control-btn {
-    min-width: 48px;
+    width: 50px;
     height: 38px;
     font-size: 12px;
   }
 
   .couch-control-btn.slot-1 {
-    top: 10px;
-    left: 10px;
+    top: 44px;
+    left: 16px;
   }
 
   .couch-control-btn.slot-2 {
-    right: 10px;
-    bottom: 118px;
+    right: 16px;
+    bottom: clamp(104px, 18vh, 160px);
   }
 
   .couch-control-btn.slot-3 {
-    top: 10px;
-    right: 10px;
+    top: 44px;
+    right: 16px;
   }
 
   .couch-control-btn.slot-4 {
-    left: 10px;
-    bottom: 198px;
+    left: 16px;
+    bottom: clamp(104px, 18vh, 160px);
+  }
+}
+
+body.local-couch-active .dpad {
+  left: 26px;
+  bottom: 22px;
+  width: 132px;
+  height: 132px;
+  gap: 6px;
+}
+
+body.local-couch-active .action-buttons {
+  right: 24px;
+  bottom: 24px;
+  gap: 10px;
+}
+
+body.local-couch-active .gamepad-btn {
+  border-width: 2px;
+  box-shadow: 2px 2px 0 #000;
+}
+
+body.local-couch-active .gamepad-btn svg {
+  width: 26px;
+  height: 26px;
+}
+
+body.local-couch-active .btn-action-bomb {
+  width: 68px;
+  height: 68px;
+  font-size: 11px;
+}
+
+body.local-couch-active .btn-action-punch {
+  width: 60px;
+  height: 60px;
+  font-size: 9px;
+  margin-bottom: 4px;
+}
+
+body.local-couch-active .couch-control-btn {
+  z-index: 26;
+}
+
+@media (max-height: 520px), (max-width: 760px) {
+  body.local-couch-active .dpad {
+    left: 18px;
+    bottom: 16px;
+    width: 112px;
+    height: 112px;
+    gap: 5px;
+  }
+
+  body.local-couch-active .action-buttons {
+    right: 18px;
+    bottom: 18px;
+    gap: 8px;
+  }
+
+  body.local-couch-active .btn-action-bomb {
+    width: 58px;
+    height: 58px;
+    font-size: 9px;
+  }
+
+  body.local-couch-active .btn-action-punch {
+    width: 52px;
+    height: 52px;
+    font-size: 8px;
+  }
+
+  body.local-couch-active .couch-control-btn {
+    width: 46px;
+    height: 34px;
+    font-size: 11px;
   }
 }
 
