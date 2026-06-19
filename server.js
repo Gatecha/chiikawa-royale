@@ -120,10 +120,6 @@ function handleMessage(ws, msg) {
       room.isPrivate = data.isPrivate !== false;
       rooms.set(roomCode, room);
       joinPlayerToRoom(ws, room, data.name, data.kind);
-      // Start matchmaking fill timer only if not private
-      if (!room.isPrivate) {
-        scheduleMatchmakingFill(room);
-      }
       break;
     }
 
@@ -162,7 +158,6 @@ function handleMessage(ws, msg) {
         });
       } else {
         room.isPrivate = false;
-        scheduleMatchmakingFill(room);
         broadcastLobbyUpdate(room);
       }
       break;
@@ -233,9 +228,6 @@ function handleMessage(ws, msg) {
         clearInterval(room.matchmakingCountdownInterval);
         room.matchmakingCountdownInterval = null;
       }
-      if (!room.isPrivate && room.players.filter(p => !p.ai).length < maxPlayers) {
-        scheduleMatchmakingFill(room);
-      }
       break;
     }
 
@@ -262,10 +254,6 @@ function handleMessage(ws, msg) {
           clearInterval(foundRoom.matchmakingCountdownInterval);
           foundRoom.matchmakingCountdownInterval = null;
         }
-        const maxPlayers = foundRoom.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
-        if (foundRoom.players.filter(p => !p.ai).length < maxPlayers) {
-          scheduleMatchmakingFill(foundRoom);
-        }
       } else {
         // Create new room
         const roomCode = generateRoomCode();
@@ -273,7 +261,6 @@ function handleMessage(ws, msg) {
         room.isPrivate = false;
         rooms.set(roomCode, room);
         joinPlayerToRoom(ws, room, data.name, data.kind);
-        scheduleMatchmakingFill(room);
       }
       break;
     }
@@ -393,6 +380,12 @@ function handleMessage(ws, msg) {
 
       const player = room.players.find((p) => p.id === playerId);
       if (player && player.alive) {
+        const fromTile = gridAtServer(player.x, player.y);
+        const dx = Math.sign(data.dx || 0);
+        const dy = Math.sign(data.dy || 0);
+        if ((dx !== 0 || dy !== 0) && (dx === 0 || dy === 0)) {
+          tryKickBombServer(room, player, fromTile, { x: dx, y: dy });
+        }
         player.x = data.x;
         player.y = data.y;
         player.dx = data.dx;
@@ -555,6 +548,7 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
     speed: 142,
     bombs: 1,
     range: 2,
+    hasSlide: false,
     cooldown: 0,
     trophies: 0,
     disconnected: false,
@@ -932,44 +926,12 @@ function endMatchBySurrender(room, winnerTeam, winnerId) {
 // ----------------------------------------------------------------
 
 function scheduleMatchmakingFill(room) {
-  const humanCount = room.players.filter(p => !p.ai).length;
-  const maxPlayers = room.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
-  if (humanCount >= maxPlayers) return;
-
-  const waitSeconds = humanCount <= 1 ? MATCHMAKING_FILL_ALONE : MATCHMAKING_FILL_PARTIAL;
-  let secondsLeft = waitSeconds;
-  room.matchmakingFillSecondsLeft = secondsLeft;
-
-  // Countdown broadcast every second
   if (room.matchmakingCountdownInterval) clearInterval(room.matchmakingCountdownInterval);
-  room.matchmakingCountdownInterval = setInterval(() => {
-    secondsLeft--;
-    room.matchmakingFillSecondsLeft = secondsLeft;
-    if (secondsLeft <= 0 || room.state !== "lobby") {
-      clearInterval(room.matchmakingCountdownInterval);
-      room.matchmakingCountdownInterval = null;
-    } else {
-      broadcastToRoom(room, {
-        type: "matchmaking_countdown",
-        data: { secondsLeft }
-      });
-    }
-  }, 1000);
-
-  // Main fill timer
   if (room.matchmakingTimer) clearTimeout(room.matchmakingTimer);
-  room.matchmakingTimer = setTimeout(() => {
-    if (room.state !== "lobby") return;
-    if (room.matchmakingCountdownInterval) {
-      clearInterval(room.matchmakingCountdownInterval);
-      room.matchmakingCountdownInterval = null;
-    }
-    broadcastToRoom(room, {
-      type: "matchmaking_countdown",
-      data: { secondsLeft: 0 }
-    });
-    fillWithBots(room);
-  }, waitSeconds * 1000);
+  room.matchmakingCountdownInterval = null;
+  room.matchmakingTimer = null;
+  room.matchmakingFillSecondsLeft = 0;
+  broadcastToRoom(room, { type: "matchmaking_countdown", data: { secondsLeft: 0 } });
 }
 
 function fillWithBots(room) {
@@ -998,7 +960,8 @@ function addBotToRoom(room) {
     id: botId, name, kind,
     ready: true, ai: true,
     x: 0, y: 0, dx: 0, dy: 0,
-    alive: true, speed: 142, bombs: 1, range: 2, cooldown: 0, trophies: 0,
+    alive: true, speed: 166, bombs: 2, range: 3, cooldown: 0, trophies: 0,
+    hasPunch: false, hasSlide: false,
     aiThink: 0, aiDir: { x: 0, y: 0 }, aiTarget: null, aiBombCooldown: 0,
   };
   room.players.push(bot);
@@ -1030,6 +993,7 @@ function checkPickupCollision(room, player) {
     else if (pickup.type === "speed") player.speed = Math.min(202, player.speed + 18);
     else if (pickup.type === "full_fire") player.range = 15;
     else if (pickup.type === "punch") player.hasPunch = true;
+    else if (pickup.type === "slide") player.hasSlide = true;
 
     broadcastToRoom(room, {
       type: "pickup_collected",
@@ -1037,7 +1001,7 @@ function checkPickupCollision(room, player) {
         pickupId: `${pickup.x}_${pickup.y}`,
         playerId: player.id,
         pickups: room.pickups,
-        playerStats: { id: player.id, range: player.range, bombs: player.bombs, speed: player.speed, hasPunch: !!player.hasPunch },
+        playerStats: { id: player.id, range: player.range, bombs: player.bombs, speed: player.speed, hasPunch: !!player.hasPunch, hasSlide: !!player.hasSlide },
       },
     });
   }
@@ -1103,7 +1067,7 @@ function tickRoom(room) {
   broadcastToRoom(room, {
     type: "state_update",
     data: {
-      players: room.players.map((p) => ({ id: p.id, x: p.x, y: p.y, dx: p.dx, dy: p.dy, alive: p.alive, speed: p.speed, bombs: p.bombs, range: p.range, hasPunch: !!p.hasPunch })),
+      players: room.players.map((p) => ({ id: p.id, x: p.x, y: p.y, dx: p.dx, dy: p.dy, alive: p.alive, speed: p.speed, bombs: p.bombs, range: p.range, hasPunch: !!p.hasPunch, hasSlide: !!p.hasSlide })),
       map: room.map,
       roundTime: room.roundTime,
     },
@@ -1186,7 +1150,7 @@ function triggerExplosion(room, bomb) {
         let type = null;
         if (roll < 0.18) type = "flame"; else if (roll < 0.32) type = "bomb";
         else if (roll < 0.44) type = "speed"; else if (roll < 0.50) type = "full_fire";
-        else if (roll < 0.56) type = "punch";
+        else if (roll < 0.56) type = "punch"; else if (roll < 0.64) type = "slide";
         if (type) { const pickup = { x, y, type }; room.pickups.push(pickup); spawnedPickups.push(pickup); }
         break;
       }
@@ -1491,7 +1455,10 @@ function startRound(room, isNewTournament) {
     p.y = spawn.y * TILE + TILE / 2;
     p.dx = 0; p.dy = 0;
     p.alive = isActive; // spectators start dead
-    p.speed = 142; p.bombs = 1; p.range = 2; p.cooldown = 0; p.hasPunch = false;
+    p.speed = p.ai ? 166 : 142;
+    p.bombs = p.ai ? 2 : 1;
+    p.range = p.ai ? 3 : 2;
+    p.cooldown = 0; p.hasPunch = false; p.hasSlide = false;
     if (isNewTournament) p.trophies = 0;
   });
 
@@ -1607,6 +1574,7 @@ function isSolidServer(room, tileX, tileY, actor = null) {
   if (isMapSolidServer(room, tileX, tileY)) return true;
   const actorTile = actor ? gridAtServer(actor.x, actor.y) : null;
   return room.bombs.some((bomb) => {
+    if (actor && bomb.passableFor && bomb.passableFor.has(actor.id)) return false;
     if (actorTile && bomb.x === actorTile.x && bomb.y === actorTile.y) return false;
     return bomb.x === tileX && bomb.y === tileY;
   });
@@ -1635,15 +1603,40 @@ function moveServerActor(room, actor, dx, dy, dt) {
   if (dx !== 0 && canMoveServer(room, nextX, actor.y, actor)) {
     actor.x = nextX;
   } else if (dx !== 0) {
-    dx = 0;
+    const tile = gridAtServer(actor.x, actor.y);
+    if (tryKickBombServer(room, actor, tile, { x: Math.sign(dx), y: 0 }) && canMoveServer(room, nextX, actor.y, actor)) {
+      actor.x = nextX;
+    } else {
+      dx = 0;
+    }
   }
   if (dy !== 0 && canMoveServer(room, actor.x, nextY, actor)) {
     actor.y = nextY;
   } else if (dy !== 0) {
-    dy = 0;
+    const tile = gridAtServer(actor.x, actor.y);
+    if (tryKickBombServer(room, actor, tile, { x: 0, y: Math.sign(dy) }) && canMoveServer(room, actor.x, nextY, actor)) {
+      actor.y = nextY;
+    } else {
+      dy = 0;
+    }
   }
   actor.dx = dx;
   actor.dy = dy;
+}
+
+function tryKickBombServer(room, actor, tile, dir) {
+  if (!actor?.hasSlide || !actor.alive || !dir || (dir.x === 0 && dir.y === 0)) return false;
+  const bomb = room.bombs.find((b) => b.x === tile.x + dir.x && b.y === tile.y + dir.y && (!b.vx || (b.vx === 0 && b.vy === 0)));
+  if (!bomb) return false;
+  if (isTileSolidForBombServer(room, bomb.x + dir.x, bomb.y + dir.y)) return false;
+  bomb.vx = dir.x;
+  bomb.vy = dir.y;
+  bomb.slideX = bomb.x;
+  bomb.slideY = bomb.y;
+  if (!bomb.passableFor) bomb.passableFor = new Set();
+  bomb.passableFor.add(actor.id);
+  broadcastToRoom(room, { type: "bomb_punched", data: { bombId: bomb.id, vx: dir.x, vy: dir.y } });
+  return true;
 }
 
 function scoreServerBotMove(room, bot, x, y) {

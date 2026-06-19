@@ -902,7 +902,7 @@ function handleServerMessage(msg) {
         ...p,
         targetX: p.x,
         targetY: p.y,
-        invuln: p.alive ? 1.4 : 0,
+        invuln: p.id === localPlayerId && p.alive ? 1.0 : 0,
         emote: null,
         emoteTimer: 0,
         radius: 13,
@@ -973,6 +973,7 @@ function handleServerMessage(msg) {
           localP.bombs = serverPlayer.bombs;
           localP.range = serverPlayer.range;
           localP.hasPunch = !!serverPlayer.hasPunch;
+          localP.hasSlide = !!serverPlayer.hasSlide;
 
           if (serverPlayer.id !== localPlayerId) {
             localP.prevX = localP.targetX !== undefined ? localP.targetX : serverPlayer.x;
@@ -1049,6 +1050,7 @@ function handleServerMessage(msg) {
         collector.bombs = data.playerStats.bombs;
         collector.speed = data.playerStats.speed;
         collector.hasPunch = !!data.playerStats.hasPunch;
+        collector.hasSlide = !!data.playerStats.hasSlide;
         burstSparkles(collector.x, collector.y);
       }
       updateHudSidebar();
@@ -1228,6 +1230,7 @@ function startLocalGame() {
   players.forEach((p) => {
     p.trophies = 0;
     p.hasPunch = false;
+    p.hasSlide = false;
   });
   bombs = [];
   blasts = [];
@@ -1264,9 +1267,9 @@ function makeLocalPlayer(id, name, kind, spawn, ai) {
     dx: 0,
     dy: 0,
     alive: true,
-    speed: 142,
-    bombs: 1,
-    range: 2,
+    speed: ai ? 166 : 142,
+    bombs: ai ? 2 : 1,
+    range: ai ? 3 : 2,
     cooldown: 0,
     invuln: 1.2,
     emote: null,
@@ -1274,6 +1277,7 @@ function makeLocalPlayer(id, name, kind, spawn, ai) {
     radius: 13,
     trophies: 0,
     hasPunch: false,
+    hasSlide: false,
     aiThink: 0,
     aiDir: { x: 0, y: 0 },
     moveTarget: null,
@@ -1532,6 +1536,7 @@ function localTriggerExplosion(bomb) {
         else if (roll < 0.44) pickups.push({ x, y, type: "speed" });
         else if (roll < 0.50) pickups.push({ x, y, type: "full_fire" });
         else if (roll < 0.56) pickups.push({ x, y, type: "punch" });
+        else if (roll < 0.64) pickups.push({ x, y, type: "slide" });
         break;
       }
     }
@@ -1569,6 +1574,7 @@ function localCheckPickup(player) {
   else if (pickup.type === "speed") player.speed = Math.min(202, player.speed + 18);
   else if (pickup.type === "full_fire") player.range = 15;
   else if (pickup.type === "punch") player.hasPunch = true;
+  else if (pickup.type === "slide") player.hasSlide = true;
   burstSparkles(player.x, player.y);
   updateHudSidebar();
 }
@@ -1849,6 +1855,21 @@ function isTileSolidForBombLocal(tx, ty) {
   return false;
 }
 
+function tryKickBombLocal(actor, dir) {
+  if (!actor?.hasSlide || !actor.alive || !dir || (dir.x === 0 && dir.y === 0)) return false;
+  const current = gridAt(actor.x, actor.y);
+  const bomb = bombs.find((b) => b.x === current.x + dir.x && b.y === current.y + dir.y && (!b.vx || (b.vx === 0 && b.vy === 0)));
+  if (!bomb) return false;
+  if (isTileSolidForBombLocal(bomb.x + dir.x, bomb.y + dir.y)) return false;
+  bomb.vx = dir.x;
+  bomb.vy = dir.y;
+  bomb.slideX = bomb.x;
+  bomb.slideY = bomb.y;
+  if (!bomb.passableFor) bomb.passableFor = new Set();
+  bomb.passableFor.add(actor.id);
+  return true;
+}
+
 function triggerLocalPunch(player) {
   if (!player || !player.hasPunch || !player.alive) return;
   const dir = player.lastFacingDir || { x: 0, y: 1 };
@@ -1929,6 +1950,14 @@ function moveActor(actor, dx, dy, dt) {
   const targetTile = { x: current.x + dir.x, y: current.y + dir.y };
   const target = centerOf(targetTile.x, targetTile.y);
   if (!canMoveTo(target.x, target.y, actor)) {
+    if (tryKickBombLocal(actor, dir) && canMoveTo(target.x, target.y, actor)) {
+      actor.dx = dir.x;
+      actor.dy = dir.y;
+      actor.moveFrom = centerOf(current.x, current.y);
+      actor.moveDir = dir;
+      actor.moveTarget = target;
+      return stepTowardTarget(actor, dt);
+    }
     actor.dx = 0;
     actor.dy = 0;
     return false;
@@ -1992,7 +2021,7 @@ function updateAi(bot, dt) {
       .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
       .sort((a, b) => b.score - a.score);
     bot.aiDir = useful[0];
-    bot.aiThink = 0.24 + Math.random() * 0.35;
+    bot.aiThink = danger ? 0.06 : 0.10 + Math.random() * 0.14;
   }
 
   moveActor(bot, bot.aiDir.x, bot.aiDir.y, dt);
@@ -2011,26 +2040,83 @@ function updateAi(bot, dt) {
 
   const tile = gridAt(bot.x, bot.y);
   const nearbyCrate = neighbors(tile.x, tile.y).some((n) => map[n.y]?.[n.x] === "crate");
-  const nearbyEnemy = players.some((other) => other !== bot && other.alive && distanceTiles(tile, gridAt(other.x, other.y)) <= 2);
+  const nearbyEnemy = players.some((other) => other !== bot && other.alive && distanceTiles(tile, gridAt(other.x, other.y)) <= Math.max(2, bot.range || 2));
   
-  if ((nearbyCrate || nearbyEnemy) && Math.random() < 0.012) {
+  if ((hasEnemyInBombLineLocal(bot, tile) || nearbyCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && Math.random() < 0.16) {
     if (localMode) localPlaceBomb(bot);
     else sendServerMessage("place_bomb", { id: bot.id });
   }
 }
 
 function scoreAiMove(bot, x, y) {
-  if (isSolid(x, y, bot)) return -999;
-  let score = Math.random();
-  if (isDanger(x, y)) score -= 8;
-  if (pickups.some((p) => p.x === x && p.y === y)) score += 3;
-  if (neighbors(x, y).some((n) => map[n.y]?.[n.x] === "crate")) score += 0.8;
+  if (isSolid(x, y, bot)) return -9999;
+  let score = Math.random() * 3;
+  const here = gridAt(bot.x, bot.y);
+  if (x === here.x && y === here.y) score -= 30;
+  if (isDanger(x, y)) score -= 900;
+  if (pickups.some((p) => p.x === x && p.y === y)) score += 90;
+  if (neighbors(x, y).some((n) => map[n.y]?.[n.x] === "crate")) score += 18;
   
-  const target = players.find((other) => other !== bot && other.alive);
-  if (target) {
-    score -= distanceTiles({ x, y }, gridAt(target.x, target.y)) * 0.08;
+  const enemies = players.filter((other) => other !== bot && other.alive);
+  if (enemies.length) {
+    const nearest = enemies
+      .map((enemy) => ({ enemy, dist: distanceTiles({ x, y }, gridAt(enemy.x, enemy.y)) }))
+      .sort((a, b) => a.dist - b.dist)[0];
+    score += Math.max(0, 95 - nearest.dist * 12);
   }
   return score;
+}
+
+function hasEnemyInBombLineLocal(bot, tile) {
+  return players.some((enemy) => {
+    if (enemy === bot || !enemy.alive) return false;
+    const enemyTile = gridAt(enemy.x, enemy.y);
+    if (enemyTile.x !== tile.x && enemyTile.y !== tile.y) return false;
+    const dx = Math.sign(enemyTile.x - tile.x);
+    const dy = Math.sign(enemyTile.y - tile.y);
+    const distance = Math.abs(enemyTile.x - tile.x) + Math.abs(enemyTile.y - tile.y);
+    if (distance > (bot.range || 2)) return false;
+    for (let i = 1; i < distance; i += 1) {
+      if (isMapSolid(tile.x + dx * i, tile.y + dy * i)) return false;
+    }
+    return true;
+  });
+}
+
+function hasEscapeTileLocal(bot, tile) {
+  const queue = [{ x: tile.x, y: tile.y, depth: 0 }];
+  const seen = new Set([`${tile.x},${tile.y}`]);
+  const dirs = neighbors(0, 0);
+  while (queue.length) {
+    const current = queue.shift();
+    if (current.depth > 0 && !wouldLocalBombThreatenTile(tile, current.x, current.y, bot.range || 2) && !isDanger(current.x, current.y)) {
+      return true;
+    }
+    if (current.depth >= 4) continue;
+    dirs.forEach((dir) => {
+      const x = current.x + dir.x;
+      const y = current.y + dir.y;
+      const key = `${x},${y}`;
+      if (seen.has(key) || isSolid(x, y, bot)) return;
+      seen.add(key);
+      queue.push({ x, y, depth: current.depth + 1 });
+    });
+  }
+  return false;
+}
+
+function wouldLocalBombThreatenTile(bombTile, x, y, range) {
+  if (bombTile.x === x && bombTile.y === y) return true;
+  if (bombTile.x !== x && bombTile.y !== y) return false;
+  const dx = Math.sign(x - bombTile.x);
+  const dy = Math.sign(y - bombTile.y);
+  const distance = Math.abs(x - bombTile.x) + Math.abs(y - bombTile.y);
+  if (distance > range) return false;
+  for (let i = 1; i <= distance; i += 1) {
+    const cell = map[bombTile.y + dy * i]?.[bombTile.x + dx * i];
+    if (!cell || cell === "wall" || cell === "crate") return false;
+  }
+  return true;
 }
 
 function neighbors(x, y) {
@@ -2614,7 +2700,7 @@ function drawPickup(pickup) {
   const c = centerOf(pickup.x, pickup.y);
   ctx.save();
   ctx.translate(c.x, c.y);
-  ctx.fillStyle = pickup.type === "flame" ? "#ff7c55" : pickup.type === "bomb" ? "#7466e8" : pickup.type === "full_fire" ? "#ffe140" : pickup.type === "punch" ? "#ff69b4" : "#ffdc5a";
+  ctx.fillStyle = pickup.type === "flame" ? "#ff7c55" : pickup.type === "bomb" ? "#7466e8" : pickup.type === "full_fire" ? "#ffe140" : pickup.type === "punch" ? "#ff69b4" : pickup.type === "slide" ? "#ffcf33" : "#35c77b";
   ctx.strokeStyle = "#221f25";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -2633,7 +2719,7 @@ function drawPickup(pickup) {
   ctx.font = "900 18px Fredoka";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(pickup.type === "flame" ? "F" : pickup.type === "bomb" ? "B" : pickup.type === "full_fire" ? "M" : pickup.type === "punch" ? "P" : "S", 0, 1);
+  ctx.fillText(pickup.type === "flame" ? "F" : pickup.type === "bomb" ? "B" : pickup.type === "full_fire" ? "M" : pickup.type === "punch" ? "P" : pickup.type === "slide" ? "S" : "+", 0, 1);
   ctx.restore();
 }
 
@@ -2694,8 +2780,8 @@ function drawPlayer(player) {
   const style = characterStyle[player.kind];
   ctx.save();
   ctx.translate(player.x, player.y);
-  if (!player.alive && currentRoomMode !== "team") ctx.globalAlpha = 0.34;
-  if (player.invuln > 0 && Math.floor(player.invuln * 10) % 2 === 0) ctx.globalAlpha = 0.55;
+  if (!player.alive) ctx.globalAlpha = 0.34;
+  if (player.id === localPlayerId && player.invuln > 0 && Math.floor(player.invuln * 10) % 2 === 0) ctx.globalAlpha = 0.55;
   
   const isWalking = Math.hypot(player.dx, player.dy) > 0.1;
   const timeSec = performance.now() / 1000;
@@ -3361,8 +3447,7 @@ function syncSquadLobbyInterface() {
     // We are in a private lobby room
     if (lobbyMatchBtn) lobbyMatchBtn.style.display = "none";
     if (squadLeaveLobbyBtn) {
-      const hasOtherHuman = players.some((p) => p.id !== localPlayerId && !p.ai);
-      squadLeaveLobbyBtn.style.display = hasOtherHuman || players.length > 1 ? "inline-block" : "none";
+      squadLeaveLobbyBtn.style.display = "inline-block";
     }
     if (squadLobbyRoomCodeBadge) squadLobbyRoomCodeBadge.style.display = "inline-flex";
     if (squadLobbyRoomCodeText) squadLobbyRoomCodeText.textContent = roomCode;
@@ -4807,12 +4892,13 @@ function localStartNextRound() {
     p.dx = 0;
     p.dy = 0;
     p.alive = true;
-    p.speed = 142;
-    p.bombs = 1;
-    p.range = 2;
+    p.speed = p.ai ? 166 : 142;
+    p.bombs = p.ai ? 2 : 1;
+    p.range = p.ai ? 3 : 2;
     p.cooldown = 0;
     p.invuln = 1.2;
     p.hasPunch = false;
+    p.hasSlide = false;
     p.emote = null;
     p.emoteTimer = 0;
     
