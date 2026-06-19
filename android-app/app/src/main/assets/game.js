@@ -499,14 +499,23 @@ btnLocalServer?.addEventListener("click", () => {
 
 // Play Offline / Bypass Login Screen Button
 btnPlayOffline?.addEventListener("click", () => {
-  serverMode = "local";
-  const savedLocalName = localStorage.getItem("local_username");
-  if (savedLocalName) {
-    if (usernameInput) usernameInput.value = savedLocalName;
-    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+  const localPlaySetupDialog = document.getElementById("localPlaySetupDialog");
+  if (localPlaySetupDialog) {
+    const localNicknameInput = document.getElementById("localNicknameInput");
+    if (localNicknameInput) {
+      localNicknameInput.value = localStorage.getItem("local_username") || "Friend";
+    }
+    localPlaySetupDialog.classList.remove("hidden");
+  } else {
+    serverMode = "local";
+    const savedLocalName = localStorage.getItem("local_username");
+    if (savedLocalName) {
+      if (usernameInput) usernameInput.value = savedLocalName;
+      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+    }
+    switchScreen(menuScreen);
+    tryPlayMusic();
   }
-  switchScreen(menuScreen);
-  tryPlayMusic();
 });
 
 closeDialogBtn?.addEventListener("click", () => {
@@ -885,16 +894,24 @@ function handleServerMessage(msg) {
           localP.range = serverPlayer.range;
 
           if (serverPlayer.id !== localPlayerId) {
+            localP.prevX = localP.targetX !== undefined ? localP.targetX : serverPlayer.x;
+            localP.prevY = localP.targetY !== undefined ? localP.targetY : serverPlayer.y;
             localP.targetX = serverPlayer.x;
             localP.targetY = serverPlayer.y;
             localP.dx = serverPlayer.dx;
             localP.dy = serverPlayer.dy;
+            localP.lerpTime = 0;
           } else {
             // Check desync
             const dist = Math.hypot(localP.x - serverPlayer.x, localP.y - serverPlayer.y);
-            if (dist > 36) {
+            if (dist > 96) {
               localP.x = serverPlayer.x;
               localP.y = serverPlayer.y;
+              localP.moveTarget = null;
+              localP.moveFrom = null;
+              localP.moveDir = null;
+              localP.dx = 0;
+              localP.dy = 0;
             }
           }
         }
@@ -1104,8 +1121,10 @@ function startLocalGame() {
   currentMapType = mapSelect ? mapSelect.value : "classic";
   map = buildLocalMap(currentMapType);
 
+  const localNickname = localStorage.getItem("local_username") || "You";
+
   players = [
-    makeLocalPlayer("local_player", "You", selectedCharacter, starts[0], false),
+    makeLocalPlayer("local_player", localNickname, selectedCharacter, starts[0], false),
     makeLocalPlayer("cpu_usagi", "Usagi CPU", "usagi", starts[1], true),
     makeLocalPlayer("cpu_momonga", "Momonga CPU", "momonga", starts[2], true),
     makeLocalPlayer("cpu_chiikawa", "Chiikawa CPU", "chiikawa", starts[3], true),
@@ -1777,7 +1796,10 @@ function canMoveTo(px, py, actor) {
 
 function moveActor(actor, dx, dy, dt) {
   if (actor.moveTarget) {
-    return stepTowardTarget(actor, dt);
+    stepTowardTarget(actor, dt);
+    if (actor.moveTarget) {
+      return true;
+    }
   }
 
   const current = gridAt(actor.x, actor.y);
@@ -2551,6 +2573,10 @@ function drawBlast(blast) {
 }
 
 function drawPlayer(player) {
+  // Hide spectators in team mode
+  if (currentRoomMode === "team" && !currentActiveRoundPlayers.includes(player.id)) {
+    return;
+  }
   const style = characterStyle[player.kind];
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -2843,8 +2869,24 @@ function update(dt) {
 
     players.forEach((p) => {
       if (!localMode && p.id !== localPlayerId) {
-        p.x += (p.targetX - p.x) * 0.3;
-        p.y += (p.targetY - p.y) * 0.3;
+        if (p.targetX !== undefined && p.prevX !== undefined) {
+          p.lerpTime = (p.lerpTime || 0) + dt;
+          const tickRate = 0.05; // 50ms server tick
+          if (p.lerpTime <= tickRate) {
+            const t = p.lerpTime / tickRate;
+            p.x = p.prevX + (p.targetX - p.prevX) * t;
+            p.y = p.prevY + (p.targetY - p.prevY) * t;
+          } else {
+            // Extrapolate if packet is late, capped at max extrapolation time (e.g. 100ms) to prevent flying off screen
+            if (p.lerpTime < tickRate + 0.1) {
+              p.x += (p.dx || 0) * (p.speed || 142) * dt;
+              p.y += (p.dy || 0) * (p.speed || 142) * dt;
+            }
+          }
+        } else if (p.targetX !== undefined) {
+          p.x = p.targetX;
+          p.y = p.targetY;
+        }
       }
 
       // Track distance traveled, tile steps, and facing direction for animations
@@ -4367,34 +4409,78 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
     const resultsRow = document.getElementById("resultsPlayersRow");
     if (resultsRow) {
       resultsRow.innerHTML = "";
-
-      players.forEach((p) => {
-        const card = document.createElement("div");
-        const isWinner = p.id === winnerId;
-        card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
-
-        let trophiesHtml = "";
-        const trophiesCount = p.trophies || 0;
-        for (let i = 1; i <= 8; i++) {
-          if (i < trophiesCount) {
-            trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
-          } else if (i === trophiesCount && isWinner) {
-            // Animate new trophy
-            trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
-          } else {
-            trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+      
+      if (currentRoomMode === "team") {
+        // Render 2 big team cards instead of individual player cards
+        const teamA = currentTeams?.A || [];
+        const teamB = currentTeams?.B || [];
+        const scoreA = currentTeamTrophies?.A || 0;
+        const scoreB = currentTeamTrophies?.B || 0;
+        
+        const renderTeamCard = (teamTag, members, score) => {
+          const card = document.createElement("div");
+          const isWinner = score >= 8 || (winnerId && members.includes(winnerId));
+          card.className = `result-team-card ${teamTag.toLowerCase()}-theme ${isWinner ? 'winner' : ''}`;
+          
+          let trophiesHtml = "";
+          for (let i = 1; i <= 8; i++) {
+            if (i < score) {
+              trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+            } else if (i === score && isWinner) {
+              trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+            } else {
+              trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+            }
           }
-        }
+          
+          const memberNames = members.map(id => {
+            const p = players.find(player => player.id === id);
+            return p ? escapeHTML(p.name) : "Unknown";
+          }).join(", ");
+          
+          card.innerHTML = `
+            <div class="result-team-name">${teamTag}</div>
+            <div class="result-team-members">${memberNames}</div>
+            <div class="result-trophies-container">
+              ${trophiesHtml}
+            </div>
+          `;
+          return card;
+        };
+        
+        resultsRow.appendChild(renderTeamCard("Team A", teamA, scoreA));
+        resultsRow.appendChild(renderTeamCard("Team B", teamB, scoreB));
+        
+      } else {
+        // Normal individual rendering
+        players.forEach((p) => {
+          const card = document.createElement("div");
+          const isWinner = p.id === winnerId;
+          card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
 
-        card.innerHTML = `
-          <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
-          <div class="result-player-name">${p.name}</div>
-          <div class="result-trophies-container">
-            ${trophiesHtml}
-          </div>
-        `;
-        resultsRow.appendChild(card);
-      });
+          let trophiesHtml = "";
+          const trophiesCount = p.trophies || 0;
+          for (let i = 1; i <= 8; i++) {
+            if (i < trophiesCount) {
+              trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+            } else if (i === trophiesCount && isWinner) {
+              // Animate new trophy
+              trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+            } else {
+              trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+            }
+          }
+
+          card.innerHTML = `
+            <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
+            <div class="result-player-name">${p.name}</div>
+            <div class="result-trophies-container">
+              ${trophiesHtml}
+            </div>
+          `;
+          resultsRow.appendChild(card);
+        });
+      }
     }
 
     // Start transition countdown
@@ -4974,7 +5060,12 @@ function initIntroSequence() {
   // Hook up the Play Button click handler
   if (titlePlayBtn) {
     titlePlayBtn.addEventListener("click", () => {
-      checkAuthSession();
+      const startModeSelectionDialog = document.getElementById("startModeSelectionDialog");
+      if (startModeSelectionDialog) {
+        startModeSelectionDialog.classList.remove("hidden");
+      } else {
+        checkAuthSession();
+      }
     });
   }
 }
@@ -5707,3 +5798,73 @@ document.getElementById("btnLogoutAccount")?.addEventListener("click", async () 
   myFriendshipMap = {};
   pendingRequests = [];
 }, { capture: false });
+
+// ----------------------------------------------------------------
+// START MODE SELECTION & LOCAL PLAY SETUP DIALOGS
+// ----------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+  const startModeSelectionDialog = document.getElementById("startModeSelectionDialog");
+  const localPlaySetupDialog = document.getElementById("localPlaySetupDialog");
+  const btnSelectOnline = document.getElementById("btnSelectOnline");
+  const btnSelectLocal = document.getElementById("btnSelectLocal");
+  const closeStartModeBtn = document.getElementById("closeStartModeBtn");
+  const closeLocalSetupBtn = document.getElementById("closeLocalSetupBtn");
+  const btnLocalSinglePlayer = document.getElementById("btnLocalSinglePlayer");
+  const btnLocalMultiplayer = document.getElementById("btnLocalMultiplayer");
+  const localNicknameInput = document.getElementById("localNicknameInput");
+
+  // Close Mode Selection Dialog
+  closeStartModeBtn?.addEventListener("click", () => {
+    startModeSelectionDialog?.classList.add("hidden");
+  });
+
+  // Online Play Selected
+  btnSelectOnline?.addEventListener("click", () => {
+    startModeSelectionDialog?.classList.add("hidden");
+    checkAuthSession();
+  });
+
+  // Local Play Selected
+  btnSelectLocal?.addEventListener("click", () => {
+    startModeSelectionDialog?.classList.add("hidden");
+    if (localPlaySetupDialog) {
+      if (localNicknameInput) {
+        localNicknameInput.value = localStorage.getItem("local_username") || "Friend";
+      }
+      localPlaySetupDialog.classList.remove("hidden");
+    }
+  });
+
+  // Close Local Play Setup Dialog (go back to Mode Selection)
+  closeLocalSetupBtn?.addEventListener("click", () => {
+    localPlaySetupDialog?.classList.add("hidden");
+    startModeSelectionDialog?.classList.remove("hidden");
+  });
+
+  // Local Single Player (Offline Solo against bots, starts immediately)
+  btnLocalSinglePlayer?.addEventListener("click", () => {
+    const nickname = (localNicknameInput?.value.trim()) || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    localPlaySetupDialog?.classList.add("hidden");
+    startLocalGame();
+    tryPlayMusic();
+  });
+
+  // Local Multiplayer (LAN mode, connects to server and goes to menu lobby)
+  btnLocalMultiplayer?.addEventListener("click", () => {
+    const nickname = (localNicknameInput?.value.trim()) || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    localPlaySetupDialog?.classList.add("hidden");
+    switchScreen(menuScreen);
+    connectWebSocket(true);
+    tryPlayMusic();
+  });
+});

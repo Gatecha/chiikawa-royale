@@ -2573,6 +2573,10 @@ function drawBlast(blast) {
 }
 
 function drawPlayer(player) {
+  // Hide spectators in team mode
+  if (currentRoomMode === "team" && !currentActiveRoundPlayers.includes(player.id)) {
+    return;
+  }
   const style = characterStyle[player.kind];
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -4405,34 +4409,78 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
     const resultsRow = document.getElementById("resultsPlayersRow");
     if (resultsRow) {
       resultsRow.innerHTML = "";
-
-      players.forEach((p) => {
-        const card = document.createElement("div");
-        const isWinner = p.id === winnerId;
-        card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
-
-        let trophiesHtml = "";
-        const trophiesCount = p.trophies || 0;
-        for (let i = 1; i <= 8; i++) {
-          if (i < trophiesCount) {
-            trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
-          } else if (i === trophiesCount && isWinner) {
-            // Animate new trophy
-            trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
-          } else {
-            trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+      
+      if (currentRoomMode === "team") {
+        // Render 2 big team cards instead of individual player cards
+        const teamA = currentTeams?.A || [];
+        const teamB = currentTeams?.B || [];
+        const scoreA = currentTeamTrophies?.A || 0;
+        const scoreB = currentTeamTrophies?.B || 0;
+        
+        const renderTeamCard = (teamTag, members, score) => {
+          const card = document.createElement("div");
+          const isWinner = score >= 8 || (winnerId && members.includes(winnerId));
+          card.className = `result-team-card ${teamTag.toLowerCase()}-theme ${isWinner ? 'winner' : ''}`;
+          
+          let trophiesHtml = "";
+          for (let i = 1; i <= 8; i++) {
+            if (i < score) {
+              trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+            } else if (i === score && isWinner) {
+              trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+            } else {
+              trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+            }
           }
-        }
+          
+          const memberNames = members.map(id => {
+            const p = players.find(player => player.id === id);
+            return p ? escapeHTML(p.name) : "Unknown";
+          }).join(", ");
+          
+          card.innerHTML = `
+            <div class="result-team-name">${teamTag}</div>
+            <div class="result-team-members">${memberNames}</div>
+            <div class="result-trophies-container">
+              ${trophiesHtml}
+            </div>
+          `;
+          return card;
+        };
+        
+        resultsRow.appendChild(renderTeamCard("Team A", teamA, scoreA));
+        resultsRow.appendChild(renderTeamCard("Team B", teamB, scoreB));
+        
+      } else {
+        // Normal individual rendering
+        players.forEach((p) => {
+          const card = document.createElement("div");
+          const isWinner = p.id === winnerId;
+          card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
 
-        card.innerHTML = `
-          <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
-          <div class="result-player-name">${p.name}</div>
-          <div class="result-trophies-container">
-            ${trophiesHtml}
-          </div>
-        `;
-        resultsRow.appendChild(card);
-      });
+          let trophiesHtml = "";
+          const trophiesCount = p.trophies || 0;
+          for (let i = 1; i <= 8; i++) {
+            if (i < trophiesCount) {
+              trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+            } else if (i === trophiesCount && isWinner) {
+              // Animate new trophy
+              trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+            } else {
+              trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+            }
+          }
+
+          card.innerHTML = `
+            <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
+            <div class="result-player-name">${p.name}</div>
+            <div class="result-trophies-container">
+              ${trophiesHtml}
+            </div>
+          `;
+          resultsRow.appendChild(card);
+        });
+      }
     }
 
     // Start transition countdown

@@ -19,7 +19,7 @@ const ROWS = 13;
 const ROUND_SECONDS = 150;
 
 // Tournament config
-const TROPHIES_TO_WIN = 7;        // Team trophies needed to win (or trigger final vote)
+const TROPHIES_TO_WIN = 8;        // Team trophies needed to win (or trigger final vote)
 const STANDARD_MAX_PLAYERS = 4;   // Quick match / standard mode cap
 const TEAM_MAX_PLAYERS = 6;        // Team mode cap (3v3)
 const MATCHMAKING_FILL_ALONE = 40; // Seconds alone before CPU fill
