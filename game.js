@@ -241,6 +241,10 @@ function applyGraphicsSettings() {
 
 applyGraphicsSettings();
 
+if (window.location.protocol === "file:" && /Android/i.test(navigator.userAgent)) {
+  document.body.classList.add("android-apk");
+}
+
 const starts = [
   { x: 1, y: 1 },
   { x: COLS - 2, y: ROWS - 2 },
@@ -366,6 +370,8 @@ let readyState = false;
 let localMode = false;
 let serverMode = "online"; // "online" or "local"
 let pendingLocalConnect = false;
+let lanRooms = [];
+let lanRoomRefreshTimer = null;
 let localBombId = 0;
 let localCouchMode = false;
 let localFourPlayerLobbyActive = false;
@@ -602,6 +608,7 @@ btnLocalServer?.addEventListener("click", () => {
 // Play Offline / Bypass Login Screen Button
 btnPlayOffline?.addEventListener("click", () => {
   const localPlaySetupDialog = document.getElementById("localPlaySetupDialog");
+  resetLobbyMapSelectToNormal();
   if (localPlaySetupDialog) {
     const localNicknameInput = document.getElementById("localNicknameInput");
     if (localNicknameInput) {
@@ -773,6 +780,31 @@ wardrobeTabs.forEach((tab) => {
 // if you choose to host the frontend separately on Vercel. Leave it as null if hosting together on Render.
 const BACKEND_WS_URL = null;
 
+function isLanLikeHostname(hostname = window.location.hostname) {
+  return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|::1$)/i.test(hostname || "");
+}
+
+if (window.location.protocol === "http:" && isLanLikeHostname()) {
+  serverMode = "local";
+}
+
+function normalizeWebSocketTarget(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return "";
+  let cleaned = raw.replace(/^https?:\/\//i, "").replace(/^wss?:\/\//i, "").replace(/\/.*$/, "");
+  if (!cleaned.includes(":")) cleaned += ":3000";
+  return cleaned;
+}
+
+function promptForLocalServerAddress() {
+  const saved = localStorage.getItem("local_server_ip") || "";
+  const defaultHost = saved || "192.168.1.50:3000";
+  const targetIP = prompt("Enter the LAN server IP on your Wi-Fi (example: 192.168.1.50:3000):", defaultHost);
+  const normalized = normalizeWebSocketTarget(targetIP);
+  if (normalized) localStorage.setItem("local_server_ip", normalized);
+  return normalized;
+}
+
 function connectWebSocket(forceReconnect = false) {
   if (socket) {
     if (forceReconnect) {
@@ -786,9 +818,8 @@ function connectWebSocket(forceReconnect = false) {
   let wsUrl;
   if (serverMode === "local") {
     if (window.location.protocol === "file:") {
-      const targetIP = prompt("Enter Local Server IP Address (e.g. 192.168.1.50:3000):", localStorage.getItem("local_server_ip") || "192.168.1.50:3000");
+      const targetIP = promptForLocalServerAddress();
       if (targetIP) {
-        localStorage.setItem("local_server_ip", targetIP);
         wsUrl = `ws://${targetIP}`;
       } else {
         return;
@@ -813,13 +844,16 @@ function connectWebSocket(forceReconnect = false) {
     socket.onopen = () => {
       console.log("WebSocket connected successfully.");
       if (connectionStatusIndicator) {
-        connectionStatusIndicator.textContent = "Online";
+        connectionStatusIndicator.textContent = serverMode === "local" ? "LAN" : "Online";
         connectionStatusIndicator.className = "connection-status online";
+      }
+      if (serverMode === "local") {
+        startLanRoomRefresh();
       }
       const savedRoomCode = localStorage.getItem("chiikawaRoomCode");
       const savedPlayerId = localStorage.getItem("chiikawaPlayerId");
       const savedToken = localStorage.getItem("chiikawaReconnectToken");
-      if (savedRoomCode && savedPlayerId && savedToken) {
+      if (serverMode !== "local" && savedRoomCode && savedPlayerId && savedToken) {
         sendServerMessage("reconnect_player", {
           roomCode: savedRoomCode,
           playerId: savedPlayerId,
@@ -840,6 +874,7 @@ function connectWebSocket(forceReconnect = false) {
 
     socket.onclose = (event) => {
       console.log("WebSocket disconnected.");
+      stopLanRoomRefresh();
       if (connectionStatusIndicator) {
         connectionStatusIndicator.textContent = "Offline";
         connectionStatusIndicator.className = "connection-status offline";
@@ -848,7 +883,10 @@ function connectWebSocket(forceReconnect = false) {
 
     socket.onerror = (err) => {
       console.error("WebSocket error:", err);
-      reportAppError("Connection Error", "WebSocket connection failed. The online server may be offline or blocked.", { source: "websocket" });
+      const msg = serverMode === "local"
+        ? "LAN connection failed. Make sure the local server is running, both devices are on the same Wi-Fi, and the IP/port is correct."
+        : "WebSocket connection failed. The online server may be offline or blocked.";
+      reportAppError("Connection Error", msg, { source: "websocket" });
     };
   } catch (e) {
     console.error("Failed to establish WebSocket connection:", e);
@@ -864,6 +902,25 @@ function connectWebSocket(forceReconnect = false) {
 function sendServerMessage(type, data = {}) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type, data }));
+  }
+}
+
+function requestLanRooms() {
+  if (serverMode === "local" && socket && socket.readyState === WebSocket.OPEN) {
+    sendServerMessage("list_rooms");
+  }
+}
+
+function startLanRoomRefresh() {
+  requestLanRooms();
+  if (lanRoomRefreshTimer) clearInterval(lanRoomRefreshTimer);
+  lanRoomRefreshTimer = setInterval(requestLanRooms, 2500);
+}
+
+function stopLanRoomRefresh() {
+  if (lanRoomRefreshTimer) {
+    clearInterval(lanRoomRefreshTimer);
+    lanRoomRefreshTimer = null;
   }
 }
 
@@ -890,6 +947,11 @@ function handleServerMessage(msg) {
       reconnectToken = null;
       break;
 
+    case "lan_rooms_updated":
+      lanRooms = data.rooms || [];
+      if (serverMode === "local") renderLanRoomsTab();
+      break;
+
     case "room_joined":
       roomCode = data.roomCode;
       localPlayerId = data.playerId;
@@ -914,6 +976,9 @@ function handleServerMessage(msg) {
       if (gameRoomCode) gameRoomCode.textContent = roomCode;
       if (chatMessages) chatMessages.innerHTML = ""; // Clear chat
       addChatMessage("System", `Joined Room ${roomCode}!`, true);
+      if (serverMode === "local") {
+        showToastMsg(`LAN room <strong>${escapeHTML(roomCode)}</strong> ready. Same-WiFi players can join with this code.`);
+      }
       
       readyState = false;
       if (readyBtn) {
@@ -1880,7 +1945,7 @@ function buildLocalMap(mapType = "classic") {
         if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
         if (x === 2 || y === 2 || x === COLS - 3 || y === ROWS - 3) return "crate";
         if (x % 2 === 0 && y % 2 === 0) return "wall";
-        return Math.random() < 0.68 ? "crate" : "grass";
+        return "grass";
       } else if (mapType === "colosseum") {
         // Open center, only corner pillars
         if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
@@ -1916,7 +1981,7 @@ function getStartsForMap(mapType = currentMapType) {
 }
 
 function getPowerZonePickupType(x, y) {
-  const types = ["bomb", "flame", "speed", "full_fire", "punch", "slide"];
+  const types = ["bomb", "flame", "bomb", "speed", "bomb", "flame", "speed", "bomb"];
   let perimeterIndex = 0;
   if (y === 1) perimeterIndex = x - 1;
   else if (x === COLS - 2) perimeterIndex = (COLS - 2) + (y - 2);
@@ -1927,6 +1992,7 @@ function getPowerZonePickupType(x, y) {
 
 function seedLocalPowerZonePickups() {
   if (currentMapType !== "powerzone") return;
+  pickups = pickups.filter((pickup) => !isPowerZoneLaneTile(pickup.x, pickup.y));
   for (let x = 1; x <= COLS - 2; x += 1) {
     pickups.push({ x, y: 1, type: getPowerZonePickupType(x, 1) });
     pickups.push({ x, y: ROWS - 2, type: getPowerZonePickupType(x, ROWS - 2) });
@@ -1936,6 +2002,10 @@ function seedLocalPowerZonePickups() {
     pickups.push({ x: 1, y, type: getPowerZonePickupType(1, y) });
     pickups.push({ x: COLS - 2, y, type: getPowerZonePickupType(COLS - 2, y) });
   }
+}
+
+function isPowerZoneLaneTile(x, y) {
+  return x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2;
 }
 
 function updateLobbyUI() {
@@ -3249,7 +3319,7 @@ function drawMiniMapPreview(canvas, mapType) {
           const isPowerLane = x === 1 || y === 1 || x === cols - 2 || y === rows - 2;
           const isCrateRing = x === 2 || y === 2 || x === cols - 3 || y === rows - 3;
           if (!isPowerLane) {
-            if (isCrateRing || (x * y + x + y) % 3 !== 0) isCrate = true;
+            if (isCrateRing) isCrate = true;
           } else {
             // Draw mini power-ups around the full perimeter power lane.
             let itemColor = null;
@@ -3260,10 +3330,10 @@ function drawMiniMapPreview(canvas, mapType) {
 
             ctx.fillStyle = itemColor;
             ctx.beginPath();
-            ctx.arc(px + tw / 2, py + th / 2, Math.min(tw, th) / 3, 0, Math.PI * 2);
+            ctx.arc(px + tw / 2, py + th / 2, Math.min(tw, th) / 2.45, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = "#221f25";
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.5;
             ctx.stroke();
           }
         } else {
@@ -3335,8 +3405,18 @@ function drawTile(x, y, type) {
   } else if (currentMapType === "powerzone") {
     // Cyan / Blue Checkered Floor
     const isLight = (x + y) % 2 === 0;
-    ctx.fillStyle = isLight ? "#80e1fe" : "#00bfff";
+    const isPowerLane = isPowerZoneLaneTile(x, y);
+    ctx.fillStyle = isPowerLane ? (isLight ? "#b8f3ff" : "#45dfff") : (isLight ? "#80e1fe" : "#00bfff");
     ctx.fillRect(px, py, TILE, TILE);
+    if (isPowerLane) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.24)";
+      roundedRect(px + 4, py + 4, TILE - 8, TILE - 8, 8, true, false);
+      ctx.strokeStyle = "rgba(255, 216, 111, 0.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 5, py + 5, TILE - 10, TILE - 10);
+      ctx.restore();
+    }
     
     // Draw grid lines
     ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
@@ -3539,28 +3619,65 @@ function drawTile(x, y, type) {
 
 function drawPickup(pickup) {
   const c = centerOf(pickup.x, pickup.y);
+  const isPowerZonePickup = currentMapType === "powerzone" && isPowerZoneLaneTile(pickup.x, pickup.y);
+  const outerRadius = isPowerZonePickup ? 22 : 17;
+  const innerRadius = isPowerZonePickup ? 14 : 11;
   ctx.save();
   ctx.translate(c.x, c.y);
+  if (isPowerZonePickup) {
+    ctx.save();
+    ctx.fillStyle = "rgba(180, 255, 190, 0.55)";
+    roundedRect(-23, -23, 46, 46, 4, true, false);
+    ctx.shadowColor = "#ffffff";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.beginPath();
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
   ctx.fillStyle = pickup.type === "flame" ? "#ff7c55" : pickup.type === "bomb" ? "#7466e8" : pickup.type === "full_fire" ? "#ffe140" : pickup.type === "punch" ? "#ff69b4" : pickup.type === "slide" ? "#ffcf33" : "#35c77b";
   ctx.strokeStyle = "#221f25";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = isPowerZonePickup ? 4 : 3;
   ctx.beginPath();
-  for (let i = 0; i < 8; i += 1) {
-    const a = (Math.PI * 2 * i) / 8;
-    const r = i % 2 === 0 ? 17 : 11;
-    const x = Math.cos(a) * r;
-    const y = Math.sin(a) * r;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  if (isPowerZonePickup) {
+    ctx.moveTo(0, -outerRadius);
+    ctx.lineTo(outerRadius, 0);
+    ctx.lineTo(0, outerRadius);
+    ctx.lineTo(-outerRadius, 0);
+  } else {
+    for (let i = 0; i < 8; i += 1) {
+      const a = (Math.PI * 2 * i) / 8;
+      const r = i % 2 === 0 ? outerRadius : innerRadius;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
   }
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+  if (isPowerZonePickup) {
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -outerRadius + 7);
+    ctx.lineTo(outerRadius - 7, 0);
+    ctx.lineTo(0, outerRadius - 7);
+    ctx.lineTo(-outerRadius + 7, 0);
+    ctx.closePath();
+    ctx.stroke();
+  }
   ctx.fillStyle = "#fff";
-  ctx.font = "900 18px Fredoka";
+  ctx.strokeStyle = "#221f25";
+  ctx.lineWidth = isPowerZonePickup ? 4 : 3;
+  ctx.font = `900 ${isPowerZonePickup ? 21 : 18}px Fredoka`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(pickup.type === "flame" ? "F" : pickup.type === "bomb" ? "B" : pickup.type === "full_fire" ? "M" : pickup.type === "punch" ? "P" : pickup.type === "slide" ? "S" : "+", 0, 1);
+  const label = pickup.type === "flame" ? "F" : pickup.type === "bomb" ? "B" : pickup.type === "full_fire" ? "M" : pickup.type === "punch" ? "P" : pickup.type === "slide" ? "S" : "+";
+  ctx.strokeText(label, 0, 1);
+  ctx.fillText(label, 0, 1);
   ctx.restore();
 }
 
@@ -4513,7 +4630,8 @@ leaveGameBtn?.addEventListener("click", () => {
   }
 
   if (socket) socket.close();
-  if (window.location.protocol === "http:" || window.location.protocol === "https:") connectWebSocket();
+  if (serverMode !== "local" && (window.location.protocol === "http:" || window.location.protocol === "https:")) connectWebSocket();
+  resetLobbyMapSelectToNormal();
   switchScreen(menuScreen);
 });
 
@@ -4549,6 +4667,7 @@ document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
     hostId = null;
     localMode = false;
     resetCouchControls();
+    resetLobbyMapSelectToNormal();
     switchScreen(menuScreen);
   } else {
     switchScreen(menuScreen);
@@ -4740,6 +4859,18 @@ if (nextCharBtn) {
 
 function openFriendsList(e) {
   if (e) e.stopPropagation();
+  if (serverMode === "local") {
+    if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
+      const name = usernameInput?.value.trim() || localStorage.getItem("local_username") || "Friend";
+      sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
+      showToastMsg("LAN room created. Share the room code with players on your Wi-Fi.");
+    } else if (roomCode) {
+      showToastMsg(`LAN invite: ask players on your Wi-Fi to join room <strong>${escapeHTML(roomCode)}</strong>.`);
+    } else {
+      showToastMsg("Connect to the LAN server first, then invite players by room code.");
+    }
+    return;
+  }
   // Auto-create room if not in one yet
   if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
     const name = usernameInput?.value.trim() || "Friend";
@@ -5887,6 +6018,11 @@ function finishLocalMapVote() {
   }, 650);
 }
 
+function resetLobbyMapSelectToNormal() {
+  const mapSelect = document.getElementById("localMapSelect");
+  if (mapSelect) mapSelect.value = "classic";
+}
+
 function showTournamentResults(playersList, winnerId, tournamentFinished) {
   const overlay = document.getElementById("tournamentOverlay");
   const roundCard = document.getElementById("roundResultsCard");
@@ -6661,6 +6797,11 @@ function initMobileFullscreenPrompt() {
 async function checkInitialSession() {
   initMobileFullscreenPrompt();
 
+  if (serverMode === "local") {
+    initIntroSequence();
+    return;
+  }
+
   if (pendingOAuthError) {
     if (isOAuthPopup) {
       try {
@@ -6764,7 +6905,13 @@ function openSocialModal() {
   const modal = document.getElementById("socialModal");
   if (modal) {
     modal.classList.remove("hidden");
-    refreshSocialData();
+    if (serverMode === "local") {
+      document.querySelector('.social-tab-btn[data-social-tab="online"]')?.click();
+      requestLanRooms();
+      renderLanRoomsTab();
+    } else {
+      refreshSocialData();
+    }
   }
 }
 
@@ -7103,6 +7250,10 @@ function buildSocialUserItem(userId, username, character, statusInfo, isFriend, 
 }
 
 function renderOnlineUsersTab() {
+  if (serverMode === "local") {
+    renderLanRoomsTab();
+    return;
+  }
   const list = document.getElementById("onlineUsersList");
   if (!list) return;
   const entries = Object.entries(onlinePresenceMap).filter(([uid]) => uid !== currentSocialUserId);
@@ -7147,6 +7298,45 @@ function renderFriendsTab() {
       </div>
     `;
     li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(friendId, info.username));
+    list.appendChild(li);
+  });
+}
+
+function renderLanRoomsTab() {
+  const list = document.getElementById("onlineUsersList");
+  const label = document.getElementById("onlineCountLabel");
+  if (!list) return;
+  if (label) label.textContent = `${lanRooms.length} LAN room${lanRooms.length === 1 ? "" : "s"} found`;
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    list.innerHTML = `<li class="social-empty-state">Connect to your LAN server first.</li>`;
+    return;
+  }
+  if (!lanRooms.length) {
+    list.innerHTML = `<li class="social-empty-state">No LAN rooms yet. Create a room, then friends on the same Wi-Fi can join it.</li>`;
+    return;
+  }
+  list.innerHTML = "";
+  lanRooms.forEach((room) => {
+    const isCurrentRoom = room.roomCode === roomCode;
+    const li = document.createElement("li");
+    li.className = "social-user-item";
+    const playerNames = (room.players || []).map((p) => p.ai ? "CPU" : escapeHTML(p.name)).join(", ");
+    li.innerHTML = `
+      <img class="social-user-avatar" src="assets/cards/${room.players?.[0]?.kind || "chiikawa"}.png" alt="">
+      <div class="social-user-info">
+        <div class="social-user-name">Room ${escapeHTML(room.roomCode)} ${isCurrentRoom ? "(your room)" : ""}</div>
+        <div class="social-user-status"><span class="status-dot online"></span> ${escapeHTML(room.mode || "standard").toUpperCase()} - ${room.playerCount}/${room.maxPlayers} - ${escapeHTML(room.state)}</div>
+        <div class="social-user-status">${playerNames || "Waiting for players"}</div>
+      </div>
+      <div class="social-action-btns">
+        ${isCurrentRoom ? `<span class="btn-friend-already">Joined</span>` : `<button class="btn-invite-to-room" data-room="${escapeHTML(room.roomCode)}">Join</button>`}
+      </div>
+    `;
+    li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => {
+      const name = usernameInput?.value.trim() || localStorage.getItem("local_username") || "Friend";
+      sendServerMessage("join_room", { name, kind: selectedCharacter, roomCode: room.roomCode });
+      closeSocialModal();
+    });
     list.appendChild(li);
   });
 }
@@ -7393,6 +7583,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Local Play Selected
   btnSelectLocal?.addEventListener("click", () => {
     startModeSelectionDialog?.classList.add("hidden");
+    resetLobbyMapSelectToNormal();
     if (localPlaySetupDialog) {
       if (localNicknameInput) {
         localNicknameInput.value = localStorage.getItem("local_username") || "Friend";

@@ -137,6 +137,11 @@ function handleMessage(ws, msg) {
       break;
     }
 
+    case "list_rooms": {
+      sendLanRoomList(ws);
+      break;
+    }
+
     case "create_room": {
       leaveRoom(ws);
       const roomCode = generateRoomCode();
@@ -314,7 +319,7 @@ function handleMessage(ws, msg) {
       broadcastLobbyUpdate(room);
       if (room.players.length >= maxPlayers) {
         setTimeout(() => {
-          if (room.state === "lobby") startRound(room, true);
+          if (room.state === "lobby") startMapVoting(room);
         }, 1200);
       }
       break;
@@ -349,7 +354,7 @@ function handleMessage(ws, msg) {
       if (room.matchmakingTimer) { clearTimeout(room.matchmakingTimer); room.matchmakingTimer = null; }
       if (room.matchmakingCountdownInterval) { clearInterval(room.matchmakingCountdownInterval); room.matchmakingCountdownInterval = null; }
 
-      startRound(room, true);
+      startMapVoting(room);
       break;
     }
 
@@ -788,6 +793,7 @@ function destroyRoom(room) {
   Object.values(room.disconnectTimers || {}).forEach((timer) => { if (timer) clearTimeout(timer); });
   rooms.delete(room.code);
   console.log(`Room ${room.code} destroyed`);
+  broadcastLanRoomList();
 }
 
 // ----------------------------------------------------------------
@@ -809,6 +815,46 @@ function broadcastLobbyUpdate(room) {
       isChallenge: room.isChallenge || false,
       maxPlayers: getMatchMaxPlayers(room.mode, room.isChallenge),
     },
+  });
+  broadcastLanRoomList();
+}
+
+function getLanRoomSummaries() {
+  return Array.from(rooms.values())
+    .filter((room) => room.state === "lobby" || room.state === "map_voting")
+    .map((room) => ({
+      roomCode: room.code,
+      hostId: room.hostId,
+      hostName: room.players.find((p) => p.id === room.hostId)?.name || "Host",
+      players: room.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        kind: p.kind,
+        ai: !!p.ai,
+      })),
+      playerCount: room.players.length,
+      maxPlayers: getMatchMaxPlayers(room.mode, room.isChallenge),
+      mode: room.mode,
+      state: room.state,
+      isPrivate: room.isPrivate,
+    }));
+}
+
+function sendLanRoomList(ws) {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    type: "lan_rooms_updated",
+    data: { rooms: getLanRoomSummaries() },
+  }));
+}
+
+function broadcastLanRoomList() {
+  const payload = JSON.stringify({
+    type: "lan_rooms_updated",
+    data: { rooms: getLanRoomSummaries() },
+  });
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) client.send(payload);
   });
 }
 
@@ -2133,7 +2179,7 @@ function getStartsForMap(mapType) {
 }
 
 function getPowerZonePickupType(x, y) {
-  const types = ["bomb", "flame", "speed", "full_fire", "punch", "slide"];
+  const types = ["bomb", "flame", "bomb", "speed", "bomb", "flame", "speed", "bomb"];
   let perimeterIndex = 0;
   if (y === 1) perimeterIndex = x - 1;
   else if (x === COLS - 2) perimeterIndex = (COLS - 2) + (y - 2);
@@ -2143,6 +2189,7 @@ function getPowerZonePickupType(x, y) {
 }
 
 function spawnPowerZonePickups(room) {
+  room.pickups = room.pickups.filter((pickup) => !isPowerZoneLaneTile(pickup.x, pickup.y));
   for (let x = 1; x <= COLS - 2; x++) {
     room.pickups.push({ x, y: 1, type: getPowerZonePickupType(x, 1) });
     room.pickups.push({ x, y: ROWS - 2, type: getPowerZonePickupType(x, ROWS - 2) });
@@ -2154,6 +2201,10 @@ function spawnPowerZonePickups(room) {
   }
 }
 
+function isPowerZoneLaneTile(x, y) {
+  return x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2;
+}
+
 function generateMap(mapType) {
   const nextMap = Array.from({ length: ROWS }, (_, y) =>
     Array.from({ length: COLS }, (_, x) => {
@@ -2163,7 +2214,7 @@ function generateMap(mapType) {
         if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
         if (x === 2 || y === 2 || x === COLS - 3 || y === ROWS - 3) return "crate";
         if (x % 2 === 0 && y % 2 === 0) return "wall";
-        return Math.random() < 0.68 ? "crate" : "grass";
+        return "grass";
       } else if (mapType === "colosseum") {
         if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
         return Math.random() < 0.5 ? "crate" : "grass";

@@ -20,6 +20,9 @@ class MainActivity : Activity() {
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+        settings.useWideViewPort = true
+        settings.loadWithOverviewMode = true
+        settings.textZoom = 88
         settings.allowFileAccess = true
         settings.allowContentAccess = true
         settings.databaseEnabled = true
@@ -46,6 +49,7 @@ class MainActivity : Activity() {
         }
 
         setContentView(webView)
+        webView.setInitialScale(88)
         webView.loadUrl("file:///android_asset/index.html")
     }
 
