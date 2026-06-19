@@ -326,6 +326,23 @@ let localMode = false;
 let serverMode = "online"; // "online" or "local"
 let pendingLocalConnect = false;
 let localBombId = 0;
+let localCouchMode = false;
+let couchSlots = [];
+let couchTouchKeys = new Set();
+let couchTouchPlayerId = null;
+const couchCharacters = ["chiikawa", "hachiware", "usagi", "momonga"];
+const couchControlSchemes = [
+  { id: "couch_p1", label: "P1", up: ["w"], down: ["s"], left: ["a"], right: ["d"], bomb: [" "], punch: ["z"] },
+  { id: "couch_p2", label: "P2", up: ["ArrowUp"], down: ["ArrowDown"], left: ["ArrowLeft"], right: ["ArrowRight"], bomb: ["enter"], punch: ["shift"] },
+  { id: "couch_p3", label: "P3", up: ["i"], down: ["k"], left: ["j"], right: ["l"], bomb: ["o"], punch: ["p"] },
+  { id: "couch_p4", label: "P4", up: ["t"], down: ["g"], left: ["f"], right: ["h"], bomb: ["y"], punch: ["u"] },
+];
+const singlePlayerControlScheme = {
+  up: ["w", "ArrowUp"],
+  down: ["s", "ArrowDown"],
+  left: ["a", "ArrowLeft"],
+  right: ["d", "ArrowRight"],
+};
 
 // Tournament Overlay & Confetti Variables
 let roundCountdownInterval = null;
@@ -1206,10 +1223,16 @@ function switchScreen(targetScreen) {
     if (s) s.classList.remove("active");
   });
   if (targetScreen) targetScreen.classList.add("active");
+  if (targetScreen !== gameScreen) {
+    document.getElementById("couchControlPicker")?.classList.add("hidden");
+  }
 }
 
 function startLocalGame() {
   localMode = true;
+  localCouchMode = false;
+  couchTouchKeys.clear();
+  couchTouchPlayerId = null;
   roomCode = "LOCAL";
   localPlayerId = "local_player";
   hostId = localPlayerId;
@@ -1245,7 +1268,7 @@ function startLocalGame() {
   localMatchRewarded = false;
   gameMessage = "";
   timerEl.textContent = formatTime(roundTime);
-  stateEl.textContent = "Battle!";
+  stateEl.textContent = localCouchMode ? "4 Player Battle!" : "Battle!";
   if (gameRoomCode) gameRoomCode.textContent = roomCode;
   updateHudSidebar();
   switchScreen(gameScreen);
@@ -1284,6 +1307,140 @@ function makeLocalPlayer(id, name, kind, spawn, ai) {
     moveFrom: null,
     moveDir: null,
   };
+}
+
+function openLocalFourPlayerLobby() {
+  const nickname = localStorage.getItem("local_username") || usernameInput?.value.trim() || "Friend";
+  couchSlots = [
+    { human: true, name: nickname || "P1", kind: selectedCharacter, playerId: "couch_p1" },
+    null,
+    null,
+    null,
+  ];
+  renderLocalFourPlayerLobby();
+  document.getElementById("localFourPlayerLobbyDialog")?.classList.remove("hidden");
+}
+
+function renderLocalFourPlayerLobby() {
+  const grid = document.getElementById("fourPlayerCards");
+  if (!grid) return;
+  grid.innerHTML = "";
+  for (let i = 0; i < 4; i += 1) {
+    const slot = couchSlots[i];
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `four-player-card ${slot ? "added" : ""}`;
+    if (slot) {
+      const style = characterStyle[slot.kind] || characterStyle.chiikawa;
+      card.innerHTML = `
+        <img src="assets/cards/${slot.kind}.png" alt="${escapeHTML(style.label)}" />
+        <strong>P${i + 1} ${escapeHTML(style.label)}</strong>
+        <span>Tap to change / hold remove</span>
+      `;
+      card.addEventListener("click", () => {
+        const currentIndex = couchCharacters.indexOf(slot.kind);
+        slot.kind = couchCharacters[(currentIndex + 1) % couchCharacters.length];
+        renderLocalFourPlayerLobby();
+      });
+      card.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        if (i > 0) couchSlots[i] = null;
+        renderLocalFourPlayerLobby();
+      });
+    } else {
+      card.innerHTML = `
+        <div class="slot-plus">+</div>
+        <strong>P${i + 1}</strong>
+        <span>Add player</span>
+      `;
+      card.addEventListener("click", () => {
+        const kind = couchCharacters[i % couchCharacters.length];
+        couchSlots[i] = { human: true, name: `P${i + 1}`, kind, playerId: `couch_p${i + 1}` };
+        renderLocalFourPlayerLobby();
+      });
+    }
+    grid.appendChild(card);
+  }
+}
+
+function startLocalFourPlayerGame() {
+  localMode = true;
+  localCouchMode = true;
+  roomCode = "4P";
+  localPlayerId = "couch_p1";
+  hostId = localPlayerId;
+  localBombId = 0;
+  couchTouchKeys.clear();
+  couchTouchPlayerId = null;
+
+  currentMapType = document.getElementById("localMapSelect")?.value || "classic";
+  map = buildLocalMap(currentMapType);
+
+  const usedKinds = [];
+  players = Array.from({ length: 4 }, (_, index) => {
+    const slot = couchSlots[index];
+    const fallbackKind = couchCharacters.find((kind) => !usedKinds.includes(kind)) || couchCharacters[index % couchCharacters.length];
+    const kind = slot?.kind || fallbackKind;
+    usedKinds.push(kind);
+    let player;
+    if (slot?.human) {
+      player = makeLocalPlayer(`couch_p${index + 1}`, slot.name || `P${index + 1}`, kind, starts[index], false);
+    } else {
+      player = makeLocalPlayer(`couch_cpu_${index + 1}`, `${characterStyle[kind].label} CPU`, kind, starts[index], true);
+    }
+    player.couchSlotIndex = index;
+    return player;
+  });
+
+  players.forEach((p) => {
+    p.trophies = 0;
+    p.hasPunch = false;
+    p.hasSlide = false;
+  });
+
+  const firstHuman = players.find((p) => !p.ai);
+  couchTouchPlayerId = firstHuman?.id || players[0]?.id || null;
+  localPlayerId = couchTouchPlayerId || "couch_p1";
+
+  bombs = [];
+  blasts = [];
+  pickups = [];
+  particles = [];
+  roundTime = 150;
+  running = true;
+  shakeTimer = 0;
+  zoneActive = false;
+  zoneLayer = 0;
+  zoneStepTimer = 0;
+  localMatchRewarded = false;
+  gameMessage = "";
+  timerEl.textContent = formatTime(roundTime);
+  stateEl.textContent = "4 Player Battle!";
+  if (gameRoomCode) gameRoomCode.textContent = roomCode;
+  updateHudSidebar();
+  updateCouchControlPicker();
+  document.getElementById("localFourPlayerLobbyDialog")?.classList.add("hidden");
+  switchScreen(gameScreen);
+}
+
+function updateCouchControlPicker() {
+  const picker = document.getElementById("couchControlPicker");
+  if (!picker) return;
+  const humans = localCouchMode ? players.filter((p) => !p.ai) : [];
+  picker.classList.toggle("hidden", humans.length === 0);
+  picker.innerHTML = "";
+  humans.forEach((player) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `couch-control-btn ${player.id === couchTouchPlayerId ? "active" : ""}`;
+    btn.textContent = `P${(player.couchSlotIndex ?? humans.indexOf(player)) + 1}`;
+    btn.addEventListener("click", () => {
+      couchTouchPlayerId = player.id;
+      localPlayerId = player.id;
+      updateCouchControlPicker();
+    });
+    picker.appendChild(btn);
+  });
 }
 
 function buildLocalMap(mapType = "classic") {
@@ -3016,6 +3173,58 @@ function drawCharacterCardPreviews() {
 // CLIENT LOOP & TICK ENGINE
 // ----------------------------------------------------------------
 
+function getDirectionFromKeys(sourceSet, scheme) {
+  let dx = 0;
+  let dy = 0;
+  if (scheme.left.some((key) => sourceSet.has(key))) {
+    dx = -1;
+  } else if (scheme.right.some((key) => sourceSet.has(key))) {
+    dx = 1;
+  } else if (scheme.up.some((key) => sourceSet.has(key))) {
+    dy = -1;
+  } else if (scheme.down.some((key) => sourceSet.has(key))) {
+    dy = 1;
+  }
+  return { dx, dy };
+}
+
+function getCouchPlayerDirection(player, index) {
+  const scheme = couchControlSchemes[index] || couchControlSchemes[0];
+  const keyboardDir = getDirectionFromKeys(keys, scheme);
+  if (keyboardDir.dx !== 0 || keyboardDir.dy !== 0) return keyboardDir;
+  if (player.id === couchTouchPlayerId) {
+    return getDirectionFromKeys(couchTouchKeys, couchControlSchemes[0]);
+  }
+  return { dx: 0, dy: 0 };
+}
+
+function updateControlledPlayer(player, dx, dy, dt) {
+  if (!player || !player.alive) return;
+  if (player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
+
+  moveActor(player, dx, dy, dt);
+
+  if (!player.lastSentMove) {
+    player.lastSentMove = { x: 0, y: 0, dx: 0, dy: 0 };
+  }
+  const lastMove = player.lastSentMove;
+  const hasChanged = dx !== lastMove.dx || dy !== lastMove.dy || Math.abs(player.x - lastMove.x) > 1 || Math.abs(player.y - lastMove.y) > 1;
+
+  if (hasChanged) {
+    if (localMode) {
+      localCheckPickup(player);
+    } else {
+      sendServerMessage("move", {
+        x: player.x,
+        y: player.y,
+        dx,
+        dy,
+      });
+    }
+    player.lastSentMove = { x: player.x, y: player.y, dx, dy };
+  }
+}
+
 function update(dt) {
   if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
 
@@ -3034,45 +3243,16 @@ function update(dt) {
 
     timerEl.textContent = formatTime(roundTime);
 
-    const localPlayer = players.find((p) => p.id === localPlayerId);
-    if (localPlayer && localPlayer.alive) {
-      if (localPlayer.invuln > 0) localPlayer.invuln = Math.max(0, localPlayer.invuln - dt);
-
-      let dx = 0;
-      let dy = 0;
-      
-      // Enforce straight movement: prevent diagonals by prioritizing key presses
-      if (keys.has("ArrowLeft") || keys.has("a")) {
-        dx = -1;
-      } else if (keys.has("ArrowRight") || keys.has("d")) {
-        dx = 1;
-      } else if (keys.has("ArrowUp") || keys.has("w")) {
-        dy = -1;
-      } else if (keys.has("ArrowDown") || keys.has("s")) {
-        dy = 1;
-      }
-
-      const moved = moveActor(localPlayer, dx, dy, dt);
-
-      if (!localPlayer.lastSentMove) {
-        localPlayer.lastSentMove = { x: 0, y: 0, dx: 0, dy: 0 };
-      }
-      const last = localPlayer.lastSentMove;
-      const hasChanged = (dx !== last.dx || dy !== last.dy || Math.abs(localPlayer.x - last.x) > 1 || Math.abs(localPlayer.y - last.y) > 1);
-
-      if (hasChanged) {
-        if (localMode) {
-          localCheckPickup(localPlayer);
-        } else {
-          sendServerMessage("move", {
-            x: localPlayer.x,
-            y: localPlayer.y,
-            dx: dx,
-            dy: dy,
-          });
-        }
-        localPlayer.lastSentMove = { x: localPlayer.x, y: localPlayer.y, dx: dx, dy: dy };
-      }
+    if (localMode && localCouchMode) {
+      players.forEach((player, index) => {
+        if (player.ai) return;
+        const dir = getCouchPlayerDirection(player, index);
+        updateControlledPlayer(player, dir.dx, dir.dy, dt);
+      });
+    } else {
+      const localPlayer = players.find((p) => p.id === localPlayerId);
+      const dir = getDirectionFromKeys(keys, singlePlayerControlScheme);
+      updateControlledPlayer(localPlayer, dir.dx, dir.dy, dt);
     }
 
     const isHost = localPlayerId === hostId;
@@ -3566,6 +3746,7 @@ leaveGameBtn?.addEventListener("click", () => {
 
   running = false;
   localMode = false;
+  resetCouchControls();
 
   // Hide results overlay and clean up victory video/confetti/countdown
   document.getElementById("tournamentOverlay").classList.add("hidden");
@@ -3615,6 +3796,7 @@ document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
     localPlayerId = null;
     hostId = null;
     localMode = false;
+    resetCouchControls();
     switchScreen(menuScreen);
   } else {
     switchScreen(menuScreen);
@@ -4231,6 +4413,9 @@ function setVsCardTheme(slotNum, charKind) {
 
 function startLocalGameWithMatchedBots() {
   localMode = true;
+  localCouchMode = false;
+  couchTouchKeys.clear();
+  couchTouchPlayerId = null;
   roomCode = "LOCAL";
   localPlayerId = "local_player";
   hostId = localPlayerId;
@@ -4308,10 +4493,47 @@ if (startMatchEarlyBtn) {
   });
 }
 
+function normalizeInputKey(event) {
+  if (!event || !event.key) return;
+  if (event.key.startsWith("Arrow")) return event.key;
+  return event.key.length === 1 ? event.key.toLowerCase() : event.key.toLowerCase();
+}
+
+function triggerPlayerBomb(player) {
+  if (!player || !player.alive) return;
+  if (localMode) localPlaceBomb(player);
+  else sendServerMessage("place_bomb");
+}
+
+function triggerPlayerPunch(player) {
+  if (!player || !player.alive) return;
+  if (localMode) {
+    triggerLocalPunch(player);
+  } else if (player.hasPunch) {
+    const dir = player.lastFacingDir || { x: 0, y: 1 };
+    sendServerMessage("punch_bomb", { faceX: Math.sign(dir.x), faceY: Math.sign(dir.y) });
+  }
+}
+
+function getTouchControlledPlayer() {
+  return players.find((p) => p.id === (couchTouchPlayerId || localPlayerId)) || players.find((p) => p.id === localPlayerId);
+}
+
+function getTouchKeySet() {
+  return localMode && localCouchMode ? couchTouchKeys : keys;
+}
+
+function resetCouchControls() {
+  localCouchMode = false;
+  couchTouchKeys.clear();
+  couchTouchPlayerId = null;
+  document.getElementById("couchControlPicker")?.classList.add("hidden");
+}
+
 // Keyboard event listeners
 window.addEventListener("keydown", (event) => {
-  if (!event || !event.key) return;
-  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  const key = normalizeInputKey(event);
+  if (!key) return;
   keys.add(key);
 
   if ([" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
@@ -4319,27 +4541,25 @@ window.addEventListener("keydown", (event) => {
   }
 
   if (running) {
-    const localPlayer = players.find((p) => p.id === localPlayerId);
-    if (localPlayer && localPlayer.alive) {
-      if (key === " " || key === "enter") {
-        if (localMode) localPlaceBomb(localPlayer);
-        else sendServerMessage("place_bomb");
-      }
-      if (key === "z" || key === "x" || key === "shift") {
-        if (localMode) {
-          triggerLocalPunch(localPlayer);
-        } else if (localPlayer.hasPunch) {
-          const dir = localPlayer.lastFacingDir || { x: 0, y: 1 };
-          sendServerMessage("punch_bomb", { faceX: Math.sign(dir.x), faceY: Math.sign(dir.y) });
-        }
-      }
+    if (localMode && localCouchMode) {
+      players.forEach((player, index) => {
+        if (player.ai) return;
+        const scheme = couchControlSchemes[index] || couchControlSchemes[0];
+        if (scheme.bomb.includes(key)) triggerPlayerBomb(player);
+        if (scheme.punch.includes(key)) triggerPlayerPunch(player);
+      });
+    } else {
+      const localPlayer = players.find((p) => p.id === localPlayerId);
+      if (key === " " || key === "enter") triggerPlayerBomb(localPlayer);
+      if (key === "z" || key === "x" || key === "shift") triggerPlayerPunch(localPlayer);
     }
   }
 });
 
 window.addEventListener("keyup", (event) => {
-  if (!event || !event.key) return;
-  keys.delete(event.key.length === 1 ? event.key.toLowerCase() : event.key);
+  const key = normalizeInputKey(event);
+  if (!key) return;
+  keys.delete(key);
 });
 
 // Mobile Touch Gamepad Event Listeners
@@ -4349,13 +4569,13 @@ function bindTouchGamepadBtn(elementId, keyToSimulate) {
 
   const handleStart = (e) => {
     e.preventDefault();
-    keys.add(keyToSimulate);
+    getTouchKeySet().add(keyToSimulate);
     btn.classList.add("pressed");
   };
 
   const handleEnd = (e) => {
     e.preventDefault();
-    keys.delete(keyToSimulate);
+    getTouchKeySet().delete(keyToSimulate);
     btn.classList.remove("pressed");
   };
 
@@ -4365,15 +4585,15 @@ function bindTouchGamepadBtn(elementId, keyToSimulate) {
 
   // Fallback for mouse testing
   btn.addEventListener("mousedown", (e) => {
-    keys.add(keyToSimulate);
+    getTouchKeySet().add(keyToSimulate);
     btn.classList.add("pressed");
   });
   btn.addEventListener("mouseup", (e) => {
-    keys.delete(keyToSimulate);
+    getTouchKeySet().delete(keyToSimulate);
     btn.classList.remove("pressed");
   });
   btn.addEventListener("mouseleave", (e) => {
-    keys.delete(keyToSimulate);
+    getTouchKeySet().delete(keyToSimulate);
     btn.classList.remove("pressed");
   });
 }
@@ -4390,11 +4610,8 @@ function initTouchControls() {
       e.preventDefault();
       btnBomb.classList.add("pressed");
       if (running) {
-        const localPlayer = players.find((p) => p.id === localPlayerId);
-        if (localPlayer && localPlayer.alive) {
-          if (localMode) localPlaceBomb(localPlayer);
-          else sendServerMessage("place_bomb");
-        }
+        const localPlayer = localMode && localCouchMode ? getTouchControlledPlayer() : players.find((p) => p.id === localPlayerId);
+        triggerPlayerBomb(localPlayer);
       }
     };
     const handleBombEnd = (e) => {
@@ -4414,15 +4631,8 @@ function initTouchControls() {
       e.preventDefault();
       btnPunch.classList.add("pressed");
       if (running) {
-        const localPlayer = players.find((p) => p.id === localPlayerId);
-        if (localPlayer && localPlayer.alive) {
-          if (localMode) {
-            triggerLocalPunch(localPlayer);
-          } else if (localPlayer.hasPunch) {
-            const dir = localPlayer.lastFacingDir || { x: 0, y: 1 };
-            sendServerMessage("punch_bomb", { faceX: Math.sign(dir.x), faceY: Math.sign(dir.y) });
-          }
-        }
+        const localPlayer = localMode && localCouchMode ? getTouchControlledPlayer() : players.find((p) => p.id === localPlayerId);
+        triggerPlayerPunch(localPlayer);
       }
     };
     const handlePunchEnd = (e) => {
@@ -4915,6 +5125,7 @@ function localStartNextRound() {
 
   // Clear any inputs pressed during overlays
   keys.clear();
+  couchTouchKeys.clear();
 
   bombs = [];
   blasts = [];
@@ -4932,6 +5143,7 @@ function localStartNextRound() {
   timerEl.textContent = formatTime(roundTime);
   stateEl.textContent = "Battle!";
   updateHudSidebar();
+  updateCouchControlPicker();
   switchScreen(gameScreen);
 }
 
@@ -6185,7 +6397,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeStartModeBtn = document.getElementById("closeStartModeBtn");
   const closeLocalSetupBtn = document.getElementById("closeLocalSetupBtn");
   const btnLocalSinglePlayer = document.getElementById("btnLocalSinglePlayer");
+  const btnLocalFourPlayers = document.getElementById("btnLocalFourPlayers");
   const btnLocalMultiplayer = document.getElementById("btnLocalMultiplayer");
+  const localFourPlayerLobbyDialog = document.getElementById("localFourPlayerLobbyDialog");
+  const closeFourPlayerLobbyBtn = document.getElementById("closeFourPlayerLobbyBtn");
+  const startFourPlayerMatchBtn = document.getElementById("startFourPlayerMatchBtn");
   const localNicknameInput = document.getElementById("localNicknameInput");
 
   // Close Mode Selection Dialog
@@ -6226,6 +6442,29 @@ document.addEventListener("DOMContentLoaded", () => {
     serverMode = "local";
     localPlaySetupDialog?.classList.add("hidden");
     startLocalGame();
+    tryPlayMusic();
+  });
+
+  // Local 4 Players (same screen couch battle with empty slots filled by bots)
+  btnLocalFourPlayers?.addEventListener("click", () => {
+    const nickname = (localNicknameInput?.value.trim()) || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    localPlaySetupDialog?.classList.add("hidden");
+    openLocalFourPlayerLobby();
+    tryPlayMusic();
+  });
+
+  closeFourPlayerLobbyBtn?.addEventListener("click", () => {
+    localFourPlayerLobbyDialog?.classList.add("hidden");
+    localPlaySetupDialog?.classList.remove("hidden");
+  });
+
+  startFourPlayerMatchBtn?.addEventListener("click", () => {
+    startLocalFourPlayerGame();
     tryPlayMusic();
   });
 

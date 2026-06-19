@@ -6557,3 +6557,124 @@ body.is-mobile .arcade-controller {
   line-height: 1.4;
   white-space: normal;
 }
+
+.local-four-card {
+  max-width: 760px !important;
+  text-align: center;
+}
+
+.four-player-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(118px, 1fr));
+  gap: 14px;
+  width: 100%;
+  margin: 18px 0;
+}
+
+.four-player-card {
+  min-height: 188px;
+  border: 3px solid #000;
+  border-radius: 10px;
+  background: #111114;
+  color: #fff;
+  box-shadow: 4px 4px 0 #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.four-player-card.added {
+  background: linear-gradient(180deg, #ffd84a 0%, #f4307a 100%);
+}
+
+.four-player-card .slot-plus {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 4px solid #000;
+  background: #fff;
+  color: #000;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.four-player-card img {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 0 rgba(0,0,0,0.35));
+}
+
+.four-player-card strong {
+  font-family: var(--font);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.four-player-card span {
+  font-family: var(--font-clean);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.four-player-start {
+  width: 100%;
+}
+
+.couch-control-picker {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 24;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.couch-control-btn {
+  min-width: 54px;
+  height: 42px;
+  border: 3px solid #000;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111114;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 3px 3px 0 #000;
+  cursor: pointer;
+}
+
+.couch-control-btn.active {
+  background: #ffd84a;
+  color: #000;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #000;
+}
+
+@media (max-width: 720px) {
+  .four-player-cards {
+    grid-template-columns: repeat(2, minmax(118px, 1fr));
+  }
+
+  .four-player-card {
+    min-height: 154px;
+  }
+
+  .couch-control-picker {
+    top: 10px;
+    right: 10px;
+    gap: 6px;
+  }
+
+  .couch-control-btn {
+    min-width: 48px;
+    height: 38px;
+    font-size: 12px;
+  }
+}
