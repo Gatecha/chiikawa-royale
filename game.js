@@ -1583,7 +1583,7 @@ function handleServerMessage(msg) {
         const vol = playerVolumeSettings[data.playerId] !== undefined ? playerVolumeSettings[data.playerId] : 1.0;
         const isMuted = !!playerMutedSettings[data.playerId];
         if (!isMuted) {
-          playAudioChunk(base64ToArrayBuffer(data.audio), vol);
+          playRawPCMAudio(data.audio, data.sampleRate || 16000, vol);
         }
 
         if (talkingTimeouts[data.playerId]) clearTimeout(talkingTimeouts[data.playerId]);
@@ -9813,7 +9813,9 @@ function hideBRMatchmaking() {
 // PEER VOICE CHAT SYSTEM & LOBBY MODE HANDLERS
 // ==========================================================================
 
-let mediaRecorder = null;
+let recordProcessor = null;
+let recordSource = null;
+let audioCtxRecord = null;
 let audioStream = null;
 let isMicActive = false;
 
@@ -9821,36 +9823,56 @@ async function startMicCapture() {
   try {
     audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
-    let mimeType = 'audio/webm;codecs=opus';
-    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/ogg;codecs=opus';
-    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/mp4';
-    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = ''; // fallback
-
-    mediaRecorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : undefined);
-    mediaRecorder.ondataavailable = async (e) => {
-      if (e.data && e.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64data = reader.result.split(',')[1];
-          sendServerMessage("voice_chat_audio", { audio: base64data });
-        };
-        reader.readAsDataURL(e.data);
-
-        // Local player is talking!
+    audioCtxRecord = new (window.AudioContext || window.webkitAudioContext)();
+    const sampleRate = audioCtxRecord.sampleRate;
+    recordSource = audioCtxRecord.createMediaStreamSource(audioStream);
+    
+    // Buffer size 8192 (~185ms at 44.1kHz, ~170ms at 48kHz)
+    recordProcessor = audioCtxRecord.createScriptProcessor(8192, 1, 1);
+    
+    recordProcessor.onaudioprocess = (e) => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const inputData = e.inputBuffer.getChannelData(0); // Float32Array
+        
+        // Convert Float32 to Int16 to save bandwidth
+        const buffer = new ArrayBuffer(inputData.length * 2);
+        const view = new DataView(buffer);
+        let sum = 0;
+        for (let i = 0; i < inputData.length; i++) {
+          let s = Math.max(-1, Math.min(1, inputData[i]));
+          sum += s * s;
+          view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+        
+        // Convert to base64 safely
+        const uint8 = new Uint8Array(buffer);
+        let binary = "";
+        const chunkSize = 8192;
+        for (let i = 0; i < uint8.length; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, uint8.subarray(i, i + chunkSize));
+        }
+        const base64data = btoa(binary);
+        sendServerMessage("voice_chat_audio", { audio: base64data, sampleRate: sampleRate });
+        
+        // Local player talking indicator based on volume threshold
         if (localPlayerId) {
-          if (talkingTimeouts[localPlayerId]) clearTimeout(talkingTimeouts[localPlayerId]);
-          talkingPlayers[localPlayerId] = true;
-          updateAllMicIndicators();
-          talkingTimeouts[localPlayerId] = setTimeout(() => {
-            delete talkingPlayers[localPlayerId];
+          let rms = Math.sqrt(sum / inputData.length);
+          if (rms > 0.015) { // Voice active threshold
+            if (talkingTimeouts[localPlayerId]) clearTimeout(talkingTimeouts[localPlayerId]);
+            talkingPlayers[localPlayerId] = true;
             updateAllMicIndicators();
-          }, 1000);
+            talkingTimeouts[localPlayerId] = setTimeout(() => {
+              delete talkingPlayers[localPlayerId];
+              updateAllMicIndicators();
+            }, 1000);
+          }
         }
       }
     };
     
-    // Send audio packet every 500ms
-    mediaRecorder.start(500);
+    recordSource.connect(recordProcessor);
+    recordProcessor.connect(audioCtxRecord.destination);
+    
     isMicActive = true;
     updateMicButtonUI();
     showToastMsg("Microphone ON 🎙️");
@@ -9863,13 +9885,24 @@ async function startMicCapture() {
 }
 
 function stopMicCapture() {
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    try { mediaRecorder.stop(); } catch(e) {}
+  if (recordProcessor) {
+    try { recordProcessor.disconnect(); } catch (e) {}
+    recordProcessor.onaudioprocess = null;
+  }
+  if (recordSource) {
+    try { recordSource.disconnect(); } catch (e) {}
+  }
+  if (audioCtxRecord) {
+    try { audioCtxRecord.close(); } catch (e) {}
   }
   if (audioStream) {
-    audioStream.getTracks().forEach(track => track.stop());
+    try {
+      audioStream.getTracks().forEach(track => track.stop());
+    } catch (e) {}
   }
-  mediaRecorder = null;
+  recordProcessor = null;
+  recordSource = null;
+  audioCtxRecord = null;
   audioStream = null;
   isMicActive = false;
   updateMicButtonUI();
@@ -9902,50 +9935,40 @@ function updateMicButtonUI() {
   }
 }
 
-function base64ToArrayBuffer(base64) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
 let audioCtxVoice = null;
-function playAudioChunk(arrayBuffer, volume = 1.0) {
+function playRawPCMAudio(base64Data, sampleRate = 44100, volume = 1.0) {
   try {
     if (!audioCtxVoice) {
       audioCtxVoice = new (window.AudioContext || window.webkitAudioContext)();
     }
-    audioCtxVoice.decodeAudioData(arrayBuffer, (audioBuffer) => {
-      const source = audioCtxVoice.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Create a gain node for volume control!
-      const gainNode = audioCtxVoice.createGain();
-      gainNode.gain.value = volume;
-
-      source.connect(gainNode);
-      gainNode.connect(audioCtxVoice.destination);
-      source.start();
-    }, (err) => {
-      fallbackPlayAudio(arrayBuffer, volume);
-    });
+    
+    // Decode base64 to array buffer of Int16
+    const binaryString = atob(base64Data);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const int16Array = new Int16Array(bytes.buffer);
+    
+    // Create Float32 audio buffer at the sender's sample rate
+    const audioBuffer = audioCtxVoice.createBuffer(1, int16Array.length, sampleRate);
+    const channelData = audioBuffer.getChannelData(0);
+    for (let i = 0; i < int16Array.length; i++) {
+      channelData[i] = int16Array[i] / 32768.0;
+    }
+    
+    const source = audioCtxVoice.createBufferSource();
+    source.buffer = audioBuffer;
+    
+    const gainNode = audioCtxVoice.createGain();
+    gainNode.gain.value = volume;
+    
+    source.connect(gainNode);
+    gainNode.connect(audioCtxVoice.destination);
+    source.start();
   } catch (e) {
-    fallbackPlayAudio(arrayBuffer, volume);
-  }
-}
-
-function fallbackPlayAudio(arrayBuffer, volume = 1.0) {
-  try {
-    const blob = new Blob([arrayBuffer], { type: 'audio/webm;codecs=opus' });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.volume = volume;
-    audio.play().catch(() => {});
-  } catch (e) {
-    console.warn("Voice playback failed:", e);
+    console.error("Failed to play raw PCM audio chunk:", e);
   }
 }
 
