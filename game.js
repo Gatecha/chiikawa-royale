@@ -1841,7 +1841,7 @@ function renderLocalFourPlayerLobby() {
     if (slot) {
       const style = characterStyle[slot.kind] || characterStyle.chiikawa;
       card.innerHTML = `
-        <img src="assets/cards/${slot.kind}.png" alt="${escapeHTML(style.label)}" />
+        <img src="assets/lobby cards/${slot.kind} character card.png" alt="${escapeHTML(style.label)}" />
         <strong>P${i + 1} ${escapeHTML(style.label)}</strong>
         <span>Tap to change / hold remove</span>
       `;
@@ -1884,7 +1884,7 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
       <div class="card-inner-skew">
         <button class="local-four-remove" type="button" aria-label="Remove P${index + 1}" ${index === 0 ? "hidden" : ""}>x</button>
         <div class="squad-card-image-container">
-          <img src="assets/cards/${slot.kind}.png" alt="${escapeHTML(style.label)}" />
+          <img src="assets/lobby cards/${slot.kind} character card.png" alt="${escapeHTML(style.label)}" />
         </div>
         <div class="card-footer-bar">
           <div class="avatar-circle">
@@ -5126,8 +5126,6 @@ function changeSquadLobbyCharacter(direction) {
 
   // Update selection globally in the wardrobe too
   syncCharacterSelectPreview(selectedCharacter);
-  syncLobbySpotlightVideo(selectedCharacter);
-  syncSquadLobbyVideo(selectedCharacter);
   syncSquadLobbyInterface();
   if (socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("select_character", { kind: selectedCharacter });
@@ -5167,10 +5165,9 @@ function syncSquadLobbyInterface() {
     userNameEl.textContent = usernameInput.value.trim() || "Friend";
   }
   const img = document.getElementById("squadLobbyCharImg");
-  if (img && !img.src.endsWith(`/${selectedCharacter}.png`)) {
-    img.src = `assets/cards/${selectedCharacter}.png`;
+  if (img && !img.src.endsWith(`/lobby cards/${selectedCharacter} character card.png`)) {
+    img.src = `assets/lobby cards/${selectedCharacter} character card.png`;
   }
-  syncSquadLobbyVideo(selectedCharacter);
 
   // Teammates-only filtering: must share the same squadCode and not be bots
   const localPlayer = players.find(p => p.id === localPlayerId);
@@ -5191,7 +5188,7 @@ function syncSquadLobbyInterface() {
         leftCard.innerHTML = `
           <div class="card-inner-skew">
             <div class="squad-card-image-container">
-              <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+              <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
             </div>
             <div class="card-footer-bar">
               <div class="avatar-circle">
@@ -5227,7 +5224,7 @@ function syncSquadLobbyInterface() {
         rightCard.innerHTML = `
           <div class="card-inner-skew">
             <div class="squad-card-image-container">
-              <img src="assets/cards/${p.kind}.png" alt="Character Art" />
+              <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
             </div>
             <div class="card-footer-bar">
               <div class="avatar-circle">
@@ -6345,12 +6342,73 @@ function bindTouchGamepadBtn(elementId, keyToSimulate) {
   });
 }
 
-function initTouchControls() {
-  bindTouchGamepadBtn("btnTouchUp", "w");
-  bindTouchGamepadBtn("btnTouchLeft", "a");
-  bindTouchGamepadBtn("btnTouchDown", "s");
-  bindTouchGamepadBtn("btnTouchRight", "d");
+function bindMobileJoystick(joystick) {
+  if (!joystick) return;
+  const knob = joystick.querySelector(".couch-joystick-knob");
+  let activePointerId = null;
 
+  const setDirectionFromPoint = (clientX, clientY) => {
+    const rect = joystick.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = clientX - cx;
+    const dy = clientY - cy;
+    const max = rect.width * 0.4;
+    const distance = Math.hypot(dx, dy);
+    const scale = distance > max ? max / distance : 1;
+    const knobX = dx * scale;
+    const knobY = dy * scale;
+    if (knob) knob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+    const touchKeys = getTouchKeySet();
+    touchKeys.delete("w");
+    touchKeys.delete("a");
+    touchKeys.delete("s");
+    touchKeys.delete("d");
+
+    if (distance < rect.width * 0.15) return;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      touchKeys.add(dx < 0 ? "a" : "d");
+    } else {
+      touchKeys.add(dy < 0 ? "w" : "s");
+    }
+  };
+
+  const resetJoystick = () => {
+    const touchKeys = getTouchKeySet();
+    touchKeys.delete("w");
+    touchKeys.delete("a");
+    touchKeys.delete("s");
+    touchKeys.delete("d");
+    if (knob) knob.style.transform = "translate(0, 0)";
+    activePointerId = null;
+    joystick.classList.remove("active");
+  };
+
+  joystick.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    activePointerId = event.pointerId;
+    joystick.setPointerCapture?.(event.pointerId);
+    joystick.classList.add("active");
+    setDirectionFromPoint(event.clientX, event.clientY);
+  });
+  joystick.addEventListener("pointermove", (event) => {
+    if (activePointerId !== event.pointerId) return;
+    event.preventDefault();
+    setDirectionFromPoint(event.clientX, event.clientY);
+  });
+  joystick.addEventListener("pointerup", resetJoystick);
+  joystick.addEventListener("pointercancel", resetJoystick);
+  joystick.addEventListener("lostpointercapture", resetJoystick);
+}
+
+function initTouchControls() {
+  const mobileJoystick = document.getElementById("mobileJoystick");
+  if (mobileJoystick) {
+    bindMobileJoystick(mobileJoystick);
+  }
+  
   const btnBomb = document.getElementById("btnTouchBomb");
   if (btnBomb) {
     const handlePlaceBomb = (e) => {

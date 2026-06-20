@@ -1070,6 +1070,13 @@ function endMatchBySurrender(room, winnerTeam, winnerId) {
 // MATCHMAKING FILL TIMERS
 // ----------------------------------------------------------------
 
+function isOnlineServer() {
+  return process.env.RENDER === "true" || 
+         process.env.NODE_ENV === "production" || 
+         process.env.ONLINE_SERVER === "true" ||
+         (process.env.PORT && process.env.PORT !== "3000" && process.env.PORT !== 3000);
+}
+
 function startMatchmakingTimers(room) {
   if (room.matchmakingInterval) return;
 
@@ -1088,17 +1095,31 @@ function startMatchmakingTimers(room) {
     // 30 seconds incomplete check
     if (room.matchmakingElapsed === 30) {
       console.log(`Matchmaking 30s check for room ${room.code}. Filling incomplete squad.`);
-      if (isBattleRoyale(room.mode)) {
-        fillAllRemainingWithBots(room);
+      if (isOnlineServer()) {
+        // Do not add bots on online servers
       } else {
-        fillIncompleteMatchWithBots(room);
+        if (isBattleRoyale(room.mode)) {
+          fillAllRemainingWithBots(room);
+        } else {
+          fillIncompleteMatchWithBots(room);
+        }
       }
     }
     
     // 40 seconds regardless check
     if (room.matchmakingElapsed >= 40) {
-      console.log(`Matchmaking 40s timeout for room ${room.code}. Filling remaining slots.`);
-      fillAllRemainingWithBots(room);
+      console.log(`Matchmaking 40s timeout for room ${room.code}. Start match.`);
+      if (isOnlineServer()) {
+        clearMatchmakingTimers(room);
+        if (isBattleRoyale(room.mode)) {
+          startBRPreMatch(room);
+        } else {
+          broadcastLobbyUpdate(room);
+          startMapVoting(room);
+        }
+      } else {
+        fillAllRemainingWithBots(room);
+      }
     }
   }, 1000);
 }

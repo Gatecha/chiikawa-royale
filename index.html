@@ -504,10 +504,9 @@
                    <!-- Card 2: User Center -->
                     <div class="lobby-card card-pink" id="squadCard_user">
                       <div class="card-inner-skew">
-                        <!-- Animated selected character preview -->
+                        <!-- Character card preview instead of video/canvas animation -->
                         <div class="squad-card-image-container">
-                          <video id="squadLobbyVideo" src="assets/chiikawa/chiikawa_character_animation.mp4" muted loop playsinline preload="auto"></video>
-                          <canvas id="squadLobbyCanvas" width="420" height="520" aria-label="Selected character preview"></canvas>
+                          <img id="squadLobbyCharImg" src="assets/lobby cards/chiikawa character card.png" alt="Selected character preview" />
                         </div>
 
                         <div class="card-footer-bar">
@@ -1040,19 +1039,10 @@
 
           <!-- Mobile Virtual Gamepad -->
           <div class="mobile-gamepad">
-            <div class="dpad">
-              <button id="btnTouchUp" class="gamepad-btn btn-up" type="button" aria-label="Up">
-                <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z" fill="currentColor"/></svg>
-              </button>
-              <button id="btnTouchLeft" class="gamepad-btn btn-left" type="button" aria-label="Left">
-                <svg viewBox="0 0 24 24"><path d="M4 12l8-8v6h8v4h-8v6z" fill="currentColor"/></svg>
-              </button>
-              <button id="btnTouchRight" class="gamepad-btn btn-right" type="button" aria-label="Right">
-                <svg viewBox="0 0 24 24"><path d="M20 12l-8 8v-6H4v-4h8V4z" fill="currentColor"/></svg>
-              </button>
-              <button id="btnTouchDown" class="gamepad-btn btn-down" type="button" aria-label="Down">
-                <svg viewBox="0 0 24 24"><path d="M12 20l8-8h-6V4h-4v8H4z" fill="currentColor"/></svg>
-              </button>
+            <div class="mobile-joystick-container">
+              <div id="mobileJoystick" class="couch-joystick" aria-label="Movement joystick">
+                <div class="couch-joystick-knob"></div>
+              </div>
             </div>
             <div class="action-buttons">
               <button id="btnTouchPunch" class="gamepad-btn btn-action-punch" type="button" aria-label="Punch">
