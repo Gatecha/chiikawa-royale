@@ -429,6 +429,17 @@ let readyState = false;
 let localMode = false;
 let serverMode = "online"; // "online" or "local"
 let pendingLocalConnect = false;
+
+// Active Player Name Helper and Pending Invite State
+let pendingInviteUserId = null;
+let pendingInviteUsername = null;
+
+function getActivePlayerName() {
+  return (serverMode === "online" && typeof currentSocialUsername !== 'undefined' && currentSocialUsername)
+    || (typeof usernameInput !== 'undefined' && usernameInput && usernameInput.value && usernameInput.value.trim())
+    || localStorage.getItem("local_username")
+    || "Player";
+}
 let lanRooms = [];
 let lanRoomRefreshTimer = null;
 let localBombId = 0;
@@ -1047,6 +1058,28 @@ function handleServerMessage(msg) {
       if (serverMode === "local") {
         showToastMsg(`LAN room <strong>${escapeHTML(roomCode)}</strong> ready. Same-WiFi players can join with this code.`);
       }
+
+      // Auto-send pending room invite if we just created this room
+      if (pendingInviteUserId) {
+        const targetId = pendingInviteUserId;
+        const targetName = pendingInviteUsername;
+        pendingInviteUserId = null;
+        pendingInviteUsername = null;
+        
+        const sendInviteOnPresenceChannel = () => {
+          if (presenceChannel) {
+            presenceChannel.send({
+              type: "broadcast",
+              event: "room_invite",
+              payload: { targetId, fromId: currentSocialUserId, fromName: currentSocialUsername, roomCode }
+            });
+            showToastMsg(`Invite sent to ${targetName}! 📨`);
+          } else {
+            setTimeout(sendInviteOnPresenceChannel, 500);
+          }
+        };
+        setTimeout(sendInviteOnPresenceChannel, 300);
+      }
       
       readyState = false;
       if (readyBtn) {
@@ -1340,9 +1373,11 @@ function handleServerMessage(msg) {
             localP.dy = serverPlayer.dy;
             localP.lerpTime = 0;
           } else {
-            // Check desync
+            // Check desync with adaptive thresholds to prevent high-latency rubberbanding
             const dist = Math.hypot(localP.x - serverPlayer.x, localP.y - serverPlayer.y);
-            if (dist > 96) {
+            const isMoving = localP.dx !== 0 || localP.dy !== 0;
+            const threshold = isMoving ? 240 : 48; // Large threshold (5 tiles) when moving due to ping delay, small (1 tile) when stopped
+            if (dist > threshold) {
               localP.x = serverPlayer.x;
               localP.y = serverPlayer.y;
               localP.moveTarget = null;
@@ -1912,14 +1947,14 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
         <div class="squad-card-image-container">
           <img src="assets/lobby cards/${slot.kind} character card.png" alt="${escapeHTML(style.label)}" />
         </div>
-        <div class="card-footer-bar">
-          <div class="avatar-circle">
-            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-          </div>
-          <div class="user-info">
-            <div class="user-name">P${index + 1} ${escapeHTML(style.label)}</div>
-            <div class="user-level">${escapeHTML(slot.name || `Player ${index + 1}`)}</div>
-          </div>
+      </div>
+      <div class="card-footer-bar">
+        <div class="avatar-circle">
+          <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+        </div>
+        <div class="user-info">
+          <div class="user-name">P${index + 1} ${escapeHTML(style.label)}</div>
+          <div class="user-level">${escapeHTML(slot.name || `Player ${index + 1}`)}</div>
         </div>
       </div>
     `;
@@ -2754,9 +2789,7 @@ function updateProgressionUI() {
   }
   const playUserName = document.getElementById("playUserName");
   if (playUserName) {
-    playUserName.textContent = (typeof usernameInput !== 'undefined' && usernameInput && usernameInput.value && usernameInput.value.trim())
-      || localStorage.getItem("local_username")
-      || "Player";
+    playUserName.textContent = getActivePlayerName();
   }
   const playLevelNum = document.getElementById("playLevelNum");
   if (playLevelNum) {
@@ -5227,8 +5260,8 @@ function syncSquadLobbyInterface() {
     charNameEl.textContent = characterStyle[selectedCharacter]?.label || selectedCharacter;
   }
   const userNameEl = document.getElementById("squadLobbyUserName");
-  if (userNameEl && usernameInput) {
-    userNameEl.textContent = usernameInput.value.trim() || "Friend";
+  if (userNameEl) {
+    userNameEl.textContent = getActivePlayerName();
   }
   const img = document.getElementById("squadLobbyCharImg");
   if (img && !img.src.endsWith(`/lobby cards/${selectedCharacter} character card.png`)) {
@@ -5256,14 +5289,14 @@ function syncSquadLobbyInterface() {
             <div class="squad-card-image-container">
               <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
             </div>
-            <div class="card-footer-bar">
-              <div class="avatar-circle">
-                <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-              </div>
-              <div class="user-info">
-                <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
-                <div class="user-level">${escapeHTML(p.name)}</div>
-              </div>
+          </div>
+          <div class="card-footer-bar">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div class="user-info">
+              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+              <div class="user-level">${escapeHTML(p.name)}</div>
             </div>
           </div>
         `;
@@ -5292,14 +5325,14 @@ function syncSquadLobbyInterface() {
             <div class="squad-card-image-container">
               <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
             </div>
-            <div class="card-footer-bar">
-              <div class="avatar-circle">
-                <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-              </div>
-              <div class="user-info">
-                <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
-                <div class="user-level">${escapeHTML(p.name)}</div>
-              </div>
+          </div>
+          <div class="card-footer-bar">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div class="user-info">
+              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+              <div class="user-level">${escapeHTML(p.name)}</div>
             </div>
           </div>
         `;
@@ -5374,7 +5407,7 @@ function syncSquadLobbyInterface() {
       btnLobbyModeChallenge.classList.remove("active");
     }
     // Only host can modify
-    if (localPlayerId === hostId) {
+    if (!roomCode || roomCode === "LOCAL" || roomCode === "4P" || roomCode === "LOCAL_BR" || localPlayerId === hostId || hostId === null) {
       btnLobbyModeTeam.disabled = false;
       btnLobbyModeChallenge.disabled = false;
       btnLobbyModeTeam.style.opacity = "1";
@@ -8206,9 +8239,8 @@ function renderOnlineUsersTab() {
   }
   list.innerHTML = "";
   entries.forEach(([userId, p]) => {
-    const isFriend = myFriendIds.has(userId);
-    const statusInfo = makeStatusInfo(userId);
-    const li = buildSocialUserItem(userId, p.username || userId, p.character || "chiikawa", statusInfo, isFriend, !!roomCode);
+    const isInvitable = (serverMode === "online" && statusInfo.dot !== "offline");
+    const li = buildSocialUserItem(userId, p.username || userId, p.character || "chiikawa", statusInfo, isFriend, isInvitable);
     list.appendChild(li);
   });
 }
@@ -8237,7 +8269,7 @@ function renderFriendsTab() {
         <div class="social-user-status"><span class="status-dot ${statusInfo.dot}"></span> ${statusInfo.text}</div>
       </div>
       <div class="social-action-btns">
-        ${roomCode ? `<button class="btn-invite-to-room" data-uid="${friendId}" data-uname="${escapeHTML(info.username)}">Invite</button>` : ""}
+        ${(serverMode === "online" && statusInfo.dot !== "offline") ? `<button class="btn-invite-to-room" data-uid="${friendId}" data-uname="${escapeHTML(info.username)}">Invite</button>` : ""}
       </div>
     `;
     li.querySelector(".btn-invite-to-room")?.addEventListener("click", () => sendRoomInvite(friendId, info.username));
@@ -8342,10 +8374,8 @@ async function runUserSearch(q) {
   }
   list.innerHTML = "";
   results.forEach((user) => {
-    const isFriend = myFriendIds.has(user.id);
-    const isOnline = !!onlinePresenceMap[user.id];
-    const statusInfo = isOnline ? makeStatusInfo(user.id) : { dot: "offline", text: "Offline" };
-    const li = buildSocialUserItem(user.id, user.username, user.character, statusInfo, isFriend, isOnline && !!roomCode);
+    const isInvitable = (serverMode === "online" && isOnline);
+    const li = buildSocialUserItem(user.id, user.username, user.character, statusInfo, isFriend, isInvitable);
     list.appendChild(li);
   });
 }
@@ -8355,8 +8385,20 @@ async function runUserSearch(q) {
 // ----------------------------------------------------------------
 
 function sendRoomInvite(targetUserId, targetUsername) {
-  if (!presenceChannel || !roomCode) {
-    showToastMsg("You must be in a room to invite players.");
+  if (serverMode !== "online" || !socket || socket.readyState !== WebSocket.OPEN) {
+    showToastMsg("You must be connected to an online server to invite players.");
+    return;
+  }
+  if (!roomCode || roomCode === "LOCAL" || roomCode === "4P" || roomCode === "LOCAL_BR") {
+    pendingInviteUserId = targetUserId;
+    pendingInviteUsername = targetUsername;
+    const name = getActivePlayerName();
+    sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
+    showToastMsg("Creating online room and inviting...");
+    return;
+  }
+  if (!presenceChannel) {
+    showToastMsg("Establishing connection to room, please try again in a moment.");
     return;
   }
   presenceChannel.send({
@@ -9742,8 +9784,13 @@ function initVoiceChatAndLobbyModeUI() {
   if (btnLobbyModeTeam && !btnLobbyModeTeam.dataset.bound) {
     btnLobbyModeTeam.dataset.bound = "true";
     btnLobbyModeTeam.addEventListener("click", () => {
-      if (localPlayerId === hostId) {
-        sendServerMessage("set_lobby_mode", { isChallenge: false });
+      if (roomCode && roomCode !== "LOCAL" && roomCode !== "4P" && roomCode !== "LOCAL_BR") {
+        if (localPlayerId === hostId) {
+          sendServerMessage("set_lobby_mode", { isChallenge: false });
+        }
+      } else {
+        currentRoomIsChallenge = false;
+        syncSquadLobbyInterface();
       }
     });
   }
@@ -9752,8 +9799,13 @@ function initVoiceChatAndLobbyModeUI() {
   if (btnLobbyModeChallenge && !btnLobbyModeChallenge.dataset.bound) {
     btnLobbyModeChallenge.dataset.bound = "true";
     btnLobbyModeChallenge.addEventListener("click", () => {
-      if (localPlayerId === hostId) {
-        sendServerMessage("set_lobby_mode", { isChallenge: true });
+      if (roomCode && roomCode !== "LOCAL" && roomCode !== "4P" && roomCode !== "LOCAL_BR") {
+        if (localPlayerId === hostId) {
+          sendServerMessage("set_lobby_mode", { isChallenge: true });
+        }
+      } else {
+        currentRoomIsChallenge = true;
+        syncSquadLobbyInterface();
       }
     });
   }
