@@ -8241,6 +8241,8 @@ function renderOnlineUsersTab() {
   }
   list.innerHTML = "";
   entries.forEach(([userId, p]) => {
+    const isFriend = myFriendIds.has(userId);
+    const statusInfo = makeStatusInfo(userId);
     const isInvitable = (serverMode === "online" && statusInfo.dot !== "offline");
     const li = buildSocialUserItem(userId, p.username || userId, p.character || "chiikawa", statusInfo, isFriend, isInvitable);
     list.appendChild(li);
