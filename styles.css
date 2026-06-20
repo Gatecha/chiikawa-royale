@@ -122,7 +122,8 @@ body {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   border-bottom: 4px solid var(--ink);
-  z-index: 10;
+  position: relative;
+  z-index: 100;
 }
 
 body.android-apk .console-header {
