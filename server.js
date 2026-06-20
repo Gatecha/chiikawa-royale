@@ -2614,6 +2614,15 @@ function getStartingBombRange(ai = false, mapType = "classic") {
 }
 
 function getPowerZonePickupType(x, y) {
+  // Top center: 1 slide skill powerup
+  if (y === 1 && x === 7) return "slide";
+  // Bottom center: 1 slide skill powerup
+  if (y === ROWS - 2 && x === 7) return "slide";
+  // Left center: 1 punch powerup
+  if (x === 1 && y === 6) return "punch";
+  // Right center: 1 punch powerup
+  if (x === COLS - 2 && y === 6) return "punch";
+
   const types = ["bomb", "flame", "bomb", "speed", "bomb", "flame", "speed", "bomb"];
   let perimeterIndex = 0;
   if (y === 1) perimeterIndex = x - 1;
