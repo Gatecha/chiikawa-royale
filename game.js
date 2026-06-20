@@ -414,6 +414,7 @@ function getRankIconSvg(rankId) {
 // Client Network State
 let socket = null;
 let roomCode = null;
+let isCreatingRoom = false;
 let currentBRZone = null;
 let currentWorldEvent = null;
 let spectatedPlayerId = null;
@@ -591,6 +592,7 @@ if (lobbyBackBtn) {
       localStorage.removeItem("chiikawaPlayerId");
       localStorage.removeItem("chiikawaReconnectToken");
       roomCode = null;
+      isCreatingRoom = false;
       localPlayerId = null;
       reconnectToken = null;
       hostId = null;
@@ -960,6 +962,7 @@ function connectWebSocket(forceReconnect = false) {
 
     socket.onclose = (event) => {
       console.log("WebSocket disconnected.");
+      isCreatingRoom = false;
       stopLanRoomRefresh();
       if (connectionStatusIndicator) {
         connectionStatusIndicator.textContent = "Offline";
@@ -969,6 +972,7 @@ function connectWebSocket(forceReconnect = false) {
 
     socket.onerror = (err) => {
       console.error("WebSocket error:", err);
+      isCreatingRoom = false;
       const msg = serverMode === "local"
         ? "LAN connection failed. Make sure the local server is running, both devices are on the same Wi-Fi, and the IP/port is correct."
         : "WebSocket connection failed. The online server may be offline or blocked.";
@@ -1023,6 +1027,7 @@ function handleServerMessage(msg) {
 
   switch (type) {
     case "error":
+      isCreatingRoom = false;
       reportAppError("Server Error", data.message || "Unknown server error", { source: "server" });
       break;
 
@@ -1031,6 +1036,7 @@ function handleServerMessage(msg) {
       localStorage.removeItem("chiikawaPlayerId");
       localStorage.removeItem("chiikawaReconnectToken");
       reconnectToken = null;
+      isCreatingRoom = false;
       break;
 
     case "lan_rooms_updated":
@@ -1039,6 +1045,7 @@ function handleServerMessage(msg) {
       break;
 
     case "room_joined":
+      isCreatingRoom = false;
       roomCode = data.roomCode;
       localPlayerId = data.playerId;
       reconnectToken = data.reconnectToken || reconnectToken;
@@ -5440,6 +5447,8 @@ quickMatchBtn?.addEventListener("click", () => {
 
 // Create Room
 createRoomBtn?.addEventListener("click", () => {
+  if (isCreatingRoom) return;
+  isCreatingRoom = true;
   const name = usernameInput.value.trim() || "Friend";
   sendServerMessage("create_room", { name, kind: selectedCharacter });
 });
@@ -5497,6 +5506,7 @@ leaveLobbyBtn?.addEventListener("click", () => {
   localStorage.removeItem("chiikawaPlayerId");
   localStorage.removeItem("chiikawaReconnectToken");
   roomCode = null;
+  isCreatingRoom = false;
   localPlayerId = null;
   reconnectToken = null;
   hostId = null;
@@ -5768,7 +5778,8 @@ if (nextCharBtn) {
 function openFriendsList(e) {
   if (e) e.stopPropagation();
   if (serverMode === "local") {
-    if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
+    if (!roomCode && !isCreatingRoom && socket && socket.readyState === WebSocket.OPEN) {
+      isCreatingRoom = true;
       const name = usernameInput?.value.trim() || localStorage.getItem("local_username") || "Friend";
       sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
       showToastMsg("LAN room created. Share the room code with players on your Wi-Fi.");
@@ -5780,7 +5791,8 @@ function openFriendsList(e) {
     return;
   }
   // Auto-create room if not in one yet
-  if (!roomCode && socket && socket.readyState === WebSocket.OPEN) {
+  if (!roomCode && !isCreatingRoom && socket && socket.readyState === WebSocket.OPEN) {
+    isCreatingRoom = true;
     const name = usernameInput?.value.trim() || "Friend";
     sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
   }
@@ -6069,17 +6081,20 @@ function updateOnlineMatchmakingPopup() {
 }
 
 function cancelMatchmaking() {
-  isOnlineMatchmakingActive = false;
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    sendServerMessage("cancel_matchmaking");
-    sendServerMessage("leave_room");
+  if (isOnlineMatchmakingActive) {
+    isOnlineMatchmakingActive = false;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      sendServerMessage("cancel_matchmaking");
+      sendServerMessage("leave_room");
+    }
+    // Reset local room state so the player fully leaves matchmaking
+    roomCode = null;
+    isCreatingRoom = false;
+    localPlayerId = null;
+    hostId = null;
+    players = [];
+    stopOnlineMatchmakingTimer();
   }
-  // Reset local room state so the player fully leaves matchmaking
-  roomCode = null;
-  localPlayerId = null;
-  hostId = null;
-  players = [];
-  stopOnlineMatchmakingTimer();
   if (matchmakingPopup) {
     matchmakingPopup.classList.remove("active");
     matchmakingPopup.classList.add("hidden");
@@ -8396,8 +8411,11 @@ function sendRoomInvite(targetUserId, targetUsername) {
   if (!roomCode || roomCode === "LOCAL" || roomCode === "4P" || roomCode === "LOCAL_BR") {
     pendingInviteUserId = targetUserId;
     pendingInviteUsername = targetUsername;
-    const name = getActivePlayerName();
-    sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
+    if (!isCreatingRoom) {
+      isCreatingRoom = true;
+      const name = getActivePlayerName();
+      sendServerMessage("create_room", { name, kind: selectedCharacter, isPrivate: true });
+    }
     showToastMsg("Creating online room and inviting...");
     return;
   }
