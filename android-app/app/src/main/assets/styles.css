@@ -359,7 +359,7 @@ body.android-apk .badge-text {
 }
 
 /* Play Tab Content Layout */
-#tabContent_play {
+#tabContent_play.active {
   display: flex !important;
   flex-direction: column;
   justify-content: center;
@@ -2407,7 +2407,7 @@ canvas#game {
     margin-left: 0;
     margin-right: 0;
   }
-  #tabContent_play {
+  #tabContent_play.active {
     display: flex !important;
     flex-direction: column;
     justify-content: center;
