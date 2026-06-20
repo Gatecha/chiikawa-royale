@@ -1071,14 +1071,27 @@ function handleServerMessage(msg) {
       if (data.maxPlayers !== undefined) currentRoomMaxPlayers = data.maxPlayers;
       updateLobbyUI();
 
+      if (isBattleRoyale(currentRoomMode) && brmActive) {
+        const pCount = document.getElementById("brmPlayerCount");
+        if (pCount) pCount.textContent = players.length;
+      }
+
       if (socket && socket.readyState === WebSocket.OPEN) {
         if (isOnlineMatchmakingActive && data.state === "lobby") {
-          showOnlineMatchmakingSearch();
-          startOnlineMatchmakingTimer();
-          updateOnlineMatchmakingPopup();
+          if (isBattleRoyale(currentRoomMode)) {
+            // Already handled by showBRMatchmakingScreen
+          } else {
+            showOnlineMatchmakingSearch();
+            startOnlineMatchmakingTimer();
+            updateOnlineMatchmakingPopup();
+          }
         } else if (!data.isPrivate && data.state === "lobby") {
-          startOnlineMatchmakingTimer();
-          updateOnlineMatchmakingPopup();
+          if (isBattleRoyale(currentRoomMode)) {
+            // Already handled by showBRMatchmakingScreen
+          } else {
+            startOnlineMatchmakingTimer();
+            updateOnlineMatchmakingPopup();
+          }
         } else {
           stopOnlineMatchmakingTimer();
           if (matchmakingPopup) {
@@ -1254,6 +1267,7 @@ function handleServerMessage(msg) {
       gameMessage = "";
 
       // Hide all overlays
+      hideBRMatchmaking();
       document.getElementById("tournamentOverlay").classList.add("hidden");
       document.getElementById("finalVoteOverlay").classList.add("hidden");
       if (matchmakingPopup) {
@@ -1628,6 +1642,19 @@ function handleServerMessage(msg) {
     }
 
     case "matchmaking_countdown": {
+      if (isBattleRoyale(currentRoomMode) && brmActive) {
+        const countdownBox = document.getElementById("brmCountdown");
+        const countdownNum = document.getElementById("brmCountdownNum");
+        if (countdownBox) {
+          if (data.secondsLeft > 0) {
+            countdownBox.classList.remove("hidden");
+            if (countdownNum) countdownNum.textContent = data.secondsLeft;
+          } else {
+            countdownBox.classList.add("hidden");
+          }
+        }
+      }
+
       if (matchmakingPopup && socket && socket.readyState === WebSocket.OPEN) {
         if (!roomCode || players.length === 0) break;
         if (data.secondsLeft <= 0 && matchmakingPopup.classList.contains("hidden")) break;
@@ -2484,12 +2511,24 @@ function localTriggerExplosion(bomb) {
         map[y][x] = "grass";
         burstCrate(x, y);
         const roll = Math.random();
-        if (roll < 0.18) pickups.push({ x, y, type: "flame" });
-        else if (roll < 0.32) pickups.push({ x, y, type: "bomb" });
-        else if (roll < 0.44) pickups.push({ x, y, type: "speed" });
-        else if (roll < 0.50) pickups.push({ x, y, type: "full_fire" });
-        else if (roll < 0.56) pickups.push({ x, y, type: "punch" });
-        else if (roll < 0.64) pickups.push({ x, y, type: "slide" });
+        if (isBattleRoyale(currentRoomMode)) {
+          if (roll < 0.15) pickups.push({ x, y, type: "flame" });
+          else if (roll < 0.28) pickups.push({ x, y, type: "bomb" });
+          else if (roll < 0.40) pickups.push({ x, y, type: "speed" });
+          else if (roll < 0.45) pickups.push({ x, y, type: "full_fire" });
+          else if (roll < 0.50) pickups.push({ x, y, type: "punch" });
+          else if (roll < 0.55) pickups.push({ x, y, type: "slide" });
+          else if (roll < 0.70) pickups.push({ x, y, type: "bandage" });
+          else if (roll < 0.80) pickups.push({ x, y, type: "medkit" });
+          else if (roll < 0.90) pickups.push({ x, y, type: "energy_drink" });
+        } else {
+          if (roll < 0.18) pickups.push({ x, y, type: "flame" });
+          else if (roll < 0.32) pickups.push({ x, y, type: "bomb" });
+          else if (roll < 0.44) pickups.push({ x, y, type: "speed" });
+          else if (roll < 0.50) pickups.push({ x, y, type: "full_fire" });
+          else if (roll < 0.56) pickups.push({ x, y, type: "punch" });
+          else if (roll < 0.64) pickups.push({ x, y, type: "slide" });
+        }
         break;
       }
     }
@@ -2502,10 +2541,14 @@ function localTriggerExplosion(bomb) {
       if (!p.alive || p.invuln > 0) return;
       const tile = gridAt(p.x, p.y);
       if (tile.x === cell.x && tile.y === cell.y) {
-        p.alive = false;
-        p.moveTarget = null;
-        p.moveFrom = null;
-        p.moveDir = null;
+        if (isBattleRoyale(currentRoomMode)) {
+          damageLocalPlayerFromBomb(p, 60);
+        } else {
+          p.alive = false;
+          p.moveTarget = null;
+          p.moveFrom = null;
+          p.moveDir = null;
+        }
       }
     });
   });
@@ -2528,12 +2571,20 @@ function localCheckPickup(player) {
   else if (pickup.type === "full_fire") player.range = 15;
   else if (pickup.type === "punch") player.hasPunch = true;
   else if (pickup.type === "slide") player.hasSlide = true;
+  else if (pickup.type === "bandage") player.bandageCount = (player.bandageCount || 0) + 1;
+  else if (pickup.type === "medkit") player.medkitCount = (player.medkitCount || 0) + 1;
+  else if (pickup.type === "energy_drink") player.energyDrinkCount = (player.energyDrinkCount || 0) + 1;
   burstSparkles(player.x, player.y);
   updateHudSidebar();
 }
 
 function localCheckGameEnd() {
   if (!localMode || !running) return;
+  const isBR = isBattleRoyale(currentRoomMode);
+  if (isBR) {
+    localCheckBRGameEnd();
+    return;
+  }
   const alivePlayers = players.filter((p) => p.alive);
   if (alivePlayers.length > 1) return;
   
@@ -3044,7 +3095,40 @@ function stepTowardTarget(actor, dt) {
 // HOST CPU BOT PROCESS
 // ----------------------------------------------------------------
 
+let botsWhoThoughtThisFrame = 0;
+
 function updateAi(bot, dt) {
+  // Bot healing behavior in BR mode
+  if (isBattleRoyale(currentRoomMode) && bot.alive && bot.hp < 75 && !bot.healingState) {
+    const here = gridAt(bot.x, bot.y);
+    const danger = isDanger(here.x, here.y);
+    if (!danger) {
+      let used = false;
+      if (bot.hp <= 35 && (bot.medkitCount || 0) > 0) {
+        bot.medkitCount--;
+        bot.hp = 100;
+        used = true;
+        showToastMsg(`${bot.name} used a Med Kit!`);
+      } else if ((bot.energyDrinkCount || 0) > 0 && (bot.shield || 0) < 50) {
+        bot.energyDrinkCount--;
+        bot.shield = Math.min(100, (bot.shield || 0) + 50);
+        used = true;
+        showToastMsg(`${bot.name} drank an Energy Drink!`);
+      } else if ((bot.bandageCount || 0) > 0) {
+        bot.bandageCount--;
+        bot.hp = Math.min(75, bot.hp + 15);
+        used = true;
+        showToastMsg(`${bot.name} used a Bandage!`);
+      }
+      
+      if (used) {
+        bot.aiThink = 3.0; // channels healing
+        bot.aiDir = { x: 0, y: 0 };
+        updateHudSidebar();
+      }
+    }
+  }
+
   bot.aiThink = (bot.aiThink || 0) - dt;
   const here = gridAt(bot.x, bot.y);
   const danger = isDanger(here.x, here.y);
@@ -3052,28 +3136,36 @@ function updateAi(bot, dt) {
   const isThreatened = threatScore > 0 || danger;
 
   if (isThreatened || bot.aiThink <= 0) {
-    if (bot.hasPunch && tryLocalBotPunchStrategic(bot, here)) {
-      bot.aiThink = 0;
-      return;
-    }
-
-    const safetyDir = getSafetyStepLocal(bot, here);
-    if (safetyDir) {
-      bot.aiDir = safetyDir;
-      bot.aiThink = 0.05;
+    if (botsWhoThoughtThisFrame >= 3 && !isThreatened) {
+      bot.aiThink = 0.01; // try next frame
     } else {
-      const dirs = [
-        { x: 1, y: 0 },
-        { x: -1, y: 0 },
-        { x: 0, y: 1 },
-        { x: 0, y: -1 },
-        { x: 0, y: 0 },
-      ];
-      const useful = dirs
-        .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
-        .sort((a, b) => b.score - a.score);
-      bot.aiDir = useful[0];
-      bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+      if (!isThreatened) {
+        botsWhoThoughtThisFrame++;
+      }
+
+      if (bot.hasPunch && tryLocalBotPunchStrategic(bot, here)) {
+        bot.aiThink = 0;
+        return;
+      }
+
+      const safetyDir = getSafetyStepLocal(bot, here);
+      if (safetyDir) {
+        bot.aiDir = safetyDir;
+        bot.aiThink = 0.05;
+      } else {
+        const dirs = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 },
+          { x: 0, y: 0 },
+        ];
+        const useful = dirs
+          .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
+          .sort((a, b) => b.score - a.score);
+        bot.aiDir = useful[0];
+        bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+      }
     }
   }
 
@@ -3203,6 +3295,27 @@ function scoreAiMove(bot, x, y) {
   const safeExits = countLocalSafeExits(bot, x, y);
   score += safeExits * 34;
   if (safeExits === 0) score -= 280;
+
+  // Storm/safe zone penalty for Battle Royale
+  if (isBattleRoyale(currentRoomMode) && currentBRZone) {
+    const tx = x * TILE + TILE / 2;
+    const ty = y * TILE + TILE / 2;
+    const distToZoneCenter = Math.hypot(tx - currentBRZone.x, ty - currentBRZone.y);
+    
+    if (distToZoneCenter > currentBRZone.radius) {
+      score -= 300;
+      const currentDist = Math.hypot(bot.x - currentBRZone.x, bot.y - currentBRZone.y);
+      if (distToZoneCenter < currentDist) {
+        score += 80;
+      } else {
+        score -= 80;
+      }
+    } else {
+      score += 150;
+      const nextDist = Math.hypot(tx - currentBRZone.nextX, ty - currentBRZone.nextY);
+      score += Math.max(0, 100 - (nextDist / TILE) * 3);
+    }
+  }
 
   const pickup = pickups.find((p) => p.x === x && p.y === y);
   if (pickup) score += pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 190 : 135;
@@ -3378,6 +3491,7 @@ function isDanger(x, y) {
 // ----------------------------------------------------------------
 
 function burstCrate(x, y) {
+  brMinimapCacheDirty = true;
   const c = centerOf(x, y);
   for (let i = 0; i < 10; i += 1) {
     particles.push({
@@ -4610,8 +4724,27 @@ function update(dt) {
   if (localHealingState) {
     localHealingState.timeLeft -= dt;
     if (localHealingState.timeLeft <= 0) {
+      const p = players.find(x => x.id === localHealingState.playerId);
+      const itemType = localHealingState.itemType;
       localHealingState = null;
       hideBRProgressBar();
+      
+      if (p && p.alive) {
+        if (itemType === "bandage") {
+          p.bandageCount = Math.max(0, (p.bandageCount || 0) - 1);
+          p.hp = Math.min(75, p.hp + 15);
+          showToastMsg("Used Bandage! HP: " + p.hp);
+        } else if (itemType === "medkit") {
+          p.medkitCount = Math.max(0, (p.medkitCount || 0) - 1);
+          p.hp = 100;
+          showToastMsg("Used Med Kit! HP: " + p.hp);
+        } else if (itemType === "energy_drink") {
+          p.energyDrinkCount = Math.max(0, (p.energyDrinkCount || 0) - 1);
+          p.shield = Math.min(100, (p.shield || 0) + 50);
+          showToastMsg("Used Energy Drink! Shield: " + p.shield);
+        }
+        updateHudSidebar();
+      }
     } else {
       updateBRProgressBar(localHealingState.timeLeft / localHealingState.duration);
     }
@@ -4627,7 +4760,13 @@ function update(dt) {
         awardLocalMatchProgress(false);
         showTournamentResults(players, null, false);
       }
-      updateSuddenDeathZone(dt);
+      
+      if (isBattleRoyale(currentRoomMode)) {
+        updateLocalBRZone(dt);
+        updateLocalBRZoneDamage(dt);
+      } else {
+        updateSuddenDeathZone(dt);
+      }
     }
 
     timerEl.textContent = formatTime(roundTime);
@@ -4646,6 +4785,7 @@ function update(dt) {
 
     const isHost = localPlayerId === hostId;
     if (localMode && isHost) {
+      botsWhoThoughtThisFrame = 0;
       players.forEach((p) => {
         if (p.ai && p.alive) {
           updateAi(p, dt);
@@ -6035,21 +6175,26 @@ function handleModeSelection(chosenMode) {
     matchmakingModeSelectDialog.classList.add("hidden");
   }
 
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    if (roomCode) {
-      if (localPlayerId === hostId) {
-        showOnlineMatchmakingSearch();
-        sendServerMessage("start_matchmaking", { mode: chosenMode });
+  const isBR = isBattleRoyale(chosenMode);
+  if (isBR) {
+    showBRMatchmakingScreen(chosenMode);
+  } else {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      if (roomCode) {
+        if (localPlayerId === hostId) {
+          showOnlineMatchmakingSearch();
+          sendServerMessage("start_matchmaking", { mode: chosenMode });
+        } else {
+          alert("Only the room host can start matchmaking!");
+        }
       } else {
-        alert("Only the room host can start matchmaking!");
+        showOnlineMatchmakingSearch();
+        const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+        sendServerMessage("quick_match", { name, kind: selectedCharacter, mode: chosenMode });
       }
     } else {
-      showOnlineMatchmakingSearch();
-      const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
-      sendServerMessage("quick_match", { name, kind: selectedCharacter, mode: chosenMode });
+      startMatchmakingSearch();
     }
-  } else {
-    startMatchmakingSearch();
   }
 }
 
@@ -8140,7 +8285,12 @@ switchScreen = function(screen) {
 // Initialize Social System (called from handleAuthenticatedUser)
 // ----------------------------------------------------------------
 
+let socialSystemInitialized = false;
+let socialInboxChannel = null;
+
 async function initSocialSystem(user) {
+  if (socialSystemInitialized) return;
+  socialSystemInitialized = true;
   currentSocialUserId = user.id;
   try {
     const { data } = await supabaseClient
@@ -8164,8 +8314,8 @@ async function initSocialSystem(user) {
   await refreshSocialData();
 
   // Realtime listener for incoming friend requests
-  supabaseClient
-    .channel(`fr_inbox_${currentSocialUserId}`)
+  socialInboxChannel = supabaseClient.channel(`fr_inbox_${currentSocialUserId}`);
+  socialInboxChannel
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "friendships", filter: `addressee_id=eq.${currentSocialUserId}` },
       async () => { await fetchPendingRequests(); renderPendingTab(); })
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "friendships" },
@@ -8188,6 +8338,11 @@ document.getElementById("btnLogoutAccount")?.addEventListener("click", async () 
     try { await presenceChannel.untrack(); await supabaseClient.removeChannel(presenceChannel); } catch(e) {}
     presenceChannel = null;
   }
+  if (socialInboxChannel && supabaseClient) {
+    try { await supabaseClient.removeChannel(socialInboxChannel); } catch(e) {}
+    socialInboxChannel = null;
+  }
+  socialSystemInitialized = false;
   currentSocialUserId = null;
   currentSocialUsername = null;
   onlinePresenceMap = {};
@@ -8353,7 +8508,11 @@ function useHealingItemLocal(itemType) {
     return;
   }
   
-  sendServerMessage("use_item", { itemType });
+  if (localMode) {
+    startLocalHealing(localPlayer, itemType);
+  } else {
+    sendServerMessage("use_item", { itemType });
+  }
 }
 
 function toggleBRFullscreenMap() {
@@ -8464,6 +8623,9 @@ function showBRGameOverScreen(data) {
   startConfetti();
 }
 
+let brMinimapCacheCanvas = null;
+let brMinimapCacheDirty = true;
+
 function drawBRMinimap() {
   const container = document.getElementById("brMinimapContainer");
   if (!container) return;
@@ -8479,28 +8641,46 @@ function drawBRMinimap() {
   const mctx = canvas.getContext("2d");
   if (!mctx) return;
   
-  mctx.clearRect(0, 0, canvas.width, canvas.height);
-  
   const cols = map[0] ? map[0].length : COLS;
   const rows = map ? map.length : ROWS;
-  const tileW = canvas.width / cols;
-  const tileH = canvas.height / rows;
   
-  mctx.fillStyle = "#1e222a";
-  mctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!brMinimapCacheCanvas || brMinimapCacheCanvas.width !== canvas.width || brMinimapCacheCanvas.height !== canvas.height) {
+    brMinimapCacheCanvas = document.createElement("canvas");
+    brMinimapCacheCanvas.width = canvas.width;
+    brMinimapCacheCanvas.height = canvas.height;
+    brMinimapCacheDirty = true;
+  }
   
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const type = map[y]?.[x];
-      if (type === "wall") {
-        mctx.fillStyle = "#8a8a9a";
-        mctx.fillRect(x * tileW, y * tileH, tileW, tileH);
-      } else if (type === "crate" || type === "supply_crate" || type === "golden_crate") {
-        mctx.fillStyle = "#865827";
-        mctx.fillRect(x * tileW, y * tileH, tileW, tileH);
+  if (brMinimapCacheDirty) {
+    const cctx = brMinimapCacheCanvas.getContext("2d");
+    if (cctx) {
+      cctx.fillStyle = "#1e222a";
+      cctx.fillRect(0, 0, brMinimapCacheCanvas.width, brMinimapCacheCanvas.height);
+      
+      const tileW = brMinimapCacheCanvas.width / cols;
+      const tileH = brMinimapCacheCanvas.height / rows;
+      
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const type = map[y]?.[x];
+          if (type === "wall") {
+            cctx.fillStyle = "#8a8a9a";
+            cctx.fillRect(x * tileW, y * tileH, tileW, tileH);
+          } else if (type === "crate" || type === "supply_crate" || type === "golden_crate") {
+            cctx.fillStyle = "#865827";
+            cctx.fillRect(x * tileW, y * tileH, tileW, tileH);
+          }
+        }
       }
     }
+    brMinimapCacheDirty = false;
   }
+  
+  mctx.clearRect(0, 0, canvas.width, canvas.height);
+  mctx.drawImage(brMinimapCacheCanvas, 0, 0);
+  
+  const tileW = canvas.width / cols;
+  const tileH = canvas.height / rows;
   
   if (currentBRZone) {
     mctx.strokeStyle = "rgba(180, 0, 220, 0.85)";
@@ -8718,4 +8898,551 @@ function initBRClient() {
     sendServerMessage("leave_room");
     switchScreen(menuScreen);
   });
+}
+
+// =================================================================
+// BATTLE ROYALE LOCAL MATCH HELPERS & MATCHMAKING SCREEN
+// =================================================================
+
+function localCheckBRGameEnd() {
+  const alivePlayers = players.filter((p) => p.alive);
+  
+  players.forEach(p => {
+    if (!p.alive && p.placement === null) {
+      p.placement = alivePlayers.length + 1;
+    }
+  });
+
+  if (alivePlayers.length > 1) {
+    const localPlayer = players.find(p => p.id === localPlayerId);
+    if (localPlayer && !localPlayer.alive) {
+      running = false;
+      showBRResultsLocal();
+    }
+    return;
+  }
+  
+  running = false;
+  const winner = alivePlayers[0] || null;
+  if (winner) {
+    winner.placement = 1;
+  }
+  
+  showBRResultsLocal();
+}
+
+function updateLocalBRZone(dt) {
+  if (!currentBRZone) return;
+  currentBRZone.timeLeft -= dt;
+  
+  if (currentBRZone.timeLeft <= 0) {
+    if (!currentBRZone.isShrinking) {
+      currentBRZone.isShrinking = true;
+      currentBRZone.timeLeft = 20;
+      currentBRZone.startX = currentBRZone.x;
+      currentBRZone.startY = currentBRZone.y;
+      currentBRZone.startRadius = currentBRZone.radius;
+      
+      const phase = currentBRZone.phase + 1;
+      const cols = 61;
+      let nextRad = currentBRZone.radius;
+      if (phase === 1) nextRad = Math.floor(cols * TILE * 0.35);
+      else if (phase === 2) nextRad = Math.floor(cols * TILE * 0.18);
+      else if (phase === 3) nextRad = Math.floor(cols * TILE * 0.10);
+      else if (phase === 4) nextRad = Math.floor(cols * TILE * 0.05);
+      else nextRad = 40;
+      
+      const maxOffset = currentBRZone.radius - nextRad;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * maxOffset;
+      currentBRZone.nextX = currentBRZone.x + Math.cos(angle) * dist;
+      currentBRZone.nextY = currentBRZone.y + Math.sin(angle) * dist;
+      currentBRZone.nextRadius = nextRad;
+      
+      showToastMsg("ZONE SHRINKING! Run to safe circle.");
+    } else {
+      currentBRZone.isShrinking = false;
+      currentBRZone.phase += 1;
+      currentBRZone.x = currentBRZone.nextX;
+      currentBRZone.y = currentBRZone.nextY;
+      currentBRZone.radius = currentBRZone.nextRadius;
+      currentBRZone.timeLeft = 60;
+      
+      showToastMsg(`Phase ${currentBRZone.phase} completed.`);
+    }
+  } else if (currentBRZone.isShrinking) {
+    const t = 1 - (currentBRZone.timeLeft / 20);
+    currentBRZone.x = currentBRZone.startX + (currentBRZone.nextX - currentBRZone.startX) * t;
+    currentBRZone.y = currentBRZone.startY + (currentBRZone.nextY - currentBRZone.startY) * t;
+    currentBRZone.radius = currentBRZone.startRadius + (currentBRZone.nextRadius - currentBRZone.startRadius) * t;
+  }
+}
+
+let localBRZoneDamageTimer = 0;
+function updateLocalBRZoneDamage(dt) {
+  localBRZoneDamageTimer += dt;
+  if (localBRZoneDamageTimer >= 1.0) {
+    localBRZoneDamageTimer = 0;
+    players.forEach((p) => {
+      if (p.alive && currentBRZone) {
+        const dist = Math.hypot(p.x - currentBRZone.x, p.y - currentBRZone.y);
+        if (dist > currentBRZone.radius) {
+          const phase = currentBRZone.phase;
+          const damage = phase === 1 ? 2 : phase === 2 ? 5 : phase === 3 ? 8 : phase === 4 ? 12 : 20;
+          damageLocalPlayerFromStorm(p, damage);
+        }
+      }
+    });
+  }
+}
+
+function damageLocalPlayerFromStorm(player, amount) {
+  if (!player.alive) return;
+  
+  let damageLeft = amount;
+  if (player.shield > 0) {
+    if (player.shield >= damageLeft) {
+      player.shield -= damageLeft;
+      damageLeft = 0;
+    } else {
+      damageLeft -= player.shield;
+      player.shield = 0;
+    }
+  }
+  
+  if (damageLeft > 0) {
+    player.hp = Math.max(0, player.hp - damageLeft);
+  }
+  
+  if (player.hp <= 0) {
+    player.alive = false;
+    const aliveCount = players.filter(p => p.alive).length;
+    player.placement = aliveCount + 1;
+    
+    showToastMsg(`${player.name} died in the storm.`);
+    
+    if (player.id === localPlayerId) {
+      running = false;
+      awardLocalMatchProgress(false);
+      showBRResultsLocal();
+    }
+  }
+}
+
+function damageLocalPlayerFromBomb(player, amount) {
+  if (!player.alive || player.invuln > 0) return;
+  
+  let damageLeft = amount;
+  if (player.shield > 0) {
+    if (player.shield >= damageLeft) {
+      player.shield -= damageLeft;
+      damageLeft = 0;
+    } else {
+      damageLeft -= player.shield;
+      player.shield = 0;
+    }
+  }
+  
+  if (damageLeft > 0) {
+    player.hp = Math.max(0, player.hp - damageLeft);
+  }
+  
+  player.invuln = 0.5;
+  
+  if (player.hp <= 0) {
+    player.alive = false;
+    player.moveTarget = null;
+    player.moveFrom = null;
+    player.moveDir = null;
+    
+    const aliveCount = players.filter(p => p.alive).length;
+    player.placement = aliveCount + 1;
+    
+    showToastMsg(`${player.name} was blown up.`);
+    
+    if (player.id === localPlayerId) {
+      running = false;
+      awardLocalMatchProgress(false);
+      showBRResultsLocal();
+    }
+  } else {
+    showToastMsg(`${player.name} took bomb damage! HP: ${player.hp}`);
+  }
+}
+
+let localHealingState = null;
+function startLocalHealing(player, itemType) {
+  if (localHealingState) return;
+  
+  let duration = 3.0;
+  if (itemType === "bandage") duration = 4.0;
+  if (itemType === "medkit") duration = 6.0;
+  
+  showBRProgressBar();
+  updateBRProgressBar(1.0);
+  
+  localHealingState = {
+    playerId: player.id,
+    itemType: itemType,
+    duration: duration,
+    timeLeft: duration
+  };
+}
+
+function buildLocalBRMap() {
+  const cols = 61;
+  const rows = 61;
+  const nextMap = Array.from({ length: rows }, (_, y) =>
+    Array.from({ length: cols }, (_, x) => {
+      if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) return "wall";
+      if (x % 2 === 0 && y % 2 === 0) return "wall";
+      return Math.random() < 0.75 ? "crate" : "grass";
+    })
+  );
+
+  const startPositions = getBRStartPositions(cols, rows, 20);
+  startPositions.forEach((s) => {
+    const clearSafe = (cx, cy) => {
+      if (nextMap[cy] && nextMap[cy][cx] && nextMap[cy][cx] !== "wall") {
+        nextMap[cy][cx] = "grass";
+      }
+    };
+    clearSafe(s.x, s.y);
+    clearSafe(s.x + 1, s.y);
+    clearSafe(s.x - 1, s.y);
+    clearSafe(s.x, s.y + 1);
+    clearSafe(s.x, s.y - 1);
+  });
+
+  return nextMap;
+}
+
+function getBRStartPositions(cols, rows, count) {
+  const positions = [];
+  for (let i = 0; i < count; i++) {
+    let placed = false;
+    let attempts = 0;
+    while (!placed && attempts < 150) {
+      const px = 1 + 2 * Math.floor(Math.random() * ((cols - 2) / 2));
+      const py = 1 + 2 * Math.floor(Math.random() * ((rows - 2) / 2));
+      if (!positions.some(pos => pos.x === px && pos.y === py)) {
+        positions.push({ x: px, y: py });
+        placed = true;
+      }
+      attempts++;
+    }
+    if (!placed) {
+      positions.push({ x: 1, y: 1 });
+    }
+  }
+  return positions;
+}
+
+function startLocalBRGame() {
+  localMode = true;
+  localCouchMode = false;
+  couchTouchKeys.clear();
+  couchPlayerTouchKeys.clear();
+  couchTouchPlayerId = null;
+  roomCode = "LOCAL_BR";
+  localPlayerId = "local_player";
+  hostId = localPlayerId;
+  localBombId = 0;
+  
+  currentMapType = "classic";
+  
+  const cols = 61;
+  const rows = 61;
+  map = buildLocalBRMap();
+  const startPositions = getBRStartPositions(cols, rows, 20);
+  
+  const pool = ["chiikawa", "hachiware", "usagi", "momonga"];
+  players = [
+    makeLocalPlayer("local_player", (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You", selectedCharacter, startPositions[0], false)
+  ];
+  
+  players[0].hp = 100;
+  players[0].shield = 0;
+  players[0].bandageCount = 3;
+  players[0].medkitCount = 1;
+  players[0].energyDrinkCount = 1;
+  
+  for (let i = 1; i < 20; i++) {
+    const char = pool[i % pool.length];
+    const name = characterStyle[char].label + " CPU " + i;
+    const bot = makeLocalPlayer("cpu_" + i, name, char, startPositions[i], true);
+    bot.hp = 100;
+    bot.shield = 0;
+    bot.bandageCount = Math.floor(Math.random() * 3);
+    bot.medkitCount = Math.floor(Math.random() * 2);
+    bot.energyDrinkCount = Math.floor(Math.random() * 2);
+    players.push(bot);
+  }
+  
+  players.forEach((p) => {
+    p.trophies = 0;
+    p.hasPunch = false;
+    p.alive = true;
+    p.placement = null;
+    p.kills = 0;
+    p.damageDealt = 0;
+    p.x = p.gridX * TILE + TILE / 2;
+    p.y = p.gridY * TILE + TILE / 2;
+  });
+  
+  bombs = [];
+  blasts = [];
+  pickups = [];
+  particles = [];
+  roundTime = 600;
+  running = true;
+  shakeTimer = 0;
+  localMatchRewarded = false;
+  gameMessage = "";
+  
+  const zoneStartRad = Math.floor(cols * TILE * 0.65);
+  currentBRZone = {
+    x: (cols * TILE) / 2,
+    y: (rows * TILE) / 2,
+    radius: zoneStartRad,
+    nextX: (cols * TILE) / 2,
+    nextY: (rows * TILE) / 2,
+    nextRadius: zoneStartRad,
+    timeLeft: 60,
+    isShrinking: false,
+    phase: 0
+  };
+  
+  brMinimapCacheCanvas = null;
+  brMinimapCacheDirty = true;
+  
+  updateHudSidebar();
+  switchScreen(gameScreen);
+}
+
+function showBRResultsLocal() {
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  const playerWon = localPlayer && localPlayer.alive;
+  
+  players.forEach(p => {
+    if (p.alive) {
+      p.placement = 1;
+    }
+  });
+
+  awardLocalMatchProgress(playerWon);
+
+  showBRGameOverScreen({
+    message: playerWon ? "VICTORY ROYALE!" : "GAME OVER",
+    players: players
+  });
+}
+
+let brmVideoEl = null;
+let brmCanvasEl = null;
+let brmCtx = null;
+let brmTempCanvas = null;
+let brmTempCtx = null;
+let brmAnimationId = null;
+let brmActive = false;
+let brmPlayerCountVal = 1;
+let brmSimulateInterval = null;
+let brmCountdownInterval = null;
+
+function initBRMatchmakingUI() {
+  brmVideoEl = document.getElementById("brmCharVideo");
+  brmCanvasEl = document.getElementById("brmCharCanvas");
+  if (brmCanvasEl) brmCtx = brmCanvasEl.getContext("2d");
+  
+  brmTempCanvas = document.createElement("canvas");
+  brmTempCtx = brmTempCanvas.getContext("2d");
+
+  const cancelBtn = document.getElementById("brmCancelBtn");
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", () => {
+      cancelBRMatchmaking();
+    });
+  }
+  
+  const returnLobbyBtn = document.getElementById("brReturnLobbyBtn");
+  if (returnLobbyBtn) {
+    returnLobbyBtn.addEventListener("click", () => {
+      hideBRMatchmaking();
+    });
+  }
+}
+
+function showBRMatchmakingScreen(chosenMode) {
+  if (!brmVideoEl) initBRMatchmakingUI();
+  
+  brmActive = true;
+  brmPlayerCountVal = 1;
+  currentRoomMode = chosenMode;
+  
+  const screen = document.getElementById("brMatchmakingScreen");
+  if (screen) {
+    screen.classList.remove("hidden");
+    screen.classList.add("active");
+  }
+  
+  const badge = document.getElementById("brmModeBadge");
+  if (badge) {
+    badge.textContent = chosenMode.replace("br_", "").toUpperCase();
+  }
+  
+  const pCount = document.getElementById("brmPlayerCount");
+  if (pCount) pCount.textContent = "1";
+  
+  const countdownBox = document.getElementById("brmCountdown");
+  if (countdownBox) countdownBox.classList.add("hidden");
+  
+  if (brmCanvasEl) {
+    brmCanvasEl.classList.remove("falling");
+    void brmCanvasEl.offsetWidth;
+    brmCanvasEl.classList.add("falling");
+  }
+  
+  const videoSrc = characterSelectVideos[selectedCharacter] || "assets/chiikawa/chiikawa_character_animation.mp4";
+  brmVideoEl.src = videoSrc;
+  brmVideoEl.load();
+  playMutedLoop(brmVideoEl);
+  
+  if (brmAnimationId) cancelAnimationFrame(brmAnimationId);
+  renderBRMVideo();
+  
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    isOnlineMatchmakingActive = true;
+    if (roomCode) {
+      if (localPlayerId === hostId) {
+        sendServerMessage("start_matchmaking", { mode: chosenMode });
+      }
+    } else {
+      const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+      sendServerMessage("quick_match", { name, kind: selectedCharacter, mode: chosenMode });
+    }
+  } else {
+    startOfflineBRMatchmaking(chosenMode);
+  }
+}
+
+function renderBRMVideo() {
+  if (!brmActive) return;
+  
+  if (brmVideoEl && brmVideoEl.readyState >= 2 && brmCanvasEl && brmCtx) {
+    const vw = brmVideoEl.videoWidth;
+    const vh = brmVideoEl.videoHeight;
+    
+    if (vw && vh) {
+      if (brmTempCanvas.width !== vw || brmTempCanvas.height !== vh) {
+        brmTempCanvas.width = vw;
+        brmTempCanvas.height = vh;
+      }
+      
+      brmTempCtx.drawImage(brmVideoEl, 0, 0, vw, vh);
+      
+      const frame = brmTempCtx.getImageData(0, 0, vw, vh);
+      const data = frame.data;
+      const l = data.length / 4;
+      
+      for (let i = 0; i < l; i++) {
+        const r = data[i * 4 + 0];
+        const g = data[i * 4 + 1];
+        const b = data[i * 4 + 2];
+        
+        if (g > 65 && g > r * 1.22 && g > b * 1.22) {
+          data[i * 4 + 3] = 0;
+        }
+      }
+      
+      brmTempCtx.putImageData(frame, 0, 0);
+      
+      brmCtx.clearRect(0, 0, brmCanvasEl.width, brmCanvasEl.height);
+      
+      const scale = Math.min(brmCanvasEl.width / vw, brmCanvasEl.height / vh) * 0.95;
+      const dw = vw * scale;
+      const dh = vh * scale;
+      const dx = (brmCanvasEl.width - dw) / 2;
+      const dy = (brmCanvasEl.height - dh) / 2;
+      
+      brmCtx.drawImage(brmTempCanvas, dx, dy, dw, dh);
+    }
+  }
+  
+  brmAnimationId = requestAnimationFrame(renderBRMVideo);
+}
+
+function startOfflineBRMatchmaking(chosenMode) {
+  brmPlayerCountVal = 1;
+  const pCount = document.getElementById("brmPlayerCount");
+  const countdownBox = document.getElementById("brmCountdown");
+  const countdownNum = document.getElementById("brmCountdownNum");
+  
+  if (pCount) pCount.textContent = "1";
+  if (countdownBox) countdownBox.classList.add("hidden");
+  
+  if (brmSimulateInterval) clearInterval(brmSimulateInterval);
+  if (brmCountdownInterval) clearInterval(brmCountdownInterval);
+  
+  brmSimulateInterval = setInterval(() => {
+    if (!brmActive) {
+      clearInterval(brmSimulateInterval);
+      return;
+    }
+    
+    brmPlayerCountVal += Math.floor(Math.random() * 3) + 1;
+    if (brmPlayerCountVal >= 20) {
+      brmPlayerCountVal = 20;
+      clearInterval(brmSimulateInterval);
+      
+      if (countdownBox) countdownBox.classList.remove("hidden");
+      let secondsLeft = 5;
+      if (countdownNum) countdownNum.textContent = secondsLeft;
+      
+      brmCountdownInterval = setInterval(() => {
+        if (!brmActive) {
+          clearInterval(brmCountdownInterval);
+          return;
+        }
+        secondsLeft--;
+        if (countdownNum) countdownNum.textContent = secondsLeft;
+        
+        if (secondsLeft <= 0) {
+          clearInterval(brmCountdownInterval);
+          hideBRMatchmaking();
+          startLocalBRGame();
+        }
+      }, 1000);
+    }
+    
+    if (pCount) {
+      pCount.textContent = brmPlayerCountVal;
+    }
+  }, 250 + Math.random() * 300);
+}
+
+function cancelBRMatchmaking() {
+  cancelMatchmaking();
+  hideBRMatchmaking();
+}
+
+function hideBRMatchmaking() {
+  brmActive = false;
+  if (brmAnimationId) {
+    cancelAnimationFrame(brmAnimationId);
+    brmAnimationId = null;
+  }
+  if (brmVideoEl) {
+    try {
+      brmVideoEl.pause();
+      brmVideoEl.src = "";
+    } catch(e) {}
+  }
+  if (brmSimulateInterval) clearInterval(brmSimulateInterval);
+  if (brmCountdownInterval) clearInterval(brmCountdownInterval);
+  
+  const screen = document.getElementById("brMatchmakingScreen");
+  if (screen) {
+    screen.classList.remove("active");
+    screen.classList.add("hidden");
+  }
 }

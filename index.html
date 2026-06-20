@@ -733,6 +733,21 @@
               <div class="matchmaking-actions" style="display: flex; gap: 15px;">
                 <button id="cancelMatchmakingBtn" class="btn-cancel-matchmaking" type="button">CANCEL</button>
               </div>
+          </div>
+
+          <!-- Battle Royale Matchmaking Screen -->
+          <div id="brMatchmakingScreen" class="br-matchmaking-overlay hidden">
+            <div class="brm-bg-rays"></div>
+            <canvas id="brmCharCanvas" width="400" height="600"></canvas>
+            <video id="brmCharVideo" muted loop playsinline style="display:none"></video>
+            <div class="brm-center-content">
+              <div class="brm-logo">CHIIKAWA ROYALE</div>
+              <div class="brm-mode-badge" id="brmModeBadge">SOLO</div>
+            </div>
+            <div class="brm-bottom-bar">
+              <button id="brmCancelBtn" type="button">CANCEL</button>
+              <div class="brm-player-count"><span id="brmPlayerCount">1</span>/20 PLAYERS</div>
+              <div class="brm-countdown hidden" id="brmCountdown">Starting in <strong id="brmCountdownNum">5</strong></div>
             </div>
           </div>
 

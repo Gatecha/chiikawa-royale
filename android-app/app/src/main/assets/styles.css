@@ -7968,3 +7968,200 @@ body.graphics-low .yellow-console {
 
 /* Hide old progress-section if it somehow remains */
 .progress-section { display: none !important; }
+
+/* ================================================================= */
+/* PREMIUM BATTLE ROYALE MATCHMAKING OVERLAY CSS                     */
+/* ================================================================= */
+.br-matchmaking-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  background: radial-gradient(circle, #2575fc 0%, #1a1b4b 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 40px 20px;
+  overflow: hidden;
+  font-family: var(--font, "Outfit", sans-serif);
+  color: #fff;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.br-matchmaking-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.9) translateY(40px);
+}
+
+/* Fall Guys style rotating rays bg */
+.brm-bg-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200vmax;
+  height: 200vmax;
+  transform: translate(-50%, -50%);
+  background-image: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.05) 0deg 15deg,
+    transparent 15deg 30deg
+  );
+  animation: brm-ray-rotate 40s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes brm-ray-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Character canvas with falling & floating animations */
+#brmCharCanvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  animation: brm-float 3.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5));
+}
+
+#brmCharCanvas.falling {
+  animation: brm-fall-entry 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes brm-fall-entry {
+  0% {
+    transform: translate(-50%, -180%) rotate(-15deg) scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(-50%, -40%) rotate(5deg) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes brm-float {
+  0% { transform: translate(-50%, -50%) translateY(-10px) rotate(-1deg); }
+  100% { transform: translate(-50%, -50%) translateY(10px) rotate(1deg); }
+}
+
+/* Logo and Middle Content */
+.brm-center-content {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  margin-top: 20px;
+  pointer-events: none;
+}
+
+.brm-logo {
+  font-size: 42px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, #ffd84a 0%, #ff7675 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 15px rgba(255, 118, 117, 0.4);
+  animation: brm-pulse 2s infinite alternate;
+}
+
+@keyframes brm-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.04); }
+}
+
+.brm-mode-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+}
+
+/* Bottom Bar */
+.brm-bottom-bar {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 3;
+}
+
+.brm-player-count {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.brm-player-count span {
+  color: #ffd84a;
+  font-size: 32px;
+  animation: brm-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes brm-pop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.brm-countdown {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2ecc71;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 8px 24px;
+  border-radius: 30px;
+  border: 2px solid #2ecc71;
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
+  animation: brm-blink 1s infinite;
+}
+
+@keyframes brm-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+#brmCancelBtn {
+  background: linear-gradient(135deg, #ff7675 0%, #d63031 100%);
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 12px 35px;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(214, 48, 49, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 1px;
+}
+
+#brmCancelBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(214, 48, 49, 0.6);
+}
+
+#brmCancelBtn:active {
+  transform: translateY(1px);
+}
