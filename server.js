@@ -37,7 +37,7 @@ const SURRENDER_THRESHOLD = 3;
 
 function getMatchMaxPlayers(mode, isChallenge = false) {
   if (mode === "br_solo" || mode === "br_duo" || mode === "br_trio") return 20;
-  if (isChallenge && mode === "solo") return 2; // Solo challenges are 1v1
+  if (isChallenge && mode === "solo") return 6; // Allow up to 6 players in solo challenge free-for-all
   if (mode === "trio" || mode === "team") return 6;
   return 4; // solo, duo, standard
 }
@@ -179,39 +179,75 @@ function handleMessage(ws, msg) {
       room.mode = chosenMode;
       room.isPrivate = false;
 
-      // Try to find another open lobby room that is public and has space for all human players of this room
-      const humanCount = room.players.filter(p => !p.ai).length;
-      let targetRoom = null;
-      for (const [code, r] of rooms.entries()) {
-        if (r.code === room.code) continue;
-        const maxPlayers = getMatchMaxPlayers(chosenMode, r.isChallenge);
-        if (r.state === "lobby" && !r.isPrivate && r.mode === chosenMode && (r.players.length + humanCount) <= maxPlayers) {
-          targetRoom = r;
-          break;
+      if (room.isChallenge) {
+        console.log(`Challenge Mode: Starting map voting immediately for room ${room.code}`);
+        startMapVoting(room);
+      } else {
+        // Try to find another open lobby room that is public and has space for all human players of this room
+        const humanCount = room.players.filter(p => !p.ai).length;
+        let targetRoom = null;
+        for (const [code, r] of rooms.entries()) {
+          if (r.code === room.code) continue;
+          const maxPlayers = getMatchMaxPlayers(chosenMode, r.isChallenge);
+          if (r.state === "lobby" && !r.isPrivate && r.mode === chosenMode && (r.players.length + humanCount) <= maxPlayers) {
+            targetRoom = r;
+            break;
+          }
+        }
+
+        if (targetRoom) {
+          console.log(`Matching room ${room.code} into existing public room ${targetRoom.code}`);
+          const clientsToMove = [];
+          wss.clients.forEach((client) => {
+            if (client.roomCode === room.code && client.readyState === WebSocket.OPEN) {
+              clientsToMove.push(client);
+            }
+          });
+
+          clientsToMove.forEach((client) => {
+            const playerInfo = room.players.find(p => p.id === client.id);
+            const name = playerInfo ? playerInfo.name : "Friend";
+            const kind = playerInfo ? playerInfo.kind : "hachiware";
+            const originalSquadCode = playerInfo && playerInfo.squadCode ? playerInfo.squadCode : room.code;
+            leaveRoom(client);
+            joinPlayerToRoom(client, targetRoom, name, kind, originalSquadCode);
+          });
+        } else {
+          broadcastLobbyUpdate(room);
+          startMatchmakingTimers(room);
         }
       }
+      break;
+    }
 
-      if (targetRoom) {
-        console.log(`Matching room ${room.code} into existing public room ${targetRoom.code}`);
-        const clientsToMove = [];
-        wss.clients.forEach((client) => {
-          if (client.roomCode === room.code && client.readyState === WebSocket.OPEN) {
-            clientsToMove.push(client);
-          }
-        });
-
-        clientsToMove.forEach((client) => {
-          const playerInfo = room.players.find(p => p.id === client.id);
-          const name = playerInfo ? playerInfo.name : "Friend";
-          const kind = playerInfo ? playerInfo.kind : "hachiware";
-          const originalSquadCode = playerInfo && playerInfo.squadCode ? playerInfo.squadCode : room.code;
-          leaveRoom(client);
-          joinPlayerToRoom(client, targetRoom, name, kind, originalSquadCode);
-        });
+    case "set_lobby_mode": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
+      room.isChallenge = !!data.isChallenge;
+      if (room.isChallenge) {
+        room.mode = "solo";
       } else {
-        broadcastLobbyUpdate(room);
-        startMatchmakingTimers(room);
+        room.mode = "trio";
       }
+      broadcastLobbyUpdate(room);
+      break;
+    }
+
+    case "voice_chat_audio": {
+      const room = rooms.get(ws.roomCode);
+      if (!room) return;
+      // Broadcast voice packet to all other players in the room
+      room.players.forEach(p => {
+        if (p.id !== ws.id && p.ws && p.ws.readyState === WebSocket.OPEN) {
+          p.ws.send(JSON.stringify({
+            type: "voice_chat_audio",
+            data: {
+              playerId: ws.id,
+              audio: data.audio
+            }
+          }));
+        }
+      });
       break;
     }
 

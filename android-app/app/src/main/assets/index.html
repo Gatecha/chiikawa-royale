@@ -333,44 +333,69 @@
 
           <!-- Main Content Area -->
           <div class="console-body">
-            <!-- PLAY TAB CONTENT -->
+            <!-- PLAY TAB CONTENT (Redesigned centered premium Player Card interface) -->
             <div class="tab-content active" id="tabContent_play">
-              <div class="left-column">
-                <img class="lobby-logo" src="chiikawa-royale-logo.png" alt="Chiikawa Royale" />
+              <div class="premium-play-showcase">
+                <!-- Outer glow / aura decoration -->
+                <div class="showcase-glow-aura"></div>
                 
-                <div class="progress-section">
-                  <div class="progress-label">SEASON PROGRESS</div>
-                  <div class="progress-bar-container">
-                    <div id="seasonLevel" class="level-badge">4</div>
-                    <div class="progress-bar-track">
-                      <div id="seasonProgressFill" class="progress-bar-fill" style="width: 76%;"></div>
-                      <span id="seasonProgressText" class="progress-text">609/800</span>
+                <!-- Player Card Container (slanted/tilted like the lobby cards to match the game style) -->
+                <div class="showcase-card-container">
+                  <div class="showcase-card-inner">
+                    <img id="playCharacterCardImg" src="assets/lobby cards/chiikawa character card.png" alt="Active Character Card" />
+                    
+                    <!-- Capsule Footer info bar like lobby cards -->
+                    <div class="showcase-card-footer">
+                      <div class="showcase-rank-badge" id="playRankIcon">
+                        <!-- Dynamic SVG rank icon goes here -->
+                      </div>
+                      <div class="showcase-user-details">
+                        <div class="showcase-char-name" id="playCharName">Hachiware</div>
+                        <div class="showcase-user-name" id="playUserName">PlayerOne</div>
+                      </div>
+                      <div class="showcase-level-badge">
+                        <span class="lvl-label">LV.</span>
+                        <span id="playLevelNum">4</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                <!-- Showcase rank & progression details under the card -->
+                <div class="showcase-stats-panel">
+                  <div class="showcase-rank-title">
+                    <span id="playRankTier">GOLD</span> <span id="playRankDiv">I</span>
+                  </div>
+                  <div class="showcase-xp-section">
+                    <div class="showcase-xp-label">SEASON LEVEL PROGRESS</div>
+                    <div class="showcase-xp-bar-track">
+                      <div id="playXpBarFill" class="showcase-xp-bar-fill" style="width: 50%;"></div>
+                      <span id="playXpText" class="showcase-xp-text">200 / 500</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Giant PLAY button -->
+                <div class="showcase-play-wrapper">
+                  <button id="lobbyPlayBtn" class="btn-giant-play" type="button">
+                    <span>PLAY</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- Spotlight pedestal (center) -->
-              <div class="spotlight-area">
+              <!-- Hidden elements to preserve JS compatibility with old spotlight / map select variables -->
+              <div style="display: none !important;">
                 <video id="spotlightVideo" src="hachiware-lobby.mp4" muted loop playsinline preload="auto"></video>
                 <canvas id="spotlightCanvas" width="580" height="580"></canvas>
-              </div>
-
-              <!-- Action buttons (right) -->
-              <div class="right-column">
-                <div class="map-select-wrapper">
-                  <span class="action-label">Select Map</span>
-                  <select id="localMapSelect" class="map-dropdown">
-                    <option value="classic">Classic Green</option>
-                    <option value="checkered">Checkered Ice</option>
-                    <option value="colosseum">Colosseum Clay</option>
-                    <option value="powerzone">Power Zone</option>
-                  </select>
-                </div>
-                <div class="play-action-wrapper">
-                  <span class="action-label">Local Battle</span>
-                  <button id="lobbyPlayBtn" class="btn-giant-play" type="button">PLAY!</button>
-                </div>
+                <select id="localMapSelect">
+                  <option value="classic" selected>Classic Green</option>
+                  <option value="checkered">Checkered Ice</option>
+                  <option value="colosseum">Colosseum Clay</option>
+                  <option value="powerzone">Power Zone</option>
+                </select>
+                <div id="seasonLevel">4</div>
+                <div id="seasonProgressFill" style="width: 76%;"></div>
+                <span id="seasonProgressText">609/800</span>
               </div>
             </div>
 
@@ -492,6 +517,13 @@
               <div class="squad-lobby-container">
                 <!-- Animating swirly background layer -->
                 <div class="squad-lobby-bg-swirls" aria-hidden="true"></div>
+                
+                <!-- Lobby Mode Selection (TEAM / CHALLENGE) -->
+                <div class="lobby-mode-selection">
+                  <button id="btnLobbyModeTeam" class="lobby-mode-btn active" type="button">TEAM</button>
+                  <button id="btnLobbyModeChallenge" class="lobby-mode-btn" type="button">CHALLENGE</button>
+                </div>
+
                  <!-- Slanted Cards Row -->
                  <div class="lobby-cards-row">
                     <!-- Card 1: Invite Left -->
@@ -504,10 +536,9 @@
                    <!-- Card 2: User Center -->
                     <div class="lobby-card card-pink" id="squadCard_user">
                       <div class="card-inner-skew">
-                        <!-- Animated selected character preview -->
+                        <!-- Character card preview instead of video/canvas animation -->
                         <div class="squad-card-image-container">
-                          <video id="squadLobbyVideo" src="assets/chiikawa/chiikawa_character_animation.mp4" muted loop playsinline preload="auto"></video>
-                          <canvas id="squadLobbyCanvas" width="420" height="520" aria-label="Selected character preview"></canvas>
+                          <img id="squadLobbyCharImg" src="assets/lobby cards/chiikawa character card.png" alt="Selected character preview" />
                         </div>
 
                         <div class="card-footer-bar">
@@ -522,12 +553,6 @@
                             <span class="role-badge badge-purple">
                               <svg viewBox="0 0 24 24" class="badge-svg" fill="currentColor">
                                 <path d="M12 2l1.8 4.7 4.7 1.8-4.7 1.8-1.8 4.7-1.8-4.7-4.7-1.8 4.7-1.8z" />
-                              </svg>
-                            </span>
-                            <span class="role-badge badge-outline">
-                              <svg viewBox="0 0 24 24" class="badge-svg" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round">
-                                <circle cx="12" cy="12" r="8" />
-                                <line x1="6.34" y1="6.34" x2="17.66" y2="17.66" />
                               </svg>
                             </span>
                           </div>
@@ -1040,19 +1065,10 @@
 
           <!-- Mobile Virtual Gamepad -->
           <div class="mobile-gamepad">
-            <div class="dpad">
-              <button id="btnTouchUp" class="gamepad-btn btn-up" type="button" aria-label="Up">
-                <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z" fill="currentColor"/></svg>
-              </button>
-              <button id="btnTouchLeft" class="gamepad-btn btn-left" type="button" aria-label="Left">
-                <svg viewBox="0 0 24 24"><path d="M4 12l8-8v6h8v4h-8v6z" fill="currentColor"/></svg>
-              </button>
-              <button id="btnTouchRight" class="gamepad-btn btn-right" type="button" aria-label="Right">
-                <svg viewBox="0 0 24 24"><path d="M20 12l-8 8v-6H4v-4h8V4z" fill="currentColor"/></svg>
-              </button>
-              <button id="btnTouchDown" class="gamepad-btn btn-down" type="button" aria-label="Down">
-                <svg viewBox="0 0 24 24"><path d="M12 20l8-8h-6V4h-4v8H4z" fill="currentColor"/></svg>
-              </button>
+            <div class="mobile-joystick-container">
+              <div id="mobileJoystick" class="couch-joystick" aria-label="Movement joystick">
+                <div class="couch-joystick-knob"></div>
+              </div>
             </div>
             <div class="action-buttons">
               <button id="btnTouchPunch" class="gamepad-btn btn-action-punch" type="button" aria-label="Punch">

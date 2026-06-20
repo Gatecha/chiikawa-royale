@@ -2624,11 +2624,11 @@ canvas#game {
     border: 1.5px solid rgba(255, 255, 255, 0.12);
     padding: 5px 8px;
     bottom: 8px;
-    left: 8px;
-    right: 8px;
+    left: 4px;
+    right: 16px;
     border-radius: 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    transform: skewX(-13deg);
+    transform: none;
   }
   .avatar-circle {
     width: 20px;
@@ -2960,19 +2960,19 @@ canvas#game {
   padding: 8px 12px;
   position: absolute;
   bottom: 12px;
-  left: 12px;
-  right: 12px;
+  left: 4px;
+  right: 20px;
   box-sizing: border-box;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  /* Skew it parallel to the card boundaries to prevent right-edge clipping */
-  transform: skewX(-13deg);
+  /* Straighten capsule and shift left to align with slanted card content */
+  transform: none;
 }
 
 /* Un-skew the children inside the skewed capsule */
 .card-footer-bar > .avatar-circle,
 .card-footer-bar > .user-info,
 .card-footer-bar > .user-badges {
-  transform: skewX(13deg);
+  transform: none;
 }
 
 .avatar-circle {
@@ -8156,4 +8156,291 @@ body.graphics-low .yellow-console {
 
 #brmCancelBtn:active {
   transform: translateY(1px);
+}
+
+/* ==========================================================================
+   BATTLE ROYALE SURRENDER & REDESIGNED PLAY TAB STYLES
+   ========================================================================== */
+
+.br-mode-active #leaveGameBtn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  bottom: auto;
+  left: auto;
+  margin: 0;
+  z-index: 1000;
+}
+
+/* Redesigned Premium Play Tab UI */
+.premium-play-showcase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  position: relative;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.showcase-glow-aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(255, 216, 74, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.showcase-card-container {
+  width: 260px;
+  height: 410px;
+  background: var(--dark-box);
+  border: 4px solid #000;
+  box-shadow: 6px 6px 0px #000;
+  border-radius: 24px;
+  overflow: hidden;
+  transform: skewX(-10deg);
+  z-index: 2;
+  position: relative;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  margin-bottom: 20px;
+}
+
+.showcase-card-container:hover {
+  transform: skewX(-10deg) scale(1.02);
+  box-shadow: 8px 8px 0px #000;
+}
+
+.showcase-card-inner {
+  transform: skewX(10deg);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.showcase-card-inner img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.showcase-card-footer {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(21, 21, 24, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  z-index: 3;
+}
+
+.showcase-rank-badge {
+  width: 32px;
+  height: 32px;
+}
+
+.showcase-rank-badge svg {
+  width: 100%;
+  height: 100%;
+}
+
+.showcase-user-details {
+  flex-grow: 1;
+  margin-left: 10px;
+  text-align: left;
+}
+
+.showcase-char-name {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--yellow);
+  line-height: 1.1;
+}
+
+.showcase-user-name {
+  font-family: var(--font-clean);
+  font-size: 11px;
+  color: #ccc;
+}
+
+.showcase-level-badge {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 14px;
+  background: var(--pink);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 2px solid #000;
+}
+
+.showcase-level-badge .lvl-label {
+  font-size: 10px;
+  margin-right: 1px;
+}
+
+.showcase-stats-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 25px;
+  z-index: 2;
+  width: 300px;
+}
+
+.showcase-rank-title {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 18px;
+  color: #fff;
+  text-shadow: 2px 2px 0px #000;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.showcase-xp-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.showcase-xp-label {
+  font-family: var(--font-clean);
+  font-size: 10px;
+  font-weight: 800;
+  color: #aaa;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.showcase-xp-bar-track {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 3px solid #000;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.showcase-xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--yellow) 0%, #f0932b 100%);
+  border-radius: 8px;
+  transition: width 300ms ease;
+}
+
+.showcase-xp-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 10px;
+  color: #fff;
+  text-shadow: 1px 1px 0px #000;
+  pointer-events: none;
+}
+
+.showcase-play-wrapper {
+  z-index: 2;
+  width: 200px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Make sure the giant play button matches beautifully */
+.premium-play-showcase .btn-giant-play {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 26px;
+  width: 180px;
+  height: 58px;
+  background: var(--yellow);
+  color: #000;
+  border: 4px solid #000;
+  box-shadow: 4px 4px 0px #000;
+  border-radius: 16px;
+  cursor: pointer;
+  transform: skewX(-10deg);
+  transition: transform 100ms, box-shadow 100ms, background 100ms;
+}
+
+.premium-play-showcase .btn-giant-play > span {
+  display: block;
+  transform: skewX(10deg);
+}
+
+.premium-play-showcase .btn-giant-play:hover {
+  transform: skewX(-10deg) translateY(-3px);
+  box-shadow: 6px 6px 0px #000;
+  background: #ffe366;
+}
+
+.premium-play-showcase .btn-giant-play:active {
+  transform: skewX(-10deg) translateY(1px);
+  box-shadow: 1px 1px 0px #000;
+}
+
+/* Lobby Mode Selector (TEAM / CHALLENGE) */
+.lobby-mode-selection {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  z-index: 10;
+}
+
+.lobby-mode-btn {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 14px;
+  padding: 8px 24px;
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0px #000;
+  border-radius: 12px;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  transform: skewX(-10deg);
+  transition: transform 100ms, box-shadow 100ms, background-color 100ms;
+}
+
+.lobby-mode-btn.active {
+  background: var(--yellow);
+  color: #000;
+}
+
+.lobby-mode-btn:hover {
+  transform: skewX(-10deg) translateY(-2px);
+  box-shadow: 4px 4px 0px #000;
+}
+
+.lobby-mode-btn:active {
+  transform: skewX(-10deg) translateY(1px);
+  box-shadow: 1px 1px 0px #000;
 }

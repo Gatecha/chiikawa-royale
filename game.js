@@ -1319,6 +1319,17 @@ function handleServerMessage(msg) {
           localP.range = serverPlayer.range;
           localP.hasPunch = !!serverPlayer.hasPunch;
           localP.hasSlide = !!serverPlayer.hasSlide;
+          // Sync Battle Royale stats
+          localP.hp = serverPlayer.hp;
+          localP.shield = serverPlayer.shield;
+          localP.knocked = !!serverPlayer.knocked;
+          localP.bandageCount = serverPlayer.bandageCount || 0;
+          localP.medkitCount = serverPlayer.medkitCount || 0;
+          localP.energyDrinkCount = serverPlayer.energyDrinkCount || 0;
+          localP.reviveKitCount = serverPlayer.reviveKitCount || 0;
+          localP.reviveProgress = serverPlayer.reviveProgress || 0;
+          localP.kills = serverPlayer.kills || 0;
+          localP.damageDealt = serverPlayer.damageDealt || 0;
 
           if (serverPlayer.id !== localPlayerId) {
             localP.prevX = localP.targetX !== undefined ? localP.targetX : serverPlayer.x;
@@ -1396,6 +1407,14 @@ function handleServerMessage(msg) {
         collector.speed = data.playerStats.speed;
         collector.hasPunch = !!data.playerStats.hasPunch;
         collector.hasSlide = !!data.playerStats.hasSlide;
+        // Sync item counts on pickup collected
+        collector.hp = data.playerStats.hp;
+        collector.shield = data.playerStats.shield;
+        collector.bandageCount = data.playerStats.bandageCount || 0;
+        collector.medkitCount = data.playerStats.medkitCount || 0;
+        collector.energyDrinkCount = data.playerStats.energyDrinkCount || 0;
+        collector.reviveKitCount = data.playerStats.reviveKitCount || 0;
+        collector.activeBombType = data.playerStats.activeBombType || "normal";
         burstSparkles(collector.x, collector.y);
       }
       updateHudSidebar();
@@ -1477,6 +1496,13 @@ function handleServerMessage(msg) {
       const countdown = data.countdown;
       const stateEl = document.getElementById("roundState");
       if (stateEl) stateEl.textContent = `PRE-MATCH: ${countdown}s`;
+      break;
+    }
+
+    case "voice_chat_audio": {
+      if (data.playerId !== localPlayerId) {
+        playAudioChunk(base64ToArrayBuffer(data.audio));
+      }
       break;
     }
 
@@ -2713,6 +2739,46 @@ function updateProgressionUI() {
   if (winsEl)      winsEl.textContent      = totalWins;
   if (matchesEl)   matchesEl.textContent   = totalMatches;
   if (statCrownEl) statCrownEl.textContent = crownCount;
+
+  // Centered Premium Play Card updates
+  const playCardImg = document.getElementById("playCharacterCardImg");
+  if (playCardImg) {
+    const src = `assets/lobby cards/${selectedCharacter} character card.png`;
+    if (!playCardImg.src.endsWith(src)) {
+      playCardImg.src = src;
+    }
+  }
+  const playCharName = document.getElementById("playCharName");
+  if (playCharName) {
+    playCharName.textContent = characterStyle[selectedCharacter]?.label || selectedCharacter;
+  }
+  const playUserName = document.getElementById("playUserName");
+  if (playUserName) {
+    playUserName.textContent = (typeof usernameInput !== 'undefined' && usernameInput && usernameInput.value && usernameInput.value.trim())
+      || localStorage.getItem("local_username")
+      || "Player";
+  }
+  const playLevelNum = document.getElementById("playLevelNum");
+  if (playLevelNum) {
+    playLevelNum.textContent = seasonLevel;
+  }
+  const playRankIcon = document.getElementById("playRankIcon");
+  if (playRankIcon) {
+    playRankIcon.innerHTML = getRankIconSvg(rank.id);
+  }
+  const playRankTier = document.getElementById("playRankTier");
+  const playRankDiv = document.getElementById("playRankDiv");
+  if (playRankTier) playRankTier.textContent = rank.name;
+  if (playRankDiv) playRankDiv.textContent = rank.div || '';
+
+  const playXpBarFill = document.getElementById("playXpBarFill");
+  const playXpText = document.getElementById("playXpText");
+  if (playXpBarFill) {
+    playXpBarFill.style.width = `${Math.min(100, (seasonXp / seasonXpToNext) * 100)}%`;
+  }
+  if (playXpText) {
+    playXpText.textContent = `${seasonXp} / ${seasonXpToNext}`;
+  }
 }
 
 async function loadProgression() {
@@ -5295,6 +5361,35 @@ function syncSquadLobbyInterface() {
     if (squadReadyBtn) squadReadyBtn.style.display = "none";
     if (squadLeaveLobbyBtn) squadLeaveLobbyBtn.style.display = "none";
   }
+
+  // Lobby Mode buttons sync
+  const btnLobbyModeTeam = document.getElementById("btnLobbyModeTeam");
+  const btnLobbyModeChallenge = document.getElementById("btnLobbyModeChallenge");
+  if (btnLobbyModeTeam && btnLobbyModeChallenge) {
+    if (currentRoomIsChallenge) {
+      btnLobbyModeChallenge.classList.add("active");
+      btnLobbyModeTeam.classList.remove("active");
+    } else {
+      btnLobbyModeTeam.classList.add("active");
+      btnLobbyModeChallenge.classList.remove("active");
+    }
+    // Only host can modify
+    if (localPlayerId === hostId) {
+      btnLobbyModeTeam.disabled = false;
+      btnLobbyModeChallenge.disabled = false;
+      btnLobbyModeTeam.style.opacity = "1";
+      btnLobbyModeChallenge.style.opacity = "1";
+      btnLobbyModeTeam.style.pointerEvents = "auto";
+      btnLobbyModeChallenge.style.pointerEvents = "auto";
+    } else {
+      btnLobbyModeTeam.disabled = true;
+      btnLobbyModeChallenge.disabled = true;
+      btnLobbyModeTeam.style.opacity = "0.5";
+      btnLobbyModeChallenge.style.opacity = "0.5";
+      btnLobbyModeTeam.style.pointerEvents = "none";
+      btnLobbyModeChallenge.style.pointerEvents = "none";
+    }
+  }
 }
 
 // Quick Match
@@ -7827,7 +7922,7 @@ document.querySelector(".chat-btn")?.addEventListener("click", () => {
     if (codeLabel) codeLabel.textContent = `Room ${roomCode}`;
     if (popup) popup.classList.remove("hidden");
   } else {
-    openGlobalChat();
+    showToastMsg("Lobby chat is only available when inside a team lobby! ⚠️");
   }
 });
 
@@ -8326,6 +8421,16 @@ function showToastMsg(msg) {
 const _baseSwitchScreen = switchScreen;
 switchScreen = function(screen) {
   _baseSwitchScreen(screen);
+  if (screen === gameScreen) {
+    const isBR = isBattleRoyale(currentRoomMode);
+    if (isBR) {
+      document.body.classList.add("br-mode-active");
+    } else {
+      document.body.classList.remove("br-mode-active");
+    }
+  } else {
+    document.body.classList.remove("br-mode-active");
+  }
   if (!currentSocialUserId) return;
   if (screen === gameScreen) {
     updateMyPresenceStatus("in-game");
@@ -9503,3 +9608,156 @@ function hideBRMatchmaking() {
     screen.classList.add("hidden");
   }
 }
+
+// ==========================================================================
+// PEER VOICE CHAT SYSTEM & LOBBY MODE HANDLERS
+// ==========================================================================
+
+let mediaRecorder = null;
+let audioStream = null;
+let isMicActive = false;
+
+async function startMicCapture() {
+  try {
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    let mimeType = 'audio/webm;codecs=opus';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/ogg;codecs=opus';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/mp4';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = ''; // fallback
+
+    mediaRecorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : undefined);
+    mediaRecorder.ondataavailable = async (e) => {
+      if (e.data && e.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result.split(',')[1];
+          sendServerMessage("voice_chat_audio", { audio: base64data });
+        };
+        reader.readAsDataURL(e.data);
+      }
+    };
+    
+    // Send audio packet every 500ms
+    mediaRecorder.start(500);
+    isMicActive = true;
+    updateMicButtonUI();
+    showToastMsg("Microphone ON 🎙️");
+  } catch (err) {
+    console.error("Failed to access microphone:", err);
+    showToastMsg("Microphone Access Denied! ❌");
+    isMicActive = false;
+    updateMicButtonUI();
+  }
+}
+
+function stopMicCapture() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    try { mediaRecorder.stop(); } catch(e) {}
+  }
+  if (audioStream) {
+    audioStream.getTracks().forEach(track => track.stop());
+  }
+  mediaRecorder = null;
+  audioStream = null;
+  isMicActive = false;
+  updateMicButtonUI();
+  showToastMsg("Microphone OFF 🔇");
+}
+
+function toggleLobbyMic() {
+  if (serverMode !== "online" || !roomCode) {
+    showToastMsg("Voice chat is only available in online squad lobbies! ⚠️");
+    return;
+  }
+  if (isMicActive) {
+    stopMicCapture();
+  } else {
+    startMicCapture();
+  }
+}
+
+function updateMicButtonUI() {
+  const micBtn = document.getElementById("lobbyMicBtn");
+  if (!micBtn) return;
+  if (isMicActive) {
+    micBtn.classList.add("active");
+    micBtn.style.background = "var(--green)";
+    micBtn.style.color = "#fff";
+  } else {
+    micBtn.classList.remove("active");
+    micBtn.style.background = "";
+    micBtn.style.color = "";
+  }
+}
+
+function base64ToArrayBuffer(base64) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+let audioCtxVoice = null;
+function playAudioChunk(arrayBuffer) {
+  try {
+    if (!audioCtxVoice) {
+      audioCtxVoice = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    audioCtxVoice.decodeAudioData(arrayBuffer, (audioBuffer) => {
+      const source = audioCtxVoice.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtxVoice.destination);
+      source.start();
+    }, (err) => {
+      fallbackPlayAudio(arrayBuffer);
+    });
+  } catch (e) {
+    fallbackPlayAudio(arrayBuffer);
+  }
+}
+
+function fallbackPlayAudio(arrayBuffer) {
+  try {
+    const blob = new Blob([arrayBuffer], { type: 'audio/webm;codecs=opus' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.play().catch(() => {});
+  } catch (e) {
+    console.warn("Voice playback failed:", e);
+  }
+}
+
+function initVoiceChatAndLobbyModeUI() {
+  const micBtn = document.getElementById("lobbyMicBtn");
+  if (micBtn && !micBtn.dataset.bound) {
+    micBtn.dataset.bound = "true";
+    micBtn.addEventListener("click", toggleLobbyMic);
+  }
+
+  const btnLobbyModeTeam = document.getElementById("btnLobbyModeTeam");
+  if (btnLobbyModeTeam && !btnLobbyModeTeam.dataset.bound) {
+    btnLobbyModeTeam.dataset.bound = "true";
+    btnLobbyModeTeam.addEventListener("click", () => {
+      if (localPlayerId === hostId) {
+        sendServerMessage("set_lobby_mode", { isChallenge: false });
+      }
+    });
+  }
+
+  const btnLobbyModeChallenge = document.getElementById("btnLobbyModeChallenge");
+  if (btnLobbyModeChallenge && !btnLobbyModeChallenge.dataset.bound) {
+    btnLobbyModeChallenge.dataset.bound = "true";
+    btnLobbyModeChallenge.addEventListener("click", () => {
+      if (localPlayerId === hostId) {
+        sendServerMessage("set_lobby_mode", { isChallenge: true });
+      }
+    });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", initVoiceChatAndLobbyModeUI);
+initVoiceChatAndLobbyModeUI();
