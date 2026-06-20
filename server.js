@@ -32,7 +32,7 @@ const RECONNECT_GRACE_MS = 10 * 60 * 1000;
 const SURRENDER_THRESHOLD = 3;
 
 function getMatchMaxPlayers(mode, isChallenge = false) {
-  if (mode === "br_solo" || mode === "br_duo" || mode === "br_trio") return 50;
+  if (mode === "br_solo" || mode === "br_duo" || mode === "br_trio") return 20;
   if (isChallenge && mode === "solo") return 2; // Solo challenges are 1v1
   if (mode === "trio" || mode === "team") return 6;
   return 4; // solo, duo, standard
@@ -54,12 +54,12 @@ function isBattleRoyale(mode) {
 }
 
 function getCols(mode) {
-  if (isBattleRoyale(mode)) return 31;
+  if (isBattleRoyale(mode)) return 61;
   return 15;
 }
 
 function getRows(mode) {
-  if (isBattleRoyale(mode)) return 31;
+  if (isBattleRoyale(mode)) return 61;
   return 13;
 }
 
@@ -1162,7 +1162,7 @@ function fillAllRemainingWithBots(room) {
     fillTeamToSize(room, "A", 3);
     fillTeamToSize(room, "B", 3);
   } else if (room.mode === "br_duo" || room.mode === "br_trio") {
-    while (room.players.length < 50) {
+    while (room.players.length < maxPlayers) {
       addBotToRoom(room);
     }
   }
@@ -2592,8 +2592,8 @@ function generateMap(mapType, mode = "standard") {
         if (x % 2 === 0 && y % 2 === 0 && Math.random() < 0.40) return "wall";
         // Buildings (clumped walls)
         if ((x % 7 === 0 || y % 7 === 0) && (x + y) % 3 === 0) return "wall";
-        // Crate cover
-        return Math.random() < 0.25 ? "crate" : "grass";
+        // Crate cover - filled with high-density brown crates (80% probability)
+        return Math.random() < 0.80 ? "crate" : "grass";
       }
       
       if (mapType === "powerzone") {
@@ -2717,11 +2717,11 @@ function positionBRPlayers(room) {
       const tx = 2 + Math.floor(Math.random() * (cols - 4));
       const ty = 2 + Math.floor(Math.random() * (rows - 4));
       
-      if (room.map[ty]?.[tx] === "grass") {
+      if (room.map[ty]?.[tx] && room.map[ty][tx] !== "wall") {
         let far = true;
         for (const center of spawnedCenters) {
           const dist = Math.hypot(center.x - tx, center.y - ty);
-          if (dist < 5) {
+          if (dist < 8) {
             far = false;
             break;
           }
@@ -2735,6 +2735,17 @@ function positionBRPlayers(room) {
     }
 
     spawnedCenters.push({ x: spawnX, y: spawnY });
+
+    // Clear 2-tile radius of non-walls around the spawn center to grass so players/bots aren't immediately blocked
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const cx = spawnX + dx;
+        const cy = spawnY + dy;
+        if (room.map[cy] && room.map[cy][cx] && room.map[cy][cx] !== "wall") {
+          room.map[cy][cx] = "grass";
+        }
+      }
+    }
 
     const offsets = [{x: 0, y: 0}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 0, y: -1}];
     team.forEach((p, index) => {
@@ -2782,7 +2793,8 @@ function spawnInitialLoot(room) {
   }
 
   const shuffled = shuffleArray(grassTiles);
-  const spawnCount = Math.min(shuffled.length, 100);
+  // Scale initial loot count dynamically with the map size (approx 12% of total cells)
+  const spawnCount = Math.min(shuffled.length, Math.floor(cols * rows * 0.12));
   for (let i = 0; i < spawnCount; i++) {
     const tile = shuffled[i];
     room.pickups.push({
@@ -2864,13 +2876,14 @@ function startBRGame(room) {
     }
   }
 
+  const zoneStartRad = Math.floor(cols * TILE * 0.65);
   room.brZone = {
     x: cols * TILE / 2,
     y: rows * TILE / 2,
-    radius: 700,
+    radius: zoneStartRad,
     nextX: cols * TILE / 2,
     nextY: rows * TILE / 2,
-    nextRadius: 700,
+    nextRadius: zoneStartRad,
     timeLeft: 60,
     isShrinking: false,
     phase: 0
@@ -2910,11 +2923,12 @@ function updateBRZone(room, dt) {
       room.brZone.startRadius = room.brZone.radius;
       
       const phase = room.brZone.phase + 1;
+      const cols = getCols(room.mode);
       let nextRad = room.brZone.radius;
-      if (phase === 1) nextRad = 450;
-      else if (phase === 2) nextRad = 270;
-      else if (phase === 3) nextRad = 160;
-      else if (phase === 4) nextRad = 90;
+      if (phase === 1) nextRad = Math.floor(cols * TILE * 0.35);
+      else if (phase === 2) nextRad = Math.floor(cols * TILE * 0.18);
+      else if (phase === 3) nextRad = Math.floor(cols * TILE * 0.10);
+      else if (phase === 4) nextRad = Math.floor(cols * TILE * 0.05);
       else nextRad = 40;
       
       const maxOffset = room.brZone.radius - nextRad;
@@ -3158,7 +3172,7 @@ function updateBRSupplyDrops(room, dt) {
     if (room.activeSupplyDrop.timer <= 0) {
       const x = room.activeSupplyDrop.x;
       const y = room.activeSupplyDrop.y;
-      if (room.map[y] && room.map[y][x] === "grass") {
+      if (room.map[y] && (room.map[y][x] === "grass" || room.map[y][x] === "crate")) {
         room.map[y][x] = "supply_crate";
       }
       broadcastToRoom(room, {
@@ -3180,7 +3194,7 @@ function updateBRSupplyDrops(room, dt) {
       for (let attempt = 0; attempt < 200; attempt++) {
         const tx = 3 + Math.floor(Math.random() * (cols - 6));
         const ty = 3 + Math.floor(Math.random() * (rows - 6));
-        if (room.map[ty]?.[tx] === "grass") {
+        if (room.map[ty]?.[tx] === "grass" || room.map[ty]?.[tx] === "crate") {
           const px = tx * TILE + TILE / 2;
           const py = ty * TILE + TILE / 2;
           const dist = Math.hypot(px - room.brZone.x, py - room.brZone.y);

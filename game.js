@@ -827,8 +827,11 @@ function connectWebSocket(forceReconnect = false) {
       const targetIP = promptForLocalServerAddress();
       if (targetIP) {
         if (window.location.protocol === "https:") {
-          showToastMsg("Opening the LAN server page. Use HTTP for same-Wi-Fi play.");
-          window.location.href = `http://${targetIP}`;
+          const redirectUrl = `http://${targetIP}`;
+          const msg = `Secure websites (HTTPS) block local network connections.\n\nYou must play via an insecure HTTP connection. Would you like to redirect to:\n${redirectUrl} ?\n\nIf the page does not open automatically, copy this URL and paste it into your browser.`;
+          if (confirm(msg)) {
+            window.location.href = redirectUrl;
+          }
           return;
         }
         wsUrl = `ws://${targetIP}`;
