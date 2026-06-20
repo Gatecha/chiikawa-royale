@@ -8393,7 +8393,9 @@ async function runUserSearch(q) {
   }
   list.innerHTML = "";
   results.forEach((user) => {
-    const isInvitable = (serverMode === "online" && isOnline);
+    const isFriend = myFriendIds.has(user.id);
+    const statusInfo = makeStatusInfo(user.id);
+    const isInvitable = (serverMode === "online" && statusInfo.dot !== "offline");
     const li = buildSocialUserItem(user.id, user.username, user.character, statusInfo, isFriend, isInvitable);
     list.appendChild(li);
   });
