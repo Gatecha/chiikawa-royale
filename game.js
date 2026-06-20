@@ -430,12 +430,19 @@ let localMode = false;
 let serverMode = "online"; // "online" or "local"
 let pendingLocalConnect = false;
 
+// Social globals moved to top to prevent temporal dead zone ReferenceErrors
+let currentSocialUserId = null;
+let currentSocialUsername = null;
+let myFriendIds = new Set();
+let myFriendshipMap = {}; // friendId -> { friendshipId, username, character }
+let pendingRequests = []; // incoming friend requests
+
 // Active Player Name Helper and Pending Invite State
 let pendingInviteUserId = null;
 let pendingInviteUsername = null;
 
 function getActivePlayerName() {
-  return (serverMode === "online" && typeof currentSocialUsername !== 'undefined' && currentSocialUsername)
+  return (serverMode === "online" && currentSocialUsername)
     || (typeof usernameInput !== 'undefined' && usernameInput && usernameInput.value && usernameInput.value.trim())
     || localStorage.getItem("local_username")
     || "Player";
@@ -7867,11 +7874,6 @@ function startTitleScreenLoading() {
 let presenceChannel = null;
 let onlinePresenceMap = {}; // userId -> { username, character, status }
 let challengeTargetUserId = null;
-let myFriendIds = new Set();
-let myFriendshipMap = {}; // friendId -> { friendshipId, username, character }
-let pendingRequests = []; // incoming friend requests
-let currentSocialUserId = null;
-let currentSocialUsername = null;
 
 // ----------------------------------------------------------------
 // Open/Close Social Modal
