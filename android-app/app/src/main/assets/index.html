@@ -965,6 +965,52 @@
           <div class="arcade-cabinet">
             <div class="arcade-screen">
               <canvas id="game" width="960" height="720"></canvas>
+              
+              <!-- Floating Minimap Overlay -->
+              <div id="brMinimapContainer" class="br-minimap-container hidden">
+                <canvas id="brMinimapCanvas" width="130" height="130"></canvas>
+                <div id="brMinimapLabel">BATTLE MAP</div>
+              </div>
+              
+              <!-- Center Screen progress bar (for revives, healing, etc.) -->
+              <div id="brProgressBarContainer" class="progress-bar-container hidden">
+                <div id="brProgressBarLabel">Healing...</div>
+                <div class="progress-bar-track">
+                  <div id="brProgressBarFill" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <!-- BR Healing Hotbar Panel -->
+              <div id="brHealingHotbar" class="br-healing-hotbar hidden">
+                <button id="btnUseBandage" class="hotbar-slot" type="button" title="Use Bandage (Hotkey: 1)">
+                  <span class="slot-key">1</span>
+                  <span class="slot-icon">🩹</span>
+                  <span class="slot-count" id="countBandage">0</span>
+                  <span class="slot-label">Bandage</span>
+                </button>
+                <button id="btnUseMedkit" class="hotbar-slot" type="button" title="Use Medkit (Hotkey: 2)">
+                  <span class="slot-key">2</span>
+                  <span class="slot-icon">📦</span>
+                  <span class="slot-count" id="countMedkit">0</span>
+                  <span class="slot-label">Med Kit</span>
+                </button>
+                <button id="btnUseEnergyDrink" class="hotbar-slot" type="button" title="Use Energy Drink (Hotkey: 3)">
+                  <span class="slot-key">3</span>
+                  <span class="slot-icon">🥤</span>
+                  <span class="slot-count" id="countEnergyDrink">0</span>
+                  <span class="slot-label">Drink</span>
+                </button>
+              </div>
+
+              <!-- BR Spectator Navigation HUD -->
+              <div id="brSpectatorHud" class="br-spectator-hud hidden">
+                <div id="spectatedPlayerLabel">Spectating: None</div>
+                <div class="spectator-controls" style="display: flex; gap: 8px; margin-top: 5px;">
+                  <button id="btnSpectatePrev" class="btn btn-sm btn-secondary" type="button">◀ PREV</button>
+                  <button id="btnSpectateNext" class="btn btn-sm btn-secondary" type="button">NEXT ▶</button>
+                  <button id="btnLeaveSpectate" class="btn btn-sm btn-danger" type="button">LEAVE</button>
+                </div>
+              </div>
             </div>
 
             <!-- In-game Controls Legend (floating) -->
@@ -1238,25 +1284,41 @@
     <div id="matchmakingModeSelectDialog" class="dialog-overlay hidden">
       <div class="card glass dialog-card server-select-card" style="max-width: 480px !important;">
         <h2>Select Match Mode</h2>
-        <p>Select your matchmaking battle format:</p>
-        
-        <div class="server-options-grid" style="display: flex; flex-direction: column; gap: 12px; margin: 20px 0; width: 100%;">
-          <button id="btnModeSelectSolo" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 16px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer;">
-            <span class="option-icon" style="font-size: 24px;">👤</span>
-            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Solo (1p ffa)</span>
-            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; opacity: 0.8;">4 players free-for-all. No squad invites allowed.</span>
+        <div class="server-options-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; width: 100%; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+          <button id="btnModeSelectSolo" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important;">
+            <span class="option-icon" style="font-size: 20px;">👤</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">Solo (1p ffa)</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">4 players FFA. No invites.</span>
           </button>
           
-          <button id="btnModeSelectDuo" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 16px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer;">
-            <span class="option-icon" style="font-size: 24px;">👥</span>
-            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Duo (2v2)</span>
-            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; opacity: 0.8;">2v2 team match. Shared trophies. Up to 2 players per squad.</span>
+          <button id="btnModeSelectDuo" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important;">
+            <span class="option-icon" style="font-size: 20px;">👥</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">Duo (2v2)</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">2v2 team match. Max 2 squad.</span>
           </button>
           
-          <button id="btnModeSelectTrio" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 16px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer;">
-            <span class="option-icon" style="font-size: 24px;">⚔️</span>
-            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Trio (3v3)</span>
-            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; opacity: 0.8;">3v3 team rotation duels. Decisive 1v1 final round. Up to 3 players.</span>
+          <button id="btnModeSelectTrio" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important;">
+            <span class="option-icon" style="font-size: 20px;">⚔️</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">Trio (3v3)</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">3v3 team rotation. Max 3 squad.</span>
+          </button>
+
+          <button id="btnModeSelectBRSolo" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important; background: #9b59b6; border-color: #ffd84a;">
+            <span class="option-icon" style="font-size: 20px;">👑</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">BR Solo</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">50 Players FFA Battle Royale.</span>
+          </button>
+
+          <button id="btnModeSelectBRDuo" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important; background: #ff3399; border-color: #ffd84a;">
+            <span class="option-icon" style="font-size: 20px;">👥👑</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">BR Duo</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">50 Players 2v2 Battle Royale.</span>
+          </button>
+
+          <button id="btnModeSelectBRTrio" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important; background: #2ecc71; border-color: #ffd84a;">
+            <span class="option-icon" style="font-size: 20px;">⚔️👑</span>
+            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">BR Trio</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">50 Players 3v3 Battle Royale.</span>
           </button>
         </div>
         
@@ -1350,6 +1412,50 @@
         </div>
       </div>
     </div>
+    <!-- Fullscreen Map Overlay Modal -->
+    <div id="brFullscreenMapModal" class="dialog-overlay hidden">
+      <div class="card glass dialog-card br-fullscreen-map-card" style="max-width: 540px !important; text-align: center; padding: 20px;">
+        <div class="br-fullscreen-map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; width: 100%;">
+          <h2 style="margin: 0; font-family: var(--font); color: #ffd84a;">BATTLE MAP</h2>
+          <button id="closeBRFullscreenMapBtn" class="btn-close-dialog" type="button" style="position: static; margin-left: auto;">✕</button>
+        </div>
+        <p class="br-fullscreen-map-hint" style="font-family: var(--font-clean); font-size: 11px; color: #fff; opacity: 0.8; margin-bottom: 12px;">Click/Tap to place a Location Ping for your team!</p>
+        <div class="br-fullscreen-map-body" style="display: flex; justify-content: center; align-items: center; width: 100%;">
+          <canvas id="brFullscreenMapCanvas" width="460" height="460" style="background: #161820; border: 3px solid #ffd84a; border-radius: 8px; max-width: 100%; height: auto; cursor: crosshair;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- BATTLE ROYALE MVP / RESULTS OVERLAY -->
+    <div id="brGameOverOverlay" class="dialog-overlay hidden">
+      <div class="card glass dialog-card br-results-card" style="max-width: 480px !important; text-align: center; padding: 25px;">
+        <h1 class="br-results-title" style="font-family: var(--font); color: #ffd84a; font-size: 28px; margin-bottom: 10px; text-transform: uppercase;">Battle Royale Over</h1>
+        <div id="brGameOverMessage" class="winner-msg" style="font-family: var(--font); color: #fff; font-size: 18px; margin-bottom: 20px;"></div>
+        
+        <div class="br-stats-container" style="display: flex; flex-direction: column; gap: 10px; width: 100%; margin-bottom: 20px;">
+          <div class="br-stat-row" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; font-family: var(--font-clean);">
+            <span style="font-weight: 700; color: #ffd84a; text-transform: uppercase;">Your Placement:</span>
+            <span id="brYourPlacement" style="font-weight: 900; font-size: 18px; color: #2ecc71;">#1</span>
+          </div>
+          <div class="br-stat-row" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; font-family: var(--font-clean);">
+            <span style="font-weight: 700; color: #fff; text-transform: uppercase;">Total Kills:</span>
+            <span id="brYourKills" style="font-weight: 900; font-size: 18px; color: #fff;">0</span>
+          </div>
+          <div class="br-stat-row" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; font-family: var(--font-clean);">
+            <span style="font-weight: 700; color: #fff; text-transform: uppercase;">Damage Dealt:</span>
+            <span id="brYourDamage" style="font-weight: 900; font-size: 18px; color: #fff;">0</span>
+          </div>
+        </div>
+
+        <h3 style="font-family: var(--font); color: #ff3399; margin-bottom: 10px; text-transform: uppercase; font-size: 16px;">Standings</h3>
+        <div id="brStandingsList" style="max-height: 150px; overflow-y: auto; width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; padding-right: 5px;">
+          <!-- Dynamically filled with player standings -->
+        </div>
+
+        <button id="brReturnLobbyBtn" class="btn btn-primary" type="button" style="width: 100%; padding: 12px; background: #2ecc71; border-color: #ffd84a; border-radius: 8px; font-family: var(--font); font-size: 16px; color: #fff; cursor: pointer; text-transform: uppercase; font-weight: 900;">Return to Lobby</button>
+      </div>
+    </div>
+
     <!-- Orientation Lock Warning Overlay -->
     <div id="orientationWarning" class="orientation-warning-overlay">
       <div class="warning-content">

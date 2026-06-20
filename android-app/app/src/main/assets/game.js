@@ -360,6 +360,11 @@ let seasonXpToNext = 800;
 // Client Network State
 let socket = null;
 let roomCode = null;
+let currentBRZone = null;
+let currentWorldEvent = null;
+let spectatedPlayerId = null;
+let brPings = [];
+let localHealingState = null;
 let hostId = null;
 let localPlayerId = null;
 let reconnectToken = localStorage.getItem("chiikawaReconnectToken") || null;
@@ -1385,6 +1390,154 @@ function handleServerMessage(msg) {
       break;
     }
 
+    case "pre_match_started": {
+      const countdown = data.countdown;
+      readyState = false;
+      switchScreen(gameScreen);
+      updateHudSidebar();
+      const stateEl = document.getElementById("roundState");
+      if (stateEl) stateEl.textContent = `PRE-MATCH: ${countdown}s`;
+      showToastMsg("Match filled! Pre-match countdown started.");
+      break;
+    }
+
+    case "pre_match_countdown": {
+      const countdown = data.countdown;
+      const stateEl = document.getElementById("roundState");
+      if (stateEl) stateEl.textContent = `PRE-MATCH: ${countdown}s`;
+      break;
+    }
+
+    case "healing_started": {
+      const { playerId, itemType, duration } = data;
+      const p = players.find(p => p.id === playerId);
+      if (p) {
+        p.healingState = { itemType, duration, timeLeft: duration };
+      }
+      if (playerId === localPlayerId) {
+        localHealingState = { itemType, duration, timeLeft: duration };
+        showBRProgressBar("Using " + (itemType === "bandage" ? "Bandage..." : "Med Kit..."), duration);
+      }
+      break;
+    }
+
+    case "healing_cancelled": {
+      const { playerId } = data;
+      const p = players.find(p => p.id === playerId);
+      if (p) p.healingState = null;
+      if (playerId === localPlayerId) {
+        localHealingState = null;
+        hideBRProgressBar();
+        showToastMsg("Healing Cancelled!");
+      }
+      break;
+    }
+
+    case "player_healed": {
+      const { playerId, hp } = data;
+      const p = players.find(p => p.id === playerId);
+      if (p) {
+        p.hp = hp;
+        p.healingState = null;
+      }
+      if (playerId === localPlayerId) {
+        localHealingState = null;
+        hideBRProgressBar();
+        showToastMsg("Healed! HP: " + hp);
+      }
+      break;
+    }
+
+    case "item_used": {
+      const { playerId, itemType } = data;
+      const p = players.find(p => p.id === playerId);
+      if (p) {
+        p.healingState = null;
+        if (itemType === "energy_drink") {
+          showToastMsg(p.name + " used an Energy Drink! 🥤");
+        }
+      }
+      break;
+    }
+
+    case "revive_progress": {
+      const { playerId, progress } = data;
+      const targetPlayer = players.find(p => p.id === playerId);
+      if (targetPlayer) {
+        targetPlayer.reviveProgress = progress;
+      }
+      
+      const localPlayer = players.find(p => p.id === localPlayerId);
+      if (localPlayer) {
+        if (playerId === localPlayerId) {
+          showBRProgressBar("Being Revived...", 5.0, progress * 5.0);
+        } else if (localPlayer.teamId && targetPlayer && targetPlayer.teamId === localPlayer.teamId) {
+          const dist = Math.hypot(localPlayer.x - targetPlayer.x, localPlayer.y - targetPlayer.y);
+          if (dist < 48 && progress > 0) {
+            showBRProgressBar("Reviving Teammate...", 5.0, progress * 5.0);
+          } else if (progress === 0) {
+            hideBRProgressBar();
+          }
+        }
+      }
+      break;
+    }
+
+    case "player_revived": {
+      const { playerId } = data;
+      const p = players.find(p => p.id === playerId);
+      if (p) {
+        p.knocked = false;
+        p.hp = 30;
+        p.reviveProgress = 0;
+      }
+      if (playerId === localPlayerId) {
+        hideBRProgressBar();
+      }
+      showToastMsg(data.text || "Player revived!");
+      break;
+    }
+
+    case "player_knocked": {
+      const { playerId } = data;
+      const p = players.find(p => p.id === playerId);
+      if (p) {
+        p.knocked = true;
+        p.hp = 100;
+      }
+      showToastMsg(data.text || "Player knocked down!");
+      break;
+    }
+
+    case "player_damaged": {
+      const { playerId, hp, shield } = data;
+      const p = players.find(p => p.id === playerId);
+      if (p) {
+        p.hp = hp;
+        p.shield = shield;
+      }
+      break;
+    }
+
+    case "location_pinged": {
+      const { playerId, x, y, pingType } = data;
+      const localPlayer = players.find(p => p.id === localPlayerId);
+      const pinger = players.find(p => p.id === playerId);
+      if (currentRoomMode === "br_solo" || (localPlayer && pinger && pinger.teamId === localPlayer.teamId)) {
+        addBRPing({ playerId, x, y, pingType });
+      }
+      break;
+    }
+
+    case "br_game_over": {
+      running = false;
+      gameMessage = data.message;
+      stateEl.textContent = data.message;
+      keys.clear();
+      showBRGameOverScreen(data);
+      break;
+    }
+
     case "final_vote_started": {
       if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
       if (data.teams) currentTeams = data.teams;
@@ -2125,12 +2278,48 @@ function appendLobbyPlayerCard(p, isHost) {
 }
 
 function isTeamMode(mode) {
-  return mode === "team" || mode === "duo" || mode === "trio";
+  return mode === "team" || mode === "duo" || mode === "trio" || mode === "br_duo" || mode === "br_trio";
+}
+
+function isBattleRoyale(mode) {
+  return mode === "br_solo" || mode === "br_duo" || mode === "br_trio";
 }
 
 function updateHudSidebar() {
   hudPlayersList.innerHTML = "";
   if (hudPlayersList) hudPlayersList.style.display = 'none';
+
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  const isBR = isBattleRoyale(currentRoomMode);
+  const hotbar = document.getElementById("brHealingHotbar");
+  if (hotbar) {
+    if (isBR && running) {
+      hotbar.classList.remove("hidden");
+      const bandageEl = document.getElementById("countBandage");
+      const medkitEl = document.getElementById("countMedkit");
+      const drinkEl = document.getElementById("countEnergyDrink");
+      
+      if (bandageEl) bandageEl.textContent = localPlayer ? (localPlayer.bandageCount || 0) : 0;
+      if (medkitEl) medkitEl.textContent = localPlayer ? (localPlayer.medkitCount || 0) : 0;
+      if (drinkEl) drinkEl.textContent = localPlayer ? (localPlayer.energyDrinkCount || 0) : 0;
+    } else {
+      hotbar.classList.add("hidden");
+    }
+  }
+
+  const specHud = document.getElementById("brSpectatorHud");
+  if (specHud) {
+    if (isBR && running && localPlayer && !localPlayer.alive) {
+      specHud.classList.remove("hidden");
+      if (!spectatedPlayerId) {
+        const aliveOne = players.find(p => p.alive);
+        if (aliveOne) spectatedPlayerId = aliveOne.id;
+      }
+      updateSpectatorUI();
+    } else {
+      specHud.classList.add("hidden");
+    }
+  }
 
   // Update Team Trophies Panel
   const teamPanel = document.getElementById("teamTrophiesPanel");
@@ -2523,7 +2712,8 @@ function centerOf(tileX, tileY) {
 
 function isMapSolid(tileX, tileY) {
   if (!map[tileY] || !map[tileY][tileX]) return true;
-  return map[tileY][tileX] === "wall" || map[tileY][tileX] === "crate" || map[tileY][tileX] === "zone";
+  const cellType = map[tileY][tileX];
+  return cellType === "wall" || cellType === "crate" || cellType === "zone" || cellType === "supply_crate" || cellType === "golden_crate";
 }
 
 function isSolid(tileX, tileY, actor = null) {
@@ -2551,9 +2741,11 @@ function overlapsBomb(actor, bomb) {
 }
 
 function isTileSolidForBombLocal(tx, ty) {
-  if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) return true;
+  const mapCols = map[0] ? map[0].length : COLS;
+  const mapRows = map ? map.length : ROWS;
+  if (tx < 0 || tx >= mapCols || ty < 0 || ty >= mapRows) return true;
   const cellType = map[ty]?.[tx];
-  if (cellType === "wall" || cellType === "crate" || cellType === "zone") return true;
+  if (cellType === "wall" || cellType === "crate" || cellType === "zone" || cellType === "supply_crate" || cellType === "golden_crate") return true;
   const hasBomb = bombs.some((b) => b.x === tx && b.y === ty && (!b.vx || (b.vx === 0 && b.vy === 0)));
   if (hasBomb) return true;
   const hasPlayer = players.some((p) => p.alive && Math.floor(p.x / TILE) === tx && Math.floor(p.y / TILE) === ty);
@@ -3479,10 +3671,12 @@ function drawMiniMapPreview(canvas, mapType) {
 }
 
 function drawMap() {
+  const cols = map[0] ? map[0].length : COLS;
+  const rows = map ? map.length : ROWS;
   ctx.fillStyle = (currentMapType === "checkered" || currentMapType === "powerzone") ? "#80e1fe" : currentMapType === "colosseum" ? "#df9376" : "#9fe39e";
-  roundedRect(0, 0, COLS * TILE, ROWS * TILE, 12, true, false);
-  for (let y = 0; y < ROWS; y += 1) {
-    for (let x = 0; x < COLS; x += 1) {
+  roundedRect(0, 0, cols * TILE, rows * TILE, 12, true, false);
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
       if (map[y] && map[y][x]) {
         drawTile(x, y, map[y][x]);
       }
@@ -3726,6 +3920,47 @@ function drawTile(x, y, type) {
     ctx.fillRect(px + 9, py + TILE - 12, 3, 3);
     ctx.fillRect(px + TILE - 12, py + TILE - 12, 3, 3);
     ctx.restore();
+  } else if (type === "supply_crate") {
+    ctx.save();
+    ctx.fillStyle = "#2c3e50"; // Dark blue-gray border
+    roundedRect(px + 4, py + 4, TILE - 8, TILE - 8, 6, true, true);
+    ctx.fillStyle = "#34495e"; // Lighter body
+    roundedRect(px + 7, py + 7, TILE - 14, TILE - 14, 4, true, true);
+    
+    // Draw cross straps (bright yellow/orange)
+    ctx.strokeStyle = "#e67e22";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(px + 10, py + 10);
+    ctx.lineTo(px + TILE - 10, py + TILE - 10);
+    ctx.moveTo(px + TILE - 10, py + 10);
+    ctx.lineTo(px + 10, py + TILE - 10);
+    ctx.stroke();
+    
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 12px Fredoka";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("DROP", px + TILE / 2, py + TILE / 2);
+    ctx.restore();
+  } else if (type === "golden_crate") {
+    ctx.save();
+    ctx.fillStyle = "#b78a0c"; // Golden border
+    roundedRect(px + 4, py + 4, TILE - 8, TILE - 8, 6, true, true);
+    ctx.fillStyle = "#f39c12"; // Golden body
+    roundedRect(px + 7, py + 7, TILE - 14, TILE - 14, 4, true, true);
+    
+    // Shiny gold accents
+    ctx.strokeStyle = "#ffd700";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(px + 10, py + 10, TILE - 20, TILE - 20);
+    
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 16px Fredoka";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("★", px + TILE / 2, py + TILE / 2);
+    ctx.restore();
   } else {
     // Minor background details
     ctx.fillStyle = "rgba(255,255,255,0.18)";
@@ -3753,7 +3988,29 @@ function drawPickup(pickup) {
     ctx.fill();
     ctx.restore();
   }
-  ctx.fillStyle = pickup.type === "flame" ? "#ff7c55" : pickup.type === "bomb" ? "#7466e8" : pickup.type === "full_fire" ? "#ffe140" : pickup.type === "punch" ? "#ff69b4" : pickup.type === "slide" ? "#ffcf33" : "#35c77b";
+  let color = "#35c77b";
+  let label = "+";
+  switch(pickup.type) {
+    case "flame": color = "#ff7c55"; label = "F"; break;
+    case "bomb": color = "#7466e8"; label = "B"; break;
+    case "full_fire": color = "#ffe140"; label = "M"; break;
+    case "punch": color = "#ff69b4"; label = "P"; break;
+    case "slide": color = "#ffcf33"; label = "S"; break;
+    case "speed": color = "#35c77b"; label = "SP"; break;
+    case "bandage": color = "#ff5555"; label = "🩹"; break;
+    case "medkit": color = "#ff2222"; label = "📦"; break;
+    case "energy_drink": color = "#55dfff"; label = "🥤"; break;
+    case "shield": color = "#3498db"; label = "🛡️"; break;
+    case "full_armor": color = "#2ecc71"; label = "👕"; break;
+    case "revive_kit": color = "#f1c40f"; label = "RV"; break;
+    case "backpack": color = "#9b59b6"; label = "🎒"; break;
+    case "remote_bomb": color = "#e67e22"; label = "RB"; break;
+    case "mega_bomb": color = "#e74c3c"; label = "MB"; break;
+    case "golden_bomb": color = "#ffd84a"; label = "GB"; break;
+    case "teleport_bomb": color = "#9b59b6"; label = "TB"; break;
+    case "nuke_bomb": color = "#34495e"; label = "NB"; break;
+  }
+  ctx.fillStyle = color;
   ctx.strokeStyle = "#221f25";
   ctx.lineWidth = isPowerZonePickup ? 4 : 3;
   ctx.beginPath();
@@ -3789,10 +4046,10 @@ function drawPickup(pickup) {
   ctx.fillStyle = "#fff";
   ctx.strokeStyle = "#221f25";
   ctx.lineWidth = isPowerZonePickup ? 4 : 3;
-  ctx.font = `900 ${isPowerZonePickup ? 21 : 18}px Fredoka`;
+  const isEmoji = ["🩹","📦","🥤","🛡️","👕","🎒","RV"].includes(label);
+  ctx.font = `900 ${isPowerZonePickup ? (isEmoji ? 16 : 21) : (isEmoji ? 14 : 18)}px Fredoka`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const label = pickup.type === "flame" ? "F" : pickup.type === "bomb" ? "B" : pickup.type === "full_fire" ? "M" : pickup.type === "punch" ? "P" : pickup.type === "slide" ? "S" : "+";
   ctx.strokeText(label, 0, 1);
   ctx.fillText(label, 0, 1);
   ctx.restore();
@@ -3871,6 +4128,47 @@ function drawPlayer(player) {
   ctx.font = "900 12px Fredoka";
   ctx.textAlign = "center";
   ctx.fillText(player.name, 0, -28);
+
+  // Draw floating HP/Shield bars in Battle Royale
+  const isBR = isBattleRoyale(currentRoomMode);
+  if (isBR && player.alive) {
+    const hp = player.hp !== undefined ? player.hp : 100;
+    const maxHp = player.maxHp || 100;
+    const shield = player.shield || 0;
+    const maxShield = player.maxShield || 100;
+    
+    // Position of bars
+    const barWidth = 36;
+    const barHeight = 4;
+    const startY = -38;
+    
+    // Draw HP background bar
+    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.fillRect(-barWidth / 2, startY, barWidth, barHeight);
+    
+    // Draw HP (Green)
+    const hpPercent = Math.max(0, Math.min(1, hp / maxHp));
+    ctx.fillStyle = "#2ecc71";
+    ctx.fillRect(-barWidth / 2, startY, barWidth * hpPercent, barHeight);
+    
+    // Shield bar (Blue) above HP bar
+    if (shield > 0) {
+      const shieldPercent = Math.max(0, Math.min(1, shield / maxShield));
+      ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+      ctx.fillRect(-barWidth / 2, startY - 5, barWidth, barHeight);
+      
+      ctx.fillStyle = "#3498db";
+      ctx.fillRect(-barWidth / 2, startY - 5, barWidth * shieldPercent, barHeight);
+    }
+    
+    // Draw knocked text / icon if knocked
+    if (player.knocked) {
+      ctx.fillStyle = "#e74c3c";
+      ctx.font = "900 10px Fredoka";
+      ctx.textAlign = "center";
+      ctx.fillText("KNOCKED!", 0, startY - 12);
+    }
+  }
 
   // Draw speech bubble emote
   if (player.emote && player.emoteTimer > 0) {
@@ -4125,6 +4423,13 @@ function getCouchPlayerDirection(player, index) {
 
 function updateControlledPlayer(player, dx, dy, dt) {
   if (!player || !player.alive) return;
+  
+  if (player.id === localPlayerId && localHealingState && (dx !== 0 || dy !== 0)) {
+    localHealingState = null;
+    hideBRProgressBar();
+    sendServerMessage("use_item", { itemType: "cancel" });
+  }
+  
   if (player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
 
   moveActor(player, dx, dy, dt);
@@ -4152,6 +4457,23 @@ function updateControlledPlayer(player, dx, dy, dt) {
 
 function update(dt) {
   if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
+
+  // Tick BR pings
+  if (brPings && brPings.length > 0) {
+    brPings.forEach(p => { p.timer -= dt; });
+    brPings = brPings.filter(p => p.timer > 0);
+  }
+
+  // Tick local healing progress
+  if (localHealingState) {
+    localHealingState.timeLeft -= dt;
+    if (localHealingState.timeLeft <= 0) {
+      localHealingState = null;
+      hideBRProgressBar();
+    } else {
+      updateBRProgressBar(localHealingState.timeLeft / localHealingState.duration);
+    }
+  }
 
   if (running) {
     if (localMode) {
@@ -4323,7 +4645,22 @@ function render() {
   drawBackground();
 
   ctx.save();
-  ctx.translate(OFFSET_X, OFFSET_Y);
+  const isBR = isBattleRoyale(currentRoomMode);
+  if (isBR) {
+    const activeSpec = players.find((p) => p.id === (spectatedPlayerId || localPlayerId)) || players.find((p) => p.alive);
+    let cx = (map[0] ? map[0].length : COLS) * TILE / 2;
+    let cy = (map ? map.length : ROWS) * TILE / 2;
+    if (activeSpec) {
+      cx = activeSpec.x;
+      cy = activeSpec.y;
+    }
+    const zoom = 1.6;
+    ctx.translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-cx, -cy);
+  } else {
+    ctx.translate(OFFSET_X, OFFSET_Y);
+  }
 
   if (running || gameMessage) {
     drawMap();
@@ -4331,6 +4668,36 @@ function render() {
     bombs.forEach(drawBomb);
     blasts.forEach(drawBlast);
     players.forEach(drawPlayer);
+    
+    // Draw Safe Zone / Storm boundary overlay in BR mode
+    if (isBR && currentBRZone) {
+      ctx.save();
+      ctx.fillStyle = "rgba(128, 0, 128, 0.22)";
+      ctx.beginPath();
+      const mapCols = map[0] ? map[0].length : COLS;
+      const mapRows = map ? map.length : ROWS;
+      ctx.rect(0, 0, mapCols * TILE, mapRows * TILE);
+      ctx.arc(currentBRZone.x, currentBRZone.y, currentBRZone.radius, 0, Math.PI * 2, true);
+      ctx.fill();
+      
+      ctx.strokeStyle = "rgba(180, 0, 220, 0.85)";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(currentBRZone.x, currentBRZone.y, currentBRZone.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      if (currentBRZone.isShrinking || currentBRZone.timeLeft < 30) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.arc(currentBRZone.nextX, currentBRZone.nextY, currentBRZone.nextRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    }
+    
     particles.forEach(drawParticle);
   }
 
@@ -4338,6 +4705,14 @@ function render() {
 
   if (!running && gameMessage) {
     drawMessage(gameMessage);
+  }
+
+  if (isBR) {
+    drawBRMinimap();
+    const modal = document.getElementById("brFullscreenMapModal");
+    if (modal && !modal.classList.contains("hidden")) {
+      drawBRFullscreenMap();
+    }
   }
 
   ctx.restore();
@@ -5476,6 +5851,9 @@ const matchmakingModeSelectDialog = document.getElementById("matchmakingModeSele
 const btnModeSelectSolo = document.getElementById("btnModeSelectSolo");
 const btnModeSelectDuo = document.getElementById("btnModeSelectDuo");
 const btnModeSelectTrio = document.getElementById("btnModeSelectTrio");
+const btnModeSelectBRSolo = document.getElementById("btnModeSelectBRSolo");
+const btnModeSelectBRDuo = document.getElementById("btnModeSelectBRDuo");
+const btnModeSelectBRTrio = document.getElementById("btnModeSelectBRTrio");
 const closeMatchmakingModeBtn = document.getElementById("closeMatchmakingModeBtn");
 
 function showMatchmakingModeSelection() {
@@ -5485,29 +5863,25 @@ function showMatchmakingModeSelection() {
   const localSquadCode = localPlayer ? localPlayer.squadCode : null;
   const squadSize = players.filter(p => (localSquadCode ? p.squadCode === localSquadCode : p.id === localPlayerId) && !p.ai).length;
 
-  if (btnModeSelectSolo) {
-    if (squadSize > 1) {
-      btnModeSelectSolo.disabled = true;
-      btnModeSelectSolo.style.opacity = "0.5";
-      btnModeSelectSolo.style.pointerEvents = "none";
+  const toggleBtn = (btn, limit) => {
+    if (!btn) return;
+    if (squadSize > limit) {
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
+      btn.style.pointerEvents = "none";
     } else {
-      btnModeSelectSolo.disabled = false;
-      btnModeSelectSolo.style.opacity = "1";
-      btnModeSelectSolo.style.pointerEvents = "auto";
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.pointerEvents = "auto";
     }
-  }
+  };
 
-  if (btnModeSelectDuo) {
-    if (squadSize > 2) {
-      btnModeSelectDuo.disabled = true;
-      btnModeSelectDuo.style.opacity = "0.5";
-      btnModeSelectDuo.style.pointerEvents = "none";
-    } else {
-      btnModeSelectDuo.disabled = false;
-      btnModeSelectDuo.style.opacity = "1";
-      btnModeSelectDuo.style.pointerEvents = "auto";
-    }
-  }
+  toggleBtn(btnModeSelectSolo, 1);
+  toggleBtn(btnModeSelectBRSolo, 1);
+  toggleBtn(btnModeSelectDuo, 2);
+  toggleBtn(btnModeSelectBRDuo, 2);
+  toggleBtn(btnModeSelectTrio, 3);
+  toggleBtn(btnModeSelectBRTrio, 3);
 
   matchmakingModeSelectDialog.classList.remove("hidden");
   matchmakingModeSelectDialog.classList.add("active");
@@ -5546,6 +5920,9 @@ if (lobbyMatchBtn) {
 if (btnModeSelectSolo) btnModeSelectSolo.addEventListener("click", () => handleModeSelection("solo"));
 if (btnModeSelectDuo) btnModeSelectDuo.addEventListener("click", () => handleModeSelection("duo"));
 if (btnModeSelectTrio) btnModeSelectTrio.addEventListener("click", () => handleModeSelection("trio"));
+if (btnModeSelectBRSolo) btnModeSelectBRSolo.addEventListener("click", () => handleModeSelection("br_solo"));
+if (btnModeSelectBRDuo) btnModeSelectBRDuo.addEventListener("click", () => handleModeSelection("br_duo"));
+if (btnModeSelectBRTrio) btnModeSelectBRTrio.addEventListener("click", () => handleModeSelection("br_trio"));
 
 if (closeMatchmakingModeBtn) {
   closeMatchmakingModeBtn.addEventListener("click", () => {
@@ -5628,6 +6005,13 @@ window.addEventListener("keydown", (event) => {
       const localPlayer = players.find((p) => p.id === localPlayerId);
       if (key === " " || key === "enter") triggerPlayerBomb(localPlayer);
       if (key === "z" || key === "x" || key === "shift") triggerPlayerPunch(localPlayer);
+      
+      if (isBattleRoyale(currentRoomMode)) {
+        if (key === "1") useHealingItemLocal("bandage");
+        if (key === "2") useHealingItemLocal("medkit");
+        if (key === "3") useHealingItemLocal("energy_drink");
+        if (key === "m") toggleBRFullscreenMap();
+      }
     }
   }
 });
@@ -7770,4 +8154,426 @@ document.addEventListener("DOMContentLoaded", () => {
     const mapType = canvas.getAttribute("data-map");
     drawMiniMapPreview(canvas, mapType);
   });
+  
+  initBRClient();
 });
+
+// =================================================================
+// BATTLE ROYALE HELPER FUNCTIONS
+// =================================================================
+
+function showBRProgressBar(labelText, duration, initialTimePassed = 0) {
+  const container = document.getElementById("brProgressBarContainer");
+  const fill = document.getElementById("brProgressBarFill");
+  const label = document.getElementById("brProgressBarLabel");
+  if (!container || !fill || !label) return;
+  
+  label.textContent = labelText;
+  fill.style.width = ((initialTimePassed / duration) * 100) + "%";
+  container.classList.remove("hidden");
+}
+
+function updateBRProgressBar(ratio) {
+  const fill = document.getElementById("brProgressBarFill");
+  if (fill) {
+    fill.style.width = (Math.max(0, Math.min(1, ratio)) * 100) + "%";
+  }
+}
+
+function hideBRProgressBar() {
+  const container = document.getElementById("brProgressBarContainer");
+  if (container) container.classList.add("hidden");
+}
+
+function addBRPing(ping) {
+  ping.timer = 5.0;
+  brPings.push(ping);
+  
+  const player = players.find(p => p.id === ping.playerId);
+  const name = player ? player.name : "Teammate";
+  showToastMsg(`📍 <strong>${escapeHTML(name)}</strong> pinged location (${ping.x}, ${ping.y})!`);
+}
+
+function useHealingItemLocal(itemType) {
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  if (!localPlayer || !localPlayer.alive || localPlayer.knocked) return;
+  
+  if (itemType === "bandage" && (localPlayer.bandageCount || 0) <= 0) {
+    showToastMsg("No bandages left! 🩹");
+    return;
+  }
+  if (itemType === "medkit" && (localPlayer.medkitCount || 0) <= 0) {
+    showToastMsg("No Med Kits left! 📦");
+    return;
+  }
+  if (itemType === "energy_drink" && (localPlayer.energyDrinkCount || 0) <= 0) {
+    showToastMsg("No Energy Drinks left! 🥤");
+    return;
+  }
+  
+  sendServerMessage("use_item", { itemType });
+}
+
+function toggleBRFullscreenMap() {
+  const modal = document.getElementById("brFullscreenMapModal");
+  if (!modal) return;
+  if (modal.classList.contains("hidden")) {
+    modal.classList.remove("hidden");
+    modal.classList.add("active");
+    drawBRFullscreenMap();
+  } else {
+    modal.classList.remove("active");
+    modal.classList.add("hidden");
+  }
+}
+
+function handleBRMapClick(event) {
+  const canvas = document.getElementById("brFullscreenMapCanvas");
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const clickX = (event.clientX - rect.left) * scaleX;
+  const clickY = (event.clientY - rect.top) * scaleY;
+  
+  const cols = map[0] ? map[0].length : COLS;
+  const rows = map ? map.length : ROWS;
+  const tileX = Math.floor(clickX / (canvas.width / cols));
+  const tileY = Math.floor(clickY / (canvas.height / rows));
+  
+  const pingType = event.shiftKey ? "danger" : "generic";
+  
+  sendServerMessage("ping_location", {
+    x: tileX,
+    y: tileY,
+    pingType: pingType
+  });
+}
+
+function spectateNextPlayer() {
+  const alivePlayers = players.filter(p => p.alive);
+  if (alivePlayers.length === 0) return;
+  let currentIndex = alivePlayers.findIndex(p => p.id === spectatedPlayerId);
+  if (currentIndex === -1) {
+    currentIndex = 0;
+  } else {
+    currentIndex = (currentIndex + 1) % alivePlayers.length;
+  }
+  spectatedPlayerId = alivePlayers[currentIndex].id;
+  updateSpectatorUI();
+}
+
+function spectatePrevPlayer() {
+  const alivePlayers = players.filter(p => p.alive);
+  if (alivePlayers.length === 0) return;
+  let currentIndex = alivePlayers.findIndex(p => p.id === spectatedPlayerId);
+  if (currentIndex === -1) {
+    currentIndex = 0;
+  } else {
+    currentIndex = (currentIndex - 1 + alivePlayers.length) % alivePlayers.length;
+  }
+  spectatedPlayerId = alivePlayers[currentIndex].id;
+  updateSpectatorUI();
+}
+
+function updateSpectatorUI() {
+  const label = document.getElementById("spectatedPlayerLabel");
+  if (!label) return;
+  const activeSpec = players.find(p => p.id === spectatedPlayerId);
+  label.textContent = activeSpec ? `Spectating: ${activeSpec.name}` : "Spectating: None";
+}
+
+function showBRGameOverScreen(data) {
+  const overlay = document.getElementById("brGameOverOverlay");
+  const msgEl = document.getElementById("brGameOverMessage");
+  const placementEl = document.getElementById("brYourPlacement");
+  const killsEl = document.getElementById("brYourKills");
+  const damageEl = document.getElementById("brYourDamage");
+  const listEl = document.getElementById("brStandingsList");
+  
+  if (!overlay || !msgEl || !placementEl || !killsEl || !damageEl || !listEl) return;
+  
+  msgEl.textContent = data.message;
+  
+  const localPlayer = data.players.find(p => p.id === localPlayerId);
+  if (localPlayer) {
+    placementEl.textContent = localPlayer.placement ? `#${localPlayer.placement}` : "#??";
+    killsEl.textContent = localPlayer.kills || 0;
+    damageEl.textContent = localPlayer.damageDealt || 0;
+  }
+  
+  // Populate standings list
+  listEl.innerHTML = "";
+  // Sort players by placement
+  const sorted = [...data.players].sort((a, b) => (a.placement || 99) - (b.placement || 99));
+  sorted.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "br-standing-item" + (p.placement === 1 ? " winner" : "");
+    item.innerHTML = `
+      <span class="br-standing-rank">#${p.placement || "??"}</span>
+      <span class="br-standing-name">${escapeHTML(p.name)}</span>
+      <span class="br-standing-kills">💀 ${p.kills || 0}</span>
+    `;
+    listEl.appendChild(item);
+  });
+  
+  overlay.classList.remove("hidden");
+  overlay.classList.add("active");
+  startConfetti();
+}
+
+function drawBRMinimap() {
+  const container = document.getElementById("brMinimapContainer");
+  if (!container) return;
+  
+  if (!running || !isBattleRoyale(currentRoomMode)) {
+    container.classList.add("hidden");
+    return;
+  }
+  container.classList.remove("hidden");
+  
+  const canvas = document.getElementById("brMinimapCanvas");
+  if (!canvas) return;
+  const mctx = canvas.getContext("2d");
+  if (!mctx) return;
+  
+  mctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  const cols = map[0] ? map[0].length : COLS;
+  const rows = map ? map.length : ROWS;
+  const tileW = canvas.width / cols;
+  const tileH = canvas.height / rows;
+  
+  mctx.fillStyle = "#1e222a";
+  mctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const type = map[y]?.[x];
+      if (type === "wall") {
+        mctx.fillStyle = "#8a8a9a";
+        mctx.fillRect(x * tileW, y * tileH, tileW, tileH);
+      } else if (type === "crate" || type === "supply_crate" || type === "golden_crate") {
+        mctx.fillStyle = "#865827";
+        mctx.fillRect(x * tileW, y * tileH, tileW, tileH);
+      }
+    }
+  }
+  
+  if (currentBRZone) {
+    mctx.strokeStyle = "rgba(180, 0, 220, 0.85)";
+    mctx.lineWidth = 2;
+    mctx.beginPath();
+    const zx = (currentBRZone.x / (cols * TILE)) * canvas.width;
+    const zy = (currentBRZone.y / (rows * TILE)) * canvas.height;
+    const zr = (currentBRZone.radius / (cols * TILE)) * canvas.width;
+    mctx.arc(zx, zy, zr, 0, Math.PI * 2);
+    mctx.stroke();
+    
+    if (currentBRZone.isShrinking || currentBRZone.timeLeft < 30) {
+      mctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+      mctx.lineWidth = 1;
+      mctx.setLineDash([2, 2]);
+      mctx.beginPath();
+      const nzx = (currentBRZone.nextX / (cols * TILE)) * canvas.width;
+      const nzy = (currentBRZone.nextY / (rows * TILE)) * canvas.height;
+      const nzr = (currentBRZone.nextRadius / (cols * TILE)) * canvas.width;
+      mctx.arc(nzx, nzy, nzr, 0, Math.PI * 2);
+      mctx.stroke();
+      mctx.setLineDash([]);
+    }
+  }
+  
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  players.forEach(p => {
+    if (!p.alive) return;
+    const px = (p.x / (cols * TILE)) * canvas.width;
+    const py = (p.y / (rows * TILE)) * canvas.height;
+    
+    if (p.id === localPlayerId) {
+      mctx.fillStyle = "#ffd84a";
+      mctx.beginPath();
+      mctx.arc(px, py, 3, 0, Math.PI * 2);
+      mctx.fill();
+    } else if (localPlayer && p.teamId && p.teamId === localPlayer.teamId) {
+      mctx.fillStyle = "#3498db";
+      mctx.beginPath();
+      mctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      mctx.fill();
+    } else {
+      mctx.fillStyle = "#e74c3c";
+      mctx.beginPath();
+      mctx.arc(px, py, 2, 0, Math.PI * 2);
+      mctx.fill();
+    }
+  });
+
+  if (brPings) {
+    brPings.forEach(ping => {
+      const px = (ping.x / cols) * canvas.width;
+      const py = (ping.y / rows) * canvas.height;
+      mctx.fillStyle = ping.pingType === "danger" ? "#e74c3c" : "#2ecc71";
+      mctx.beginPath();
+      mctx.arc(px, py, 4, 0, Math.PI * 2);
+      mctx.fill();
+    });
+  }
+}
+
+function drawBRFullscreenMap() {
+  const canvas = document.getElementById("brFullscreenMapCanvas");
+  if (!canvas) return;
+  const fctx = canvas.getContext("2d");
+  if (!fctx) return;
+  
+  fctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  const cols = map[0] ? map[0].length : COLS;
+  const rows = map ? map.length : ROWS;
+  const tileW = canvas.width / cols;
+  const tileH = canvas.height / rows;
+  
+  fctx.fillStyle = "#161820";
+  fctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  fctx.strokeStyle = "rgba(255,255,255,0.05)";
+  fctx.lineWidth = 1;
+  for (let i = 0; i <= cols; i++) {
+    fctx.beginPath();
+    fctx.moveTo(i * tileW, 0);
+    fctx.lineTo(i * tileW, canvas.height);
+    fctx.stroke();
+  }
+  for (let j = 0; j <= rows; j++) {
+    fctx.beginPath();
+    fctx.moveTo(0, j * tileH);
+    fctx.lineTo(canvas.width, j * tileH);
+    fctx.stroke();
+  }
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const type = map[y]?.[x];
+      if (type === "wall") {
+        fctx.fillStyle = "#4a4a58";
+        fctx.fillRect(x * tileW, y * tileH, tileW - 0.5, tileH - 0.5);
+      } else if (type === "crate") {
+        fctx.fillStyle = "#663e14";
+        fctx.fillRect(x * tileW, y * tileH, tileW - 0.5, tileH - 0.5);
+      } else if (type === "supply_crate") {
+        fctx.fillStyle = "#1e2c3c";
+        fctx.fillRect(x * tileW, y * tileH, tileW - 0.5, tileH - 0.5);
+      } else if (type === "golden_crate") {
+        fctx.fillStyle = "#9a7c10";
+        fctx.fillRect(x * tileW, y * tileH, tileW - 0.5, tileH - 0.5);
+      }
+    }
+  }
+  
+  if (currentBRZone) {
+    fctx.strokeStyle = "purple";
+    fctx.lineWidth = 4;
+    fctx.beginPath();
+    const zx = (currentBRZone.x / (cols * TILE)) * canvas.width;
+    const zy = (currentBRZone.y / (rows * TILE)) * canvas.height;
+    const zr = (currentBRZone.radius / (cols * TILE)) * canvas.width;
+    fctx.arc(zx, zy, zr, 0, Math.PI * 2);
+    fctx.stroke();
+    
+    fctx.strokeStyle = "white";
+    fctx.lineWidth = 2;
+    fctx.setLineDash([6, 6]);
+    fctx.beginPath();
+    const nzx = (currentBRZone.nextX / (cols * TILE)) * canvas.width;
+    const nzy = (currentBRZone.nextY / (rows * TILE)) * canvas.height;
+    const nzr = (currentBRZone.nextRadius / (cols * TILE)) * canvas.width;
+    fctx.arc(nzx, nzy, nzr, 0, Math.PI * 2);
+    fctx.stroke();
+    fctx.setLineDash([]);
+  }
+  
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  players.forEach(p => {
+    if (!p.alive) return;
+    const px = (p.x / (cols * TILE)) * canvas.width;
+    const py = (p.y / (rows * TILE)) * canvas.height;
+    
+    if (p.id === localPlayerId) {
+      fctx.fillStyle = "#ffd84a";
+      fctx.beginPath();
+      fctx.arc(px, py, 6, 0, Math.PI * 2);
+      fctx.fill();
+      fctx.strokeStyle = "#fff";
+      fctx.stroke();
+    } else if (localPlayer && p.teamId && p.teamId === localPlayer.teamId) {
+      fctx.fillStyle = "#3498db";
+      fctx.beginPath();
+      fctx.arc(px, py, 5, 0, Math.PI * 2);
+      fctx.fill();
+    } else {
+      fctx.fillStyle = "#e74c3c";
+      fctx.beginPath();
+      fctx.arc(px, py, 4, 0, Math.PI * 2);
+      fctx.fill();
+    }
+  });
+
+  if (brPings) {
+    brPings.forEach(ping => {
+      const px = (ping.x / cols) * canvas.width;
+      const py = (ping.y / rows) * canvas.height;
+      const scale = 1 + Math.sin(performance.now() / 150) * 0.15;
+      
+      fctx.save();
+      fctx.translate(px, py);
+      fctx.scale(scale, scale);
+      
+      fctx.fillStyle = ping.pingType === "danger" ? "#e74c3c" : "#2ecc71";
+      fctx.strokeStyle = "#fff";
+      fctx.lineWidth = 2;
+      fctx.beginPath();
+      fctx.arc(0, 0, 8, 0, Math.PI * 2);
+      fctx.fill();
+      fctx.stroke();
+      
+      fctx.restore();
+    });
+  }
+}
+
+function initBRClient() {
+  const minimap = document.getElementById("brMinimapContainer");
+  if (minimap) {
+    minimap.addEventListener("click", toggleBRFullscreenMap);
+  }
+  
+  const closeMap = document.getElementById("closeBRFullscreenMapBtn");
+  if (closeMap) {
+    closeMap.addEventListener("click", toggleBRFullscreenMap);
+  }
+  
+  const mapCanvas = document.getElementById("brFullscreenMapCanvas");
+  if (mapCanvas) {
+    mapCanvas.addEventListener("click", handleBRMapClick);
+  }
+  
+  document.getElementById("btnUseBandage")?.addEventListener("click", () => useHealingItemLocal("bandage"));
+  document.getElementById("btnUseMedkit")?.addEventListener("click", () => useHealingItemLocal("medkit"));
+  document.getElementById("btnUseEnergyDrink")?.addEventListener("click", () => useHealingItemLocal("energy_drink"));
+  
+  document.getElementById("btnSpectatePrev")?.addEventListener("click", spectatePrevPlayer);
+  document.getElementById("btnSpectateNext")?.addEventListener("click", spectateNextPlayer);
+  document.getElementById("btnLeaveSpectate")?.addEventListener("click", () => {
+    sendServerMessage("leave_room");
+    switchScreen(menuScreen);
+    document.getElementById("brSpectatorHud")?.classList.add("hidden");
+  });
+  
+  document.getElementById("brReturnLobbyBtn")?.addEventListener("click", () => {
+    document.getElementById("brGameOverOverlay")?.classList.add("hidden");
+    document.getElementById("brGameOverOverlay")?.classList.remove("active");
+    stopConfetti();
+    sendServerMessage("leave_room");
+    switchScreen(menuScreen);
+  });
+}

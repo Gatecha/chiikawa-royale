@@ -7436,3 +7436,195 @@ body.graphics-low .yellow-console {
   text-align: center;
   box-shadow: 2px 2px 0 var(--ink);
 }
+
+/* Battle Royale HUD & Components */
+.br-minimap-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(20, 18, 24, 0.85);
+  border: 2px solid #ffd84a;
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+#brMinimapLabel {
+  font-family: var(--font);
+  font-size: 10px;
+  color: #ffd84a;
+  margin-top: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.progress-bar-container {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  padding: 12px;
+  background: rgba(20, 18, 24, 0.95);
+  border: 2px solid #ffd84a;
+  border-radius: 10px;
+  color: #fff;
+  text-align: center;
+  z-index: 15;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+#brProgressBarLabel {
+  font-family: var(--font);
+  font-size: 13px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.progress-bar-track {
+  height: 8px;
+  background: #121015;
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+#brProgressBarFill {
+  height: 100%;
+  background: #2ecc71;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+.br-healing-hotbar {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  background: rgba(20, 18, 24, 0.85);
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 2px solid #ff3399;
+  z-index: 12;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+.hotbar-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #1a1820;
+  border: 2px solid #ffd84a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.1s, background-color 0.2s;
+  height: auto !important;
+}
+.hotbar-slot:hover {
+  background: #2b2734;
+  transform: scale(1.05);
+}
+.slot-key {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  background: #ff3399;
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 900;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fff;
+}
+.slot-icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+.slot-count {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffd84a;
+}
+.slot-label {
+  font-family: var(--font-clean);
+  font-size: 9px;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.br-spectator-hud {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 18, 24, 0.95);
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 2px solid #e74c3c;
+  color: #fff;
+  text-align: center;
+  z-index: 11;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+#spectatedPlayerLabel {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #e74c3c;
+}
+.spectator-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.br-results-card {
+  box-shadow: 0 0 20px rgba(254, 201, 111, 0.25);
+  border: 3px solid #ffd84a !important;
+}
+.br-results-title {
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
+}
+.br-standing-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #fff;
+  font-family: var(--font-clean);
+  font-size: 12px;
+}
+.br-standing-item.winner {
+  background: rgba(254, 216, 111, 0.15);
+  border: 1px solid #ffd84a;
+}
+.br-standing-rank {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 14px;
+  color: #ffd84a;
+  width: 32px;
+}
+.br-standing-name {
+  flex-grow: 1;
+  font-weight: 600;
+  text-align: left;
+}
+.br-standing-kills {
+  font-weight: 700;
+  opacity: 0.8;
+  margin-left: 10px;
+}

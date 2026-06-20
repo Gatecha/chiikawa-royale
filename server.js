@@ -32,20 +32,35 @@ const RECONNECT_GRACE_MS = 10 * 60 * 1000;
 const SURRENDER_THRESHOLD = 3;
 
 function getMatchMaxPlayers(mode, isChallenge = false) {
+  if (mode === "br_solo" || mode === "br_duo" || mode === "br_trio") return 50;
   if (isChallenge && mode === "solo") return 2; // Solo challenges are 1v1
   if (mode === "trio" || mode === "team") return 6;
   return 4; // solo, duo, standard
 }
 
 function getLobbyCapacity(mode) {
-  if (mode === "solo") return 1;
-  if (mode === "duo") return 2;
-  if (mode === "trio") return 3;
+  if (mode === "solo" || mode === "br_solo") return 1;
+  if (mode === "duo" || mode === "br_duo") return 2;
+  if (mode === "trio" || mode === "br_trio") return 3;
   return 3; // default
 }
 
 function isTeamMode(mode) {
-  return mode === "team" || mode === "duo" || mode === "trio";
+  return mode === "team" || mode === "duo" || mode === "trio" || mode === "br_duo" || mode === "br_trio";
+}
+
+function isBattleRoyale(mode) {
+  return mode === "br_solo" || mode === "br_duo" || mode === "br_trio";
+}
+
+function getCols(mode) {
+  if (isBattleRoyale(mode)) return 31;
+  return 15;
+}
+
+function getRows(mode) {
+  if (isBattleRoyale(mode)) return 31;
+  return 13;
 }
 
 const starts = [
@@ -428,6 +443,10 @@ function handleMessage(ws, msg) {
         const fromTile = gridAtServer(player.x, player.y);
         const dx = Math.sign(data.dx || 0);
         const dy = Math.sign(data.dy || 0);
+        if (player.healingState && (dx !== 0 || dy !== 0)) {
+          player.healingState = null;
+          broadcastToRoom(room, { type: "healing_cancelled", data: { playerId: player.id } });
+        }
         if ((dx !== 0 || dy !== 0) && (dx === 0 || dy === 0)) {
           tryKickBombServer(room, player, fromTile, { x: dx, y: dy });
         }
@@ -450,6 +469,44 @@ function handleMessage(ws, msg) {
 
       const player = room.players.find((p) => p.id === playerId);
       placeServerBomb(room, player);
+      break;
+    }
+
+    case "use_item": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.state !== "playing") return;
+      const player = room.players.find(p => p.id === ws.id);
+      if (!player || !player.alive || player.knocked) return;
+      
+      const itemType = data.itemType;
+      if (itemType === "bandage" && (player.bandageCount || 0) > 0) {
+        player.bandageCount--;
+        player.healingState = { itemType, timeLeft: 3.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 3.0 } });
+      } else if (itemType === "medkit" && (player.medkitCount || 0) > 0) {
+        player.medkitCount--;
+        player.healingState = { itemType, timeLeft: 5.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 5.0 } });
+      } else if (itemType === "energy_drink" && (player.energyDrinkCount || 0) > 0) {
+        player.energyDrinkCount--;
+        player.energyDrinkTimeLeft = 10.0;
+        broadcastToRoom(room, { type: "item_used", data: { playerId: player.id, itemType } });
+      }
+      break;
+    }
+
+    case "ping_location": {
+      const room = rooms.get(ws.roomCode);
+      if (!room) return;
+      broadcastToRoom(room, {
+        type: "location_pinged",
+        data: {
+          playerId: ws.id,
+          x: data.x,
+          y: data.y,
+          pingType: data.pingType
+        }
+      });
       break;
     }
 
@@ -560,6 +617,12 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
     surrenderTimers: { A: null, B: null },
     surrenderVoteExpiresAt: { A: 0, B: 0 },
     disconnectTimers: {},
+    // Battle Royale specific
+    brZone: null,
+    supplyDropTimer: 0,
+    worldEventTimer: 0,
+    activeSupplyDrop: null,
+    currentWorldEvent: null,
   };
 }
 
@@ -1021,7 +1084,11 @@ function startMatchmakingTimers(room) {
     // 30 seconds incomplete check
     if (room.matchmakingElapsed === 30) {
       console.log(`Matchmaking 30s check for room ${room.code}. Filling incomplete squad.`);
-      fillIncompleteMatchWithBots(room);
+      if (isBattleRoyale(room.mode)) {
+        fillAllRemainingWithBots(room);
+      } else {
+        fillIncompleteMatchWithBots(room);
+      }
     }
     
     // 40 seconds regardless check
@@ -1084,7 +1151,7 @@ function fillAllRemainingWithBots(room) {
   if (room.state !== "lobby") return;
 
   const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
-  if (room.mode === "solo") {
+  if (room.mode === "solo" || room.mode === "br_solo") {
     while (room.players.length < maxPlayers) {
       addBotToRoom(room);
     }
@@ -1094,9 +1161,18 @@ function fillAllRemainingWithBots(room) {
   } else if (room.mode === "trio" || room.mode === "team") {
     fillTeamToSize(room, "A", 3);
     fillTeamToSize(room, "B", 3);
+  } else if (room.mode === "br_duo" || room.mode === "br_trio") {
+    while (room.players.length < 50) {
+      addBotToRoom(room);
+    }
   }
-  broadcastLobbyUpdate(room);
-  startMapVoting(room);
+  
+  if (isBattleRoyale(room.mode)) {
+    startBRPreMatch(room);
+  } else {
+    broadcastLobbyUpdate(room);
+    startMapVoting(room);
+  }
 }
 
 function TeamBIsEmptyOrCPUsOnly(room) {
@@ -1239,12 +1315,28 @@ function checkPickupCollision(room, player) {
   if (pickupIdx !== -1) {
     const pickup = room.pickups[pickupIdx];
     room.pickups.splice(pickupIdx, 1);
+    
     if (pickup.type === "flame") player.range = Math.min(5, player.range + 1);
     else if (pickup.type === "bomb") player.bombs = Math.min(4, player.bombs + 1);
     else if (pickup.type === "speed") player.speed = Math.min(202, player.speed + 18);
     else if (pickup.type === "full_fire") player.range = 15;
     else if (pickup.type === "punch") player.hasPunch = true;
     else if (pickup.type === "slide") player.hasSlide = true;
+    
+    // Battle Royale Loot
+    else if (pickup.type === "bandage") player.bandageCount = (player.bandageCount || 0) + 1;
+    else if (pickup.type === "medkit") player.medkitCount = (player.medkitCount || 0) + 1;
+    else if (pickup.type === "energy_drink") player.energyDrinkCount = (player.energyDrinkCount || 0) + 1;
+    else if (pickup.type === "revive_kit") player.reviveKitCount = (player.reviveKitCount || 0) + 1;
+    else if (pickup.type === "shield") player.shield = Math.min(75, (player.shield || 0) + 25);
+    else if (pickup.type === "full_armor") player.shield = 75;
+    else if (pickup.type === "backpack") {
+      player.maxBombsLimit = 6;
+      player.bombs = Math.min(6, player.bombs + 1);
+    }
+    else if (["remote_bomb", "mega_bomb", "golden_bomb", "teleport_bomb", "nuke_bomb"].includes(pickup.type)) {
+      player.activeBombType = pickup.type;
+    }
 
     broadcastToRoom(room, {
       type: "pickup_collected",
@@ -1252,7 +1344,21 @@ function checkPickupCollision(room, player) {
         pickupId: `${pickup.x}_${pickup.y}`,
         playerId: player.id,
         pickups: room.pickups,
-        playerStats: { id: player.id, range: player.range, bombs: player.bombs, speed: player.speed, hasPunch: !!player.hasPunch, hasSlide: !!player.hasSlide },
+        playerStats: {
+          id: player.id,
+          range: player.range,
+          bombs: player.bombs,
+          speed: player.speed,
+          hasPunch: !!player.hasPunch,
+          hasSlide: !!player.hasSlide,
+          hp: player.hp,
+          shield: player.shield,
+          bandageCount: player.bandageCount || 0,
+          medkitCount: player.medkitCount || 0,
+          energyDrinkCount: player.energyDrinkCount || 0,
+          reviveKitCount: player.reviveKitCount || 0,
+          activeBombType: player.activeBombType || "normal",
+        },
       },
     });
   }
@@ -1266,7 +1372,11 @@ function tickRoom(room) {
   const dt = 0.05;
   room.roundTime = Math.max(0, room.roundTime - dt);
   if (room.roundTime <= 0) {
-    endRound(room, null);
+    if (isBattleRoyale(room.mode)) {
+      checkBRGameEnd(room);
+    } else {
+      endRound(room, null);
+    }
     return;
   }
 
@@ -1275,10 +1385,66 @@ function tickRoom(room) {
     if (p.aiBombCooldown > 0) p.aiBombCooldown = Math.max(0, p.aiBombCooldown - dt);
   });
 
-  updateServerBots(room, dt);
-  updateServerZone(room, dt);
+  if (isBattleRoyale(room.mode)) {
+    room.players.forEach((p) => {
+      if (p.healingState) {
+        p.healingState.timeLeft -= dt;
+        if (p.healingState.timeLeft <= 0) {
+          if (p.healingState.itemType === "bandage") {
+            p.hp = Math.min(100, p.hp + 25);
+          } else if (p.healingState.itemType === "medkit") {
+            p.hp = 100;
+          }
+          p.healingState = null;
+          broadcastToRoom(room, { type: "player_healed", data: { playerId: p.id, hp: p.hp } });
+        }
+      }
+      if (p.energyDrinkTimeLeft > 0) {
+        p.energyDrinkTimeLeft = Math.max(0, p.energyDrinkTimeLeft - dt);
+      }
+      if (p.alive && p.knocked) {
+        p.bleedoutTimer = (p.bleedoutTimer || 0) + dt;
+        if (p.bleedoutTimer >= 1.0) {
+          p.bleedoutTimer = 0;
+          p.hp = Math.max(0, p.hp - 2);
+          broadcastToRoom(room, {
+            type: "player_damaged",
+            data: { playerId: p.id, hp: p.hp, shield: p.shield }
+          });
+          if (p.hp <= 0) {
+            eliminatePlayer(room, p, "bleedout");
+          }
+        }
+      }
+    });
 
-  // Update sliding bombs
+    checkBRRevives(room, dt);
+    updateBRSupplyDrops(room, dt);
+    updateBRWorldEvents(room, dt);
+    updateBRZone(room, dt);
+
+    room.zoneDamageTimer = (room.zoneDamageTimer || 0) + dt;
+    if (room.zoneDamageTimer >= 1.0) {
+      room.zoneDamageTimer = 0;
+      room.players.forEach((p) => {
+        if (p.alive && !p.knocked && room.brZone) {
+          const dist = Math.hypot(p.x - room.brZone.x, p.y - room.brZone.y);
+          if (dist > room.brZone.radius) {
+            const phase = room.brZone.phase;
+            const damage = phase === 1 ? 2 : phase === 2 ? 5 : phase === 3 ? 8 : phase === 4 ? 12 : 20;
+            damagePlayer(room, p, damage, "storm");
+          }
+        }
+      });
+    }
+  }
+
+  updateServerBots(room, dt);
+  
+  if (!isBattleRoyale(room.mode)) {
+    updateServerZone(room, dt);
+  }
+
   room.bombs.forEach((bomb) => {
     if (bomb.vx !== undefined && bomb.vy !== undefined && (bomb.vx !== 0 || bomb.vy !== 0)) {
       if (bomb.slideX === undefined) bomb.slideX = bomb.x;
@@ -1309,18 +1475,53 @@ function tickRoom(room) {
     }
   });
 
-  // Tick bombs
   const exploded = [];
   room.bombs.forEach((bomb) => { bomb.timer -= dt; if (bomb.timer <= 0) exploded.push(bomb); });
   exploded.forEach((bomb) => triggerExplosion(room, bomb));
 
-  // State update broadcast
   broadcastToRoom(room, {
     type: "state_update",
     data: {
-      players: room.players.map((p) => ({ id: p.id, x: p.x, y: p.y, dx: p.dx, dy: p.dy, alive: p.alive, speed: p.speed, bombs: p.bombs, range: p.range, hasPunch: !!p.hasPunch, hasSlide: !!p.hasSlide })),
+      players: room.players.map((p) => ({
+        id: p.id,
+        x: p.x,
+        y: p.y,
+        dx: p.dx,
+        dy: p.dy,
+        alive: p.alive,
+        speed: p.speed + (p.energyDrinkTimeLeft > 0 ? 50 : 0),
+        bombs: p.bombs,
+        range: p.range,
+        hasPunch: !!p.hasPunch,
+        hasSlide: !!p.hasSlide,
+        hp: p.hp,
+        shield: p.shield,
+        knocked: !!p.knocked,
+        bandageCount: p.bandageCount || 0,
+        medkitCount: p.medkitCount || 0,
+        energyDrinkCount: p.energyDrinkCount || 0,
+        reviveKitCount: p.reviveKitCount || 0,
+        reviveProgress: p.reviveProgress || 0,
+        kills: p.kills || 0,
+        damageDealt: p.damageDealt || 0,
+      })),
       map: room.map,
       roundTime: room.roundTime,
+      brZone: room.brZone ? {
+        x: room.brZone.x,
+        y: room.brZone.y,
+        radius: room.brZone.radius,
+        nextX: room.brZone.nextX,
+        nextY: room.brZone.nextY,
+        nextRadius: room.brZone.nextRadius,
+        timeLeft: room.brZone.timeLeft,
+        isShrinking: room.brZone.isShrinking,
+        phase: room.brZone.phase,
+      } : null,
+      worldEvent: room.currentWorldEvent ? {
+        type: room.currentWorldEvent.type,
+        duration: room.currentWorldEvent.duration
+      } : null,
     },
   });
 }
@@ -1394,14 +1595,32 @@ function triggerExplosion(room, bomb) {
       const y = bomb.y + dir.y * i;
       if (!room.map[y] || !room.map[y][x] || room.map[y][x] === "wall") break;
       cells.push({ x, y, dir });
-      if (room.map[y][x] === "crate") {
+      const cellType = room.map[y][x];
+      if (cellType === "crate" || cellType === "golden_crate" || cellType === "supply_crate") {
         room.map[y][x] = "grass";
         destroyedCrates.push({ x, y });
-        const roll = Math.random();
         let type = null;
-        if (roll < 0.18) type = "flame"; else if (roll < 0.32) type = "bomb";
-        else if (roll < 0.44) type = "speed"; else if (roll < 0.50) type = "full_fire";
-        else if (roll < 0.56) type = "punch"; else if (roll < 0.64) type = "slide";
+        if (cellType === "golden_crate") {
+          const list = ["golden_bomb", "teleport_bomb", "nuke_bomb", "full_armor", "revive_kit", "backpack"];
+          type = list[Math.floor(Math.random() * list.length)];
+        } else if (cellType === "supply_crate") {
+          const list = ["nuke_bomb", "full_armor", "revive_kit", "golden_bomb", "medkit", "punch", "slide"];
+          for (let k = 0; k < 4; k++) {
+            const t = list[Math.floor(Math.random() * list.length)];
+            const neighbors = [{x: 0, y: 0}, {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1}];
+            const n = neighbors[k % neighbors.length];
+            if (room.map[y + n.y]?.[x + n.x] === "grass") {
+              const p = { x: x + n.x, y: y + n.y, type: t };
+              room.pickups.push(p);
+              spawnedPickups.push(p);
+            }
+          }
+        } else {
+          const roll = Math.random();
+          if (roll < 0.18) type = "flame"; else if (roll < 0.32) type = "bomb";
+          else if (roll < 0.44) type = "speed"; else if (roll < 0.50) type = "full_fire";
+          else if (roll < 0.56) type = "punch"; else if (roll < 0.64) type = "slide";
+        }
         if (type) { const pickup = { x, y, type }; room.pickups.push(pickup); spawnedPickups.push(pickup); }
         break;
       }
@@ -1414,7 +1633,35 @@ function triggerExplosion(room, bomb) {
       if (!p.alive) return;
       const gx = Math.floor(p.x / TILE);
       const gy = Math.floor(p.y / TILE);
-      if (gx === cell.x && gy === cell.y) { p.alive = false; deadPlayers.push(p.id); }
+      if (gx === cell.x && gy === cell.y) {
+        if (isBattleRoyale(room.mode)) {
+          let damage = 25;
+          if (bomb.bombType === "power_bomb" || bomb.bombType === "teleport_bomb") damage = 40;
+          else if (bomb.bombType === "mega_bomb") damage = 60;
+          else if (bomb.bombType === "golden_bomb") damage = 80;
+          else if (bomb.bombType === "nuke_bomb") damage = 100;
+          if (cell.center) damage += 15;
+          
+          damagePlayer(room, p, damage, bomb.ownerId);
+          
+          if (bomb.bombType === "teleport_bomb" && p.alive && !p.knocked) {
+            const cols = getCols(room.mode);
+            const rows = getRows(room.mode);
+            for (let attempt = 0; attempt < 100; attempt++) {
+              const tx = 2 + Math.floor(Math.random() * (cols - 4));
+              const ty = 2 + Math.floor(Math.random() * (rows - 4));
+              if (room.map[ty]?.[tx] === "grass") {
+                p.x = tx * TILE + TILE / 2;
+                p.y = ty * TILE + TILE / 2;
+                break;
+              }
+            }
+          }
+        } else {
+          p.alive = false;
+          deadPlayers.push(p.id);
+        }
+      }
     });
   });
 
@@ -1427,7 +1674,11 @@ function triggerExplosion(room, bomb) {
     data: { bombId: bomb.id, cells, destroyedCrates, spawnedPickups, deadPlayers, map: room.map },
   });
 
-  checkGameEnd(room);
+  if (isBattleRoyale(room.mode)) {
+    checkBRGameEnd(room);
+  } else {
+    checkGameEnd(room);
+  }
 }
 
 // ----------------------------------------------------------------
@@ -1674,6 +1925,10 @@ function startFinalRound(room, championAId, championBId) {
 
 function startRound(room, isNewTournament) {
   resetSurrenderVotes(room);
+  if (isBattleRoyale(room.mode)) {
+    startBRGame(room);
+    return;
+  }
   if (isNewTournament) {
     // Determine winning map from votes
     const votes = { classic: 0, checkered: 0, colosseum: 0, powerzone: 0 };
@@ -1798,22 +2053,32 @@ function startRound(room, isNewTournament) {
 // ----------------------------------------------------------------
 
 function placeServerBomb(room, player) {
-  if (!player || !player.alive || player.cooldown > 0) return false;
+  if (!player || !player.alive || player.cooldown > 0 || player.knocked) return false;
   const tileX = Math.floor(player.x / TILE);
   const tileY = Math.floor(player.y / TILE);
   const activeBombsCount = room.bombs.filter((b) => b.ownerId === player.id).length;
   const tileHasBomb = room.bombs.some((b) => b.x === tileX && b.y === tileY);
   if (activeBombsCount >= player.bombs || tileHasBomb) return false;
 
+  const bombType = player.activeBombType || "normal";
+  const timer = bombType === "nuke_bomb" ? 3.5 : bombType === "teleport_bomb" ? 2.0 : 2.25;
+  const range = bombType === "nuke_bomb" ? Math.max(player.range, 6) : player.range;
+
   const bomb = {
     id: "bomb_" + Math.random().toString(36).substr(2, 9),
     x: tileX, y: tileY,
     ownerId: player.id,
-    range: player.range,
-    timer: 2.25,
+    range: range,
+    timer: timer,
+    bombType: bombType
   };
   room.bombs.push(bomb);
   player.cooldown = 0.25;
+  
+  if (bombType !== "normal") {
+    player.activeBombType = "normal";
+  }
+
   broadcastToRoom(room, { type: "bomb_placed", data: { bomb } });
   return true;
 }
@@ -1823,6 +2088,31 @@ function updateServerBots(room, dt) {
   const activeSet = new Set(room.mode === "team" ? room.activeRoundPlayers : room.players.map(p => p.id));
   room.players.forEach((bot) => {
     if (!bot.ai || !bot.alive || !activeSet.has(bot.id)) return;
+
+    if (bot.knocked) {
+      const teammate = room.players.find(p => p.id !== bot.id && p.teamId === bot.teamId && p.alive && !p.knocked);
+      if (teammate) {
+        const dx = Math.sign(teammate.x - bot.x);
+        const dy = Math.sign(teammate.y - bot.y);
+        moveServerActor(room, bot, dx, dy, dt);
+      }
+      return;
+    }
+
+    if (isBattleRoyale(room.mode) && bot.hp < 60 && !bot.healingState) {
+      if ((bot.medkitCount || 0) > 0) {
+        bot.medkitCount--;
+        bot.healingState = { itemType: "medkit", timeLeft: 5.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: bot.id, itemType: "medkit", duration: 5.0 } });
+        return;
+      } else if ((bot.bandageCount || 0) > 0) {
+        bot.bandageCount--;
+        bot.healingState = { itemType: "bandage", timeLeft: 3.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: bot.id, itemType: "bandage", duration: 3.0 } });
+        return;
+      }
+    }
+    if (bot.healingState) return;
 
     bot.aiThink = (bot.aiThink || 0) - dt;
     const tile = gridAtServer(bot.x, bot.y);
@@ -1968,6 +2258,19 @@ function scoreServerBotMove(room, bot, x, y) {
   let score = Math.random() * 2;
   const here = gridAtServer(bot.x, bot.y);
   if (x === here.x && y === here.y) score -= 56;
+
+  if (room.brZone) {
+    const px = x * TILE + TILE / 2;
+    const py = y * TILE + TILE / 2;
+    const dist = Math.hypot(px - room.brZone.x, py - room.brZone.y);
+    if (dist > room.brZone.radius) {
+      score -= 500;
+    }
+    const currentDist = Math.hypot(bot.x - room.brZone.x, bot.y - room.brZone.y);
+    if (dist < currentDist) {
+      score += 150;
+    }
+  }
 
   const threat = getServerBotThreatScore(room, x, y);
   score -= threat;
@@ -2199,6 +2502,12 @@ function hasEscapeTile(room, bot, tile) {
 
 function isDangerTileServer(room, x, y) {
   if (room.map[y]?.[x] === "zone") return true;
+  if (room.brZone) {
+    const px = x * TILE + TILE / 2;
+    const py = y * TILE + TILE / 2;
+    const dist = Math.hypot(px - room.brZone.x, py - room.brZone.y);
+    if (dist > room.brZone.radius - TILE) return true;
+  }
   return room.bombs.some((bomb) => bombThreatensTile(room, bomb, x, y));
 }
 
@@ -2270,24 +2579,36 @@ function isPowerZoneLaneTile(x, y) {
   return x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2;
 }
 
-function generateMap(mapType) {
-  const nextMap = Array.from({ length: ROWS }, (_, y) =>
-    Array.from({ length: COLS }, (_, x) => {
-      if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) return "wall";
+function generateMap(mapType, mode = "standard") {
+  const cols = getCols(mode);
+  const rows = getRows(mode);
+  const nextMap = Array.from({ length: rows }, (_, y) =>
+    Array.from({ length: cols }, (_, x) => {
+      if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) return "wall";
+      
+      if (isBattleRoyale(mode)) {
+        // Safe centers or clearings for players/supply drops
+        // Random sparse checkered blocks (40% probability)
+        if (x % 2 === 0 && y % 2 === 0 && Math.random() < 0.40) return "wall";
+        // Buildings (clumped walls)
+        if ((x % 7 === 0 || y % 7 === 0) && (x + y) % 3 === 0) return "wall";
+        // Crate cover
+        return Math.random() < 0.25 ? "crate" : "grass";
+      }
       
       if (mapType === "powerzone") {
         if (x >= 5 && x <= 9 && y >= 5 && y <= 7) return "grass";
         if ((x === 4 || x === 10) && (y >= 4 && y <= 8)) return "crate";
         if ((y === 4 || y === 8) && (x >= 4 && x <= 10)) return "crate";
-        if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
+        if (x === 1 || y === 1 || x === cols - 2 || y === rows - 2) return "grass";
         if (x % 2 === 0 && y % 2 === 0) return "wall";
         return "grass";
       } else if (mapType === "colosseum") {
-        if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
+        if ((x === 3 || x === cols - 4) && (y === 3 || y === rows - 4)) return "wall";
         return Math.random() < 0.5 ? "crate" : "grass";
       } else if (mapType === "checkered") {
         if (x % 2 === 0 && y % 2 === 0) return "wall";
-        if ((x === 3 || x === COLS - 4) && (y === 3 || y === ROWS - 4)) return "wall";
+        if ((x === 3 || x === cols - 4) && (y === 3 || y === rows - 4)) return "wall";
         return Math.random() < 0.6 ? "crate" : "grass";
       } else {
         if (x % 2 === 0 && y % 2 === 0) return "wall";
@@ -2295,23 +2616,662 @@ function generateMap(mapType) {
       }
     })
   );
-  getStartsForMap(mapType).forEach((s) => {
-    const clearSafe = (x, y) => { if (nextMap[y] && nextMap[y][x] && nextMap[y][x] !== "wall") nextMap[y][x] = "grass"; };
-    clearSafe(s.x, s.y);
-    clearSafe(s.x + Math.sign(COLS / 2 - s.x), s.y);
-    clearSafe(s.x, s.y + Math.sign(ROWS / 2 - s.y));
-  });
+  
+  if (!isBattleRoyale(mode)) {
+    getStartsForMap(mapType).forEach((s) => {
+      const clearSafe = (x, y) => { if (nextMap[y] && nextMap[y][x] && nextMap[y][x] !== "wall") nextMap[y][x] = "grass"; };
+      clearSafe(s.x, s.y);
+      clearSafe(s.x + Math.sign(cols / 2 - s.x), s.y);
+      clearSafe(s.x, s.y + Math.sign(rows / 2 - s.y));
+    });
+  }
+  
   return nextMap;
 }
 
 function isTileSolidForBombServer(room, tx, ty) {
-  if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) return true;
+  const cols = room.map[0] ? room.map[0].length : COLS;
+  const rows = room.map ? room.map.length : ROWS;
+  if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return true;
   const cellType = room.map[ty][tx];
-  if (cellType === "wall" || cellType === "crate" || cellType === "zone") return true;
+  if (cellType === "wall" || cellType === "crate" || cellType === "zone" || cellType === "supply_crate" || cellType === "golden_crate") return true;
   const hasBomb = room.bombs.some((b) => b.x === tx && b.y === ty && (!b.vx || (b.vx === 0 && b.vy === 0)));
   if (hasBomb) return true;
   const hasPlayer = room.players.some((p) => p.alive && Math.floor(p.x / TILE) === tx && Math.floor(p.y / TILE) === ty);
   return hasPlayer;
+}
+
+// ----------------------------------------------------------------
+// BATTLE ROYALE HELPERS
+// ----------------------------------------------------------------
+
+function assignBRTeams(room) {
+  if (room.mode === "br_solo") {
+    room.teams = { A: [], B: [] };
+    room.players.forEach((p) => {
+      p.teamId = p.id;
+    });
+    return;
+  }
+  
+  // Group players by squadCode first (preserved parties)
+  const squads = {};
+  room.players.forEach((p) => {
+    const code = p.squadCode || p.id;
+    if (!squads[code]) squads[code] = [];
+    squads[code].push(p);
+  });
+
+  const teamSize = room.mode === "br_duo" ? 2 : 3;
+  let teams = [];
+  let currentTeam = [];
+
+  Object.values(squads).forEach((squad) => {
+    if (squad.length === teamSize) {
+      teams.push(squad);
+    } else {
+      squad.forEach((p) => {
+        currentTeam.push(p);
+        if (currentTeam.length === teamSize) {
+          teams.push(currentTeam);
+          currentTeam = [];
+        }
+      });
+    }
+  });
+
+  if (currentTeam.length > 0) {
+    teams.push(currentTeam);
+  }
+
+  // Assign teamIds and record them in room teams
+  room.teams = {};
+  teams.forEach((team, teamIndex) => {
+    const teamId = `team_${teamIndex + 1}`;
+    room.teams[teamId] = team.map(p => p.id);
+    team.forEach((p) => {
+      p.teamId = teamId;
+    });
+  });
+}
+
+function positionBRPlayers(room) {
+  const cols = getCols(room.mode);
+  const rows = getRows(room.mode);
+  
+  // Group players by teamId
+  const teamGroups = {};
+  room.players.forEach((p) => {
+    const tId = p.teamId || p.id;
+    if (!teamGroups[tId]) teamGroups[tId] = [];
+    teamGroups[tId].push(p);
+  });
+
+  const spawnedCenters = [];
+
+  Object.values(teamGroups).forEach((team) => {
+    let spawnX = 2 + Math.floor(Math.random() * (cols - 4));
+    let spawnY = 2 + Math.floor(Math.random() * (rows - 4));
+    
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const tx = 2 + Math.floor(Math.random() * (cols - 4));
+      const ty = 2 + Math.floor(Math.random() * (rows - 4));
+      
+      if (room.map[ty]?.[tx] === "grass") {
+        let far = true;
+        for (const center of spawnedCenters) {
+          const dist = Math.hypot(center.x - tx, center.y - ty);
+          if (dist < 5) {
+            far = false;
+            break;
+          }
+        }
+        if (far) {
+          spawnX = tx;
+          spawnY = ty;
+          break;
+        }
+      }
+    }
+
+    spawnedCenters.push({ x: spawnX, y: spawnY });
+
+    const offsets = [{x: 0, y: 0}, {x: 1, y: 0}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 0, y: -1}];
+    team.forEach((p, index) => {
+      const offset = offsets[index % offsets.length];
+      let px = spawnX + offset.x;
+      let py = spawnY + offset.y;
+      if (!room.map[py] || room.map[py][px] === "wall") {
+        px = spawnX;
+        py = spawnY;
+      }
+      p.x = px * TILE + TILE / 2;
+      p.y = py * TILE + TILE / 2;
+      p.dx = 0; p.dy = 0;
+      p.alive = true;
+    });
+  });
+}
+
+function getRandomBRLootType() {
+  const roll = Math.random();
+  if (roll < 0.60) {
+    const list = ["bandage", "flame", "bomb", "speed", "shield"];
+    return list[Math.floor(Math.random() * list.length)];
+  } else if (roll < 0.90) {
+    const list = ["punch", "slide", "remote_bomb", "mega_bomb", "energy_drink", "medkit"];
+    return list[Math.floor(Math.random() * list.length)];
+  } else {
+    const list = ["golden_bomb", "teleport_bomb", "nuke_bomb", "full_armor", "revive_kit", "backpack"];
+    return list[Math.floor(Math.random() * list.length)];
+  }
+}
+
+function spawnInitialLoot(room) {
+  const cols = getCols(room.mode);
+  const rows = getRows(room.mode);
+  room.pickups = [];
+  
+  const grassTiles = [];
+  for (let y = 1; y < rows - 1; y++) {
+    for (let x = 1; x < cols - 1; x++) {
+      if (room.map[y]?.[x] === "grass") {
+        grassTiles.push({ x, y });
+      }
+    }
+  }
+
+  const shuffled = shuffleArray(grassTiles);
+  const spawnCount = Math.min(shuffled.length, 100);
+  for (let i = 0; i < spawnCount; i++) {
+    const tile = shuffled[i];
+    room.pickups.push({
+      x: tile.x,
+      y: tile.y,
+      type: getRandomBRLootType()
+    });
+  }
+}
+
+function startBRPreMatch(room) {
+  clearMatchmakingTimers(room);
+  room.state = "pre_match";
+  assignBRTeams(room);
+  
+  let countdown = 10;
+  broadcastToRoom(room, {
+    type: "pre_match_started",
+    data: {
+      players: room.players,
+      teams: room.teams,
+      countdown
+    }
+  });
+
+  room.preMatchInterval = setInterval(() => {
+    countdown--;
+    broadcastToRoom(room, {
+      type: "pre_match_countdown",
+      data: { countdown }
+    });
+    
+    if (countdown <= 0) {
+      clearInterval(room.preMatchInterval);
+      room.preMatchInterval = null;
+      startBRGame(room);
+    }
+  }, 1000);
+}
+
+function startBRGame(room) {
+  room.roundNumber = 1;
+  room.currentMapType = "classic";
+  room.map = generateMap("classic", room.mode);
+  positionBRPlayers(room);
+  
+  room.players.forEach((p) => {
+    p.alive = true;
+    p.knocked = false;
+    p.hp = 100;
+    p.shield = 0;
+    p.bandageCount = 0;
+    p.medkitCount = 0;
+    p.energyDrinkCount = 0;
+    p.reviveKitCount = 0;
+    p.kills = 0;
+    p.damageDealt = 0;
+    p.survivalTime = 0;
+    p.activeBombType = "normal";
+    p.speed = 142;
+    p.bombs = 1;
+    p.range = 2;
+    p.cooldown = 0;
+    p.hasPunch = false;
+    p.hasSlide = false;
+  });
+  
+  spawnInitialLoot(room);
+  
+  const cols = getCols(room.mode);
+  const rows = getRows(room.mode);
+  let goldenSpawned = 0;
+  for (let attempt = 0; attempt < 500 && goldenSpawned < 5; attempt++) {
+    const tx = 2 + Math.floor(Math.random() * (cols - 4));
+    const ty = 2 + Math.floor(Math.random() * (rows - 4));
+    if (room.map[ty]?.[tx] === "grass") {
+      room.map[ty][tx] = "golden_crate";
+      goldenSpawned++;
+    }
+  }
+
+  room.brZone = {
+    x: cols * TILE / 2,
+    y: rows * TILE / 2,
+    radius: 700,
+    nextX: cols * TILE / 2,
+    nextY: rows * TILE / 2,
+    nextRadius: 700,
+    timeLeft: 60,
+    isShrinking: false,
+    phase: 0
+  };
+
+  room.roundTime = 900;
+  room.state = "playing";
+  room.supplyDropTimer = 0;
+  room.worldEventTimer = 0;
+  
+  broadcastToRoom(room, {
+    type: "game_started",
+    data: {
+      map: room.map,
+      players: room.players,
+      pickups: room.pickups,
+      mapType: "classic",
+      mode: room.mode,
+      brZone: room.brZone
+    }
+  });
+
+  if (room.tickInterval) clearInterval(room.tickInterval);
+  room.tickInterval = setInterval(() => tickRoom(room), 50);
+}
+
+function updateBRZone(room, dt) {
+  if (!room.brZone) return;
+  room.brZone.timeLeft -= dt;
+  
+  if (room.brZone.timeLeft <= 0) {
+    if (!room.brZone.isShrinking) {
+      room.brZone.isShrinking = true;
+      room.brZone.timeLeft = 20;
+      room.brZone.startX = room.brZone.x;
+      room.brZone.startY = room.brZone.y;
+      room.brZone.startRadius = room.brZone.radius;
+      
+      const phase = room.brZone.phase + 1;
+      let nextRad = room.brZone.radius;
+      if (phase === 1) nextRad = 450;
+      else if (phase === 2) nextRad = 270;
+      else if (phase === 3) nextRad = 160;
+      else if (phase === 4) nextRad = 90;
+      else nextRad = 40;
+      
+      const maxOffset = room.brZone.radius - nextRad;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * maxOffset;
+      room.brZone.nextX = room.brZone.x + Math.cos(angle) * dist;
+      room.brZone.nextY = room.brZone.y + Math.sin(angle) * dist;
+      room.brZone.nextRadius = nextRad;
+      
+      broadcastToRoom(room, {
+        type: "announcement",
+        data: { text: "ZONE SHRINKING! Run to safe circle." }
+      });
+    } else {
+      room.brZone.isShrinking = false;
+      room.brZone.phase += 1;
+      room.brZone.x = room.brZone.nextX;
+      room.brZone.y = room.brZone.nextY;
+      room.brZone.radius = room.brZone.nextRadius;
+      room.brZone.timeLeft = 60;
+      
+      broadcastToRoom(room, {
+        type: "announcement",
+        data: { text: `SAFE ZONE ESTABLISHED. Phase ${room.brZone.phase} completed.` }
+      });
+    }
+  } else if (room.brZone.isShrinking) {
+    const t = 1 - (room.brZone.timeLeft / 20);
+    room.brZone.x = room.brZone.startX + (room.brZone.nextX - room.brZone.startX) * t;
+    room.brZone.y = room.brZone.startY + (room.brZone.nextY - room.brZone.startY) * t;
+    room.brZone.radius = room.brZone.startRadius + (room.brZone.nextRadius - room.brZone.startRadius) * t;
+  }
+}
+
+function damagePlayer(room, player, amount, sourceId) {
+  if (!player.alive || player.knocked) return;
+  
+  if (player.healingState) {
+    player.healingState = null;
+    broadcastToRoom(room, { type: "healing_cancelled", data: { playerId: player.id } });
+  }
+  
+  let damageLeft = amount;
+  if (player.shield > 0) {
+    if (player.shield >= damageLeft) {
+      player.shield -= damageLeft;
+      damageLeft = 0;
+    } else {
+      damageLeft -= player.shield;
+      player.shield = 0;
+    }
+  }
+  
+  if (damageLeft > 0) {
+    player.hp = Math.max(0, player.hp - damageLeft);
+  }
+  
+  if (sourceId && sourceId !== "storm" && sourceId !== "bleedout") {
+    const sourcePlayer = room.players.find(p => p.id === sourceId);
+    if (sourcePlayer) {
+      sourcePlayer.damageDealt = (sourcePlayer.damageDealt || 0) + amount;
+    }
+  }
+
+  broadcastToRoom(room, {
+    type: "player_damaged",
+    data: {
+      playerId: player.id,
+      hp: player.hp,
+      shield: player.shield
+    }
+  });
+
+  if (player.hp <= 0) {
+    if (room.mode !== "br_solo") {
+      const teammates = room.players.filter(p => p.id !== player.id && p.teamId === player.teamId && p.alive && !p.knocked);
+      if (teammates.length > 0) {
+        player.knocked = true;
+        player.hp = 100; // Knocked crawling/bleedout HP
+        player.speed = 40;
+        broadcastToRoom(room, {
+          type: "player_knocked",
+          data: { playerId: player.id }
+        });
+        broadcastToRoom(room, {
+          type: "announcement",
+          data: { text: `${player.name} is knocked down!` }
+        });
+        return;
+      }
+    }
+    eliminatePlayer(room, player, sourceId);
+  }
+}
+
+function eliminatePlayer(room, player, sourceId) {
+  player.alive = false;
+  player.knocked = false;
+  player.hp = 0;
+  player.shield = 0;
+  
+  if (isBattleRoyale(room.mode)) {
+    const aliveTeams = new Set(room.players.filter(p => p.alive).map(p => p.teamId || p.id));
+    player.placement = aliveTeams.size + 1;
+  }
+  
+  const tx = Math.floor(player.x / TILE);
+  const ty = Math.floor(player.y / TILE);
+  const dropItem = (type) => {
+    let dropX = tx;
+    let dropY = ty;
+    if (room.map[dropY]?.[dropX] !== "grass") {
+      const neighbors = [{x: 0, y: 0}, {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1}];
+      for (const n of neighbors) {
+        if (room.map[ty + n.y]?.[tx + n.x] === "grass") {
+          dropX = tx + n.x;
+          dropY = ty + n.y;
+          break;
+        }
+      }
+    }
+    room.pickups.push({ x: dropX, y: dropY, type });
+  };
+
+  for (let i = 0; i < (player.bandageCount || 0); i++) dropItem("bandage");
+  for (let i = 0; i < (player.medkitCount || 0); i++) dropItem("medkit");
+  for (let i = 0; i < (player.energyDrinkCount || 0); i++) dropItem("energy_drink");
+  
+  if (player.hasPunch) dropItem("punch");
+  if (player.hasSlide) dropItem("slide");
+  if (player.activeBombType && player.activeBombType !== "normal") {
+    dropItem(player.activeBombType);
+  } else {
+    dropItem("bomb");
+  }
+
+  if (sourceId && sourceId !== "storm" && sourceId !== "bleedout" && sourceId !== player.id) {
+    const killer = room.players.find(p => p.id === sourceId);
+    if (killer) {
+      killer.kills = (killer.kills || 0) + 1;
+    }
+  }
+
+  broadcastToRoom(room, {
+    type: "player_eliminated",
+    data: {
+      playerId: player.id,
+      killerId: sourceId,
+      pickups: room.pickups
+    }
+  });
+
+  checkBRGameEnd(room);
+}
+
+function checkBRGameEnd(room) {
+  if (room.state !== "playing") return;
+  
+  const alivePlayers = room.players.filter(p => p.alive && !p.knocked);
+  const activeTeamIds = new Set(alivePlayers.map(p => p.teamId || p.id));
+  
+  if (activeTeamIds.size <= 1) {
+    const winningTeamId = activeTeamIds.values().next().value;
+    let winningTeamPlayers = [];
+    if (winningTeamId) {
+      winningTeamPlayers = room.players.filter(p => (p.teamId === winningTeamId || p.id === winningTeamId));
+    }
+    const winnerName = winningTeamPlayers.length > 0
+      ? winningTeamPlayers.map(p => p.name).join(" & ")
+      : "No one";
+
+    room.state = "lobby";
+    if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+    
+    room.players.forEach(p => {
+      if (p.alive) p.placement = 1;
+      p.ready = p.ai; p.alive = true; p.knocked = false;
+    });
+    
+    broadcastToRoom(room, {
+      type: "br_game_over",
+      data: {
+        message: `${winnerName} wins the Battle Royale! 🏆`,
+        players: room.players,
+        winnerTeamId: winningTeamId
+      }
+    });
+    
+    broadcastLobbyUpdate(room);
+  }
+}
+
+function checkBRRevives(room, dt) {
+  room.players.forEach((player) => {
+    if (player.alive && player.knocked) {
+      const adjacentTeammate = room.players.find(p =>
+        p.id !== player.id &&
+        p.teamId === player.teamId &&
+        p.alive &&
+        !p.knocked &&
+        Math.hypot(p.x - player.x, p.y - player.y) < TILE * 1.5
+      );
+      
+      if (adjacentTeammate) {
+        player.reviveProgress = (player.reviveProgress || 0) + dt;
+        broadcastToRoom(room, {
+          type: "revive_progress",
+          data: { playerId: player.id, progress: player.reviveProgress / 5.0 }
+        });
+        
+        if (player.reviveProgress >= 5.0) {
+          player.knocked = false;
+          player.hp = 30;
+          player.speed = 142;
+          player.reviveProgress = 0;
+          broadcastToRoom(room, {
+            type: "player_revived",
+            data: { playerId: player.id }
+          });
+          broadcastToRoom(room, {
+            type: "announcement",
+            data: { text: `${player.name} was revived by ${adjacentTeammate.name}!` }
+          });
+        }
+      } else {
+        if (player.reviveProgress > 0) {
+          player.reviveProgress = 0;
+          broadcastToRoom(room, {
+            type: "revive_progress",
+            data: { playerId: player.id, progress: 0 }
+          });
+        }
+      }
+    }
+  });
+}
+
+function updateBRSupplyDrops(room, dt) {
+  if (room.activeSupplyDrop) {
+    room.activeSupplyDrop.timer -= dt;
+    if (room.activeSupplyDrop.timer <= 0) {
+      const x = room.activeSupplyDrop.x;
+      const y = room.activeSupplyDrop.y;
+      if (room.map[y] && room.map[y][x] === "grass") {
+        room.map[y][x] = "supply_crate";
+      }
+      broadcastToRoom(room, {
+        type: "supply_drop_landed",
+        data: { x, y, map: room.map }
+      });
+      room.activeSupplyDrop = null;
+    }
+  } else {
+    room.supplyDropTimer = (room.supplyDropTimer || 0) + dt;
+    if (room.supplyDropTimer >= 90.0) {
+      room.supplyDropTimer = 0;
+      
+      const cols = getCols(room.mode);
+      const rows = getRows(room.mode);
+      let dropX = 3 + Math.floor(Math.random() * (cols - 6));
+      let dropY = 3 + Math.floor(Math.random() * (rows - 6));
+      
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const tx = 3 + Math.floor(Math.random() * (cols - 6));
+        const ty = 3 + Math.floor(Math.random() * (rows - 6));
+        if (room.map[ty]?.[tx] === "grass") {
+          const px = tx * TILE + TILE / 2;
+          const py = ty * TILE + TILE / 2;
+          const dist = Math.hypot(px - room.brZone.x, py - room.brZone.y);
+          if (dist < room.brZone.radius) {
+            dropX = tx;
+            dropY = ty;
+            break;
+          }
+        }
+      }
+      
+      room.activeSupplyDrop = { x: dropX, y: dropY, timer: 8.0 };
+      broadcastToRoom(room, {
+        type: "supply_drop_incoming",
+        data: { x: dropX, y: dropY, timer: 8.0 }
+      });
+    }
+  }
+}
+
+function updateBRWorldEvents(room, dt) {
+  room.worldEventTimer = (room.worldEventTimer || 0) + dt;
+  
+  if (room.currentWorldEvent) {
+    room.currentWorldEvent.duration -= dt;
+    
+    if (room.currentWorldEvent.type === "bomb_rain") {
+      room.bombRainTimer = (room.bombRainTimer || 0) + dt;
+      if (room.bombRainTimer >= 1.5) {
+        room.bombRainTimer = 0;
+        const targetPlayer = room.players.filter(p => p.alive)[Math.floor(Math.random() * room.players.filter(p => p.alive).length)];
+        if (targetPlayer) {
+          const tx = Math.floor(targetPlayer.x / TILE) + (Math.floor(Math.random() * 3) - 1);
+          const ty = Math.floor(targetPlayer.y / TILE) + (Math.floor(Math.random() * 3) - 1);
+          if (room.map[ty]?.[tx] === "grass") {
+            const bomb = {
+              id: "rain_" + Math.random().toString(36).substr(2, 9),
+              x: tx, y: ty,
+              ownerId: "sky",
+              range: 2,
+              timer: 1.5,
+              bombType: "normal"
+            };
+            room.bombs.push(bomb);
+            broadcastToRoom(room, { type: "bomb_placed", data: { bomb } });
+          }
+        }
+      }
+    } else if (room.currentWorldEvent.type === "meteor_shower") {
+      room.meteorTimer = (room.meteorTimer || 0) + dt;
+      if (room.meteorTimer >= 1.0) {
+        room.meteorTimer = 0;
+        const cols = getCols(room.mode);
+        const rows = getRows(room.mode);
+        const tx = 2 + Math.floor(Math.random() * (cols - 4));
+        const ty = 2 + Math.floor(Math.random() * (rows - 4));
+        if (room.map[ty]?.[tx] === "grass") {
+          const bomb = {
+            id: "meteor_" + Math.random().toString(36).substr(2, 9),
+            x: tx, y: ty,
+            ownerId: "meteor",
+            range: 3,
+            timer: 0.1,
+            bombType: "normal"
+          };
+          room.bombs.push(bomb);
+        }
+      }
+    }
+    
+    if (room.currentWorldEvent.duration <= 0) {
+      const endedType = room.currentWorldEvent.type;
+      room.currentWorldEvent = null;
+      broadcastToRoom(room, {
+        type: "announcement",
+        data: { text: `WORLD EVENT: ${endedType.toUpperCase().replace("_", " ")} ENDED.` }
+      });
+    }
+  } else if (room.worldEventTimer >= 120.0) {
+    room.worldEventTimer = 0;
+    const events = ["bomb_rain", "meteor_shower", "power_surge", "double_loot"];
+    const chosenEvent = events[Math.floor(Math.random() * events.length)];
+    room.currentWorldEvent = { type: chosenEvent, duration: 20.0 };
+    room.bombRainTimer = 0;
+    room.meteorTimer = 0;
+    
+    broadcastToRoom(room, {
+      type: "world_event_started",
+      data: { event: chosenEvent }
+    });
+  }
 }
 
 server.listen(PORT, () => {
