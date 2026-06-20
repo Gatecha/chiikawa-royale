@@ -1151,7 +1151,7 @@ function createBotObject(room) {
     id: botId, name, kind,
     ready: true, ai: true,
     x: 0, y: 0, dx: 0, dy: 0,
-    alive: true, speed: 178, bombs: 2, range: 3, cooldown: 0, trophies: 0,
+    alive: true, speed: 142, bombs: 1, range: 2, cooldown: 0, trophies: 0,
     hasPunch: false, hasSlide: false,
     aiThink: 0, aiDir: { x: 0, y: 0 }, aiTarget: null, aiBombCooldown: 0,
   };
@@ -1756,8 +1756,8 @@ function startRound(room, isNewTournament) {
     p.y = spawn.y * TILE + TILE / 2;
     p.dx = 0; p.dy = 0;
     p.alive = isActive; // spectators start dead
-    p.speed = p.ai ? 178 : 142;
-    p.bombs = p.ai ? 2 : 1;
+    p.speed = 142;
+    p.bombs = 1;
     p.range = getStartingBombRange(p.ai, mapType);
     p.cooldown = 0; p.hasPunch = false; p.hasSlide = false;
     if (isNewTournament) p.trophies = 0;
@@ -1827,20 +1827,28 @@ function updateServerBots(room, dt) {
     bot.aiThink = (bot.aiThink || 0) - dt;
     const tile = gridAtServer(bot.x, bot.y);
     const danger = isDangerTileServer(room, tile.x, tile.y);
+    const threatScore = getServerBotThreatScore(room, tile.x, tile.y);
+    const isThreatened = threatScore > 0 || danger;
 
-    if (danger || bot.aiThink <= 0 || !bot.aiDir) {
-      const dirs = [
-        { x: 0, y: -1 },
-        { x: 1, y: 0 },
-        { x: 0, y: 1 },
-        { x: -1, y: 0 },
-        { x: 0, y: 0 },
-      ];
-      const ranked = dirs
-        .map((dir) => ({ ...dir, score: scoreServerBotMove(room, bot, tile.x + dir.x, tile.y + dir.y) }))
-        .sort((a, b) => b.score - a.score);
-      bot.aiDir = { x: ranked[0].x, y: ranked[0].y };
-      bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+    if (isThreatened || bot.aiThink <= 0 || !bot.aiDir) {
+      const safetyDir = getSafetyStepServer(room, bot, tile);
+      if (safetyDir) {
+        bot.aiDir = safetyDir;
+        bot.aiThink = 0.05;
+      } else {
+        const dirs = [
+          { x: 0, y: -1 },
+          { x: 1, y: 0 },
+          { x: 0, y: 1 },
+          { x: -1, y: 0 },
+          { x: 0, y: 0 },
+        ];
+        const ranked = dirs
+          .map((dir) => ({ ...dir, score: scoreServerBotMove(room, bot, tile.x + dir.x, tile.y + dir.y) }))
+          .sort((a, b) => b.score - a.score);
+        bot.aiDir = { x: ranked[0].x, y: ranked[0].y };
+        bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+      }
     }
 
     const before = gridAtServer(bot.x, bot.y);
@@ -1864,7 +1872,12 @@ function updateServerBots(room, dt) {
     const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy);
     if (shouldBomb && hasEscapeTile(room, bot, nowTile)) {
       if (placeServerBomb(room, bot)) {
-        bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
+        const activeBombsCount = room.bombs.filter(b => b.ownerId === bot.id).length;
+        if (activeBombsCount < bot.bombs && (nearbyEnemy || canAttackEnemy)) {
+          bot.aiBombCooldown = 0.1 + Math.random() * 0.1;
+        } else {
+          bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
+        }
         bot.aiThink = 0;
       }
     }
@@ -1989,9 +2002,56 @@ function scoreServerBotMove(room, bot, x, y) {
 
 function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy) {
   if (canAttackEnemy) return true;
-  if (nearbyEnemy && Math.random() < 0.42) return true;
+  if (nearbyEnemy) {
+    const enemies = getServerBotEnemies(room, bot);
+    const nearestDist = enemies.reduce((min, enemy) => {
+      const enemyTile = gridAtServer(enemy.x, enemy.y);
+      const dist = Math.abs(enemyTile.x - tile.x) + Math.abs(enemyTile.y - tile.y);
+      return Math.min(min, dist);
+    }, 999);
+    if (nearestDist <= 2) return Math.random() < 0.85;
+    return Math.random() < 0.42;
+  }
   if (nearbyCrate && countServerSafeExits(room, bot, tile.x, tile.y) >= 2) return Math.random() < 0.34;
   return false;
+}
+
+function getSafetyStepServer(room, bot, here) {
+  if (getServerBotThreatScore(room, here.x, here.y) === 0 && !isDangerTileServer(room, here.x, here.y)) {
+    return null;
+  }
+  const queue = [{ x: here.x, y: here.y, path: [] }];
+  const seen = new Set([`${here.x},${here.y}`]);
+  const dirs = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 }
+  ];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (getServerBotThreatScore(room, current.x, current.y) === 0 && !isDangerTileServer(room, current.x, current.y)) {
+      if (current.path.length > 0) {
+        return current.path[0];
+      }
+      return null;
+    }
+    if (current.path.length >= 10) continue;
+    for (const d of dirs) {
+      const tx = current.x + d.x;
+      const ty = current.y + d.y;
+      const key = `${tx},${ty}`;
+      if (seen.has(key)) continue;
+      if (isSolidServer(room, tx, ty, bot)) continue;
+      seen.add(key);
+      queue.push({
+        x: tx,
+        y: ty,
+        path: current.path.concat({ x: d.x, y: d.y })
+      });
+    }
+  }
+  return null;
 }
 
 function getServerBotThreatScore(room, x, y) {
@@ -2180,7 +2240,7 @@ function getStartsForMap(mapType) {
 }
 
 function getStartingBombRange(ai = false, mapType = "classic") {
-  return mapType === "powerzone" ? 1 : (ai ? 3 : 2);
+  return mapType === "powerzone" ? 1 : 2;
 }
 
 function getPowerZonePickupType(x, y) {
@@ -2216,8 +2276,10 @@ function generateMap(mapType) {
       if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) return "wall";
       
       if (mapType === "powerzone") {
+        if (x >= 5 && x <= 9 && y >= 5 && y <= 7) return "grass";
+        if ((x === 4 || x === 10) && (y >= 4 && y <= 8)) return "crate";
+        if ((y === 4 || y === 8) && (x >= 4 && x <= 10)) return "crate";
         if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
-        if (x === 2 || y === 2 || x === COLS - 3 || y === ROWS - 3) return "crate";
         if (x % 2 === 0 && y % 2 === 0) return "wall";
         return "grass";
       } else if (mapType === "colosseum") {

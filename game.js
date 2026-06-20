@@ -1687,7 +1687,11 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
     const openInvitePanel = (event) => {
       event?.preventDefault();
       event?.stopPropagation();
-      if (!localFourPlayerLobbyActive && typeof openFriendsList === "function" && socket && socket.readyState === WebSocket.OPEN) {
+      if (localFourPlayerLobbyActive) {
+        const kind = couchCharacters[index % couchCharacters.length];
+        couchSlots[index] = { human: true, name: `P${index + 1}`, kind, playerId: `couch_p${index + 1}` };
+        renderLocalFourPlayerLobby();
+      } else if (typeof openFriendsList === "function" && socket && socket.readyState === WebSocket.OPEN) {
         openFriendsList(event);
       } else {
         showToastMsg("Invite a friend first. Empty slots stay empty until someone joins.");
@@ -1947,8 +1951,10 @@ function buildLocalMap(mapType = "classic") {
       if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) return "wall";
       
       if (mapType === "powerzone") {
+        if (x >= 5 && x <= 9 && y >= 5 && y <= 7) return "grass";
+        if ((x === 4 || x === 10) && (y >= 4 && y <= 8)) return "crate";
+        if ((y === 4 || y === 8) && (x >= 4 && x <= 10)) return "crate";
         if (x === 1 || y === 1 || x === COLS - 2 || y === ROWS - 2) return "grass";
-        if (x === 2 || y === 2 || x === COLS - 3 || y === ROWS - 3) return "crate";
         if (x % 2 === 0 && y % 2 === 0) return "wall";
         return "grass";
       } else if (mapType === "colosseum") {
@@ -2708,20 +2714,33 @@ function updateAi(bot, dt) {
   bot.aiThink = (bot.aiThink || 0) - dt;
   const here = gridAt(bot.x, bot.y);
   const danger = isDanger(here.x, here.y);
+  const threatScore = getLocalBotThreatScore(here.x, here.y);
+  const isThreatened = threatScore > 0 || danger;
 
-  if (danger || bot.aiThink <= 0) {
-    const dirs = [
-      { x: 1, y: 0 },
-      { x: -1, y: 0 },
-      { x: 0, y: 1 },
-      { x: 0, y: -1 },
-      { x: 0, y: 0 },
-    ];
-    const useful = dirs
-      .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
-      .sort((a, b) => b.score - a.score);
-    bot.aiDir = useful[0];
-    bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+  if (isThreatened || bot.aiThink <= 0) {
+    if (bot.hasPunch && tryLocalBotPunchStrategic(bot, here)) {
+      bot.aiThink = 0;
+      return;
+    }
+
+    const safetyDir = getSafetyStepLocal(bot, here);
+    if (safetyDir) {
+      bot.aiDir = safetyDir;
+      bot.aiThink = 0.05;
+    } else {
+      const dirs = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+        { x: 0, y: 0 },
+      ];
+      const useful = dirs
+        .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
+        .sort((a, b) => b.score - a.score);
+      bot.aiDir = useful[0];
+      bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+    }
   }
 
   const moved = moveActor(bot, bot.aiDir.x, bot.aiDir.y, dt);
@@ -2747,9 +2766,94 @@ function updateAi(bot, dt) {
   if ((canAttackEnemy || nearbyCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && shouldLocalBotBomb(bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy)) {
     if (localMode) localPlaceBomb(bot);
     else sendServerMessage("place_bomb", { id: bot.id });
-    bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
+    
+    const activeBombsCount = bombs.filter(b => b.ownerId === bot.id).length;
+    if (activeBombsCount < bot.bombs && (nearbyEnemy || canAttackEnemy)) {
+      bot.aiBombCooldown = 0.1 + Math.random() * 0.1;
+    } else {
+      bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
+    }
     bot.aiThink = 0;
   }
+}
+
+function tryLocalBotPunchStrategic(bot, tile) {
+  if (!bot.hasPunch || !bot.alive) return false;
+  const dirs = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+  for (const d of dirs) {
+    const tx = tile.x + d.x;
+    const ty = tile.y + d.y;
+    const bomb = bombs.find((b) => b.x === tx && b.y === ty && (!b.vx || (b.vx === 0 && b.vy === 0)));
+    if (!bomb) continue;
+    if (isTileSolidForBombLocal(bomb.x + d.x, bomb.y + d.y)) continue;
+    
+    const enemies = getLocalBotEnemies(bot);
+    const targetsEnemy = enemies.some((enemy) => {
+      const enemyTile = gridAt(enemy.x, enemy.y);
+      return (d.x !== 0 && enemyTile.y === bomb.y && Math.sign(enemyTile.x - bomb.x) === d.x) ||
+             (d.y !== 0 && enemyTile.x === bomb.x && Math.sign(enemyTile.y - bomb.y) === d.y);
+    });
+    const threatensUs = localBombThreatensTileAnyTimer(bomb, tile.x, tile.y);
+    
+    if (targetsEnemy || threatensUs) {
+      bot.lastFacingDir = d;
+      triggerLocalPunch(bot);
+      return true;
+    }
+  }
+  return false;
+}
+
+function getSafetyStepLocal(bot, here) {
+  if (getLocalBotThreatScore(here.x, here.y) === 0 && !isDanger(here.x, here.y)) {
+    return null;
+  }
+  const queue = [{ x: here.x, y: here.y, path: [] }];
+  const seen = new Set([`${here.x},${here.y}`]);
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (getLocalBotThreatScore(current.x, current.y) === 0 && !isDanger(current.x, current.y)) {
+      if (current.path.length > 0) {
+        return current.path[0];
+      }
+      return null;
+    }
+    if (current.path.length >= 10) continue;
+    const dirs = neighbors(current.x, current.y);
+    for (const dir of dirs) {
+      const key = `${dir.x},${dir.y}`;
+      if (seen.has(key)) continue;
+      if (isSolid(dir.x, dir.y, bot)) continue;
+      seen.add(key);
+      queue.push({
+        x: dir.x,
+        y: dir.y,
+        path: current.path.concat({ x: dir.x - current.x, y: dir.y - current.y })
+      });
+    }
+  }
+  return null;
+}
+
+function shouldLocalBotBomb(bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy) {
+  if ((bot.aiBombCooldown || 0) > 0) return false;
+  if (canAttackEnemy) return true;
+  if (nearbyEnemy) {
+    const enemies = getLocalBotEnemies(bot);
+    const nearestDist = enemies.reduce((min, enemy) => {
+      const dist = distanceTiles(tile, gridAt(enemy.x, enemy.y));
+      return Math.min(min, dist);
+    }, 999);
+    if (nearestDist <= 2) return Math.random() < 0.85;
+    return Math.random() < 0.42;
+  }
+  if (nearbyCrate && countLocalSafeExits(bot, tile.x, tile.y) >= 2) return Math.random() < 0.34;
+  return false;
 }
 
 function scoreAiMove(bot, x, y) {
@@ -4629,6 +4733,7 @@ leaveGameBtn?.addEventListener("click", () => {
   running = false;
   localMode = false;
   resetCouchControls();
+  players = [];
 
   // Hide results overlay and clean up victory video/confetti/countdown
   document.getElementById("tournamentOverlay").classList.add("hidden");
@@ -4663,6 +4768,7 @@ surrenderNoBtn?.addEventListener("click", () => {
 
 // Return to Lobby after Victory
 document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
+  players = [];
   document.getElementById("tournamentOverlay").classList.add("hidden");
   stopConfetti();
   const vVideo = document.getElementById("victoryVideo");
