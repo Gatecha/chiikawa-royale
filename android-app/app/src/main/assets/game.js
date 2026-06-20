@@ -9070,7 +9070,6 @@ function damageLocalPlayerFromBomb(player, amount) {
   }
 }
 
-let localHealingState = null;
 function startLocalHealing(player, itemType) {
   if (localHealingState) return;
   
