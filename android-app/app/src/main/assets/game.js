@@ -357,6 +357,60 @@ let seasonLevel = 4;
 let seasonXp = 609;
 let seasonXpToNext = 800;
 
+// Rank System State (RP = Ranking Points)
+let rankRp = 0;        // Current RP total
+let totalWins = 0;     // Lifetime wins
+let totalMatches = 0;  // Lifetime matches played
+
+// Rank tier definitions — ordered from highest to lowest, RP minimums
+const RANK_TIERS = [
+  { id: 'grandmaster', name: 'GRANDMASTER', div: '',    min: 20000 },
+  { id: 'master',      name: 'MASTER',      div: '',    min: 12000 },
+  { id: 'diamond',     name: 'DIAMOND',     div: 'III', min: 11000 },
+  { id: 'diamond',     name: 'DIAMOND',     div: 'II',  min: 9500  },
+  { id: 'diamond',     name: 'DIAMOND',     div: 'I',   min: 8000  },
+  { id: 'platinum',    name: 'PLATINUM',    div: 'III', min: 7000  },
+  { id: 'platinum',    name: 'PLATINUM',    div: 'II',  min: 6000  },
+  { id: 'platinum',    name: 'PLATINUM',    div: 'I',   min: 5000  },
+  { id: 'gold',        name: 'GOLD',        div: 'III', min: 4000  },
+  { id: 'gold',        name: 'GOLD',        div: 'II',  min: 3200  },
+  { id: 'gold',        name: 'GOLD',        div: 'I',   min: 2500  },
+  { id: 'silver',      name: 'SILVER',      div: 'III', min: 1900  },
+  { id: 'silver',      name: 'SILVER',      div: 'II',  min: 1400  },
+  { id: 'silver',      name: 'SILVER',      div: 'I',   min: 1000  },
+  { id: 'bronze',      name: 'BRONZE',      div: 'III', min: 500   },
+  { id: 'bronze',      name: 'BRONZE',      div: 'II',  min: 200   },
+  { id: 'bronze',      name: 'BRONZE',      div: 'I',   min: 0     },
+];
+
+function getRankForRp(rp) {
+  for (const tier of RANK_TIERS) {
+    if (rp >= tier.min) return tier;
+  }
+  return RANK_TIERS[RANK_TIERS.length - 1];
+}
+
+function getNextRankThreshold(rp) {
+  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
+    if (RANK_TIERS[i].min > rp) return RANK_TIERS[i].min;
+  }
+  return null; // Already grandmaster
+}
+
+function getRankIconSvg(rankId) {
+  const icons = {
+    bronze: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="rbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7a4f2d"/><stop offset="100%" stop-color="#cd8f52"/></linearGradient></defs><path d="M20 3 L32 10 L32 30 L20 37 L8 30 L8 10 Z" fill="url(#rbg)" stroke="#a06830" stroke-width="1.5"/><text x="20" y="25" text-anchor="middle" font-size="14" font-weight="900" font-family="Arial" fill="#fff" opacity="0.9">B</text></svg>`,
+    silver: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7f8fa6"/><stop offset="100%" stop-color="#c8d6e5"/></linearGradient></defs><path d="M20 3 L32 10 L32 30 L20 37 L8 30 L8 10 Z" fill="url(#sbg)" stroke="#9fafc0" stroke-width="1.5"/><text x="20" y="25" text-anchor="middle" font-size="14" font-weight="900" font-family="Arial" fill="#fff" opacity="0.9">S</text></svg>`,
+    gold:   `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="gbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f9ca24"/><stop offset="100%" stop-color="#f0932b"/></linearGradient></defs><path d="M20 3 L32 10 L32 30 L20 37 L8 30 L8 10 Z" fill="url(#gbg)" stroke="#d4a017" stroke-width="1.5"/><text x="20" y="25" text-anchor="middle" font-size="14" font-weight="900" font-family="Arial" fill="#fff" opacity="0.9">G</text></svg>`,
+    platinum:`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00b894"/><stop offset="100%" stop-color="#00d4aa"/></linearGradient></defs><path d="M20 3 L32 10 L32 30 L20 37 L8 30 L8 10 Z" fill="url(#pbg)" stroke="#00c9a0" stroke-width="1.5"/><text x="20" y="25" text-anchor="middle" font-size="14" font-weight="900" font-family="Arial" fill="#fff" opacity="0.9">P</text></svg>`,
+    diamond:`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#6c63ff"/><stop offset="100%" stop-color="#a29bfe"/></linearGradient></defs><path d="M20 4 L28 14 L20 36 L12 14 Z" fill="url(#dbg)" stroke="#8c84fe" stroke-width="1.5"/><path d="M12 14 L20 4 L28 14 Z" fill="rgba(255,255,255,0.25)"/></svg>`,
+    master: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#9b59b6"/><stop offset="100%" stop-color="#e056fd"/></linearGradient></defs><circle cx="20" cy="20" r="16" fill="url(#mbg)" stroke="#c84bef" stroke-width="1.5"/><path d="M20 8 L22.4 15.3 L30 15.3 L23.8 19.7 L26.2 27 L20 22.5 L13.8 27 L16.2 19.7 L10 15.3 L17.6 15.3 Z" fill="#fff" opacity="0.9"/></svg>`,
+    grandmaster:`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="gmbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e74c3c"/><stop offset="50%" stop-color="#f0932b"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs><path d="M20 2 L24 12 L34 12 L26 19 L29 29 L20 23 L11 29 L14 19 L6 12 L16 12 Z" fill="url(#gmbg)" stroke="#e0a020" stroke-width="1.5"/></svg>`,
+  };
+  return icons[rankId] || icons.bronze;
+}
+
+
 // Client Network State
 let socket = null;
 let roomCode = null;
@@ -744,6 +798,7 @@ function confirmCharacterSelection() {
   if (socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("select_character", { kind: selectedCharacter });
   }
+  updateProgressionUI();
 }
 
 playMutedLoop(characterSelectVideo);
@@ -2515,6 +2570,12 @@ function awardLocalMatchProgress(playerWon) {
   gemsCount += gainedGems;
   if (playerWon) crownCount += 1;
 
+  // RP gain/loss — Bronze I is floor (RP never goes below 0)
+  const rpGain = playerWon ? 50 : -15;
+  rankRp = Math.max(0, rankRp + rpGain);
+  totalMatches += 1;
+  if (playerWon) totalWins += 1;
+
   while (seasonXp >= seasonXpToNext) {
     seasonXp -= seasonXpToNext;
     seasonLevel += 1;
@@ -2527,11 +2588,80 @@ function awardLocalMatchProgress(playerWon) {
 }
 
 function updateProgressionUI() {
-  document.getElementById("crownCount").textContent = crownCount;
-  document.getElementById("gemsCount").textContent = gemsCount;
-  document.getElementById("seasonLevel").textContent = seasonLevel;
-  document.getElementById("seasonProgressText").textContent = `${seasonXp}/${seasonXpToNext}`;
-  document.getElementById("seasonProgressFill").style.width = `${Math.min(100, (seasonXp / seasonXpToNext) * 100)}%`;
+  // Header currency stats
+  const crownEl = document.getElementById("crownCount");
+  const gemsEl  = document.getElementById("gemsCount");
+  if (crownEl) crownEl.textContent = crownCount;
+  if (gemsEl)  gemsEl.textContent  = gemsCount;
+
+  // Season XP bar (hidden text span kept for compat)
+  const slEl  = document.getElementById("seasonLevel");
+  const spfEl = document.getElementById("seasonProgressFill");
+  const sptEl = document.getElementById("seasonProgressText");
+  if (slEl)  slEl.textContent  = seasonLevel;
+  if (sptEl) sptEl.textContent = `${seasonXp}/${seasonXpToNext}`;
+  if (spfEl) spfEl.style.width = `${Math.min(100, (seasonXp / seasonXpToNext) * 100)}%`;
+
+  // ========= Player Profile Card =========
+  const card = document.getElementById("playerProfileCard");
+  const rank = getRankForRp(rankRp);
+  const nextThreshold = getNextRankThreshold(rankRp);
+
+  if (card) card.dataset.rank = rank.id;
+
+  const rankIconEl = document.getElementById("profileRankIcon");
+  if (rankIconEl) rankIconEl.innerHTML = getRankIconSvg(rank.id);
+
+  const tierEl = document.getElementById("profileRankTier");
+  const divEl  = document.getElementById("profileRankDiv");
+  if (tierEl) tierEl.textContent = rank.name;
+  if (divEl)  divEl.textContent  = rank.div || '';
+
+  const lvNumEl = document.getElementById("profileLevelNum");
+  if (lvNumEl) lvNumEl.textContent = seasonLevel;
+
+  // Sync player name from username input or localStorage
+  const nameEl = document.getElementById("profilePlayerName");
+  if (nameEl) {
+    const uname = (typeof usernameInput !== 'undefined' && usernameInput && usernameInput.value && usernameInput.value.trim())
+      || localStorage.getItem("local_username")
+      || "Player";
+    nameEl.textContent = uname;
+  }
+
+  // Sync character avatar
+  const avatarImg = document.getElementById("profileCharAvatar");
+  if (avatarImg) {
+    const src = `assets/cards/${selectedCharacter || 'hachiware'}.png`;
+    if (!avatarImg.getAttribute('src') || !avatarImg.getAttribute('src').endsWith(src.split('/').pop())) {
+      avatarImg.src = src;
+    }
+  }
+
+  // RP bar
+  const rpCurrentEl = document.getElementById("profileRpCurrent");
+  const rpNextEl    = document.getElementById("profileRpNext");
+  const rpFillEl    = document.getElementById("profileRpBarFill");
+  if (rpCurrentEl) rpCurrentEl.textContent = rankRp;
+  if (nextThreshold !== null) {
+    if (rpNextEl) rpNextEl.textContent = nextThreshold;
+    const curMin = rank.min;
+    const pct = nextThreshold > curMin
+      ? Math.min(100, ((rankRp - curMin) / (nextThreshold - curMin)) * 100)
+      : 100;
+    if (rpFillEl) rpFillEl.style.width = `${pct}%`;
+  } else {
+    if (rpNextEl) rpNextEl.textContent = '\u221e';
+    if (rpFillEl) rpFillEl.style.width = '100%';
+  }
+
+  // Stats
+  const winsEl      = document.getElementById("statWins");
+  const matchesEl   = document.getElementById("statMatches");
+  const statCrownEl = document.getElementById("statCrowns");
+  if (winsEl)      winsEl.textContent      = totalWins;
+  if (matchesEl)   matchesEl.textContent   = totalMatches;
+  if (statCrownEl) statCrownEl.textContent = crownCount;
 }
 
 async function loadProgression() {
@@ -2541,9 +2671,12 @@ async function loadProgression() {
       const saved = JSON.parse(localStorage.getItem("chiikawaProgress") || "{}");
       crownCount = Number.isFinite(saved.crownCount) ? saved.crownCount : crownCount;
       gemsCount = Number.isFinite(saved.gemsCount) ? saved.gemsCount : gemsCount;
-      seasonLevel = Number.isFinite(saved.seasonLevel) ? saved.seasonLevel : seasonLevel;
-      seasonXp = Number.isFinite(saved.seasonXp) ? saved.seasonXp : seasonXp;
+      seasonLevel    = Number.isFinite(saved.seasonLevel)    ? saved.seasonLevel    : seasonLevel;
+      seasonXp       = Number.isFinite(saved.seasonXp)       ? saved.seasonXp       : seasonXp;
       seasonXpToNext = Number.isFinite(saved.seasonXpToNext) ? saved.seasonXpToNext : seasonXpToNext;
+      rankRp         = Number.isFinite(saved.rankRp)         ? saved.rankRp         : rankRp;
+      totalWins      = Number.isFinite(saved.totalWins)      ? saved.totalWins      : totalWins;
+      totalMatches   = Number.isFinite(saved.totalMatches)   ? saved.totalMatches   : totalMatches;
     } catch {
       saveProgression();
     }
@@ -2562,10 +2695,13 @@ async function loadProgression() {
 
     if (error) throw error;
     if (data) {
-      crownCount = data.crown_count ?? 0;
-      gemsCount = data.gems_count ?? 100;
-      seasonLevel = data.season_level ?? 1;
-      seasonXp = data.season_xp ?? 0;
+      crownCount   = data.crown_count   ?? 0;
+      gemsCount    = data.gems_count    ?? 100;
+      seasonLevel  = data.season_level  ?? 1;
+      seasonXp     = data.season_xp     ?? 0;
+      rankRp       = data.rank_rp       ?? rankRp;
+      totalWins    = data.total_wins    ?? totalWins;
+      totalMatches = data.total_matches ?? totalMatches;
       updateProgressionUI();
     }
   } catch (err) {
@@ -2578,7 +2714,7 @@ async function saveProgression() {
   if (!supabaseClient) {
     localStorage.setItem(
       "chiikawaProgress",
-      JSON.stringify({ crownCount, gemsCount, seasonLevel, seasonXp, seasonXpToNext })
+      JSON.stringify({ crownCount, gemsCount, seasonLevel, seasonXp, seasonXpToNext, rankRp, totalWins, totalMatches })
     );
     return;
   }
@@ -2592,9 +2728,12 @@ async function saveProgression() {
       .update({
         crown_count: crownCount,
         gems_count: gemsCount,
-        season_level: seasonLevel,
-        season_xp: seasonXp,
-        updated_at: new Date().toISOString()
+        season_level:  seasonLevel,
+        season_xp:     seasonXp,
+        rank_rp:       rankRp,
+        total_wins:    totalWins,
+        total_matches: totalMatches,
+        updated_at:    new Date().toISOString()
       })
       .eq('id', user.id);
 
