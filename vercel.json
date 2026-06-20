@@ -1,4 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/downloads", "destination": "/download.html" },
+    { "source": "/downloads/", "destination": "/download.html" }
+  ]
 }

@@ -9,6 +9,10 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 
+app.get(["/downloads", "/downloads/"], (_req, res) => {
+  res.sendFile(path.join(__dirname, "download.html"));
+});
+
 // Serve static files from workspace root
 app.use(express.static(path.join(__dirname)));
 
