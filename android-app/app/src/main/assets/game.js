@@ -977,6 +977,9 @@ function connectWebSocket(forceReconnect = false) {
       talkingPlayers = {};
       updateAllMicIndicators();
       stopLanRoomRefresh();
+      if (isMicActive) {
+        stopMicCapture();
+      }
       if (connectionStatusIndicator) {
         connectionStatusIndicator.textContent = "Offline";
         connectionStatusIndicator.className = "connection-status offline";
@@ -988,6 +991,9 @@ function connectWebSocket(forceReconnect = false) {
       isCreatingRoom = false;
       talkingPlayers = {};
       updateAllMicIndicators();
+      if (isMicActive) {
+        stopMicCapture();
+      }
       const msg = serverMode === "local"
         ? "LAN connection failed. Make sure the local server is running, both devices are on the same Wi-Fi, and the IP/port is correct."
         : "WebSocket connection failed. The online server may be offline or blocked.";
@@ -1303,6 +1309,9 @@ function handleServerMessage(msg) {
     }
 
     case "game_started":
+      if (isMicActive) {
+        stopMicCapture();
+      }
       map = data.map;
       currentMapType = data.mapType || "classic";
       // Store team mode info
@@ -5591,6 +5600,9 @@ leaveLobbyBtn?.addEventListener("click", () => {
     switchScreen(menuScreen);
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
     return;
+  }
+  if (isMicActive) {
+    stopMicCapture();
   }
   if (roomCode && socket && socket.readyState === WebSocket.OPEN) {
     sendServerMessage("leave_room");

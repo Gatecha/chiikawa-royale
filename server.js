@@ -232,20 +232,20 @@ function handleMessage(ws, msg) {
       broadcastLobbyUpdate(room);
       break;
     }
-
     case "voice_chat_audio": {
       const room = rooms.get(ws.roomCode);
       if (!room) return;
       // Broadcast voice packet to all other players in the room
-      room.players.forEach(p => {
-        if (p.id !== ws.id && p.ws && p.ws.readyState === WebSocket.OPEN) {
-          p.ws.send(JSON.stringify({
-            type: "voice_chat_audio",
-            data: {
-              playerId: ws.id,
-              audio: data.audio
-            }
-          }));
+      const payload = JSON.stringify({
+        type: "voice_chat_audio",
+        data: {
+          playerId: ws.id,
+          audio: data.audio
+        }
+      });
+      wss.clients.forEach((client) => {
+        if (client.roomCode === room.code && client.id !== ws.id && client.readyState === WebSocket.OPEN) {
+          client.send(payload);
         }
       });
       break;
