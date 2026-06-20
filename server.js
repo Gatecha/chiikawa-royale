@@ -291,7 +291,7 @@ function handleMessage(ws, msg) {
         ws.send(JSON.stringify({ type: "error", data: { message: "Game already started in this room!" } }));
         return;
       }
-      const lobbyCap = getLobbyCapacity(room.mode);
+      const lobbyCap = room.isChallenge ? 4 : getLobbyCapacity(room.mode);
       const humanCount = room.players.filter(p => !p.ai).length;
       if (humanCount >= lobbyCap) {
         ws.send(JSON.stringify({ type: "error", data: { message: `Squad is full for ${room.mode.toUpperCase()} mode!` } }));

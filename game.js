@@ -442,11 +442,20 @@ let pendingRequests = []; // incoming friend requests
 let pendingInviteUserId = null;
 let pendingInviteUsername = null;
 
+let playerVolumeSettings = {};
+let playerMutedSettings = {};
+let talkingPlayers = {};
+let talkingTimeouts = {};
+
 function getActivePlayerName() {
-  return (serverMode === "online" && currentSocialUsername)
-    || (typeof usernameInput !== 'undefined' && usernameInput && usernameInput.value && usernameInput.value.trim())
-    || localStorage.getItem("local_username")
-    || "Player";
+  const socialName = currentSocialUsername;
+  const localName = localStorage.getItem("local_username");
+  const inputName = (typeof usernameInput !== 'undefined' && usernameInput) ? usernameInput.value.trim() : "";
+  
+  if (socialName) return socialName;
+  if (localName && localName !== "Friend") return localName;
+  if (inputName && inputName !== "Friend") return inputName;
+  return "Player";
 }
 let lanRooms = [];
 let lanRoomRefreshTimer = null;
@@ -593,6 +602,8 @@ if (lobbyBackBtn) {
       localStorage.removeItem("chiikawaReconnectToken");
       roomCode = null;
       isCreatingRoom = false;
+      talkingPlayers = {};
+      updateAllMicIndicators();
       localPlayerId = null;
       reconnectToken = null;
       hostId = null;
@@ -963,6 +974,8 @@ function connectWebSocket(forceReconnect = false) {
     socket.onclose = (event) => {
       console.log("WebSocket disconnected.");
       isCreatingRoom = false;
+      talkingPlayers = {};
+      updateAllMicIndicators();
       stopLanRoomRefresh();
       if (connectionStatusIndicator) {
         connectionStatusIndicator.textContent = "Offline";
@@ -973,6 +986,8 @@ function connectWebSocket(forceReconnect = false) {
     socket.onerror = (err) => {
       console.error("WebSocket error:", err);
       isCreatingRoom = false;
+      talkingPlayers = {};
+      updateAllMicIndicators();
       const msg = serverMode === "local"
         ? "LAN connection failed. Make sure the local server is running, both devices are on the same Wi-Fi, and the IP/port is correct."
         : "WebSocket connection failed. The online server may be offline or blocked.";
@@ -1028,6 +1043,8 @@ function handleServerMessage(msg) {
   switch (type) {
     case "error":
       isCreatingRoom = false;
+      talkingPlayers = {};
+      updateAllMicIndicators();
       reportAppError("Server Error", data.message || "Unknown server error", { source: "server" });
       break;
 
@@ -1037,6 +1054,8 @@ function handleServerMessage(msg) {
       localStorage.removeItem("chiikawaReconnectToken");
       reconnectToken = null;
       isCreatingRoom = false;
+      talkingPlayers = {};
+      updateAllMicIndicators();
       break;
 
     case "lan_rooms_updated":
@@ -1046,6 +1065,8 @@ function handleServerMessage(msg) {
 
     case "room_joined":
       isCreatingRoom = false;
+      talkingPlayers = {};
+      updateAllMicIndicators();
       roomCode = data.roomCode;
       localPlayerId = data.playerId;
       reconnectToken = data.reconnectToken || reconnectToken;
@@ -1550,7 +1571,19 @@ function handleServerMessage(msg) {
 
     case "voice_chat_audio": {
       if (data.playerId !== localPlayerId) {
-        playAudioChunk(base64ToArrayBuffer(data.audio));
+        const vol = playerVolumeSettings[data.playerId] !== undefined ? playerVolumeSettings[data.playerId] : 1.0;
+        const isMuted = !!playerMutedSettings[data.playerId];
+        if (!isMuted) {
+          playAudioChunk(base64ToArrayBuffer(data.audio), vol);
+        }
+
+        if (talkingTimeouts[data.playerId]) clearTimeout(talkingTimeouts[data.playerId]);
+        talkingPlayers[data.playerId] = true;
+        updateAllMicIndicators();
+        talkingTimeouts[data.playerId] = setTimeout(() => {
+          delete talkingPlayers[data.playerId];
+          updateAllMicIndicators();
+        }, 1000);
       }
       break;
     }
@@ -5287,54 +5320,97 @@ function syncSquadLobbyInterface() {
   const localSquadCode = localPlayer ? localPlayer.squadCode : null;
   const otherTeammates = players.filter(p => p.id !== localPlayerId && localSquadCode && p.squadCode === localSquadCode && !p.ai);
 
-  const mode = currentRoomMode || "trio";
+  const isChallenge = currentRoomIsChallenge;
 
   // Left Card
+  const leftWrapper = document.getElementById("wrapper_squadInviteCard_left");
   const leftCard = document.getElementById("squadInviteCard_left");
-  if (leftCard) {
-    if (mode === "solo") {
-      leftCard.style.display = "none";
+  if (leftWrapper && leftCard) {
+    leftWrapper.style.display = "block";
+    if (otherTeammates[0]) {
+      const p = otherTeammates[0];
+      leftCard.innerHTML = `
+        <div class="card-inner-skew">
+          <div class="squad-card-image-container">
+            <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+          </div>
+        </div>
+        <div class="card-footer-bar">
+          <div class="avatar-circle">
+            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          </div>
+          <div class="user-info">
+            <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+            <div class="user-level">${escapeHTML(p.name)}</div>
+          </div>
+        </div>
+      `;
+      leftCard.onclick = (e) => {
+        e.stopPropagation();
+        showPlayerVoiceSettings(p.id, p.name);
+      };
     } else {
-      leftCard.style.display = "block";
-      if (otherTeammates[0]) {
-        const p = otherTeammates[0];
-        leftCard.innerHTML = `
-          <div class="card-inner-skew">
-            <div class="squad-card-image-container">
-              <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
-            </div>
-          </div>
-          <div class="card-footer-bar">
-            <div class="avatar-circle">
-              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-            </div>
-            <div class="user-info">
-              <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
-              <div class="user-level">${escapeHTML(p.name)}</div>
-            </div>
-          </div>
-        `;
-      } else {
-        leftCard.innerHTML = `
-          <div class="card-inner-skew">
-            <button class="invite-btn" type="button">+</button>
-          </div>
-        `;
-        leftCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
-      }
+      leftCard.innerHTML = `
+        <div class="card-inner-skew">
+          <button class="invite-btn" type="button">+</button>
+        </div>
+      `;
+      leftCard.onclick = (e) => {
+        e.stopPropagation();
+        openFriendsList(e);
+      };
     }
   }
 
   // Right Card
+  const rightWrapper = document.getElementById("wrapper_squadInviteCard_right");
   const rightCard = document.getElementById("squadInviteCard_right");
-  if (rightCard) {
-    if (mode === "solo" || mode === "duo") {
-      rightCard.style.display = "none";
+  if (rightWrapper && rightCard) {
+    rightWrapper.style.display = "block";
+    if (otherTeammates[1]) {
+      const p = otherTeammates[1];
+      rightCard.innerHTML = `
+        <div class="card-inner-skew">
+          <div class="squad-card-image-container">
+            <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+          </div>
+        </div>
+        <div class="card-footer-bar">
+          <div class="avatar-circle">
+            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          </div>
+          <div class="user-info">
+            <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
+            <div class="user-level">${escapeHTML(p.name)}</div>
+          </div>
+        </div>
+      `;
+      rightCard.onclick = (e) => {
+        e.stopPropagation();
+        showPlayerVoiceSettings(p.id, p.name);
+      };
     } else {
-      rightCard.style.display = "block";
-      if (otherTeammates[1]) {
-        const p = otherTeammates[1];
-        rightCard.innerHTML = `
+      rightCard.innerHTML = `
+        <div class="card-inner-skew">
+          <button class="invite-btn" type="button">+</button>
+        </div>
+      `;
+      rightCard.onclick = (e) => {
+        e.stopPropagation();
+        openFriendsList(e);
+      };
+    }
+  }
+
+  // Fourth Card
+  const fourthWrapper = document.getElementById("wrapper_squadInviteCard_fourth");
+  const fourthCard = document.getElementById("squadInviteCard_fourth");
+  if (fourthWrapper && fourthCard) {
+    if (isChallenge) {
+      fourthWrapper.style.display = "block";
+      if (otherTeammates[2]) {
+        const p = otherTeammates[2];
+        fourthCard.innerHTML = `
           <div class="card-inner-skew">
             <div class="squad-card-image-container">
               <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
@@ -5350,14 +5426,24 @@ function syncSquadLobbyInterface() {
             </div>
           </div>
         `;
+        fourthCard.onclick = (e) => {
+          e.stopPropagation();
+          showPlayerVoiceSettings(p.id, p.name);
+        };
       } else {
-        rightCard.innerHTML = `
+        fourthCard.innerHTML = `
           <div class="card-inner-skew">
             <button class="invite-btn" type="button">+</button>
           </div>
         `;
-        rightCard.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+        fourthCard.onclick = (e) => {
+          e.stopPropagation();
+          openFriendsList(e);
+        };
       }
+    } else {
+      fourthWrapper.style.display = "none";
+      fourthCard.onclick = null;
     }
   }
 
@@ -5507,6 +5593,8 @@ leaveLobbyBtn?.addEventListener("click", () => {
   localStorage.removeItem("chiikawaReconnectToken");
   roomCode = null;
   isCreatingRoom = false;
+  talkingPlayers = {};
+  updateAllMicIndicators();
   localPlayerId = null;
   reconnectToken = null;
   hostId = null;
@@ -5805,20 +5893,29 @@ function openFriendsList(e) {
 const squadInviteLeft = document.getElementById("squadInviteCard_left");
 const squadInviteRight = document.getElementById("squadInviteCard_right");
 if (squadInviteLeft) {
-  squadInviteLeft.addEventListener("click", openFriendsList);
-  squadInviteLeft.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+  squadInviteLeft.onclick = (e) => {
+    if (squadInviteLeft.querySelector(".invite-btn")) {
+      openFriendsList(e);
+    }
+  };
 }
 if (squadInviteRight) {
-  squadInviteRight.addEventListener("click", openFriendsList);
-  squadInviteRight.querySelector(".invite-btn")?.addEventListener("click", openFriendsList);
+  squadInviteRight.onclick = (e) => {
+    if (squadInviteRight.querySelector(".invite-btn")) {
+      openFriendsList(e);
+    }
+  };
 }
 
 // Nickname synchronization
 const squadLobbyUserNameEl = document.getElementById("squadLobbyUserName");
 if (usernameInput && squadLobbyUserNameEl) {
-  squadLobbyUserNameEl.textContent = usernameInput.value.trim() || "Friend";
+  squadLobbyUserNameEl.textContent = getActivePlayerName();
   usernameInput.addEventListener("input", () => {
-    squadLobbyUserNameEl.textContent = usernameInput.value.trim() || "Friend";
+    const val = usernameInput.value.trim();
+    squadLobbyUserNameEl.textContent = val || "Friend";
+    localStorage.setItem("local_username", val);
+    updateProgressionUI();
   });
 }
 
@@ -7371,6 +7468,10 @@ async function handleAuthenticatedUser(user) {
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 is empty result
 
     if (data && data.username) {
+      currentSocialUsername = data.username;
+      if (usernameInput) usernameInput.value = data.username;
+      localStorage.setItem("local_username", data.username);
+      updateProgressionUI();
       // User has a username, proceed to main menu
       finishStartup();
       switchScreen(menuScreen);
@@ -7591,6 +7692,7 @@ if (usernameForm) {
       localStorage.setItem("local_username", username);
       if (usernameInput) usernameInput.value = username;
       if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = username;
+      updateProgressionUI();
 
       if (usernameMessage) usernameMessage.classList.add("hidden");
       switchScreen(menuScreen);
@@ -7653,6 +7755,9 @@ if (usernameForm) {
       // Update UI nicknames
       if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = username;
       if (usernameInput) usernameInput.value = username;
+      currentSocialUsername = username;
+      localStorage.setItem("local_username", username);
+      updateProgressionUI();
 
       // Go to main menu
       switchScreen(menuScreen);
@@ -7681,6 +7786,10 @@ if (btnLogoutAccount) {
       gemsCount = 100;
       seasonLevel = 1;
       seasonXp = 0;
+      currentSocialUsername = "";
+      localStorage.removeItem("local_username");
+      if (usernameInput) usernameInput.value = "Friend";
+      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = "Friend";
       updateProgressionUI();
 
       // Go back to login screen
@@ -8529,6 +8638,9 @@ async function initSocialSystem(user) {
       .single();
     if (data) {
       currentSocialUsername = data.username;
+      if (usernameInput && data.username) usernameInput.value = data.username;
+      localStorage.setItem("local_username", data.username || "Friend");
+      updateProgressionUI();
       if (data.character && characterStyle[data.character]) {
         selectedCharacter = data.character;
         previewCharacter = selectedCharacter;
@@ -8669,6 +8781,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
 
     serverMode = "local";
+    updateProgressionUI();
     localPlaySetupDialog?.classList.add("hidden");
     switchScreen(menuScreen);
     connectWebSocket(true);
@@ -9701,6 +9814,17 @@ async function startMicCapture() {
           sendServerMessage("voice_chat_audio", { audio: base64data });
         };
         reader.readAsDataURL(e.data);
+
+        // Local player is talking!
+        if (localPlayerId) {
+          if (talkingTimeouts[localPlayerId]) clearTimeout(talkingTimeouts[localPlayerId]);
+          talkingPlayers[localPlayerId] = true;
+          updateAllMicIndicators();
+          talkingTimeouts[localPlayerId] = setTimeout(() => {
+            delete talkingPlayers[localPlayerId];
+            updateAllMicIndicators();
+          }, 1000);
+        }
       }
     };
     
@@ -9768,7 +9892,7 @@ function base64ToArrayBuffer(base64) {
 }
 
 let audioCtxVoice = null;
-function playAudioChunk(arrayBuffer) {
+function playAudioChunk(arrayBuffer, volume = 1.0) {
   try {
     if (!audioCtxVoice) {
       audioCtxVoice = new (window.AudioContext || window.webkitAudioContext)();
@@ -9776,21 +9900,28 @@ function playAudioChunk(arrayBuffer) {
     audioCtxVoice.decodeAudioData(arrayBuffer, (audioBuffer) => {
       const source = audioCtxVoice.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(audioCtxVoice.destination);
+
+      // Create a gain node for volume control!
+      const gainNode = audioCtxVoice.createGain();
+      gainNode.gain.value = volume;
+
+      source.connect(gainNode);
+      gainNode.connect(audioCtxVoice.destination);
       source.start();
     }, (err) => {
-      fallbackPlayAudio(arrayBuffer);
+      fallbackPlayAudio(arrayBuffer, volume);
     });
   } catch (e) {
-    fallbackPlayAudio(arrayBuffer);
+    fallbackPlayAudio(arrayBuffer, volume);
   }
 }
 
-function fallbackPlayAudio(arrayBuffer) {
+function fallbackPlayAudio(arrayBuffer, volume = 1.0) {
   try {
     const blob = new Blob([arrayBuffer], { type: 'audio/webm;codecs=opus' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.volume = volume;
     audio.play().catch(() => {});
   } catch (e) {
     console.warn("Voice playback failed:", e);
@@ -9837,3 +9968,91 @@ function initVoiceChatAndLobbyModeUI() {
 
 document.addEventListener("DOMContentLoaded", initVoiceChatAndLobbyModeUI);
 initVoiceChatAndLobbyModeUI();
+
+// Voice settings popups and speaker indicator controls
+function showPlayerVoiceSettings(playerId, playerName) {
+  const dialog = document.getElementById("playerVoiceSettingsDialog");
+  const nameLabel = document.getElementById("voiceSettingsPlayerName");
+  const slider = document.getElementById("voiceSettingsVolumeSlider");
+  const label = document.getElementById("voiceSettingsVolumeLabel");
+  const muteBtn = document.getElementById("voiceSettingsMuteBtn");
+  const closeBtn = document.getElementById("closeVoiceSettingsBtn");
+  
+  if (!dialog || !nameLabel || !slider || !label || !muteBtn || !closeBtn) return;
+  
+  nameLabel.textContent = `Adjust settings for ${escapeHTML(playerName)}`;
+  
+  const vol = playerVolumeSettings[playerId] !== undefined ? playerVolumeSettings[playerId] : 1.0;
+  slider.value = Math.round(vol * 100);
+  label.textContent = `${slider.value}%`;
+  
+  const updateMuteBtnUI = () => {
+    if (playerMutedSettings[playerId]) {
+      muteBtn.textContent = "UNMUTE";
+      muteBtn.className = "btn btn-primary";
+      muteBtn.style.background = "var(--green)";
+      muteBtn.style.color = "#fff";
+      muteBtn.style.borderColor = "#22c55e";
+    } else {
+      muteBtn.textContent = "MUTE";
+      muteBtn.className = "btn btn-danger";
+      muteBtn.style.background = "";
+      muteBtn.style.color = "";
+      muteBtn.style.borderColor = "";
+    }
+  };
+  
+  updateMuteBtnUI();
+  
+  const newSlider = slider.cloneNode(true);
+  slider.parentNode.replaceChild(newSlider, slider);
+  newSlider.addEventListener("input", (e) => {
+    const val = parseInt(e.target.value, 10);
+    label.textContent = `${val}%`;
+    playerVolumeSettings[playerId] = val / 100;
+  });
+  
+  const newMuteBtn = muteBtn.cloneNode(true);
+  muteBtn.parentNode.replaceChild(newMuteBtn, muteBtn);
+  newMuteBtn.addEventListener("click", () => {
+    playerMutedSettings[playerId] = !playerMutedSettings[playerId];
+    updateMuteBtnUI();
+  });
+  
+  const newCloseBtn = closeBtn.cloneNode(true);
+  closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+  newCloseBtn.addEventListener("click", () => {
+    dialog.classList.remove("active");
+    dialog.classList.add("hidden");
+  });
+  
+  dialog.classList.remove("hidden");
+  dialog.classList.add("active");
+}
+
+function updateAllMicIndicators() {
+  document.querySelectorAll(".lobby-card-mic-indicator").forEach(el => el.classList.add("hidden"));
+
+  if (talkingPlayers[localPlayerId]) {
+    const indicator = document.getElementById("mic_squadCard_user");
+    if (indicator) indicator.classList.remove("hidden");
+  }
+
+  const localPlayer = players.find(p => p.id === localPlayerId);
+  const localSquadCode = localPlayer ? localPlayer.squadCode : null;
+  if (localSquadCode) {
+    const otherTeammates = players.filter(p => p.id !== localPlayerId && p.squadCode === localSquadCode && !p.ai);
+    if (otherTeammates[0] && talkingPlayers[otherTeammates[0].id]) {
+      const indicator = document.getElementById("mic_squadInviteCard_left");
+      if (indicator) indicator.classList.remove("hidden");
+    }
+    if (otherTeammates[1] && talkingPlayers[otherTeammates[1].id]) {
+      const indicator = document.getElementById("mic_squadInviteCard_right");
+      if (indicator) indicator.classList.remove("hidden");
+    }
+    if (otherTeammates[2] && talkingPlayers[otherTeammates[2].id]) {
+      const indicator = document.getElementById("mic_squadInviteCard_fourth");
+      if (indicator) indicator.classList.remove("hidden");
+    }
+  }
+}

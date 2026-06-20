@@ -527,50 +527,64 @@
                  <!-- Slanted Cards Row -->
                  <div class="lobby-cards-row">
                     <!-- Card 1: Invite Left -->
-                    <div class="lobby-card card-yellow" id="squadInviteCard_left">
-                      <div class="card-inner-skew">
-                        <button class="invite-btn" type="button">+</button>
+                    <div class="lobby-card-wrapper" id="wrapper_squadInviteCard_left">
+                      <div class="lobby-card-mic-indicator hidden" id="mic_squadInviteCard_left">🔊</div>
+                      <div class="lobby-card card-yellow" id="squadInviteCard_left">
+                        <div class="card-inner-skew">
+                          <button class="invite-btn" type="button">+</button>
+                        </div>
                       </div>
                     </div>
  
                    <!-- Card 2: User Center -->
-                    <div class="lobby-card card-pink" id="squadCard_user">
-                      <div class="card-inner-skew">
-                        <!-- Character card preview instead of video/canvas animation -->
-                        <div class="squad-card-image-container">
-                          <img id="squadLobbyCharImg" src="assets/lobby cards/chiikawa character card.png" alt="Selected character preview" />
+                    <div class="lobby-card-wrapper" id="wrapper_squadCard_user">
+                      <div class="lobby-card-mic-indicator hidden" id="mic_squadCard_user">🔊</div>
+                      <div class="lobby-card card-pink" id="squadCard_user">
+                        <div class="card-inner-skew">
+                          <!-- Character card preview instead of video/canvas animation -->
+                          <div class="squad-card-image-container">
+                            <img id="squadLobbyCharImg" src="assets/lobby cards/chiikawa character card.png" alt="Selected character preview" />
+                          </div>
                         </div>
-                      </div>
 
-                      <div class="card-footer-bar">
-                        <div class="avatar-circle">
-                          <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-                        </div>
-                        <div class="user-info">
-                          <div class="user-name" id="squadLobbyCharName">Usagi</div>
-                          <div class="user-level" id="squadLobbyUserName">PlayerOne</div>
-                        </div>
-                        <div class="user-badges">
-                          <span class="role-badge badge-purple">
-                            <svg viewBox="0 0 24 24" class="badge-svg" fill="currentColor">
-                              <path d="M12 2l1.8 4.7 4.7 1.8-4.7 1.8-1.8 4.7-1.8-4.7-4.7-1.8 4.7-1.8z" />
-                            </svg>
-                          </span>
+                        <div class="card-footer-bar">
+                          <div class="avatar-circle">
+                            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+                          </div>
+                          <div class="user-info">
+                            <div class="user-name" id="squadLobbyCharName">Usagi</div>
+                            <div class="user-level" id="squadLobbyUserName">PlayerOne</div>
+                          </div>
+                          <div class="user-badges">
+                            <span class="role-badge badge-purple">
+                              <svg viewBox="0 0 24 24" class="badge-svg" fill="currentColor">
+                                <path d="M12 2l1.8 4.7 4.7 1.8-4.7 1.8-1.8 4.7-1.8-4.7-4.7-1.8 4.7-1.8z" />
+                              </svg>
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
  
                    <!-- Card 3: Invite Blue -->
-                   <div class="lobby-card card-blue" id="squadInviteCard_right">
-                      <div class="card-inner-skew">
-                        <button class="invite-btn" type="button">+</button>
-                      </div>
-                    </div>
-                    <div class="lobby-card card-green local-four-only" id="squadInviteCard_fourth">
-                      <div class="card-inner-skew">
-                        <button class="invite-btn" type="button">+</button>
-                      </div>
-                    </div>
+                   <div class="lobby-card-wrapper" id="wrapper_squadInviteCard_right">
+                     <div class="lobby-card-mic-indicator hidden" id="mic_squadInviteCard_right">🔊</div>
+                     <div class="lobby-card card-blue" id="squadInviteCard_right">
+                       <div class="card-inner-skew">
+                         <button class="invite-btn" type="button">+</button>
+                       </div>
+                     </div>
+                   </div>
+
+                   <!-- Card 4: Invite Green -->
+                   <div class="lobby-card-wrapper local-four-only" id="wrapper_squadInviteCard_fourth">
+                     <div class="lobby-card-mic-indicator hidden" id="mic_squadInviteCard_fourth">🔊</div>
+                     <div class="lobby-card card-green" id="squadInviteCard_fourth">
+                       <div class="card-inner-skew">
+                         <button class="invite-btn" type="button">+</button>
+                       </div>
+                     </div>
+                   </div>
                  </div>
  
                  <!-- Footer Row -->
@@ -895,6 +909,29 @@
               <input id="lobbyChatInputPopup" type="text" maxlength="64" placeholder="Send room message..." autocomplete="off" />
               <button class="btn btn-primary btn-sm" type="submit">Send</button>
             </form>
+          </div>
+        </div>
+
+        <!-- Player Voice Settings Dialog -->
+        <div id="playerVoiceSettingsDialog" class="dialog-overlay hidden">
+          <div class="card glass dialog-card" style="padding: 24px; text-align: center; max-width: 320px;">
+            <h2 style="font-family: var(--font); color: var(--yellow); margin-bottom: 5px; font-size: 22px; text-transform: uppercase;">Team Mic Volume</h2>
+            <p id="voiceSettingsPlayerName" style="font-family: var(--font-clean); color: #fff; font-size: 15px; margin-bottom: 20px; opacity: 0.8;"></p>
+            
+            <!-- Volume Slider -->
+            <div style="margin-bottom: 24px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-family: var(--font-clean); color: #fff; font-size: 14px;">
+                <span>Volume</span>
+                <span id="voiceSettingsVolumeLabel">100%</span>
+              </div>
+              <input type="range" id="voiceSettingsVolumeSlider" min="0" max="100" value="100" style="width: 100%; cursor: pointer;" />
+            </div>
+            
+            <!-- Mute Buttons -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <button id="voiceSettingsMuteBtn" class="btn btn-danger" style="padding: 10px; width: 100%; font-family: var(--font); font-size: 14px;">MUTE</button>
+              <button id="closeVoiceSettingsBtn" class="btn btn-primary" style="padding: 10px; width: 100%; font-family: var(--font); font-size: 14px;">CLOSE</button>
+            </div>
           </div>
         </div>
 
