@@ -3470,6 +3470,35 @@ function stepTowardTarget(actor, dt) {
 // HOST CPU BOT PROCESS
 // ----------------------------------------------------------------
 
+function isCrateTile(cell) {
+  return cell === "crate" || cell === "supply_crate" || cell === "golden_crate";
+}
+
+function isTileOutsideNextZone(tx, ty) {
+  if (!isBattleRoyale(currentRoomMode) || !currentBRZone) return false;
+  const px = tx * TILE + TILE / 2;
+  const py = ty * TILE + TILE / 2;
+  return Math.hypot(px - currentBRZone.nextX, py - currentBRZone.nextY) > currentBRZone.nextRadius;
+}
+
+function isPixelOutsideNextZone(px, py) {
+  if (!isBattleRoyale(currentRoomMode) || !currentBRZone) return false;
+  return Math.hypot(px - currentBRZone.nextX, py - currentBRZone.nextY) > currentBRZone.nextRadius;
+}
+
+function isCrateOnPathToTarget(bot, tile, target) {
+  if (!target) return false;
+  const currentDist = Math.abs(target.x - tile.x) + Math.abs(target.y - tile.y);
+  const rows = map ? map.length : ROWS;
+  const cols = map && map[0] ? map[0].length : COLS;
+  return neighbors(tile.x, tile.y).some((n) => {
+    if (n.x < 1 || n.x >= cols - 1 || n.y < 1 || n.y >= rows - 1) return false;
+    if (!isCrateTile(map[n.y]?.[n.x])) return false;
+    const nDist = Math.abs(target.x - n.x) + Math.abs(target.y - n.y);
+    return nDist < currentDist;
+  });
+}
+
 let botsWhoThoughtThisFrame = 0;
 
 function updateAi(bot, dt) {
@@ -3558,6 +3587,7 @@ function updateAi(bot, dt) {
   }
 
   if (shouldThink) {
+    bot.aiTarget = findLocalBotTarget(bot, here);
     if (botsWhoThoughtThisFrame >= 3 && !isThreatened) {
       bot.aiThink = 0.01; // try next frame
     } else {
@@ -3644,10 +3674,11 @@ function updateAi(bot, dt) {
   const tile = gridAt(bot.x, bot.y);
   const nearbyEnemy = getLocalBotEnemies(bot).some((other) => other.alive && distanceTiles(tile, gridAt(other.x, other.y)) <= Math.max(2, bot.range || 2));
   const canAttackEnemy = hasEnemyInBombLineLocal(bot, tile);
-  // Only consider bombing a crate if an enemy is nearby or the bot has a clear path toward enemies through it
+  // Consider bombing adjacent crates if they lie on path to enemy or on path to bot's current target
+  const target = bot.aiTarget;
   const strategicCrate = !canAttackEnemy && !nearbyEnemy
-    ? isCrateOnPathToEnemy(bot, tile)
-    : neighbors(tile.x, tile.y).some((n) => map[n.y]?.[n.x] === "crate");
+    ? (isCrateOnPathToEnemy(bot, tile) || isCrateOnPathToTarget(bot, tile, target))
+    : neighbors(tile.x, tile.y).some((n) => isCrateTile(map[n.y]?.[n.x]));
   
   if ((canAttackEnemy || strategicCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy)) {
     if (localMode) localPlaceBomb(bot);
@@ -3748,7 +3779,7 @@ function isCrateOnPathToEnemy(bot, tile) {
   if (!nearest) return false;
   const et = gridAt(nearest.e.x, nearest.e.y);
   return neighbors(tile.x, tile.y).some(n => {
-    if (map[n.y]?.[n.x] !== "crate") return false;
+    if (!isCrateTile(map[n.y]?.[n.x])) return false;
     // The crate is "on path" if it sits between bot and enemy in the same row or column
     const dx = Math.sign(et.x - tile.x);
     const dy = Math.sign(et.y - tile.y);
@@ -3786,7 +3817,10 @@ function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEne
   }
 
   // Only bomb a strategic crate if we have safe exits (don't trap ourselves)
-  if (strategicCrate && countLocalSafeExits(bot, tile.x, tile.y) >= 2) {
+  // We reduce safe exits requirement to >= 1 to allow escaping corridors of width 1, as escapeTile BFS ensures safety.
+  if (strategicCrate && countLocalSafeExits(bot, tile.x, tile.y) >= 1) {
+    const urgent = isPixelOutsideNextZone(bot.x, bot.y);
+    if (urgent) return Math.random() < 0.85; // high urgency if outside safe zone!
     if (localBotsDifficulty === "easy")   return Math.random() < 0.12;
     if (localBotsDifficulty === "hard")   return Math.random() < 0.25;
     if (localBotsDifficulty === "expert") return Math.random() < 0.55;
@@ -3847,6 +3881,18 @@ function scoreAiMove(bot, x, y) {
       const nextDist = Math.hypot(tx - currentBRZone.nextX, ty - currentBRZone.nextY);
       score += Math.max(0, 100 - (nextDist / TILE) * 3);
     }
+    
+    // Also prioritize next safe zone if bot is outside it (even if not in storm yet)
+    const botInNextStorm = isPixelOutsideNextZone(bot.x, bot.y);
+    if (botInNextStorm) {
+      const nextDist = Math.hypot(tx - currentBRZone.nextX, ty - currentBRZone.nextY);
+      const botNextDist = Math.hypot(bot.x - currentBRZone.nextX, bot.y - currentBRZone.nextY);
+      if (nextDist < botNextDist) {
+        score += 800;
+      } else {
+        score -= 800;
+      }
+    }
   }
 
   // Pickups are attractive
@@ -3854,7 +3900,7 @@ function scoreAiMove(bot, x, y) {
   if (pickup) score += pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 200 : 140;
 
   // Crate adjacency is only useful if we can safely escape after bombing
-  if (neighbors(x, y).some((n) => map[n.y]?.[n.x] === "crate")) {
+  if (neighbors(x, y).some((n) => isCrateTile(map[n.y]?.[n.x]))) {
     score += hasEscapeTileLocal(bot, { x, y }) ? 30 : -120;
   }
 
@@ -3877,7 +3923,7 @@ function scoreAiMove(bot, x, y) {
           const dy = Math.sign(enemyTile.y - y);
           for (let i = 1; i < nearestDist; i++) {
             const cell = map[y + dy * i]?.[x + dx * i];
-            if (cell === "wall" || cell === "crate") return true;
+            if (cell === "wall" || cell === "crate" || cell === "supply_crate" || cell === "golden_crate") return true;
           }
           return false;
         })();
@@ -3894,22 +3940,24 @@ function scoreAiMove(bot, x, y) {
     }
   }
 
-  // High-priority target tracking (enemies > pickups > crates)
-  const target = findLocalBotTarget(bot, here);
+  // High-priority target tracking using cached target (enemies > pickups > crates)
+  const target = bot.aiTarget;
   if (target) {
     let dist;
     if (localBotsDifficulty === "easy") {
       dist = Math.abs(target.x - x) + Math.abs(target.y - y);
     } else {
       dist = getDijkstraPathDistance({ x, y }, target);
+      if (dist === 999) {
+        // Fallback to Manhattan + penalty for unreachable
+        dist = 1000 + (Math.abs(target.x - x) + Math.abs(target.y - y));
+      }
     }
     score += Math.max(0, 140 - dist * 15);
   }
 
   return score;
 }
-
-// (duplicate removed — shouldLocalBotBomb is defined above)
 
 function getLocalBotEnemies(bot) {
   return players.filter((other) => other !== bot && other.alive);
@@ -3938,7 +3986,7 @@ function localBombThreatensTileAnyTimer(bomb, x, y) {
   for (let i = 1; i <= distance; i += 1) {
     const tile = map[bomb.y + stepY * i]?.[bomb.x + stepX * i];
     if (tile === "wall") return false;
-    if (tile === "crate") return i === distance;
+    if (tile === "crate" || tile === "supply_crate" || tile === "golden_crate") return i === distance;
   }
   return true;
 }
@@ -3954,23 +4002,26 @@ function findLocalBotTarget(bot, here) {
     y: pickup.y,
     weight: pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 5 : 3,
   }));
+  
+  const rows = map ? map.length : ROWS;
+  const cols = map && map[0] ? map[0].length : COLS;
   const crates = [];
-  for (let y = 1; y < ROWS - 1; y += 1) {
-    for (let x = 1; x < COLS - 1; x += 1) {
-      if (map[y][x] === "crate") crates.push({ x, y, weight: 1 });
+  for (let y = 1; y < rows - 1; y += 1) {
+    for (let x = 1; x < cols - 1; x += 1) {
+      if (isCrateTile(map[y][x])) crates.push({ x, y, weight: 1 });
     }
   }
 
   let targets = [...loot, ...enemies, ...crates];
   if (isBattleRoyale(currentRoomMode) && currentBRZone) {
-    // Filter out targets that are currently in the storm
-    targets = targets.filter((target) => !isTileOutsideZone(target.x, target.y));
+    // Filter out targets that are outside the next safe zone, so bots prioritize moving into/staying in the next safe zone
+    targets = targets.filter((target) => !isTileOutsideNextZone(target.x, target.y));
 
-    // If bot is currently in the storm, add the safe zone center as a top-priority target
-    if (isPixelOutsideZone(bot.x, bot.y)) {
+    // If bot is outside the next safe zone, add the next safe zone center as a top-priority target
+    if (isPixelOutsideNextZone(bot.x, bot.y)) {
       const targetX = Math.floor(currentBRZone.nextX / TILE);
       const targetY = Math.floor(currentBRZone.nextY / TILE);
-      if (targetX > 0 && targetX < COLS - 1 && targetY > 0 && targetY < ROWS - 1) {
+      if (targetX > 0 && targetX < cols - 1 && targetY > 0 && targetY < rows - 1) {
         let tx = targetX;
         let ty = targetY;
         if (isSolid(tx, ty, bot)) {
@@ -3982,7 +4033,7 @@ function findLocalBotTarget(bot, here) {
                 if (Math.abs(dx) === r || Math.abs(dy) === r) {
                   const nx = targetX + dx;
                   const ny = targetY + dy;
-                  if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1 && !isSolid(nx, ny, bot)) {
+                  if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && !isSolid(nx, ny, bot)) {
                     tx = nx;
                     ty = ny;
                     found = true;
@@ -3997,18 +4048,40 @@ function findLocalBotTarget(bot, here) {
     }
   }
 
-  return targets
-    .filter((target) => getLocalBotThreatScore(target.x, target.y) < 1000)
+  let validTargets = targets.filter((target) => getLocalBotThreatScore(target.x, target.y) < 1000);
+  
+  if (validTargets.length === 0) {
+    // Fallback: wander to a random walkable tile inside the safe zone (if BR) or the whole map (if not BR)
+    let foundWanderTarget = false;
+    let attempts = 0;
+    while (!foundWanderTarget && attempts < 30) {
+      attempts++;
+      const rx = Math.floor(1 + Math.random() * (cols - 2));
+      const ry = Math.floor(1 + Math.random() * (rows - 2));
+      if (!isSolid(rx, ry, bot)) {
+        if (isBattleRoyale(currentRoomMode) && currentBRZone) {
+          if (isTileOutsideNextZone(rx, ry)) continue;
+        }
+        validTargets.push({ x: rx, y: ry, weight: 1 });
+        foundWanderTarget = true;
+      }
+    }
+  }
+
+  return validTargets
     .map((target) => {
       let dist;
       if (localBotsDifficulty === "easy") {
         dist = Math.abs(target.x - here.x) + Math.abs(target.y - here.y);
       } else {
         dist = getDijkstraPathDistance(here, target);
+        if (dist === 999) {
+          dist = 1000 + (Math.abs(target.x - here.x) + Math.abs(target.y - here.y));
+        }
       }
       return { ...target, dist };
     })
-    .filter((target) => target.dist < 999)
+    .filter((target) => target.dist < 9999)
     .sort((a, b) => (b.weight * 24 - b.dist) - (a.weight * 24 - a.dist))[0] || null;
 }
 

@@ -2271,6 +2271,7 @@ function updateServerBots(room, dt) {
     // Only recalculate immediately if threatened by an active bomb/blast.
     // Otherwise, wait until the think timer expires.
     if (bot.aiThink <= 0 || !bot.aiDir || isBombThreat) {
+      bot.aiTarget = findServerBotTarget(room, bot, tile);
       const safetyDir = getSafetyStepServer(room, bot, tile);
       if (safetyDir) {
         bot.aiDir = safetyDir;
@@ -2309,7 +2310,7 @@ function updateServerBots(room, dt) {
       const enemyTile = gridAtServer(enemy.x, enemy.y);
       return Math.abs(enemyTile.x - nowTile.x) + Math.abs(enemyTile.y - nowTile.y) <= Math.max(2, bot.range || 2);
     });
-    const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy);
+    const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget);
     if (shouldBomb && hasEscapeTile(room, bot, nowTile)) {
       if (placeServerBomb(room, bot)) {
         const activeBombsCount = room.bombs.filter(b => b.ownerId === bot.id).length;
@@ -2324,6 +2325,40 @@ function updateServerBots(room, dt) {
   });
 }
 
+function isCrateTile(cell) {
+  return cell === "crate" || cell === "supply_crate" || cell === "golden_crate";
+}
+
+function isTileOutsideNextZoneServer(room, tx, ty) {
+  if (!room.brZone) return false;
+  const px = tx * TILE + TILE / 2;
+  const py = ty * TILE + TILE / 2;
+  return Math.hypot(px - room.brZone.nextX, py - room.brZone.nextY) > room.brZone.nextRadius;
+}
+
+function isPixelOutsideNextZoneServer(room, px, py) {
+  if (!room.brZone) return false;
+  return Math.hypot(px - room.brZone.nextX, py - room.brZone.nextY) > room.brZone.nextRadius;
+}
+
+function isCrateOnPathToTargetServer(room, bot, tile, target) {
+  if (!target) return false;
+  const currentDist = Math.abs(target.x - tile.x) + Math.abs(target.y - tile.y);
+  const rows = getRows(room.mode);
+  const cols = getCols(room.mode);
+  return [
+    { x: tile.x + 1, y: tile.y },
+    { x: tile.x - 1, y: tile.y },
+    { x: tile.x, y: tile.y + 1 },
+    { x: tile.x, y: tile.y - 1 },
+  ].some((n) => {
+    if (n.x < 1 || n.x >= cols - 1 || n.y < 1 || n.y >= rows - 1) return false;
+    if (!isCrateTile(room.map[n.y]?.[n.x])) return false;
+    const nDist = Math.abs(target.x - n.x) + Math.abs(target.y - n.y);
+    return nDist < currentDist;
+  });
+}
+
 function gridAtServer(px, py) {
   return { x: Math.floor(px / TILE), y: Math.floor(py / TILE) };
 }
@@ -2331,7 +2366,7 @@ function gridAtServer(px, py) {
 function isMapSolidServer(room, tileX, tileY) {
   if (!room.map[tileY] || !room.map[tileY][tileX]) return true;
   const cell = room.map[tileY][tileX];
-  return cell === "wall" || cell === "crate" || cell === "zone";
+  return cell === "wall" || cell === "crate" || cell === "zone" || cell === "supply_crate" || cell === "golden_crate";
 }
 
 function overlapsBombServer(actor, bomb) {
@@ -2431,6 +2466,18 @@ function scoreServerBotMove(room, bot, x, y) {
     if (dist < currentDist) {
       score += 150;
     }
+    
+    // Also prioritize next safe zone if bot is outside it (even if not in storm yet)
+    const botInNextStorm = isPixelOutsideNextZoneServer(room, bot.x, bot.y);
+    if (botInNextStorm) {
+      const nextDist = Math.hypot(px - room.brZone.nextX, py - room.brZone.nextY);
+      const botNextDist = Math.hypot(bot.x - room.brZone.nextX, bot.y - room.brZone.nextY);
+      if (nextDist < botNextDist) {
+        score += 800;
+      } else {
+        score -= 800;
+      }
+    }
   }
 
   const threat = getServerBotThreatScore(room, x, y);
@@ -2456,7 +2503,7 @@ function scoreServerBotMove(room, bot, x, y) {
     }
   }
 
-  const target = findServerBotTarget(room, bot, here);
+  const target = bot.aiTarget;
   if (target) {
     const dist = Math.abs(target.x - x) + Math.abs(target.y - y);
     score += Math.max(0, 110 - dist * 13);
@@ -2464,7 +2511,7 @@ function scoreServerBotMove(room, bot, x, y) {
   return score;
 }
 
-function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy) {
+function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy, target) {
   if (canAttackEnemy) return true;
   if (nearbyEnemy) {
     const enemies = getServerBotEnemies(room, bot);
@@ -2476,7 +2523,17 @@ function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearb
     if (nearestDist <= 2) return Math.random() < 0.85;
     return Math.random() < 0.42;
   }
-  if (nearbyCrate && countServerSafeExits(room, bot, tile.x, tile.y) >= 2) return Math.random() < 0.34;
+  
+  // Consider bombing adjacent crates if they lie on path to bot's current target
+  const strategicCrate = !canAttackEnemy && !nearbyEnemy
+    ? isCrateOnPathToTargetServer(room, bot, tile, target)
+    : nearbyCrate;
+
+  if (strategicCrate && countServerSafeExits(room, bot, tile.x, tile.y) >= 1) {
+    const urgent = isPixelOutsideNextZoneServer(room, bot.x, bot.y);
+    if (urgent) return Math.random() < 0.85;
+    return Math.random() < 0.34;
+  }
   return false;
 }
 
@@ -2543,7 +2600,7 @@ function bombThreatensTileAnyTimer(room, bomb, x, y) {
   for (let i = 1; i <= distance; i += 1) {
     const cell = room.map[bomb.y + dy * i]?.[bomb.x + dx * i];
     if (!cell || cell === "wall") return false;
-    if (cell === "crate") return i === distance;
+    if (isCrateTile(cell)) return i === distance;
   }
   return true;
 }
@@ -2560,14 +2617,76 @@ function countServerSafeExits(room, bot, x, y) {
 function findServerBotTarget(room, bot, here) {
   const enemies = getServerBotEnemies(room, bot).map(enemy => ({ ...gridAtServer(enemy.x, enemy.y), weight: 3 }));
   const loot = room.pickups.map(pickup => ({ x: pickup.x, y: pickup.y, weight: pickup.type === "punch" || pickup.type === "full_fire" || pickup.type === "slide" ? 5 : 3 }));
+  
+  const rows = getRows(room.mode);
+  const cols = getCols(room.mode);
   const crates = [];
-  for (let y = 1; y < ROWS - 1; y += 1) {
-    for (let x = 1; x < COLS - 1; x += 1) {
-      if (room.map[y][x] === "crate") crates.push({ x, y, weight: 1 });
+  for (let y = 1; y < rows - 1; y += 1) {
+    for (let x = 1; x < cols - 1; x += 1) {
+      const cell = room.map[y]?.[x];
+      if (isCrateTile(cell)) {
+        crates.push({ x, y, weight: 1 });
+      }
     }
   }
-  return [...loot, ...enemies, ...crates]
-    .filter(target => getServerBotThreatScore(room, target.x, target.y) < 1000)
+
+  let targets = [...loot, ...enemies, ...crates];
+  if (isBattleRoyale(room.mode) && room.brZone) {
+    // Filter out targets that are outside the next safe zone
+    targets = targets.filter((target) => !isTileOutsideNextZoneServer(room, target.x, target.y));
+
+    // If bot is outside the next safe zone, add the next safe zone center as a top-priority target
+    if (isPixelOutsideNextZoneServer(room, bot.x, bot.y)) {
+      const targetX = Math.floor(room.brZone.nextX / TILE);
+      const targetY = Math.floor(room.brZone.nextY / TILE);
+      if (targetX > 0 && targetX < cols - 1 && targetY > 0 && targetY < rows - 1) {
+        let tx = targetX;
+        let ty = targetY;
+        if (isSolidServer(room, tx, ty, bot)) {
+          let found = false;
+          const searchRadius = 5;
+          for (let r = 1; r <= searchRadius && !found; r++) {
+            for (let dx = -r; dx <= r && !found; dx++) {
+              for (let dy = -r; dy <= r && !found; dy++) {
+                if (Math.abs(dx) === r || Math.abs(dy) === r) {
+                  const nx = targetX + dx;
+                  const ny = targetY + dy;
+                  if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && !isSolidServer(room, nx, ny, bot)) {
+                    tx = nx;
+                    ty = ny;
+                    found = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+        targets.push({ x: tx, y: ty, weight: 100 });
+      }
+    }
+  }
+
+  let validTargets = targets.filter(target => getServerBotThreatScore(room, target.x, target.y) < 1000);
+  
+  if (validTargets.length === 0) {
+    // Fallback: wander to a random walkable tile inside the safe zone (if BR) or the whole map (if not BR)
+    let foundWanderTarget = false;
+    let attempts = 0;
+    while (!foundWanderTarget && attempts < 30) {
+      attempts++;
+      const rx = Math.floor(1 + Math.random() * (cols - 2));
+      const ry = Math.floor(1 + Math.random() * (rows - 2));
+      if (!isSolidServer(room, rx, ry, bot)) {
+        if (isBattleRoyale(room.mode) && room.brZone) {
+          if (isTileOutsideNextZoneServer(room, rx, ry)) continue;
+        }
+        validTargets.push({ x: rx, y: ry, weight: 1 });
+        foundWanderTarget = true;
+      }
+    }
+  }
+
+  return validTargets
     .map(target => ({ ...target, dist: Math.abs(target.x - here.x) + Math.abs(target.y - here.y) }))
     .sort((a, b) => (b.weight * 24 - b.dist) - (a.weight * 24 - a.dist))[0] || null;
 }
@@ -2631,7 +2750,7 @@ function hasAdjacentCrate(room, x, y) {
     { x: -1, y: 0 },
     { x: 0, y: 1 },
     { x: 0, y: -1 },
-  ].some(dir => room.map[y + dir.y]?.[x + dir.x] === "crate");
+  ].some(dir => isCrateTile(room.map[y + dir.y]?.[x + dir.x]));
 }
 
 function hasEscapeTile(room, bot, tile) {
