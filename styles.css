@@ -5901,9 +5901,9 @@ body.is-mobile .arcade-controller {
   flex-shrink: 0;
 }
 
-.status-dot.online   { background: #2ecc71; }
-.status-dot.ingame   { background: #f39c12; }
-.status-dot.offline  { background: #bbb; }
+.status-dot.online   { background: #ffffff; }
+.status-dot.ingame   { background: #ffffff; opacity: 0.6; }
+.status-dot.offline  { background: #ffffff; opacity: 0.25; }
 
 /* Social action buttons */
 .social-action-btns {
@@ -8077,10 +8077,8 @@ body.graphics-low .yellow-console {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 4px;
-  background: linear-gradient(135deg, #ffd84a 0%, #ff7675 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 4px 15px rgba(255, 118, 117, 0.4);
+  color: #ffffff;
+  text-shadow: 0 4px 15px rgba(255, 255, 255, 0.4);
   animation: brm-pulse 2s infinite alternate;
 }
 
@@ -8151,22 +8149,22 @@ body.graphics-low .yellow-console {
 }
 
 #brmCancelBtn {
-  background: linear-gradient(135deg, #ff7675 0%, #d63031 100%);
+  background: #ffffff;
   border: none;
-  color: #fff;
+  color: #000000;
   font-size: 16px;
   font-weight: 800;
   padding: 12px 35px;
   border-radius: 30px;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(214, 48, 49, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   transition: transform 0.2s, box-shadow 0.2s;
   letter-spacing: 1px;
 }
 
 #brmCancelBtn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(214, 48, 49, 0.6);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
 }
 
 #brmCancelBtn:active {

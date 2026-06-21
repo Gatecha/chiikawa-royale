@@ -777,25 +777,17 @@ function syncCharacterSelectPreview(kind) {
   // Dynamic premium background theme changes for Look / Wardrobe tab
   const selectScreenEl = document.querySelector(".character-select-screen");
   if (selectScreenEl) {
-    let swirlColor = "#242528";
-    let darkColor = "#131417";
+    let swirlColor = "#15131b"; // Match lobby background swirly color
+    let darkColor = "#0b0a0e";  // Match lobby background dark color
     let glowColor = "rgba(255, 255, 255, 0.1)";
     
     if (kind === "chiikawa") {
-      swirlColor = "#3d1424"; // Rich deep pink-purple
-      darkColor = "#1f0710";  // Very dark plum
       glowColor = "rgba(255, 138, 177, 0.32)";
     } else if (kind === "hachiware") {
-      swirlColor = "#10233b"; // Rich deep blue-navy
-      darkColor = "#060f1c";  // Very dark navy
       glowColor = "rgba(128, 178, 201, 0.35)";
     } else if (kind === "usagi") {
-      swirlColor = "#3d270f"; // Rich bronze brown
-      darkColor = "#1c0f04";  // Very dark brown
       glowColor = "rgba(255, 157, 87, 0.35)";
     } else if (kind === "momonga") {
-      swirlColor = "#172733"; // Rich slate gray-blue
-      darkColor = "#0a131a";  // Very dark charcoal
       glowColor = "rgba(185, 222, 242, 0.32)";
     }
     
@@ -8606,9 +8598,9 @@ async function refreshSocialData() {
 function makeStatusInfo(userId) {
   const p = onlinePresenceMap[userId];
   if (!p) return { dot: "offline", text: "Offline" };
-  if (p.status === "in-game")  return { dot: "ingame", text: "🎮 In-game" };
-  if (p.status === "in-lobby") return { dot: "ingame", text: "🏠 In a room" };
-  return { dot: "online", text: "🟢 Online" };
+  if (p.status === "in-game")  return { dot: "ingame", text: "In-game" };
+  if (p.status === "in-lobby") return { dot: "ingame", text: "In a room" };
+  return { dot: "online", text: "Online" };
 }
 
 function buildSocialUserItem(userId, username, character, statusInfo, isFriend, showInvite) {

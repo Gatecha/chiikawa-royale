@@ -709,7 +709,7 @@
               <div class="tab-panel-inner card-inner shop-panel" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; height:100%; gap:16px;">
                 <div class="alpha-warning-icon" style="font-size: 48px; filter: drop-shadow(0 4px 0 #000); margin-bottom: 8px;">🚧</div>
                 <h3 style="font-family: var(--font); font-size: 24px; color: #ffd84a; margin: 0; text-transform: uppercase;">Alpha Stage Notice</h3>
-                <p class="tab-description" style="font-family: var(--font-clean); font-size: 16px; color: #fff; max-width: 460px; line-height: 1.5; margin: 0;">
+                <p class="tab-description" style="font-family: var(--font-clean); font-size: 16px; color: #000000; max-width: 460px; line-height: 1.5; margin: 0;">
                   This game is under alpha stage, shop features won't be available.
                 </p>
               </div>
@@ -1353,10 +1353,10 @@
         <div class="social-modal-header">
           <h2 class="social-modal-title">Social</h2>
           <div class="social-tabs">
-            <button class="social-tab-btn active" data-social-tab="online">🌐 Online Users</button>
-            <button class="social-tab-btn" data-social-tab="friends">👥 My Friends</button>
-            <button class="social-tab-btn" data-social-tab="pending">
-              🔔 Requests
+            <button class="social-tab-btn active" data-social-tab="online" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> Online Users</button>
+            <button class="social-tab-btn" data-social-tab="friends" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> My Friends</button>
+            <button class="social-tab-btn" data-social-tab="pending" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg> Requests
               <span id="pendingBadge" class="social-notif-badge hidden">0</span>
             </button>
           </div>
@@ -1465,7 +1465,7 @@
             <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> Pro
           </button>
-          <button id="btnDiffExpert" class="btn btn-accent" type="button" style="padding: 12px; border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0px var(--ink); text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 2px;">
+          <button id="btnDiffExpert" class="btn" type="button" style="padding: 12px; border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0px var(--ink); text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 2px; background: #ff2f40; color: #ffffff;">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
@@ -1492,14 +1492,14 @@
             <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">2v2 team match. Max 2 squad.</span>
           </button>
           
-          <button id="btnModeSelectTrio" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important;">
-            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; width: 20px; height: 20px;"><svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M21.9 2.1c-.2-.2-.5-.2-.7 0l-4.5 4.5c-.4-.2-.8-.3-1.3-.3-1.2 0-2.2.8-2.6 1.8L9.2 4.5l-1.4 1.4 3.6 3.6c-1 .4-1.8 1.4-1.8 2.6 0 .5.1.9.3 1.3L5.4 17.9l-1.4-1.4-1.4 1.4L4 19.3l-1.4 1.4 1.4 1.4L5.4 20.7l1.4-1.4 1.4-1.4-1.4-1.4 4.5-4.5c.4.2.8.3 1.3.3 1.2 0 2.2-.8 2.6-1.8l3.6 3.6 1.4-1.4-3.6-3.6c1-.4 1.8-1.4 1.8-2.6 0-.5-.1-.9-.3-1.3l4.5-4.5c.2-.2.2-.5 0-.7zm-11 11.3c-.6 0-1.1-.5-1.1-1.1s.5-1.1 1.1-1.1 1.1.5 1.1 1.1-.5 1.1-1.1 1.1zm4.6-4.6c-.6 0-1.1-.5-1.1-1.1s.5-1.1 1.1-1.1 1.1.5 1.1 1.1-.5 1.1-1.1 1.1z"/></svg></span>
-            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">Trio (3v3)</span>
-            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">3v3 team rotation. Max 3 squad.</span>
+          <button id="btnModeSelectTrio" class="btn btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important; background: #ffd84a; border-color: var(--ink); box-shadow: 3px 3px 0px var(--ink);">
+            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; width: 20px; height: 20px;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="18" x2="18" y2="6"/><line x1="12" y1="18" x2="18" y2="12"/><line x1="6" y1="12" x2="12" y2="6"/><line x1="18" y1="18" x2="6" y2="6"/></svg></span>
+            <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: var(--ink);">Trio (3v3)</span>
+            <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: var(--ink);">3v3 team rotation. Max 3 squad.</span>
           </button>
 
           <button id="btnModeSelectBRSolo" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important; background: #9b59b6; border-color: #ffd84a;">
-            <span class="option-icon" style="font-size: 20px;">👑</span>
+            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; gap: 4px;"><svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span style="font-size: 20px;">👑</span></span>
             <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">BR Solo</span>
             <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">50 Players FFA Battle Royale.</span>
           </button>
@@ -1511,7 +1511,7 @@
           </button>
 
           <button id="btnModeSelectBRTrio" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 10px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; height: auto !important; background: #2ecc71; border-color: #ffd84a;">
-            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; gap: 4px;"><svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M21.9 2.1c-.2-.2-.5-.2-.7 0l-4.5 4.5c-.4-.2-.8-.3-1.3-.3-1.2 0-2.2.8-2.6 1.8L9.2 4.5l-1.4 1.4 3.6 3.6c-1 .4-1.8 1.4-1.8 2.6 0 .5.1.9.3 1.3L5.4 17.9l-1.4-1.4-1.4 1.4L4 19.3l-1.4 1.4 1.4 1.4L5.4 20.7l1.4-1.4 1.4-1.4-1.4-1.4 4.5-4.5c.4.2.8.3 1.3.3 1.2 0 2.2-.8 2.6-1.8l3.6 3.6 1.4-1.4-3.6-3.6c1-.4 1.8-1.4 1.8-2.6 0-.5-.1-.9-.3-1.3l4.5-4.5c.2-.2.2-.5 0-.7zm-11 11.3c-.6 0-1.1-.5-1.1-1.1s.5-1.1 1.1-1.1 1.1.5 1.1 1.1-.5 1.1-1.1 1.1zm4.6-4.6c-.6 0-1.1-.5-1.1-1.1s.5-1.1 1.1-1.1 1.1.5 1.1 1.1-.5 1.1-1.1 1.1z"/></svg><span style="font-size: 20px;">👑</span></span>
+            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; gap: 4px;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="18" x2="18" y2="6"/><line x1="12" y1="18" x2="18" y2="12"/><line x1="6" y1="12" x2="12" y2="6"/><line x1="18" y1="18" x2="6" y2="6"/></svg><span style="font-size: 20px;">👑</span></span>
             <span class="option-title" style="font-family: var(--font); font-size: 14px; font-weight: 700; text-transform: uppercase; color: #fff;">BR Trio</span>
             <span class="option-desc" style="font-family: var(--font-clean); font-size: 10px; opacity: 0.8; color: #fff;">50 Players 3v3 Battle Royale.</span>
           </button>
