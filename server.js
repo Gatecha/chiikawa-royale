@@ -548,17 +548,16 @@ function handleMessage(ws, msg) {
       
       const itemType = data.itemType;
       if (itemType === "bandage" && (player.bandageCount || 0) > 0) {
-        player.bandageCount--;
         player.healingState = { itemType, timeLeft: 3.0 };
         broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 3.0 } });
       } else if (itemType === "medkit" && (player.medkitCount || 0) > 0) {
-        player.medkitCount--;
         player.healingState = { itemType, timeLeft: 5.0 };
         broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 5.0 } });
       } else if (itemType === "energy_drink" && (player.energyDrinkCount || 0) > 0) {
         player.energyDrinkCount--;
         player.energyDrinkTimeLeft = 10.0;
-        broadcastToRoom(room, { type: "item_used", data: { playerId: player.id, itemType } });
+        player.shield = Math.min(100, (player.shield || 0) + 50);
+        broadcastToRoom(room, { type: "item_used", data: { playerId: player.id, itemType, shield: player.shield, energyDrinkCount: player.energyDrinkCount } });
       }
       break;
     }
@@ -1482,13 +1481,24 @@ function tickRoom(room) {
       if (p.healingState) {
         p.healingState.timeLeft -= dt;
         if (p.healingState.timeLeft <= 0) {
-          if (p.healingState.itemType === "bandage") {
+          const finishedType = p.healingState.itemType;
+          p.healingState = null;
+          if (finishedType === "bandage" && (p.bandageCount || 0) > 0) {
+            p.bandageCount--;
             p.hp = Math.min(100, p.hp + 25);
-          } else if (p.healingState.itemType === "medkit") {
+          } else if (finishedType === "medkit" && (p.medkitCount || 0) > 0) {
+            p.medkitCount--;
             p.hp = 100;
           }
-          p.healingState = null;
-          broadcastToRoom(room, { type: "player_healed", data: { playerId: p.id, hp: p.hp } });
+          broadcastToRoom(room, {
+            type: "player_healed",
+            data: {
+              playerId: p.id,
+              hp: p.hp,
+              bandageCount: p.bandageCount || 0,
+              medkitCount: p.medkitCount || 0
+            }
+          });
         }
       }
       if (p.energyDrinkTimeLeft > 0) {

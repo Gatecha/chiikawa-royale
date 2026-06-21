@@ -1570,8 +1570,24 @@ function handleServerMessage(msg) {
     case "pre_match_started": {
       const countdown = data.countdown;
       readyState = false;
-      switchScreen(gameScreen);
-      updateHudSidebar();
+      
+      const logoEl = document.querySelector(".brm-logo");
+      if (logoEl) {
+        logoEl.textContent = "PRE MATCH";
+        logoEl.style.color = "#ffffff";
+      }
+      const badge = document.getElementById("brmModeBadge");
+      if (badge) badge.style.display = "none";
+
+      const pCountEl = document.querySelector(".brm-player-count");
+      if (pCountEl) pCountEl.textContent = "Starting";
+
+      const countdownBox = document.getElementById("brmCountdown");
+      if (countdownBox) {
+        countdownBox.classList.remove("hidden");
+        countdownBox.innerHTML = `Starting in <strong id="brmCountdownNum">${countdown}</strong>`;
+      }
+      
       const stateEl = document.getElementById("roundState");
       if (stateEl) stateEl.textContent = `PRE-MATCH: ${countdown}s`;
       showToastMsg("Match filled! Pre-match countdown started.");
@@ -1580,6 +1596,11 @@ function handleServerMessage(msg) {
 
     case "pre_match_countdown": {
       const countdown = data.countdown;
+      const countdownBox = document.getElementById("brmCountdown");
+      if (countdownBox) {
+        countdownBox.classList.remove("hidden");
+        countdownBox.innerHTML = `Starting in <strong id="brmCountdownNum">${countdown}</strong>`;
+      }
       const stateEl = document.getElementById("roundState");
       if (stateEl) stateEl.textContent = `PRE-MATCH: ${countdown}s`;
       break;
@@ -1635,6 +1656,8 @@ function handleServerMessage(msg) {
       if (p) {
         p.hp = hp;
         p.healingState = null;
+        if (data.bandageCount !== undefined) p.bandageCount = data.bandageCount;
+        if (data.medkitCount !== undefined) p.medkitCount = data.medkitCount;
       }
       if (playerId === localPlayerId) {
         localHealingState = null;
@@ -1650,6 +1673,8 @@ function handleServerMessage(msg) {
       if (p) {
         p.healingState = null;
         if (itemType === "energy_drink") {
+          if (data.shield !== undefined) p.shield = data.shield;
+          if (data.energyDrinkCount !== undefined) p.energyDrinkCount = data.energyDrinkCount;
           showToastMsg(p.name + " used an Energy Drink! 🥤");
         }
       }
@@ -5094,20 +5119,22 @@ function update(dt) {
       hideBRProgressBar();
       
       if (p && p.alive) {
-        if (itemType === "bandage") {
-          p.bandageCount = Math.max(0, (p.bandageCount || 0) - 1);
-          p.hp = Math.min(75, p.hp + 15);
-          showToastMsg("Used Bandage! HP: " + p.hp);
-        } else if (itemType === "medkit") {
-          p.medkitCount = Math.max(0, (p.medkitCount || 0) - 1);
-          p.hp = 100;
-          showToastMsg("Used Med Kit! HP: " + p.hp);
-        } else if (itemType === "energy_drink") {
-          p.energyDrinkCount = Math.max(0, (p.energyDrinkCount || 0) - 1);
-          p.shield = Math.min(100, (p.shield || 0) + 50);
-          showToastMsg("Used Energy Drink! Shield: " + p.shield);
+        if (localMode) {
+          if (itemType === "bandage") {
+            p.bandageCount = Math.max(0, (p.bandageCount || 0) - 1);
+            p.hp = Math.min(75, p.hp + 15);
+            showToastMsg("Used Bandage! HP: " + p.hp);
+          } else if (itemType === "medkit") {
+            p.medkitCount = Math.max(0, (p.medkitCount || 0) - 1);
+            p.hp = 100;
+            showToastMsg("Used Med Kit! HP: " + p.hp);
+          } else if (itemType === "energy_drink") {
+            p.energyDrinkCount = Math.max(0, (p.energyDrinkCount || 0) - 1);
+            p.shield = Math.min(100, (p.shield || 0) + 50);
+            showToastMsg("Used Energy Drink! Shield: " + p.shield);
+          }
+          updateHudSidebar();
         }
-        updateHudSidebar();
       }
     } else {
       updateBRProgressBar(localHealingState.timeLeft / localHealingState.duration);
@@ -9614,8 +9641,18 @@ function initBRClient() {
     document.getElementById("brGameOverOverlay")?.classList.add("hidden");
     document.getElementById("brGameOverOverlay")?.classList.remove("active");
     stopConfetti();
-    sendServerMessage("leave_room");
-    switchScreen(menuScreen);
+    if (localMode) {
+      roomCode = null;
+      localPlayerId = null;
+      hostId = null;
+      localMode = false;
+      resetCouchControls();
+      resetLobbyMapSelectToNormal();
+      switchScreen(menuScreen);
+    } else {
+      switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+    }
   });
 }
 
@@ -10008,6 +10045,20 @@ function showBRMatchmakingScreen(chosenMode) {
   brmPlayerCountVal = 1;
   currentRoomMode = chosenMode;
   
+  const logoEl = document.querySelector(".brm-logo");
+  if (logoEl) {
+    logoEl.textContent = "";
+  }
+  const badge = document.getElementById("brmModeBadge");
+  if (badge) {
+    badge.style.display = "block";
+    badge.textContent = chosenMode.replace("br_", "").toUpperCase();
+  }
+  const pCountContainer = document.querySelector(".brm-player-count");
+  if (pCountContainer) {
+    pCountContainer.innerHTML = `<span id="brmPlayerCount">1</span>/20 PLAYERS`;
+  }
+  
   const brmStartBtn = document.getElementById("brmStartBtn");
   if (brmStartBtn) {
     const isHost = localPlayerId === hostId;
@@ -10024,11 +10075,6 @@ function showBRMatchmakingScreen(chosenMode) {
     screen.classList.add("active");
   }
   
-  const badge = document.getElementById("brmModeBadge");
-  if (badge) {
-    badge.textContent = chosenMode.replace("br_", "").toUpperCase();
-  }
-  
   const pCount = document.getElementById("brmPlayerCount");
   if (pCount) pCount.textContent = "1";
   
@@ -10041,7 +10087,13 @@ function showBRMatchmakingScreen(chosenMode) {
     brmCanvasEl.classList.add("falling");
   }
   
-  const videoSrc = characterSelectVideos[selectedCharacter] || "assets/chiikawa/chiikawa_character_animation.mp4";
+  const matchmakingVideos = {
+    chiikawa: "assets/matchmaking animations/chiikawa br matchmaking animation.mp4",
+    hachiware: "assets/matchmaking animations/hachiware br matchmaking animation.mp4",
+    usagi: "assets/matchmaking animations/usagi br matchmaking animation.mp4",
+    momonga: "assets/matchmaking animations/momonga br matchmaking animation.mp4"
+  };
+  const videoSrc = matchmakingVideos[selectedCharacter] || "assets/matchmaking animations/chiikawa br matchmaking animation.mp4";
   brmVideoEl.src = videoSrc;
   brmVideoEl.load();
   playMutedLoop(brmVideoEl);
@@ -10097,11 +10149,11 @@ function renderBRMVideo() {
       
       brmCtx.clearRect(0, 0, brmCanvasEl.width, brmCanvasEl.height);
       
-      const scale = Math.min(brmCanvasEl.width / vw, brmCanvasEl.height / vh) * 0.95;
+      const scale = Math.min(brmCanvasEl.width / vw, brmCanvasEl.height / vh) * 1.55;
       const dw = vw * scale;
       const dh = vh * scale;
       const dx = (brmCanvasEl.width - dw) / 2;
-      const dy = (brmCanvasEl.height - dh) / 2;
+      const dy = (brmCanvasEl.height - dh) / 2 + 30;
       
       brmCtx.drawImage(brmTempCanvas, dx, dy, dw, dh);
     }
