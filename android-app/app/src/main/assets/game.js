@@ -3518,17 +3518,14 @@ function updateAi(bot, dt) {
       const shouldHeal = inStorm ? (bot.hp <= 40) : (bot.hp < 75 || (bot.shield || 0) < 50);
       if (shouldHeal) {
         let itemType = null;
-        let duration = 3.0;
+        let duration = 2.0;
         
         if (bot.hp <= 40 && (bot.medkitCount || 0) > 0) {
           itemType = "medkit";
-          duration = 6.0;
         } else if ((bot.bandageCount || 0) > 0 && bot.hp < 75) {
           itemType = "bandage";
-          duration = 4.0;
         } else if ((bot.energyDrinkCount || 0) > 0 && (bot.shield || 0) < 50) {
           itemType = "energy_drink";
-          duration = 3.0;
         }
         
         if (itemType) {
@@ -10379,9 +10376,7 @@ function damageLocalPlayerFromBomb(player, amount) {
 function startLocalHealing(player, itemType) {
   if (localHealingState) return;
   
-  let duration = 3.0;
-  if (itemType === "bandage") duration = 4.0;
-  if (itemType === "medkit") duration = 6.0;
+  let duration = 2.0;
   
   showBRProgressBar();
   updateBRProgressBar(1.0);
@@ -10394,7 +10389,7 @@ function startLocalHealing(player, itemType) {
   };
 }
 
-function buildLocalBRMap() {
+function buildLocalBRMap(startPositions) {
   const cols = 61;
   const rows = 61;
   const nextMap = Array.from({ length: rows }, (_, y) =>
@@ -10405,7 +10400,6 @@ function buildLocalBRMap() {
     })
   );
 
-  const startPositions = getBRStartPositions(cols, rows, 20);
   startPositions.forEach((s) => {
     const clearSafe = (cx, cy) => {
       if (nextMap[cy] && nextMap[cy][cx] && nextMap[cy][cx] !== "wall") {
@@ -10461,8 +10455,8 @@ function startLocalBRGame() {
   
   const cols = 61;
   const rows = 61;
-  map = buildLocalBRMap();
   const startPositions = getBRStartPositions(cols, rows, 20);
+  map = buildLocalBRMap(startPositions);
   
   const pool = ["chiikawa", "hachiware", "usagi", "momonga"];
   players = [

@@ -8200,15 +8200,33 @@ body.graphics-low .yellow-console {
 }
 
 .brm-countdown {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2ecc71;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 8px 24px;
-  border-radius: 30px;
-  border: 2px solid #2ecc71;
-  box-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
-  animation: brm-blink 1s infinite;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffd84a;
+  background: rgba(17, 12, 30, 0.95);
+  padding: 16px 40px;
+  border-radius: 20px;
+  border: 4px solid #ffd84a;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 216, 74, 0.5);
+  animation: brm-blink 1s infinite, brm-pulse-scale 1s infinite alternate;
+  z-index: 10000;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 0px #000;
+  white-space: nowrap;
+}
+
+@keyframes brm-pulse-scale {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
 }
 
 @keyframes brm-blink {

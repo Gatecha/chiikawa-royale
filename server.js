@@ -548,11 +548,11 @@ function handleMessage(ws, msg) {
       
       const itemType = data.itemType;
       if (itemType === "bandage" && (player.bandageCount || 0) > 0) {
-        player.healingState = { itemType, timeLeft: 3.0 };
-        broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 3.0 } });
+        player.healingState = { itemType, timeLeft: 2.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 2.0 } });
       } else if (itemType === "medkit" && (player.medkitCount || 0) > 0) {
-        player.healingState = { itemType, timeLeft: 5.0 };
-        broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 5.0 } });
+        player.healingState = { itemType, timeLeft: 2.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: player.id, itemType, duration: 2.0 } });
       } else if (itemType === "energy_drink" && (player.energyDrinkCount || 0) > 0) {
         player.energyDrinkCount--;
         player.energyDrinkTimeLeft = 10.0;
@@ -2256,13 +2256,13 @@ function updateServerBots(room, dt) {
     if (isBattleRoyale(room.mode) && bot.hp < 60 && !bot.healingState) {
       if ((bot.medkitCount || 0) > 0) {
         bot.medkitCount--;
-        bot.healingState = { itemType: "medkit", timeLeft: 5.0 };
-        broadcastToRoom(room, { type: "healing_started", data: { playerId: bot.id, itemType: "medkit", duration: 5.0 } });
+        bot.healingState = { itemType: "medkit", timeLeft: 2.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: bot.id, itemType: "medkit", duration: 2.0 } });
         return;
       } else if ((bot.bandageCount || 0) > 0) {
         bot.bandageCount--;
-        bot.healingState = { itemType: "bandage", timeLeft: 3.0 };
-        broadcastToRoom(room, { type: "healing_started", data: { playerId: bot.id, itemType: "bandage", duration: 3.0 } });
+        bot.healingState = { itemType: "bandage", timeLeft: 2.0 };
+        broadcastToRoom(room, { type: "healing_started", data: { playerId: bot.id, itemType: "bandage", duration: 2.0 } });
         return;
       }
     }
