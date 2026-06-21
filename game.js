@@ -1394,6 +1394,9 @@ function handleServerMessage(msg) {
       if (Array.isArray(data.map)) {
         map = data.map;
       }
+      // Filter out players who surrendered or left the room
+      players = players.filter((p) => data.players.some((sp) => sp.id === p.id));
+
       data.players.forEach((serverPlayer) => {
         const localP = players.find((p) => p.id === serverPlayer.id);
         if (localP) {
@@ -1821,6 +1824,11 @@ function handleServerMessage(msg) {
 
     case "surrender_cancelled": {
       if (surrenderVotePopup) surrenderVotePopup.classList.add("hidden");
+      break;
+    }
+
+    case "player_surrendered": {
+      showToastMsg(`🏳️ <strong>${escapeHTML(data.playerName)}</strong> has surrendered!`);
       break;
     }
   }
@@ -5819,15 +5827,19 @@ leaveLobbyBtn?.addEventListener("click", () => {
 
 // Exit Match
 leaveGameBtn?.addEventListener("click", () => {
-  if (!localMode && running && socket && socket.readyState === WebSocket.OPEN && isTeamMode(currentRoomMode)) {
-    sendServerMessage("request_surrender");
-    showSurrenderVotePopup({
-      team: getPlayerTeam(localPlayerId),
-      yesVotes: 1,
-      threshold: 3,
-      secondsLeft: 15,
-    });
-    return;
+  if (!localMode && running && socket && socket.readyState === WebSocket.OPEN) {
+    if (isTeamMode(currentRoomMode)) {
+      sendServerMessage("request_surrender");
+      showSurrenderVotePopup({
+        team: getPlayerTeam(localPlayerId),
+        yesVotes: 1,
+        threshold: 3,
+        secondsLeft: 15,
+      });
+      return;
+    } else {
+      sendServerMessage("player_surrender");
+    }
   }
 
   running = false;

@@ -432,6 +432,24 @@ function handleMessage(ws, msg) {
       break;
     }
 
+    case "player_surrender": {
+      const room = rooms.get(ws.roomCode);
+      if (!room) return;
+      const player = room.players.find(p => p.id === ws.id);
+      if (!player) return;
+
+      broadcastToRoom(room, {
+        type: "player_surrendered",
+        data: {
+          playerId: player.id,
+          playerName: player.name,
+        },
+      });
+
+      leaveRoom(ws, true);
+      break;
+    }
+
     case "submit_surrender_vote": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.state !== "playing" || room.mode !== "team") return;
@@ -847,6 +865,9 @@ function leaveRoom(ws, intentional = false) {
   room.players = room.players.filter((p) => p.id !== ws.id);
   // Remove from team arrays
   removePlayerFromTeams(room, ws.id);
+  if (room.activeRoundPlayers) {
+    room.activeRoundPlayers = room.activeRoundPlayers.filter(id => id !== ws.id);
+  }
   if (room.mapVotes) {
     delete room.mapVotes[ws.id];
     if (room.state === "lobby") {
