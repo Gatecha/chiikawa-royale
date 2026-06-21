@@ -10574,8 +10574,13 @@ function initBRMatchmakingUI() {
   const brmStartBtn = document.getElementById("brmStartBtn");
   if (brmStartBtn) {
     brmStartBtn.addEventListener("click", () => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      if (socket && socket.readyState === WebSocket.OPEN && localOfflineModeChoice !== "br") {
         sendServerMessage("start_game");
+      } else {
+        if (brmSimulateInterval) clearInterval(brmSimulateInterval);
+        if (brmCountdownInterval) clearInterval(brmCountdownInterval);
+        hideBRMatchmaking();
+        startLocalBRGame();
       }
     });
   }
@@ -10651,7 +10656,7 @@ function showBRMatchmakingScreen(chosenMode) {
   if (brmAnimationId) cancelAnimationFrame(brmAnimationId);
   renderBRMVideo();
   
-  if (socket && socket.readyState === WebSocket.OPEN) {
+  if (socket && socket.readyState === WebSocket.OPEN && localOfflineModeChoice !== "br") {
     isOnlineMatchmakingActive = true;
     if (roomCode) {
       if (localPlayerId === hostId) {
