@@ -5887,7 +5887,7 @@ leaveGameBtn?.addEventListener("click", () => {
   }
 
   if (socket) socket.close();
-  if (serverMode !== "local" && (window.location.protocol === "http:" || window.location.protocol === "https:")) connectWebSocket();
+  if (serverMode !== "local") connectWebSocket();
   resetLobbyMapSelectToNormal();
   switchScreen(menuScreen);
 });
@@ -7026,10 +7026,8 @@ if (document.readyState === "loading") {
 // INITIALIZATION
 // ----------------------------------------------------------------
 
-// Initialize WebSocket only when served through the local server.
-if (window.location.protocol === "http:" || window.location.protocol === "https:") {
-  connectWebSocket();
-}
+// Initialize WebSocket.
+connectWebSocket();
 
 // Fullscreen Toggle Event Listener
 const fullscreenToggleBtn = document.getElementById("fullscreenToggleBtn");
