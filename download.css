@@ -84,17 +84,25 @@ video {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 82px;
-  padding: 0.75rem clamp(1rem, 4vw, 3rem);
+  min-height: 58px;
+  padding: 0.35rem clamp(1rem, 4vw, 3rem);
   background: rgba(23, 19, 27, 0.88);
-  border-bottom: 4px solid var(--yellow);
-  box-shadow: 0 8px 0 var(--shadow);
+  border-bottom: 3px solid var(--yellow);
+  box-shadow: 0 4px 0 var(--shadow);
   backdrop-filter: blur(12px);
 }
 
 .brand-mark img {
-  width: clamp(170px, 22vw, 290px);
-  filter: drop-shadow(0 5px 0 #000);
+  width: clamp(120px, 15vw, 175px);
+  filter: drop-shadow(0 3px 0 #000);
+}
+
+.site-header .mini-link,
+.site-header .download-chip {
+  min-height: 38px !important;
+  padding: 0.45rem 0.9rem !important;
+  font-size: 0.9rem !important;
+  box-shadow: 0 4px 0 #050306 !important;
 }
 
 .header-actions,
@@ -328,7 +336,7 @@ h3 {
 }
 
 .character-canvas {
-  width: min(100%, 560px);
+  width: min(115%, 640px);
   height: auto;
   filter: drop-shadow(0 14px 0 #000) drop-shadow(0 20px 28px rgba(0, 0, 0, 0.4));
 }
@@ -385,7 +393,7 @@ h3 {
 
 .feature-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.8rem;
   transform: translateY(-2.2rem);
 }
@@ -458,7 +466,7 @@ h3 {
 }
 
 .character-media .character-canvas {
-  width: min(118%, 390px);
+  width: min(138%, 460px);
 }
 
 .character-info {
@@ -588,25 +596,7 @@ h3 {
 }
 
 .tile.power::after {
-  position: relative;
-  z-index: 1;
-  content: attr(class);
-  color: transparent;
-}
-
-.tile.power.bomb::after {
-  content: "B";
-  color: #fff;
-}
-
-.tile.power.fire::after {
-  content: "F";
-  color: #fff;
-}
-
-.tile.power.plus::after {
-  content: "+";
-  color: #fff;
+  display: none !important;
 }
 
 .tile.player::before,

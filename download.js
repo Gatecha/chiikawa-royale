@@ -25,7 +25,8 @@
   function drawCover(ctx, video, width, height) {
     const sourceWidth = video.videoWidth || width;
     const sourceHeight = video.videoHeight || height;
-    const scale = Math.max(width / sourceWidth, height / sourceHeight);
+    // Scale up by 1.65 to make characters larger and crop empty green screen space
+    const scale = Math.max(width / sourceWidth, height / sourceHeight) * 1.65;
     const drawWidth = sourceWidth * scale;
     const drawHeight = sourceHeight * scale;
     const dx = (width - drawWidth) / 2;
