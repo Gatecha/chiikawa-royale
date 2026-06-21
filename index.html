@@ -357,13 +357,15 @@
           <!-- Main Content Area -->
           <div class="console-body">
             <!-- PLAY TAB CONTENT (Redesigned centered premium Player Card interface) -->
-            <div class="tab-content active" id="tabContent_play">
-              <div class="premium-play-showcase">
+            <div class="tab-content active" id="tabContent_play" style="display: flex !important; flex-direction: row; align-items: center; justify-content: center; gap: 32px; width: 100%; height: 100%; padding: 24px; box-sizing: border-box;">
+              
+              <!-- LEFT COLUMN: Character Card / Level / Rank -->
+              <div class="premium-play-showcase" style="flex: 1; max-width: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
                 <!-- Outer glow / aura decoration -->
                 <div class="showcase-glow-aura"></div>
                 
-                <!-- Player Card Container (slanted/tilted like the lobby cards to match the game style) -->
-                <div class="showcase-card-container">
+                <!-- Player Card Container -->
+                <div class="showcase-card-container" style="margin-bottom: 16px;">
                   <div class="showcase-card-inner">
                     <img id="playCharacterCardImg" src="assets/lobby cards/chiikawa character card.png" alt="Active Character Card" />
                   </div>
@@ -385,7 +387,7 @@
                 </div>
 
                 <!-- Showcase rank & progression details under the card -->
-                <div class="showcase-stats-panel">
+                <div class="showcase-stats-panel" style="width: 100%; box-sizing: border-box; transform: none; margin: 0;">
                   <div class="showcase-rank-title">
                     <span id="playRankTier">GOLD</span> <span id="playRankDiv">I</span>
                   </div>
@@ -397,14 +399,55 @@
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <!-- Giant PLAY button -->
-                <div class="showcase-play-wrapper">
-                  <button id="lobbyPlayBtn" class="btn-giant-play" type="button">
-                    <span>PLAY</span>
-                  </button>
+              <!-- RIGHT/CENTER COLUMN: Select Gamemodes -->
+              <div class="gamemodes-selection-container glass" style="flex: 2; max-width: 600px; display: flex; flex-direction: column; padding: 24px; border-radius: 16px; border: 3px solid var(--ink); box-shadow: 6px 6px 0px var(--ink); background: rgba(255, 255, 255, 0.1); box-sizing: border-box; justify-content: center; gap: 16px;">
+                <h2 style="font-family: var(--font); color: var(--blue); font-size: 26px; text-transform: uppercase; margin: 0; text-align: center; text-shadow: 2px 2px 0px var(--ink); -webkit-text-stroke: 1.5px var(--ink);">Select Gamemodes</h2>
+                
+                <!-- Offline Modes -->
+                <div class="gamemode-section" style="display: flex; flex-direction: column; gap: 8px;">
+                  <h3 style="font-family: var(--font); font-size: 14px; text-transform: uppercase; margin: 0; color: #ffd338; display: flex; align-items: center; gap: 6px; -webkit-text-stroke: 0.8px var(--ink);">
+                    <span>🏠</span> OFFLINE MODES
+                  </h3>
+                  <div class="gamemode-buttons-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <button id="btnPlayOfflineSingle" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 6px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0px var(--ink); gap: 4px; height: 100%;">
+                      <span style="font-size: 18px;">👤</span>
+                      <span style="font-family: var(--font); font-size: 11px; font-weight: 700; text-transform: uppercase;">Single Player</span>
+                    </button>
+                    <button id="btnPlayOfflineFour" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 6px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0px var(--ink); gap: 4px; height: 100%;">
+                      <span style="font-size: 18px;">👥</span>
+                      <span style="font-family: var(--font); font-size: 11px; font-weight: 700; text-transform: uppercase;">4 Players Mode</span>
+                    </button>
+                    <button id="btnPlayOfflineBots" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 6px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0px var(--ink); gap: 4px; height: 100%;">
+                      <span style="font-size: 18px;">🤖</span>
+                      <span style="font-family: var(--font); font-size: 11px; font-weight: 700; text-transform: uppercase; line-height: 1.1;">VS Bots Mode<br><small style="font-size:8px; opacity:0.8;">(Local Server)</small></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div style="width: 100%; height: 2px; background: rgba(34, 31, 37, 0.15); margin: 8px 0;"></div>
+
+                <!-- Online Modes -->
+                <div class="gamemode-section" style="display: flex; flex-direction: column; gap: 8px;">
+                  <h3 style="font-family: var(--font); font-size: 14px; text-transform: uppercase; margin: 0; color: #ff2fa7; display: flex; align-items: center; gap: 6px; -webkit-text-stroke: 0.8px var(--ink);">
+                    <span>🌐</span> ONLINE MODES
+                  </h3>
+                  <div class="gamemode-buttons-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button id="btnPlayOnlineMultiplayer" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px 12px; border-radius: 12px; text-align: center; cursor: pointer; border: 2px solid var(--ink); box-shadow: 4px 4px 0px var(--ink); gap: 6px; height: 100%;">
+                      <span style="font-size: 22px;">⚔️</span>
+                      <span style="font-family: var(--font); font-size: 13px; font-weight: 700; text-transform: uppercase;">Multiplayer Match</span>
+                      <span style="font-family: var(--font-clean); font-size: 9px; opacity: 0.9; font-weight: 500;">Solo, Duo, Trio Matchmaking</span>
+                    </button>
+                    <button id="btnPlayOnlineBR" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px 12px; border-radius: 12px; text-align: center; cursor: pointer; border: 2px solid var(--ink); box-shadow: 4px 4px 0px var(--ink); gap: 6px; height: 100%;">
+                      <span style="font-size: 22px;">👑</span>
+                      <span style="font-family: var(--font); font-size: 13px; font-weight: 700; text-transform: uppercase;">Battle Royale</span>
+                      <span style="font-family: var(--font-clean); font-size: 9px; opacity: 0.9; font-weight: 500;">Solo, Duo, Trio Survival</span>
+                    </button>
+                  </div>
                 </div>
               </div>
+            </div>
 
               <!-- Hidden elements to preserve JS compatibility with old spotlight / map select variables -->
               <div style="display: none !important;">

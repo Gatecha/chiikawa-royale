@@ -8976,6 +8976,68 @@ document.addEventListener("DOMContentLoaded", () => {
     tryPlayMusic();
   });
 
+  // New Main Play Tab Gamemode Selector click handlers
+  document.getElementById("btnPlayOfflineSingle")?.addEventListener("click", () => {
+    const nickname = (usernameInput?.value.trim()) || localStorage.getItem("local_username") || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    startLocalSingleWithMapVote();
+  });
+
+  document.getElementById("btnPlayOfflineFour")?.addEventListener("click", () => {
+    const nickname = (usernameInput?.value.trim()) || localStorage.getItem("local_username") || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    openLocalFourPlayerLobby();
+    tryPlayMusic();
+  });
+
+  document.getElementById("btnPlayOfflineBots")?.addEventListener("click", () => {
+    const nickname = (usernameInput?.value.trim()) || localStorage.getItem("local_username") || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    updateProgressionUI();
+    connectWebSocket(true);
+    document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+    tryPlayMusic();
+  });
+
+  const triggerOnlineSessionLobby = () => {
+    serverMode = "online";
+    if (supabaseClient) {
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session && session.user) {
+          connectWebSocket(true);
+          document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+        } else {
+          switchScreen(loginScreen);
+        }
+      }).catch(() => {
+        switchScreen(loginScreen);
+      });
+    } else {
+      connectWebSocket(true);
+      document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+    }
+  };
+
+  document.getElementById("btnPlayOnlineMultiplayer")?.addEventListener("click", () => {
+    triggerOnlineSessionLobby();
+  });
+
+  document.getElementById("btnPlayOnlineBR")?.addEventListener("click", () => {
+    triggerOnlineSessionLobby();
+  });
+
   // Render mini map previews onto the voting canvasses
   document.querySelectorAll(".map-vote-preview-canvas").forEach(canvas => {
     const mapType = canvas.getAttribute("data-map");
