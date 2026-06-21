@@ -211,15 +211,139 @@ const STANDARD_MAX_PLAYERS = 4;
 const TEAM_MAX_PLAYERS = 6;
 
 const graphicsProfiles = {
-  high: { fps: 60, menuFps: 18, effectDensity: 1, animateMenus: true },
-  medium: { fps: 45, menuFps: 10, effectDensity: 0.55, animateMenus: true },
-  low: { fps: 30, menuFps: 4, effectDensity: 0.25, animateMenus: false },
+  high: { fps: 60, menuFps: 30, effectDensity: 1, animateMenus: true },
+  medium: { fps: 45, menuFps: 24, effectDensity: 0.55, animateMenus: true },
+  low: { fps: 30, menuFps: 20, effectDensity: 0.25, animateMenus: true },
 };
-let graphicsQuality = localStorage.getItem("graphicsQuality") || (window.matchMedia?.("(pointer: coarse)")?.matches ? "medium" : "high");
-let renderScale = Number(localStorage.getItem("renderScale") || (window.matchMedia?.("(pointer: coarse)")?.matches ? 0.85 : 1));
+
+let graphicsQuality = "high";
+let renderScale = 1.0;
+
+// Detect and auto-configure graphics quality based on device capabilities
+function initGraphicsDefaults() {
+  const savedQuality = localStorage.getItem("graphicsQuality");
+  const savedScale = localStorage.getItem("renderScale");
+
+  if (savedQuality === null || savedScale === null) {
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+      || (window.matchMedia?.("(pointer: coarse)")?.matches);
+    const isApp = window.location.protocol === "file:" || /Android/i.test(navigator.userAgent);
+    const cores = navigator.hardwareConcurrency || 4;
+
+    let autoQuality = "high";
+    let autoScale = 1.0;
+
+    if (isMobileDevice) {
+      if (isApp) {
+        if (cores <= 4) {
+          autoQuality = "low";
+          autoScale = 0.7;
+        } else {
+          autoQuality = "medium";
+          autoScale = 0.85;
+        }
+      } else {
+        autoQuality = "medium";
+        autoScale = 0.85;
+      }
+    } else {
+      autoQuality = "high";
+      autoScale = 1.0;
+    }
+
+    if (savedQuality === null) {
+      localStorage.setItem("graphicsQuality", autoQuality);
+    }
+    if (savedScale === null) {
+      localStorage.setItem("renderScale", String(autoScale));
+    }
+  }
+  
+  graphicsQuality = localStorage.getItem("graphicsQuality") || "high";
+  renderScale = Number(localStorage.getItem("renderScale") || 1.0);
+}
+
+initGraphicsDefaults();
+
 let activeGraphics = graphicsProfiles[graphicsQuality] || graphicsProfiles.high;
 let lastFrameTime = 0;
 let lastMenuDrawTime = 0;
+
+function getVideoSrc(baseSrc) {
+  if (!baseSrc) return "";
+  if (graphicsQuality === "high") {
+    return baseSrc.replace(".mp4", "_high.mp4");
+  }
+  return baseSrc;
+}
+
+function reloadActiveVideosSettings() {
+  // Update character select video
+  if (characterSelectVideo) {
+    const baseSrc = characterSelectVideos[previewCharacter || selectedCharacter];
+    if (baseSrc) {
+      const targetSrc = getVideoSrc(baseSrc);
+      if (!characterSelectVideo.src.endsWith(targetSrc)) {
+        characterSelectVideo.src = targetSrc;
+        characterSelectVideo.load();
+        playMutedLoop(characterSelectVideo);
+      }
+    }
+  }
+  
+  // Update spotlight video
+  if (spotlightVideo) {
+    const baseSrc = characterSelectVideos[selectedCharacter];
+    if (baseSrc) {
+      const targetSrc = getVideoSrc(baseSrc);
+      if (!spotlightVideo.src.endsWith(targetSrc)) {
+        spotlightVideo.src = targetSrc;
+        spotlightVideo.load();
+        playMutedLoop(spotlightVideo);
+      }
+    }
+  }
+
+  // Update squad lobby video
+  if (squadLobbyVideo) {
+    const baseSrc = characterSelectVideos[selectedCharacter];
+    if (baseSrc) {
+      const targetSrc = getVideoSrc(baseSrc);
+      if (!squadLobbyVideo.src.endsWith(targetSrc)) {
+        squadLobbyVideo.src = targetSrc;
+        squadLobbyVideo.load();
+        playMutedLoop(squadLobbyVideo);
+      }
+    }
+  }
+
+  // Update matchmaking video
+  if (brmVideoEl && brmActive) {
+    const matchmakingVideos = {
+      chiikawa: "assets/matchmaking_animations/chiikawa_br_matchmaking_animation.mp4",
+      hachiware: "assets/matchmaking_animations/hachiware_br_matchmaking_animation.mp4",
+      usagi: "assets/matchmaking_animations/usagi_br_matchmaking_animation.mp4",
+      momonga: "assets/matchmaking_animations/momonga_br_matchmaking_animation.mp4"
+    };
+    const baseSrc = matchmakingVideos[selectedCharacter] || "assets/matchmaking_animations/chiikawa_br_matchmaking_animation.mp4";
+    const targetSrc = getVideoSrc(baseSrc);
+    if (!brmVideoEl.src.endsWith(targetSrc)) {
+      brmVideoEl.src = targetSrc;
+      brmVideoEl.load();
+      playMutedLoop(brmVideoEl);
+    }
+  }
+
+  // Update victory video
+  if (victoryVideo) {
+    const targetSrc = getVideoSrc("hachiware-lobby.mp4");
+    if (!victoryVideo.src.endsWith(targetSrc)) {
+      victoryVideo.src = targetSrc;
+      victoryVideo.load();
+      playMutedLoop(victoryVideo);
+    }
+  }
+}
 
 function clampRenderScale(value) {
   const parsed = Number(value);
@@ -238,6 +362,10 @@ function applyGraphicsSettings() {
   }
   document.body.classList.toggle("graphics-low", graphicsQuality === "low");
   document.body.classList.toggle("graphics-medium", graphicsQuality === "medium");
+  
+  if (typeof reloadActiveVideosSettings === "function") {
+    reloadActiveVideosSettings();
+  }
 }
 
 applyGraphicsSettings();
@@ -764,8 +892,9 @@ document.querySelectorAll(".character-card video").forEach((video) => {
 
 function syncCharacterSelectPreview(kind) {
   if (!characterSelectVideo || !characterSelectVideos[kind]) return;
-  if (!characterSelectVideo.src.endsWith(characterSelectVideos[kind])) {
-    characterSelectVideo.src = characterSelectVideos[kind];
+  const targetSrc = getVideoSrc(characterSelectVideos[kind]);
+  if (!characterSelectVideo.src.endsWith(targetSrc)) {
+    characterSelectVideo.src = targetSrc;
     characterSelectVideo.load();
   }
   playMutedLoop(characterSelectVideo);
@@ -801,8 +930,9 @@ function syncCharacterSelectPreview(kind) {
 
 function syncLobbySpotlightVideo(kind) {
   if (!spotlightVideo || !characterSelectVideos[kind]) return;
-  if (!spotlightVideo.src.endsWith(characterSelectVideos[kind])) {
-    spotlightVideo.src = characterSelectVideos[kind];
+  const targetSrc = getVideoSrc(characterSelectVideos[kind]);
+  if (!spotlightVideo.src.endsWith(targetSrc)) {
+    spotlightVideo.src = targetSrc;
     spotlightVideo.load();
   }
   playMutedLoop(spotlightVideo);
@@ -810,8 +940,9 @@ function syncLobbySpotlightVideo(kind) {
 
 function syncSquadLobbyVideo(kind) {
   if (!squadLobbyVideo || !characterSelectVideos[kind]) return;
-  if (!squadLobbyVideo.src.endsWith(characterSelectVideos[kind])) {
-    squadLobbyVideo.src = characterSelectVideos[kind];
+  const targetSrc = getVideoSrc(characterSelectVideos[kind]);
+  if (!squadLobbyVideo.src.endsWith(targetSrc)) {
+    squadLobbyVideo.src = targetSrc;
     squadLobbyVideo.load();
   }
   playMutedLoop(squadLobbyVideo);
@@ -7434,11 +7565,13 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
 
       // Play Victory Video
       if (victoryVideo) {
+        const targetSrc = getVideoSrc("hachiware-lobby.mp4");
+        if (!victoryVideo.src.endsWith(targetSrc)) {
+          victoryVideo.src = targetSrc;
+          victoryVideo.load();
+        }
         victoryVideo.currentTime = 0;
-        victoryVideo.muted = true;
-        victoryVideo.loop = true;
-        victoryVideo.playsInline = true;
-        victoryVideo.play().catch(err => console.warn("Victory video failed to play:", err));
+        playMutedLoop(victoryVideo);
       }
 
       // Start confetti particle physics
@@ -10094,7 +10227,7 @@ function showBRMatchmakingScreen(chosenMode) {
     momonga: "assets/matchmaking_animations/momonga_br_matchmaking_animation.mp4"
   };
   const videoSrc = matchmakingVideos[selectedCharacter] || "assets/matchmaking_animations/chiikawa_br_matchmaking_animation.mp4";
-  brmVideoEl.src = videoSrc;
+  brmVideoEl.src = getVideoSrc(videoSrc);
   brmVideoEl.load();
   playMutedLoop(brmVideoEl);
   

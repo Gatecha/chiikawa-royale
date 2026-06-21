@@ -683,8 +683,7 @@ body.android-apk .badge-text {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(105deg, transparent 0 49.5%, rgba(0, 0, 0, 0.58) 49.8% 100%),
-    repeating-linear-gradient(105deg, transparent 0 36px, rgba(255, 255, 255, 0.025) 37px 40px);
+    linear-gradient(105deg, transparent 0 49.5%, rgba(0, 0, 0, 0.58) 49.8% 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -769,8 +768,7 @@ body.android-apk .badge-text {
   top: 3%;
   border-radius: 50%;
   background: 
-    radial-gradient(circle at 50% 50%, var(--char-glow, rgba(255, 138, 177, 0.18)) 0%, transparent 68%),
-    repeating-radial-gradient(circle, rgba(255, 255, 255, 0.03) 0 31px, rgba(0, 0, 0, 0.1) 32px 67px);
+    radial-gradient(circle at 50% 50%, var(--char-glow, rgba(255, 138, 177, 0.18)) 0%, transparent 68%);
   opacity: 0.88;
   filter: drop-shadow(0 0 30px var(--char-glow, rgba(255, 138, 177, 0.18)));
   transition: all 0.4s ease;
@@ -8671,4 +8669,8 @@ body.graphics-low .yellow-console {
 .br-healing-hotbar,
 .hotbar-slot {
   pointer-events: auto !important;
+}
+
+.shop-panel .tab-description {
+  color: #000000 !important;
 }
