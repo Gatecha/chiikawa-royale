@@ -8015,24 +8015,24 @@ body.graphics-low .yellow-console {
   pointer-events: none;
   z-index: 1;
   background-image: 
-    repeating-linear-gradient(93deg,
+    repeating-linear-gradient(93.43deg,
       rgba(255, 255, 255, 0) 0px,
-      rgba(255, 255, 255, 0) 40px,
-      rgba(255, 255, 255, 0.18) 42px,
-      rgba(255, 255, 255, 0.18) 46px,
-      rgba(255, 255, 255, 0) 48px,
-      rgba(255, 255, 255, 0) 120px
+      rgba(255, 255, 255, 0) 26px,
+      rgba(255, 255, 255, 0.16) 28px,
+      rgba(255, 255, 255, 0.16) 32px,
+      rgba(255, 255, 255, 0) 34px,
+      rgba(255, 255, 255, 0) 60px
     ),
-    repeating-linear-gradient(87deg,
+    repeating-linear-gradient(86.57deg,
       rgba(255, 255, 255, 0) 0px,
-      rgba(255, 255, 255, 0) 60px,
-      rgba(255, 255, 255, 0.12) 63px,
-      rgba(255, 255, 255, 0.12) 67px,
-      rgba(255, 255, 255, 0) 70px,
-      rgba(255, 255, 255, 0) 180px
+      rgba(255, 255, 255, 0) 46px,
+      rgba(255, 255, 255, 0.12) 48px,
+      rgba(255, 255, 255, 0.12) 52px,
+      rgba(255, 255, 255, 0) 54px,
+      rgba(255, 255, 255, 0) 60px
     );
-  background-size: 100% 500px;
-  animation: brm-falling-speed 0.3s linear infinite;
+  background-size: 60px 1000px;
+  animation: brm-falling-speed 0.5s linear infinite;
 }
 
 @keyframes brm-falling-speed {
@@ -8040,7 +8040,7 @@ body.graphics-low .yellow-console {
     background-position: 0 0;
   }
   100% {
-    background-position: 0 -500px;
+    background-position: 0 -1000px;
   }
 }
 
