@@ -1286,8 +1286,25 @@ function createBotObject(room) {
   const usedKinds = room.players.map((p) => p.kind);
   const kind = botKinds.find((k) => !usedKinds.includes(k)) || botKinds[Math.floor(Math.random() * botKinds.length)];
   const botId = "bot_" + Math.random().toString(36).substr(2, 9);
-  const botNames = ["Momonga Bot", "Chiikawa Bot", "Hachiware Bot", "Usagi Bot"];
-  const name = botNames[Math.floor(Math.random() * botNames.length)] + " (CPU)";
+  
+  const botNames = [
+    "ChiikawaFan", "Hachiware_Lover", "UsagiRun", "MomongaGamer", "StarryNight",
+    "BombMaster", "BlastHero", "PixelNinja", "GoldenPudding", "PandaChoco",
+    "GamerPro_99", "SweetMochi", "BlueSky", "ShadowWalker", "SparkleEyes",
+    "SuperChiika", "MelonSoda", "HappyCat", "RabbitJump", "FluffyCloud",
+    "CyberPanda", "NeonSpark", "IceCreamCone", "WaffleLover", "Dreamer_01",
+    "SpaceBunny", "ChocoMint", "CookieMonster", "SakuraDream", "FireFly",
+    "Starlight", "BubbleTea", "HoneyBear", "MatchaGreen", "WinterSnow",
+    "AutumnLeaves", "SunsetGlow", "StormChaser", "WindRider", "WaveCatcher",
+    "MoonLight", "SunnyDay", "RainbowDash", "LittleStar", "GalaxyExplorer",
+    "TimeTraveler", "MagicWand", "LuckyCharm", "PandaRoll", "StrawberryPie"
+  ];
+  
+  const usedNames = room.players.map(p => p.name);
+  const availableNames = botNames.filter(n => !usedNames.includes(n));
+  const name = availableNames.length > 0 
+    ? availableNames[Math.floor(Math.random() * availableNames.length)] 
+    : botNames[Math.floor(Math.random() * botNames.length)] + "_" + Math.floor(Math.random() * 100);
 
   return {
     id: botId, name, kind,
