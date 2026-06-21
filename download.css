@@ -467,8 +467,20 @@ h3 {
   overflow: hidden;
 }
 
+.character-card-img {
+  width: min(80%, 280px);
+  height: auto;
+  filter: drop-shadow(0 10px 0 #000) drop-shadow(0 15px 25px rgba(0, 0, 0, 0.35));
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.character-card-img.hero-img {
+  width: min(92%, 480px) !important;
+  filter: drop-shadow(0 14px 0 #000) drop-shadow(0 20px 28px rgba(0, 0, 0, 0.45)) !important;
+}
+
 .character-card-img:hover {
-  transform: translateY(-8px) scale(1.03);
+  transform: translateY(-10px) scale(1.08);
 }
 
 .character-info {
