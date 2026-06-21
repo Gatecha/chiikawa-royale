@@ -10153,7 +10153,7 @@ function renderBRMVideo() {
       const dw = vw * scale;
       const dh = vh * scale;
       const dx = (brmCanvasEl.width - dw) / 2;
-      const dy = (brmCanvasEl.height - dh) / 2 + 30;
+      const dy = (brmCanvasEl.height - dh) / 2 - 50;
       
       brmCtx.drawImage(brmTempCanvas, dx, dy, dw, dh);
     }

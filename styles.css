@@ -8008,26 +8008,31 @@ body.graphics-low .yellow-console {
 /* Falling vertical slanted speed lines background */
 .brm-bg-rays {
   position: absolute;
-  top: -100px;
-  left: -50px;
-  right: -50px;
-  bottom: -100px;
+  top: -200px;
+  left: -100px;
+  right: -100px;
+  bottom: -200px;
   pointer-events: none;
   z-index: 1;
-  background-image: repeating-linear-gradient(
-    172deg,
-    rgba(255, 255, 255, 0) 0px,
-    rgba(255, 255, 255, 0) 80px,
-    rgba(255, 255, 255, 0.25) 85px,
-    rgba(255, 255, 255, 0.25) 95px,
-    rgba(255, 255, 255, 0) 100px,
-    rgba(255, 255, 255, 0) 180px,
-    rgba(255, 255, 255, 0.15) 185px,
-    rgba(255, 255, 255, 0.15) 190px,
-    rgba(255, 255, 255, 0) 195px
-  );
-  background-size: 100% 400px;
-  animation: brm-falling-speed 0.4s linear infinite;
+  background-image: 
+    repeating-linear-gradient(93deg,
+      rgba(255, 255, 255, 0) 0px,
+      rgba(255, 255, 255, 0) 40px,
+      rgba(255, 255, 255, 0.18) 42px,
+      rgba(255, 255, 255, 0.18) 46px,
+      rgba(255, 255, 255, 0) 48px,
+      rgba(255, 255, 255, 0) 120px
+    ),
+    repeating-linear-gradient(87deg,
+      rgba(255, 255, 255, 0) 0px,
+      rgba(255, 255, 255, 0) 60px,
+      rgba(255, 255, 255, 0.12) 63px,
+      rgba(255, 255, 255, 0.12) 67px,
+      rgba(255, 255, 255, 0) 70px,
+      rgba(255, 255, 255, 0) 180px
+    );
+  background-size: 100% 500px;
+  animation: brm-falling-speed 0.3s linear infinite;
 }
 
 @keyframes brm-falling-speed {
@@ -8035,14 +8040,14 @@ body.graphics-low .yellow-console {
     background-position: 0 0;
   }
   100% {
-    background-position: 0 -400px;
+    background-position: 0 -500px;
   }
 }
 
 /* Character canvas with falling & floating animations */
 #brmCharCanvas {
   position: absolute;
-  top: 50%;
+  top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
