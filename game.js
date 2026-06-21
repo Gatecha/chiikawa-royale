@@ -3407,19 +3407,22 @@ function updateAi(bot, dt) {
   }
 
   const tile = gridAt(bot.x, bot.y);
-  const nearbyCrate = neighbors(tile.x, tile.y).some((n) => map[n.y]?.[n.x] === "crate");
   const nearbyEnemy = getLocalBotEnemies(bot).some((other) => other.alive && distanceTiles(tile, gridAt(other.x, other.y)) <= Math.max(2, bot.range || 2));
   const canAttackEnemy = hasEnemyInBombLineLocal(bot, tile);
+  // Only consider bombing a crate if an enemy is nearby or the bot has a clear path toward enemies through it
+  const strategicCrate = !canAttackEnemy && !nearbyEnemy
+    ? isCrateOnPathToEnemy(bot, tile)
+    : neighbors(tile.x, tile.y).some((n) => map[n.y]?.[n.x] === "crate");
   
-  if ((canAttackEnemy || nearbyCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && shouldLocalBotBomb(bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy)) {
+  if ((canAttackEnemy || strategicCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy)) {
     if (localMode) localPlaceBomb(bot);
     else sendServerMessage("place_bomb", { id: bot.id });
     
     const activeBombsCount = bombs.filter(b => b.ownerId === bot.id).length;
     if (activeBombsCount < bot.bombs && (nearbyEnemy || canAttackEnemy)) {
-      bot.aiBombCooldown = 0.1 + Math.random() * 0.1;
+      bot.aiBombCooldown = 0.08 + Math.random() * 0.08;
     } else {
-      bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
+      bot.aiBombCooldown = 0.7 + Math.random() * 0.5;
     }
     bot.aiThink = 0;
   }
@@ -3488,50 +3491,90 @@ function getSafetyStepLocal(bot, here) {
   return null;
 }
 
-function shouldLocalBotBomb(bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy) {
+// Returns true when a crate adjacent to the bot is on a direct path toward the nearest enemy
+function isCrateOnPathToEnemy(bot, tile) {
+  const enemies = getLocalBotEnemies(bot);
+  if (!enemies.length) return false;
+  const nearest = enemies
+    .map(e => ({ e, dist: distanceTiles(tile, gridAt(e.x, e.y)) }))
+    .sort((a, b) => a.dist - b.dist)[0];
+  if (!nearest) return false;
+  const et = gridAt(nearest.e.x, nearest.e.y);
+  return neighbors(tile.x, tile.y).some(n => {
+    if (map[n.y]?.[n.x] !== "crate") return false;
+    // The crate is "on path" if it sits between bot and enemy in the same row or column
+    const dx = Math.sign(et.x - tile.x);
+    const dy = Math.sign(et.y - tile.y);
+    return (dx !== 0 && n.y === tile.y && n.x === tile.x + dx) ||
+           (dy !== 0 && n.x === tile.x && n.y === tile.y + dy);
+  });
+}
+
+function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy) {
   if ((bot.aiBombCooldown || 0) > 0) return false;
+
+  // Always bomb when we have a clean shot at an enemy
   if (canAttackEnemy) return true;
+
+  // Enemy is adjacent/very close — high aggression
   if (nearbyEnemy) {
     const enemies = getLocalBotEnemies(bot);
     const nearestDist = enemies.reduce((min, enemy) => {
-      const dist = distanceTiles(tile, gridAt(enemy.x, enemy.y));
-      return Math.min(min, dist);
+      return Math.min(min, distanceTiles(tile, gridAt(enemy.x, enemy.y)));
     }, 999);
-    if (nearestDist <= 2) return Math.random() < 0.85;
-    return Math.random() < 0.42;
+    // Difficulty-scaled aggression when enemy is close
+    if (nearestDist <= 1) {
+      if (localBotsDifficulty === "easy")   return Math.random() < 0.40;
+      if (localBotsDifficulty === "hard")   return Math.random() < 0.65;
+      if (localBotsDifficulty === "expert") return Math.random() < 0.95;
+      return Math.random() < 0.82; // pro
+    }
+    if (nearestDist <= 2) {
+      if (localBotsDifficulty === "easy")   return Math.random() < 0.20;
+      if (localBotsDifficulty === "hard")   return Math.random() < 0.45;
+      if (localBotsDifficulty === "expert") return Math.random() < 0.80;
+      return Math.random() < 0.65; // pro
+    }
+    return false;
   }
-  if (nearbyCrate && countLocalSafeExits(bot, tile.x, tile.y) >= 2) return Math.random() < 0.34;
+
+  // Only bomb a strategic crate if we have safe exits (don't trap ourselves)
+  if (strategicCrate && countLocalSafeExits(bot, tile.x, tile.y) >= 2) {
+    if (localBotsDifficulty === "easy")   return Math.random() < 0.12;
+    if (localBotsDifficulty === "hard")   return Math.random() < 0.25;
+    if (localBotsDifficulty === "expert") return Math.random() < 0.55;
+    return Math.random() < 0.38; // pro
+  }
+
   return false;
 }
 
 function scoreAiMove(bot, x, y) {
   if (isSolid(x, y, bot)) return -9999;
-  let score = Math.random() * 2;
+  // Small random jitter so bots don't always pick the same path
+  let score = Math.random() * 1.5;
   const here = gridAt(bot.x, bot.y);
-  if (x === here.x && y === here.y) score -= 56;
+  // Discourage standing still
+  if (x === here.x && y === here.y) score -= 80;
 
   const threat = getLocalBotThreatScore(x, y);
   score -= threat;
   if (threat >= 1200) return score;
 
   const safeExits = countLocalSafeExits(bot, x, y);
-  score += safeExits * 34;
-  if (safeExits === 0) score -= 280;
+  score += safeExits * 38;
+  if (safeExits === 0) score -= 320;
 
   // Storm/safe zone penalty for Battle Royale
   if (isBattleRoyale(currentRoomMode) && currentBRZone) {
     const tx = x * TILE + TILE / 2;
     const ty = y * TILE + TILE / 2;
     const distToZoneCenter = Math.hypot(tx - currentBRZone.x, ty - currentBRZone.y);
-    
     if (distToZoneCenter > currentBRZone.radius) {
       score -= 300;
       const currentDist = Math.hypot(bot.x - currentBRZone.x, bot.y - currentBRZone.y);
-      if (distToZoneCenter < currentDist) {
-        score += 80;
-      } else {
-        score -= 80;
-      }
+      if (distToZoneCenter < currentDist) score += 80;
+      else score -= 80;
     } else {
       score += 150;
       const nextDist = Math.hypot(tx - currentBRZone.nextX, ty - currentBRZone.nextY);
@@ -3539,37 +3582,62 @@ function scoreAiMove(bot, x, y) {
     }
   }
 
+  // Pickups are attractive
   const pickup = pickups.find((p) => p.x === x && p.y === y);
-  if (pickup) score += pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 190 : 135;
-  if (neighbors(x, y).some((n) => map[n.y]?.[n.x] === "crate")) score += hasEscapeTileLocal(bot, { x, y }) ? 42 : -80;
-  
+  if (pickup) score += pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 200 : 140;
+
+  // Crate adjacency is only useful if we can safely escape after bombing
+  if (neighbors(x, y).some((n) => map[n.y]?.[n.x] === "crate")) {
+    score += hasEscapeTileLocal(bot, { x, y }) ? 30 : -120;
+  }
+
   const enemies = getLocalBotEnemies(bot);
   if (enemies.length) {
     const nearest = enemies
       .map((enemy) => ({ enemy, dist: distanceTiles({ x, y }, gridAt(enemy.x, enemy.y)) }))
       .sort((a, b) => a.dist - b.dist)[0];
-    score += Math.max(0, 125 - nearest.dist * 14);
+    const nearestDist = nearest.dist;
+    // Strong pull toward enemy: closer is better
+    score += Math.max(0, 160 - nearestDist * 18);
+
     const enemyTile = gridAt(nearest.enemy.x, nearest.enemy.y);
-    if (nearest.dist <= (bot.range || 2) && (x === enemyTile.x || y === enemyTile.y) && hasEscapeTileLocal(bot, { x, y })) {
-      score += 62;
+    // Big bonus for being in the same row/col as enemy within bomb range — this is the attack position
+    if (nearestDist <= (bot.range || 2) + 1) {
+      if (x === enemyTile.x || y === enemyTile.y) {
+        // Check no wall/crate is blocking the line
+        const lineBlocked = (() => {
+          const dx = Math.sign(enemyTile.x - x);
+          const dy = Math.sign(enemyTile.y - y);
+          for (let i = 1; i < nearestDist; i++) {
+            const cell = map[y + dy * i]?.[x + dx * i];
+            if (cell === "wall" || cell === "crate") return true;
+          }
+          return false;
+        })();
+        if (!lineBlocked && hasEscapeTileLocal(bot, { x, y })) {
+          score += 180; // This tile lets us shoot the enemy — strongly preferred
+        }
+      }
+    }
+
+    // Mild penalty for moving away from all enemies (avoid pure retreat unless threatened)
+    const curDist = distanceTiles(here, enemyTile);
+    if (nearestDist > curDist + 1 && getLocalBotThreatScore(here.x, here.y) === 0) {
+      score -= 30;
     }
   }
 
+  // High-priority target tracking (enemies > pickups > crates)
   const target = findLocalBotTarget(bot, here);
   if (target) {
     const dist = Math.abs(target.x - x) + Math.abs(target.y - y);
-    score += Math.max(0, 110 - dist * 13);
+    score += Math.max(0, 140 - dist * 15);
   }
+
   return score;
 }
 
-function shouldLocalBotBomb(bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy) {
-  if ((bot.aiBombCooldown || 0) > 0) return false;
-  if (canAttackEnemy) return true;
-  if (nearbyEnemy && Math.random() < 0.42) return true;
-  if (nearbyCrate && countLocalSafeExits(bot, tile.x, tile.y) >= 2) return Math.random() < 0.34;
-  return false;
-}
+// (duplicate removed — shouldLocalBotBomb is defined above)
 
 function getLocalBotEnemies(bot) {
   return players.filter((other) => other !== bot && other.alive);
