@@ -123,7 +123,8 @@ body {
   align-items: center;
   border-bottom: 4px solid var(--ink);
   position: relative;
-  z-index: 100;
+  z-index: 200;
+  isolation: isolate;
 }
 
 body.android-apk .console-header {
@@ -339,6 +340,8 @@ body.android-apk .badge-text {
   flex: 1;
   position: relative;
   overflow: hidden;
+  z-index: 0;
+  isolation: isolate;
 }
 
 .tab-content {
@@ -347,10 +350,12 @@ body.android-apk .badge-text {
   height: 100%;
   padding: 24px;
   animation: tabFadeIn 180ms ease-out forwards;
+  pointer-events: none;
 }
 
 .tab-content.active {
   display: grid;
+  pointer-events: all;
 }
 
 @keyframes tabFadeIn {
@@ -8497,4 +8502,37 @@ body.graphics-low .yellow-console {
     transform: translateX(-50%) scale(1.15);
     box-shadow: 0 6px 0 #000;
   }
+}
+
+/* Custom SVGs for trophies and aesthetic white icons */
+.svg-trophy-icon {
+  width: 18px;
+  height: 18px;
+  fill: #ffffff;
+  display: inline-block;
+  vertical-align: middle;
+}
+.victory-svg-icon {
+  width: 32px;
+  height: 32px;
+  fill: #ffffff;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 8px;
+}
+.hud-trophy-icon {
+  width: 14px;
+  height: 14px;
+  fill: #ffffff;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+.fvs-trophy-icon {
+  width: 18px;
+  height: 18px;
+  fill: #ffffff;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
 }

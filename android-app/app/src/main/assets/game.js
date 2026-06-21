@@ -7443,11 +7443,11 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
             let trophiesHtml = "";
             for (let i = 1; i <= 8; i++) {
               if (i < score) {
-                trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+                trophiesHtml += `<span class="trophy-slot active"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               } else if (i === score && isWinner) {
-                trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+                trophiesHtml += `<span class="trophy-slot new-active"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               } else {
-                trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+                trophiesHtml += `<span class="trophy-slot"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               }
             }
             
@@ -7480,12 +7480,12 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
             const trophiesCount = p.trophies || 0;
             for (let i = 1; i <= 8; i++) {
               if (i < trophiesCount) {
-                trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+                trophiesHtml += `<span class="trophy-slot active"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               } else if (i === trophiesCount && isWinner) {
                 // Animate new trophy
-                trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+                trophiesHtml += `<span class="trophy-slot new-active"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               } else {
-                trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+                trophiesHtml += `<span class="trophy-slot"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               }
             }
 
