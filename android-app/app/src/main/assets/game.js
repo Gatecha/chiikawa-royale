@@ -1000,7 +1000,7 @@ function connectWebSocket(forceReconnect = false) {
       const msg = serverMode === "local"
         ? "LAN connection failed. Make sure the local server is running, both devices are on the same Wi-Fi, and the IP/port is correct."
         : "WebSocket connection failed. The online server may be offline or blocked.";
-      reportAppError("Connection Error", msg, { source: "websocket" });
+      showToastMsg(msg, 5000);
     };
   } catch (e) {
     console.error("Failed to establish WebSocket connection:", e);
