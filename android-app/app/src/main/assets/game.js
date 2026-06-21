@@ -3545,8 +3545,19 @@ function updateAi(bot, dt) {
   const danger = isDanger(here.x, here.y);
   const threatScore = getLocalBotThreatScore(here.x, here.y);
   const isThreatened = threatScore > 0 || danger;
+  const isBombThreat = isBombOrBlastDanger(here.x, here.y) || threatScore > 0;
 
-  if (isThreatened || bot.aiThink <= 0) {
+  // Human-like movement constraint:
+  // If the bot is mid-tile (bot.moveTarget is set), only allow a new decision if threatened by a bomb/blast.
+  // Otherwise, wait until the bot reaches the center of the tile.
+  let shouldThink = false;
+  if (!bot.moveTarget) {
+    shouldThink = (isThreatened || bot.aiThink <= 0);
+  } else {
+    shouldThink = isBombThreat;
+  }
+
+  if (shouldThink) {
     if (botsWhoThoughtThisFrame >= 3 && !isThreatened) {
       bot.aiThink = 0.01; // try next frame
     } else {
@@ -3568,13 +3579,13 @@ function updateAi(bot, dt) {
         bot.aiDir = safetyDir;
         // Make reaction time slightly slower on easy/hard
         if (localBotsDifficulty === "easy") {
-          bot.aiThink = 0.12;
+          bot.aiThink = 0.20;
         } else if (localBotsDifficulty === "hard") {
-          bot.aiThink = 0.08;
+          bot.aiThink = 0.15;
         } else if (localBotsDifficulty === "expert") {
-          bot.aiThink = 0.03;
+          bot.aiThink = 0.08;
         } else {
-          bot.aiThink = 0.05; // pro
+          bot.aiThink = 0.10; // pro
         }
       } else {
         const dirs = [
@@ -3602,14 +3613,14 @@ function updateAi(bot, dt) {
 
         // Adjust thinking intervals (reaction speed)
         if (localBotsDifficulty === "easy") {
-          bot.aiThink = danger ? 0.08 : 0.16 + Math.random() * 0.20;
+          bot.aiThink = danger ? 0.25 : 0.35 + Math.random() * 0.25;
         } else if (localBotsDifficulty === "hard") {
-          bot.aiThink = danger ? 0.06 : 0.10 + Math.random() * 0.12;
+          bot.aiThink = danger ? 0.18 : 0.22 + Math.random() * 0.15;
         } else if (localBotsDifficulty === "expert") {
-          bot.aiThink = danger ? 0.02 : 0.05 + Math.random() * 0.05;
+          bot.aiThink = danger ? 0.08 : 0.12 + Math.random() * 0.10;
         } else {
           // pro (default)
-          bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+          bot.aiThink = danger ? 0.12 : 0.16 + Math.random() * 0.12;
         }
       }
     }
@@ -10241,7 +10252,7 @@ function updateLocalBRZone(dt) {
   if (currentBRZone.timeLeft <= 0) {
     if (!currentBRZone.isShrinking) {
       currentBRZone.isShrinking = true;
-      currentBRZone.timeLeft = 20;
+      currentBRZone.timeLeft = 60;
       currentBRZone.startX = currentBRZone.x;
       currentBRZone.startY = currentBRZone.y;
       currentBRZone.startRadius = currentBRZone.radius;
@@ -10274,7 +10285,7 @@ function updateLocalBRZone(dt) {
       showToastMsg(`Phase ${currentBRZone.phase} completed.`);
     }
   } else if (currentBRZone.isShrinking) {
-    const t = 1 - (currentBRZone.timeLeft / 20);
+    const t = 1 - (currentBRZone.timeLeft / 60);
     currentBRZone.x = currentBRZone.startX + (currentBRZone.nextX - currentBRZone.startX) * t;
     currentBRZone.y = currentBRZone.startY + (currentBRZone.nextY - currentBRZone.startY) * t;
     currentBRZone.radius = currentBRZone.startRadius + (currentBRZone.nextRadius - currentBRZone.startRadius) * t;

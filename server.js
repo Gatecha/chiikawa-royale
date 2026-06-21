@@ -2260,17 +2260,21 @@ function updateServerBots(room, dt) {
     }
     if (bot.healingState) return;
 
+
+
     bot.aiThink = (bot.aiThink || 0) - dt;
     const tile = gridAtServer(bot.x, bot.y);
     const danger = isDangerTileServer(room, tile.x, tile.y);
     const threatScore = getServerBotThreatScore(room, tile.x, tile.y);
-    const isThreatened = threatScore > 0 || danger;
+    const isBombThreat = room.bombs.some((bomb) => bombThreatensTile(room, bomb, tile.x, tile.y)) || threatScore > 0;
 
-    if (isThreatened || bot.aiThink <= 0 || !bot.aiDir) {
+    // Only recalculate immediately if threatened by an active bomb/blast.
+    // Otherwise, wait until the think timer expires.
+    if (bot.aiThink <= 0 || !bot.aiDir || isBombThreat) {
       const safetyDir = getSafetyStepServer(room, bot, tile);
       if (safetyDir) {
         bot.aiDir = safetyDir;
-        bot.aiThink = 0.05;
+        bot.aiThink = 0.10;
       } else {
         const dirs = [
           { x: 0, y: -1 },
@@ -2283,7 +2287,7 @@ function updateServerBots(room, dt) {
           .map((dir) => ({ ...dir, score: scoreServerBotMove(room, bot, tile.x + dir.x, tile.y + dir.y) }))
           .sort((a, b) => b.score - a.score);
         bot.aiDir = { x: ranked[0].x, y: ranked[0].y };
-        bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+        bot.aiThink = danger ? 0.08 : 0.16 + Math.random() * 0.12;
       }
     }
 
@@ -3083,7 +3087,7 @@ function updateBRZone(room, dt) {
   if (room.brZone.timeLeft <= 0) {
     if (!room.brZone.isShrinking) {
       room.brZone.isShrinking = true;
-      room.brZone.timeLeft = 20;
+      room.brZone.timeLeft = 60;
       room.brZone.startX = room.brZone.x;
       room.brZone.startY = room.brZone.y;
       room.brZone.startRadius = room.brZone.radius;
@@ -3122,7 +3126,7 @@ function updateBRZone(room, dt) {
       });
     }
   } else if (room.brZone.isShrinking) {
-    const t = 1 - (room.brZone.timeLeft / 20);
+    const t = 1 - (room.brZone.timeLeft / 60);
     room.brZone.x = room.brZone.startX + (room.brZone.nextX - room.brZone.startX) * t;
     room.brZone.y = room.brZone.startY + (room.brZone.nextY - room.brZone.startY) * t;
     room.brZone.radius = room.brZone.startRadius + (room.brZone.nextRadius - room.brZone.startRadius) * t;
