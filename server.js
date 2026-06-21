@@ -1150,42 +1150,17 @@ function startMatchmakingTimers(room) {
   room.matchmakingInterval = setInterval(() => {
     room.matchmakingElapsed++;
     
-    // Broadcast matchmaking countdown (max 40s)
+    // Broadcast matchmaking countdown (max 20s)
     broadcastToRoom(room, {
       type: "matchmaking_countdown",
-      data: { secondsLeft: Math.max(0, 40 - room.matchmakingElapsed), elapsed: room.matchmakingElapsed }
+      data: { secondsLeft: Math.max(0, 20 - room.matchmakingElapsed), elapsed: room.matchmakingElapsed }
     });
 
-    const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
-
-    // 30 seconds incomplete check
-    if (room.matchmakingElapsed === 30) {
-      console.log(`Matchmaking 30s check for room ${room.code}. Filling incomplete squad.`);
-      if (isOnlineServer()) {
-        // Do not add bots on online servers
-      } else {
-        if (isBattleRoyale(room.mode)) {
-          fillAllRemainingWithBots(room);
-        } else {
-          fillIncompleteMatchWithBots(room);
-        }
-      }
-    }
-    
-    // 40 seconds regardless check
-    if (room.matchmakingElapsed >= 40) {
-      console.log(`Matchmaking 40s timeout for room ${room.code}. Start match.`);
-      if (isOnlineServer()) {
-        clearMatchmakingTimers(room);
-        if (isBattleRoyale(room.mode)) {
-          startBRPreMatch(room);
-        } else {
-          broadcastLobbyUpdate(room);
-          startMapVoting(room);
-        }
-      } else {
-        fillAllRemainingWithBots(room);
-      }
+    // If match exceeds 20 seconds, auto-fill remaining slots with bots and start the match
+    if (room.matchmakingElapsed >= 20) {
+      console.log(`Matchmaking 20s timeout/fill check for room ${room.code}. Auto-filling bots and starting.`);
+      clearMatchmakingTimers(room);
+      fillAllRemainingWithBots(room);
     }
   }, 1000);
 }
