@@ -788,8 +788,15 @@ body.android-apk .badge-text {
   overflow: visible;
 }
 
+.hidden-video-element,
 .select-main-video-source {
-  display: none;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0.01 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  z-index: -10000 !important;
 }
 
 .select-main-video {

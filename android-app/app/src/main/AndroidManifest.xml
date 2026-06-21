@@ -11,6 +11,7 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:windowSoftInputMode="adjustResize"
+        android:hardwareAccelerated="true"
         android:theme="@style/Theme.ChiikawaRoyale">
         <activity
             android:name=".MainActivity"

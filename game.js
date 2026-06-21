@@ -752,6 +752,8 @@ function playMutedLoop(video) {
   video.muted = true;
   video.loop = true;
   video.playsInline = true;
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
   video.play().catch(() => {});
 }
 
@@ -1956,7 +1958,7 @@ function makeLocalPlayer(id, name, kind, spawn, ai) {
     dy: 0,
     alive: true,
     speed: ai ? 178 : 142,
-    bombs: ai ? 2 : 1,
+    bombs: 1,
     range: getStartingBombRange(ai),
     cooldown: 0,
     invuln: 1.2,
@@ -7577,7 +7579,7 @@ function localStartNextRound() {
     p.dy = 0;
     p.alive = true;
     p.speed = p.ai ? 178 : 142;
-    p.bombs = p.ai ? 2 : 1;
+    p.bombs = 1;
     p.range = getStartingBombRange(p.ai);
     p.cooldown = 0;
     p.invuln = 1.2;
@@ -10086,12 +10088,12 @@ function showBRMatchmakingScreen(chosenMode) {
   }
   
   const matchmakingVideos = {
-    chiikawa: "assets/matchmaking animations/chiikawa br matchmaking animation.mp4",
-    hachiware: "assets/matchmaking animations/hachiware br matchmaking animation.mp4",
-    usagi: "assets/matchmaking animations/usagi br matchmaking animation.mp4",
-    momonga: "assets/matchmaking animations/momonga br matchmaking animation.mp4"
+    chiikawa: "assets/matchmaking_animations/chiikawa_br_matchmaking_animation.mp4",
+    hachiware: "assets/matchmaking_animations/hachiware_br_matchmaking_animation.mp4",
+    usagi: "assets/matchmaking_animations/usagi_br_matchmaking_animation.mp4",
+    momonga: "assets/matchmaking_animations/momonga_br_matchmaking_animation.mp4"
   };
-  const videoSrc = matchmakingVideos[selectedCharacter] || "assets/matchmaking animations/chiikawa br matchmaking animation.mp4";
+  const videoSrc = matchmakingVideos[selectedCharacter] || "assets/matchmaking_animations/chiikawa_br_matchmaking_animation.mp4";
   brmVideoEl.src = videoSrc;
   brmVideoEl.load();
   playMutedLoop(brmVideoEl);
