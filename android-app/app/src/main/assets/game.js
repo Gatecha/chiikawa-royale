@@ -558,6 +558,11 @@ let socket = null;
 let roomCode = null;
 let isCreatingRoom = false;
 let currentBRZone = null;
+let localOfflineModeChoice = "normal";
+let cameraCenterX = 0;
+let cameraCenterY = 0;
+let cameraX = 0;
+let cameraY = 0;
 let currentWorldEvent = null;
 let spectatedPlayerId = null;
 let brPings = [];
@@ -2032,6 +2037,8 @@ function startLocalGame() {
   localPlayerId = "local_player";
   hostId = localPlayerId;
   localBombId = 0;
+  cameraX = 0;
+  cameraY = 0;
   currentRoomMode = "classic";
   currentActiveRoundPlayers = [];
   
@@ -2803,7 +2810,7 @@ function localPlaceBomb(player) {
     pulse: 0,
     passableFor: new Set([player.id]),
   });
-  player.cooldown = 0.25;
+  player.cooldown = 0.05;
 }
 
 function localTriggerExplosion(bomb) {
@@ -3266,6 +3273,21 @@ function isSolid(tileX, tileY, actor = null) {
   if (isMapSolid(tileX, tileY)) return true;
   return bombs.some((bomb) => {
     if (canPassBomb(actor, bomb)) return false;
+    if (actor && overlapsBomb(actor, bomb)) return false;
+
+    // AI slide/kick pathfinding integration
+    if (actor && actor.hasSlide && bomb.x === tileX && bomb.y === tileY) {
+      const ax = Math.floor(actor.x / TILE);
+      const ay = Math.floor(actor.y / TILE);
+      const dx = tileX - ax;
+      const dy = tileY - ay;
+      if (Math.abs(dx) + Math.abs(dy) === 1) {
+        if (!isTileSolidForBombLocal(bomb.x + dx, bomb.y + dy)) {
+          return false; // Can kick it, so not solid for AI pathfinding
+        }
+      }
+    }
+
     return bomb.x === tileX && bomb.y === tileY;
   });
 }
@@ -3451,33 +3473,72 @@ function stepTowardTarget(actor, dt) {
 let botsWhoThoughtThisFrame = 0;
 
 function updateAi(bot, dt) {
-  // Bot healing behavior in BR mode
-  if (isBattleRoyale(currentRoomMode) && bot.alive && bot.hp < 75 && !bot.healingState) {
+  // Handle bot healing casting progress
+  if (bot.healingState) {
     const here = gridAt(bot.x, bot.y);
-    const danger = isDanger(here.x, here.y);
-    if (!danger) {
-      let used = false;
-      if (bot.hp <= 35 && (bot.medkitCount || 0) > 0) {
-        bot.medkitCount--;
-        bot.hp = 100;
-        used = true;
-        showToastMsg(`${bot.name} used a Med Kit!`);
-      } else if ((bot.energyDrinkCount || 0) > 0 && (bot.shield || 0) < 50) {
-        bot.energyDrinkCount--;
-        bot.shield = Math.min(100, (bot.shield || 0) + 50);
-        used = true;
-        showToastMsg(`${bot.name} drank an Energy Drink!`);
-      } else if ((bot.bandageCount || 0) > 0) {
-        bot.bandageCount--;
-        bot.hp = Math.min(75, bot.hp + 15);
-        used = true;
-        showToastMsg(`${bot.name} used a Bandage!`);
-      }
-      
-      if (used) {
-        bot.aiThink = 3.0; // channels healing
-        bot.aiDir = { x: 0, y: 0 };
+    if (isBombOrBlastDanger(here.x, here.y) || getLocalBotThreatScore(here.x, here.y) > 0) {
+      showToastMsg(`${bot.name}'s healing was interrupted!`);
+      bot.healingState = null;
+    } else {
+      bot.healingState.timeLeft -= dt;
+      bot.aiDir = { x: 0, y: 0 };
+      bot.dx = 0;
+      bot.dy = 0;
+      if (bot.healingState.timeLeft <= 0) {
+        const itemType = bot.healingState.itemType;
+        bot.healingState = null;
+        if (itemType === "medkit") {
+          bot.medkitCount = Math.max(0, (bot.medkitCount || 0) - 1);
+          bot.hp = 100;
+          showToastMsg(`${bot.name} used a Med Kit!`);
+        } else if (itemType === "bandage") {
+          bot.bandageCount = Math.max(0, (bot.bandageCount || 0) - 1);
+          bot.hp = Math.min(75, bot.hp + 15);
+          showToastMsg(`${bot.name} used a Bandage!`);
+        } else if (itemType === "energy_drink") {
+          bot.energyDrinkCount = Math.max(0, (bot.energyDrinkCount || 0) - 1);
+          bot.shield = Math.min(100, (bot.shield || 0) + 50);
+          showToastMsg(`${bot.name} drank an Energy Drink!`);
+        }
         updateHudSidebar();
+      }
+      moveActor(bot, 0, 0, dt);
+      return;
+    }
+  }
+
+  // Trigger bot healing behavior in BR mode
+  if (isBattleRoyale(currentRoomMode) && bot.alive && !bot.healingState) {
+    const here = gridAt(bot.x, bot.y);
+    const inStorm = isPixelOutsideZone(bot.x, bot.y);
+    const hasBombDanger = isBombOrBlastDanger(here.x, here.y) || getLocalBotThreatScore(here.x, here.y) > 0;
+    if (!hasBombDanger) {
+      // If in storm, only heal if HP is dangerously low (<= 40)
+      // If in safe zone, heal if HP < 75 or shield < 50
+      const shouldHeal = inStorm ? (bot.hp <= 40) : (bot.hp < 75 || (bot.shield || 0) < 50);
+      if (shouldHeal) {
+        let itemType = null;
+        let duration = 3.0;
+        
+        if (bot.hp <= 40 && (bot.medkitCount || 0) > 0) {
+          itemType = "medkit";
+          duration = 6.0;
+        } else if ((bot.bandageCount || 0) > 0 && bot.hp < 75) {
+          itemType = "bandage";
+          duration = 4.0;
+        } else if ((bot.energyDrinkCount || 0) > 0 && (bot.shield || 0) < 50) {
+          itemType = "energy_drink";
+          duration = 3.0;
+        }
+        
+        if (itemType) {
+          bot.healingState = { itemType, duration, timeLeft: duration };
+          bot.aiDir = { x: 0, y: 0 };
+          bot.dx = 0;
+          bot.dy = 0;
+          moveActor(bot, 0, 0, dt);
+          return;
+        }
       }
     }
   }
@@ -3494,6 +3555,10 @@ function updateAi(bot, dt) {
     } else {
       if (!isThreatened) {
         botsWhoThoughtThisFrame++;
+      }
+
+      if (bot.hasSlide && tryLocalBotKickStrategic(bot, here)) {
+        return;
       }
 
       if (bot.hasPunch && tryLocalBotPunchStrategic(bot, here)) {
@@ -3592,6 +3657,12 @@ function updateAi(bot, dt) {
 
 function tryLocalBotPunchStrategic(bot, tile) {
   if (!bot.hasPunch || !bot.alive) return false;
+  if (localBotsDifficulty === "easy") return false;
+
+  const roll = Math.random();
+  if (localBotsDifficulty === "hard" && roll > 0.50) return false;
+  if (localBotsDifficulty === "pro" && roll > 0.85) return false;
+
   const dirs = [
     { x: 0, y: -1 },
     { x: 1, y: 0 },
@@ -3612,8 +3683,9 @@ function tryLocalBotPunchStrategic(bot, tile) {
              (d.y !== 0 && enemyTile.x === bomb.x && Math.sign(enemyTile.y - bomb.y) === d.y);
     });
     const threatensUs = localBombThreatensTileAnyTimer(bomb, tile.x, tile.y);
+    const inDanger = getLocalBotThreatScore(tile.x, tile.y) > 0 || isDanger(tile.x, tile.y);
     
-    if (targetsEnemy || threatensUs) {
+    if (targetsEnemy || threatensUs || inDanger) {
       bot.lastFacingDir = d;
       triggerLocalPunch(bot);
       return true;
@@ -3626,6 +3698,11 @@ function getSafetyStepLocal(bot, here) {
   if (getLocalBotThreatScore(here.x, here.y) === 0 && !isDanger(here.x, here.y)) {
     return null;
   }
+  let maxDepth = 10;
+  if (localBotsDifficulty === "easy") maxDepth = 4;
+  else if (localBotsDifficulty === "pro") maxDepth = 14;
+  else if (localBotsDifficulty === "expert") maxDepth = 18;
+
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
   while (queue.length > 0) {
@@ -3636,7 +3713,7 @@ function getSafetyStepLocal(bot, here) {
       }
       return null;
     }
-    if (current.path.length >= 10) continue;
+    if (current.path.length >= maxDepth) continue;
     const dirs = neighbors(current.x, current.y);
     for (const dir of dirs) {
       const key = `${dir.x},${dir.y}`;
@@ -3727,18 +3804,38 @@ function scoreAiMove(bot, x, y) {
   score += safeExits * 38;
   if (safeExits === 0) score -= 320;
 
-  // Storm/safe zone penalty for Battle Royale
+  // Storm/safe zone penalty for Battle Royale with difficulty scaling
   if (isBattleRoyale(currentRoomMode) && currentBRZone) {
     const tx = x * TILE + TILE / 2;
     const ty = y * TILE + TILE / 2;
     const distToZoneCenter = Math.hypot(tx - currentBRZone.x, ty - currentBRZone.y);
+    const botInStorm = isPixelOutsideZone(bot.x, bot.y);
+    
     if (distToZoneCenter > currentBRZone.radius) {
-      score -= 300;
-      const currentDist = Math.hypot(bot.x - currentBRZone.x, bot.y - currentBRZone.y);
-      if (distToZoneCenter < currentDist) score += 80;
-      else score -= 80;
+      // Massive penalty if we step into/stay in the storm
+      let stormPenalty = botInStorm ? 1500 : 300;
+      if (localBotsDifficulty === "hard") stormPenalty = botInStorm ? 2000 : 500;
+      else if (localBotsDifficulty === "pro") stormPenalty = botInStorm ? 3000 : 700;
+      else if (localBotsDifficulty === "expert") stormPenalty = botInStorm ? 4000 : 900;
+      
+      score -= stormPenalty;
+      
+      // If the bot is already in the storm, prioritize moving closer to the next safe zone center
+      if (botInStorm) {
+        const nextDist = Math.hypot(tx - currentBRZone.nextX, ty - currentBRZone.nextY);
+        const botNextDist = Math.hypot(bot.x - currentBRZone.nextX, bot.y - currentBRZone.nextY);
+        if (nextDist < botNextDist) {
+          score += 1000;
+        } else {
+          score -= 1000;
+        }
+      }
     } else {
       score += 150;
+      // If bot is in the storm and this tile is in the safe zone, give it a massive bonus!
+      if (botInStorm) {
+        score += 2000;
+      }
       const nextDist = Math.hypot(tx - currentBRZone.nextX, ty - currentBRZone.nextY);
       score += Math.max(0, 100 - (nextDist / TILE) * 3);
     }
@@ -3792,7 +3889,12 @@ function scoreAiMove(bot, x, y) {
   // High-priority target tracking (enemies > pickups > crates)
   const target = findLocalBotTarget(bot, here);
   if (target) {
-    const dist = Math.abs(target.x - x) + Math.abs(target.y - y);
+    let dist;
+    if (localBotsDifficulty === "easy") {
+      dist = Math.abs(target.x - x) + Math.abs(target.y - y);
+    } else {
+      dist = getDijkstraPathDistance({ x, y }, target);
+    }
     score += Math.max(0, 140 - dist * 15);
   }
 
@@ -3850,9 +3952,55 @@ function findLocalBotTarget(bot, here) {
       if (map[y][x] === "crate") crates.push({ x, y, weight: 1 });
     }
   }
-  return [...loot, ...enemies, ...crates]
+
+  let targets = [...loot, ...enemies, ...crates];
+  if (isBattleRoyale(currentRoomMode) && currentBRZone) {
+    // Filter out targets that are currently in the storm
+    targets = targets.filter((target) => !isTileOutsideZone(target.x, target.y));
+
+    // If bot is currently in the storm, add the safe zone center as a top-priority target
+    if (isPixelOutsideZone(bot.x, bot.y)) {
+      const targetX = Math.floor(currentBRZone.nextX / TILE);
+      const targetY = Math.floor(currentBRZone.nextY / TILE);
+      if (targetX > 0 && targetX < COLS - 1 && targetY > 0 && targetY < ROWS - 1) {
+        let tx = targetX;
+        let ty = targetY;
+        if (isSolid(tx, ty, bot)) {
+          let found = false;
+          const searchRadius = 5;
+          for (let r = 1; r <= searchRadius && !found; r++) {
+            for (let dx = -r; dx <= r && !found; dx++) {
+              for (let dy = -r; dy <= r && !found; dy++) {
+                if (Math.abs(dx) === r || Math.abs(dy) === r) {
+                  const nx = targetX + dx;
+                  const ny = targetY + dy;
+                  if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1 && !isSolid(nx, ny, bot)) {
+                    tx = nx;
+                    ty = ny;
+                    found = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+        targets.push({ x: tx, y: ty, weight: 100 });
+      }
+    }
+  }
+
+  return targets
     .filter((target) => getLocalBotThreatScore(target.x, target.y) < 1000)
-    .map((target) => ({ ...target, dist: Math.abs(target.x - here.x) + Math.abs(target.y - here.y) }))
+    .map((target) => {
+      let dist;
+      if (localBotsDifficulty === "easy") {
+        dist = Math.abs(target.x - here.x) + Math.abs(target.y - here.y);
+      } else {
+        dist = getDijkstraPathDistance(here, target);
+      }
+      return { ...target, dist };
+    })
+    .filter((target) => target.dist < 999)
     .sort((a, b) => (b.weight * 24 - b.dist) - (a.weight * 24 - a.dist))[0] || null;
 }
 
@@ -3921,7 +4069,104 @@ function distanceTiles(a, b) {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
-function isDanger(x, y) {
+function getDijkstraPathDistance(start, end) {
+  const dists = {};
+  const visited = new Set();
+  const startKey = `${start.x},${start.y}`;
+  dists[startKey] = 0;
+  
+  const queue = [{ x: start.x, y: start.y, dist: 0 }];
+  
+  while (queue.length > 0) {
+    queue.sort((a, b) => a.dist - b.dist);
+    const current = queue.shift();
+    const currentKey = `${current.x},${current.y}`;
+    
+    if (visited.has(currentKey)) continue;
+    visited.add(currentKey);
+    
+    if (current.x === end.x && current.y === end.y) {
+      return current.dist;
+    }
+    
+    if (current.dist >= 40) continue;
+    
+    const dirs = neighbors(current.x, current.y);
+    for (const dir of dirs) {
+      if (dir.x < 1 || dir.x >= COLS - 1 || dir.y < 1 || dir.y >= ROWS - 1) continue;
+      
+      const cell = map[dir.y]?.[dir.x];
+      if (cell === "wall" || cell === "zone") continue;
+      
+      let stepCost = 1;
+      if (cell === "crate" || cell === "supply_crate" || cell === "golden_crate") {
+        stepCost = 7;
+      }
+      
+      const nextDist = current.dist + stepCost;
+      const key = `${dir.x},${dir.y}`;
+      if (!(key in dists) || nextDist < dists[key]) {
+        dists[key] = nextDist;
+        queue.push({ x: dir.x, y: dir.y, dist: nextDist });
+      }
+    }
+  }
+  
+  return 999;
+}
+
+function tryLocalBotKickStrategic(bot, tile) {
+  if (!bot.hasSlide || !bot.alive) return false;
+  if (localBotsDifficulty === "easy") return false;
+  
+  const roll = Math.random();
+  if (localBotsDifficulty === "hard" && roll > 0.50) return false;
+  if (localBotsDifficulty === "pro" && roll > 0.85) return false;
+  
+  const dirs = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+  for (const d of dirs) {
+    const tx = tile.x + d.x;
+    const ty = tile.y + d.y;
+    const bomb = bombs.find((b) => b.x === tx && b.y === ty && (!b.vx || (b.vx === 0 && b.vy === 0)));
+    if (!bomb) continue;
+    if (isTileSolidForBombLocal(bomb.x + d.x, bomb.y + d.y)) continue;
+    
+    const enemies = getLocalBotEnemies(bot);
+    const targetsEnemy = enemies.some((enemy) => {
+      const enemyTile = gridAt(enemy.x, enemy.y);
+      return (d.x !== 0 && enemyTile.y === bomb.y && Math.sign(enemyTile.x - bomb.x) === d.x) ||
+             (d.y !== 0 && enemyTile.x === bomb.x && Math.sign(enemyTile.y - bomb.y) === d.y);
+    });
+    const threatensUs = localBombThreatensTileAnyTimer(bomb, tile.x, tile.y);
+    const inDanger = getLocalBotThreatScore(tile.x, tile.y) > 0 || isDanger(tile.x, tile.y);
+    
+    if (targetsEnemy || threatensUs || inDanger) {
+      bot.aiDir = d;
+      bot.aiThink = 0.08;
+      return true;
+    }
+  }
+  return false;
+}
+
+function isTileOutsideZone(tx, ty) {
+  if (!isBattleRoyale(currentRoomMode) || !currentBRZone) return false;
+  const px = tx * TILE + TILE / 2;
+  const py = ty * TILE + TILE / 2;
+  return Math.hypot(px - currentBRZone.x, py - currentBRZone.y) > currentBRZone.radius;
+}
+
+function isPixelOutsideZone(px, py) {
+  if (!isBattleRoyale(currentRoomMode) || !currentBRZone) return false;
+  return Math.hypot(px - currentBRZone.x, py - currentBRZone.y) > currentBRZone.radius;
+}
+
+function isBombOrBlastDanger(x, y) {
   if (blasts.some((blast) => blast.cells.some((cell) => cell.x === x && cell.y === y))) return true;
   return bombs.some((bomb) => {
     if (bomb.x === x && bomb.y === y) return true;
@@ -3936,6 +4181,12 @@ function isDanger(x, y) {
     }
     return bomb.timer < 1.2;
   });
+}
+
+function isDanger(x, y) {
+  if (isBombOrBlastDanger(x, y)) return true;
+  if (isTileOutsideZone(x, y)) return true;
+  return false;
 }
 
 // ----------------------------------------------------------------
@@ -4378,15 +4629,63 @@ function drawMiniMapPreview(canvas, mapType) {
   }
 }
 
+function isPixelVisible(px, py, margin = 48) {
+  if (!isBattleRoyale(currentRoomMode)) return true;
+  const zoom = 1.6;
+  const visibleWidth = CANVAS_WIDTH / zoom;
+  const visibleHeight = CANVAS_HEIGHT / zoom;
+  return px >= cameraCenterX - visibleWidth / 2 - margin &&
+         px <= cameraCenterX + visibleWidth / 2 + margin &&
+         py >= cameraCenterY - visibleHeight / 2 - margin &&
+         py <= cameraCenterY + visibleHeight / 2 + margin;
+}
+
+function isTileVisible(tx, ty, margin = 1) {
+  if (!isBattleRoyale(currentRoomMode)) return true;
+  const zoom = 1.6;
+  const visibleWidth = CANVAS_WIDTH / zoom;
+  const visibleHeight = CANVAS_HEIGHT / zoom;
+  const px = tx * TILE + TILE / 2;
+  const py = ty * TILE + TILE / 2;
+  return px >= cameraCenterX - visibleWidth / 2 - margin * TILE &&
+         px <= cameraCenterX + visibleWidth / 2 + margin * TILE &&
+         py >= cameraCenterY - visibleHeight / 2 - margin * TILE &&
+         py <= cameraCenterY + visibleHeight / 2 + margin * TILE;
+}
+
 function drawMap() {
   const cols = map[0] ? map[0].length : COLS;
   const rows = map ? map.length : ROWS;
   ctx.fillStyle = (currentMapType === "checkered" || currentMapType === "powerzone") ? "#80e1fe" : currentMapType === "colosseum" ? "#df9376" : "#9fe39e";
   roundedRect(0, 0, cols * TILE, rows * TILE, 12, true, false);
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < cols; x += 1) {
-      if (map[y] && map[y][x]) {
-        drawTile(x, y, map[y][x]);
+
+  if (isBattleRoyale(currentRoomMode)) {
+    const zoom = 1.6;
+    const visibleWidth = CANVAS_WIDTH / zoom;
+    const visibleHeight = CANVAS_HEIGHT / zoom;
+    const minX = cameraCenterX - visibleWidth / 2;
+    const minY = cameraCenterY - visibleHeight / 2;
+    const maxX = cameraCenterX + visibleWidth / 2;
+    const maxY = cameraCenterY + visibleHeight / 2;
+
+    const startX = Math.max(0, Math.floor(minX / TILE) - 1);
+    const endX = Math.min(cols - 1, Math.floor(maxX / TILE) + 1);
+    const startY = Math.max(0, Math.floor(minY / TILE) - 1);
+    const endY = Math.min(rows - 1, Math.floor(maxY / TILE) + 1);
+
+    for (let y = startY; y <= endY; y += 1) {
+      for (let x = startX; x <= endX; x += 1) {
+        if (map[y] && map[y][x]) {
+          drawTile(x, y, map[y][x]);
+        }
+      }
+    }
+  } else {
+    for (let y = 0; y < rows; y += 1) {
+      for (let x = 0; x < cols; x += 1) {
+        if (map[y] && map[y][x]) {
+          drawTile(x, y, map[y][x]);
+        }
       }
     }
   }
@@ -4678,6 +4977,7 @@ function drawTile(x, y, type) {
 }
 
 function drawPickup(pickup) {
+  if (!isTileVisible(pickup.x, pickup.y)) return;
   const c = centerOf(pickup.x, pickup.y);
   const isPowerZonePickup = currentMapType === "powerzone" && isPowerZoneLaneTile(pickup.x, pickup.y);
   const outerRadius = isPowerZonePickup ? 22 : 17;
@@ -4766,6 +5066,7 @@ function drawPickup(pickup) {
 function drawBomb(bomb) {
   const bx = (bomb.slideX !== undefined) ? bomb.slideX : bomb.x;
   const by = (bomb.slideY !== undefined) ? bomb.slideY : bomb.y;
+  if (!isTileVisible(bx, by)) return;
   const c = centerOf(bx, by);
   const scale = 1 + Math.sin(bomb.pulse) * 0.08;
   ctx.save();
@@ -4794,6 +5095,7 @@ function drawBomb(bomb) {
 function drawBlast(blast) {
   const alpha = Math.max(0, blast.timer / 0.48);
   blast.cells.forEach((cell) => {
+    if (!isTileVisible(cell.x, cell.y)) return;
     const c = centerOf(cell.x, cell.y);
     ctx.save();
     ctx.globalAlpha = 0.9 * alpha + 0.1;
@@ -4815,6 +5117,9 @@ function drawBlast(blast) {
 function drawPlayer(player) {
   // Hide spectators in team mode
   if (isTeamMode(currentRoomMode) && !currentActiveRoundPlayers.includes(player.id)) {
+    return;
+  }
+  if (!isPixelVisible(player.x, player.y, 60)) {
     return;
   }
   const style = characterStyle[player.kind];
@@ -4930,6 +5235,7 @@ function drawEmoteBubble(emoteKey, timer) {
 }
 
 function drawParticle(p) {
+  if (!isPixelVisible(p.x, p.y, p.size || 10)) return;
   ctx.save();
   ctx.globalAlpha = Math.min(1, p.life * 2.4);
   ctx.fillStyle = p.color;
@@ -5407,18 +5713,78 @@ function update(dt) {
         if (bomb.slideY === undefined) bomb.slideY = bomb.y;
         bomb.slideX += bomb.vx * 6.0 * dt;
         bomb.slideY += bomb.vy * 6.0 * dt;
+        
+        const cols = COLS;
+        const rows = ROWS;
+        
         if (bomb.vx > 0 && bomb.slideX >= bomb.x + 1) {
-          if (isTileSolidForBombLocal(bomb.x + 2, bomb.y)) { bomb.x++; bomb.slideX = bomb.x; bomb.vx = 0; }
-          else { bomb.x++; }
+          bomb.x++;
+          if (bomb.x === cols - 1) {
+            if (!isTileSolidForBombLocal(1, bomb.y)) {
+              bomb.x = 1;
+              bomb.slideX = 1;
+            } else {
+              bomb.x = cols - 2;
+              bomb.slideX = bomb.x;
+              bomb.vx = 0;
+            }
+          } else {
+            if (isTileSolidForBombLocal(bomb.x + 1, bomb.y) && bomb.x + 1 !== cols - 1) {
+              bomb.slideX = bomb.x;
+              bomb.vx = 0;
+            }
+          }
         } else if (bomb.vx < 0 && bomb.slideX <= bomb.x - 1) {
-          if (isTileSolidForBombLocal(bomb.x - 2, bomb.y)) { bomb.x--; bomb.slideX = bomb.x; bomb.vx = 0; }
-          else { bomb.x--; }
+          bomb.x--;
+          if (bomb.x === 0) {
+            if (!isTileSolidForBombLocal(cols - 2, bomb.y)) {
+              bomb.x = cols - 2;
+              bomb.slideX = cols - 2;
+            } else {
+              bomb.x = 1;
+              bomb.slideX = bomb.x;
+              bomb.vx = 0;
+            }
+          } else {
+            if (isTileSolidForBombLocal(bomb.x - 1, bomb.y) && bomb.x - 1 !== 0) {
+              bomb.slideX = bomb.x;
+              bomb.vx = 0;
+            }
+          }
         } else if (bomb.vy > 0 && bomb.slideY >= bomb.y + 1) {
-          if (isTileSolidForBombLocal(bomb.x, bomb.y + 2)) { bomb.y++; bomb.slideY = bomb.y; bomb.vy = 0; }
-          else { bomb.y++; }
+          bomb.y++;
+          if (bomb.y === rows - 1) {
+            if (!isTileSolidForBombLocal(bomb.x, 1)) {
+              bomb.y = 1;
+              bomb.slideY = 1;
+            } else {
+              bomb.y = rows - 2;
+              bomb.slideY = bomb.y;
+              bomb.vy = 0;
+            }
+          } else {
+            if (isTileSolidForBombLocal(bomb.x, bomb.y + 1) && bomb.y + 1 !== rows - 1) {
+              bomb.slideY = bomb.y;
+              bomb.vy = 0;
+            }
+          }
         } else if (bomb.vy < 0 && bomb.slideY <= bomb.y - 1) {
-          if (isTileSolidForBombLocal(bomb.x, bomb.y - 2)) { bomb.y--; bomb.slideY = bomb.y; bomb.vy = 0; }
-          else { bomb.y--; }
+          bomb.y--;
+          if (bomb.y === 0) {
+            if (!isTileSolidForBombLocal(bomb.x, rows - 2)) {
+              bomb.y = rows - 2;
+              bomb.slideY = rows - 2;
+            } else {
+              bomb.y = 1;
+              bomb.slideY = bomb.y;
+              bomb.vy = 0;
+            }
+          } else {
+            if (isTileSolidForBombLocal(bomb.x, bomb.y - 1) && bomb.y - 1 !== 0) {
+              bomb.slideY = bomb.y;
+              bomb.vy = 0;
+            }
+          }
         }
       }
     });
@@ -5436,7 +5802,7 @@ function update(dt) {
   }
 }
 
-function render() {
+function render(dt) {
   ctx.save();
   ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
 
@@ -5454,17 +5820,32 @@ function render() {
   const isBR = isBattleRoyale(currentRoomMode);
   if (isBR) {
     const activeSpec = players.find((p) => p.id === (spectatedPlayerId || localPlayerId)) || players.find((p) => p.alive);
-    let cx = (map[0] ? map[0].length : COLS) * TILE / 2;
-    let cy = (map ? map.length : ROWS) * TILE / 2;
+    let targetCx = (map[0] ? map[0].length : COLS) * TILE / 2;
+    let targetCy = (map ? map.length : ROWS) * TILE / 2;
     if (activeSpec) {
-      cx = activeSpec.x;
-      cy = activeSpec.y;
+      targetCx = activeSpec.x;
+      targetCy = activeSpec.y;
     }
+    
+    if (cameraX === 0 && cameraY === 0) {
+      cameraX = targetCx;
+      cameraY = targetCy;
+    } else {
+      const lerpSpeed = 0.12; 
+      const dtFactor = 1 - Math.pow(1 - lerpSpeed, (dt || 0.016) * 60);
+      cameraX += (targetCx - cameraX) * dtFactor;
+      cameraY += (targetCy - cameraY) * dtFactor;
+    }
+    cameraCenterX = cameraX;
+    cameraCenterY = cameraY;
+    
     const zoom = 1.6;
     ctx.translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     ctx.scale(zoom, zoom);
-    ctx.translate(-cx, -cy);
+    ctx.translate(-cameraCenterX, -cameraCenterY);
   } else {
+    cameraCenterX = (map[0] ? map[0].length : COLS) * TILE / 2;
+    cameraCenterY = (map ? map.length : ROWS) * TILE / 2;
     ctx.translate(OFFSET_X, OFFSET_Y);
   }
 
@@ -5540,7 +5921,7 @@ function loop(now) {
   const gameVisible = gameScreen?.classList.contains("active");
   if (gameVisible || running || gameMessage) {
     update(dt);
-    render();
+    render(dt);
   }
   
   const shouldDrawMenu = now - lastMenuDrawTime >= 1000 / activeGraphics.menuFps;
@@ -9246,6 +9627,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // New Main Play Tab Gamemode Selector click handlers
   const localBotsDifficultyDialog = document.getElementById("localBotsDifficultyDialog");
+  const btnLocalModeNormal = document.getElementById("btnLocalModeNormal");
+  const btnLocalModeBR = document.getElementById("btnLocalModeBR");
+
+  if (btnLocalModeNormal && btnLocalModeBR) {
+    btnLocalModeNormal.addEventListener("click", () => {
+      localOfflineModeChoice = "normal";
+      btnLocalModeNormal.classList.add("btn-primary");
+      btnLocalModeNormal.classList.remove("btn-secondary");
+      btnLocalModeBR.classList.add("btn-secondary");
+      btnLocalModeBR.classList.remove("btn-primary");
+    });
+    btnLocalModeBR.addEventListener("click", () => {
+      localOfflineModeChoice = "br";
+      btnLocalModeBR.classList.add("btn-primary");
+      btnLocalModeBR.classList.remove("btn-secondary");
+      btnLocalModeNormal.classList.add("btn-secondary");
+      btnLocalModeNormal.classList.remove("btn-primary");
+    });
+  }
+
   document.getElementById("btnPlayOfflineSingle")?.addEventListener("click", () => {
     const nickname = (usernameInput?.value.trim()) || localStorage.getItem("local_username") || "Friend";
     localStorage.setItem("local_username", nickname);
@@ -9253,6 +9654,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
 
     serverMode = "local";
+    localOfflineModeChoice = "normal";
+    if (btnLocalModeNormal && btnLocalModeBR) {
+      btnLocalModeNormal.classList.add("btn-primary");
+      btnLocalModeNormal.classList.remove("btn-secondary");
+      btnLocalModeBR.classList.add("btn-secondary");
+      btnLocalModeBR.classList.remove("btn-primary");
+    }
+
     if (localBotsDifficultyDialog) {
       localBotsDifficultyDialog.classList.remove("hidden");
       localBotsDifficultyDialog.classList.add("active");
@@ -9270,7 +9679,11 @@ document.addEventListener("DOMContentLoaded", () => {
     localBotsDifficulty = diff;
     localBotsDifficultyDialog?.classList.remove("active");
     localBotsDifficultyDialog?.classList.add("hidden");
-    startLocalSingleWithMapVote();
+    if (localOfflineModeChoice === "br") {
+      showBRMatchmakingScreen("br_solo");
+    } else {
+      startLocalSingleWithMapVote();
+    }
   };
 
   document.getElementById("btnDiffEasy")?.addEventListener("click", () => selectBotsDifficulty("easy"));
@@ -10040,6 +10453,8 @@ function startLocalBRGame() {
   localPlayerId = "local_player";
   hostId = localPlayerId;
   localBombId = 0;
+  cameraX = 0;
+  cameraY = 0;
   
   currentMapType = "classic";
   

@@ -1547,31 +1547,83 @@ function tickRoom(room) {
     updateServerZone(room, dt);
   }
 
+  const cols = room.map[0] ? room.map[0].length : COLS;
+  const rows = room.map ? room.map.length : ROWS;
+
   room.bombs.forEach((bomb) => {
     if (bomb.vx !== undefined && bomb.vy !== undefined && (bomb.vx !== 0 || bomb.vy !== 0)) {
       if (bomb.slideX === undefined) bomb.slideX = bomb.x;
       if (bomb.slideY === undefined) bomb.slideY = bomb.y;
       bomb.slideX += bomb.vx * 6.0 * dt;
       bomb.slideY += bomb.vy * 6.0 * dt;
-      if (bomb.vx > 0) {
-        if (bomb.slideX >= bomb.x + 1) {
-          if (isTileSolidForBombServer(room, bomb.x + 2, bomb.y)) { bomb.x++; bomb.slideX = bomb.x; bomb.vx = 0; }
-          else { bomb.x++; }
+      
+      if (bomb.vx > 0 && bomb.slideX >= bomb.x + 1) {
+        bomb.x++;
+        if (bomb.x === cols - 1) {
+          if (!isTileSolidForBombServer(room, 1, bomb.y)) {
+            bomb.x = 1;
+            bomb.slideX = 1;
+          } else {
+            bomb.x = cols - 2;
+            bomb.slideX = bomb.x;
+            bomb.vx = 0;
+          }
+        } else {
+          if (isTileSolidForBombServer(room, bomb.x + 1, bomb.y) && bomb.x + 1 !== cols - 1) {
+            bomb.slideX = bomb.x;
+            bomb.vx = 0;
+          }
         }
-      } else if (bomb.vx < 0) {
-        if (bomb.slideX <= bomb.x - 1) {
-          if (isTileSolidForBombServer(room, bomb.x - 2, bomb.y)) { bomb.x--; bomb.slideX = bomb.x; bomb.vx = 0; }
-          else { bomb.x--; }
+      } else if (bomb.vx < 0 && bomb.slideX <= bomb.x - 1) {
+        bomb.x--;
+        if (bomb.x === 0) {
+          if (!isTileSolidForBombServer(room, cols - 2, bomb.y)) {
+            bomb.x = cols - 2;
+            bomb.slideX = cols - 2;
+          } else {
+            bomb.x = 1;
+            bomb.slideX = bomb.x;
+            bomb.vx = 0;
+          }
+        } else {
+          if (isTileSolidForBombServer(room, bomb.x - 1, bomb.y) && bomb.x - 1 !== 0) {
+            bomb.slideX = bomb.x;
+            bomb.vx = 0;
+          }
         }
-      } else if (bomb.vy > 0) {
-        if (bomb.slideY >= bomb.y + 1) {
-          if (isTileSolidForBombServer(room, bomb.x, bomb.y + 2)) { bomb.y++; bomb.slideY = bomb.y; bomb.vy = 0; }
-          else { bomb.y++; }
+      } else if (bomb.vy > 0 && bomb.slideY >= bomb.y + 1) {
+        bomb.y++;
+        if (bomb.y === rows - 1) {
+          if (!isTileSolidForBombServer(room, bomb.x, 1)) {
+            bomb.y = 1;
+            bomb.slideY = 1;
+          } else {
+            bomb.y = rows - 2;
+            bomb.slideY = bomb.y;
+            bomb.vy = 0;
+          }
+        } else {
+          if (isTileSolidForBombServer(room, bomb.x, bomb.y + 1) && bomb.y + 1 !== rows - 1) {
+            bomb.slideY = bomb.y;
+            bomb.vy = 0;
+          }
         }
-      } else if (bomb.vy < 0) {
-        if (bomb.slideY <= bomb.y - 1) {
-          if (isTileSolidForBombServer(room, bomb.x, bomb.y - 2)) { bomb.y--; bomb.slideY = bomb.y; bomb.vy = 0; }
-          else { bomb.y--; }
+      } else if (bomb.vy < 0 && bomb.slideY <= bomb.y - 1) {
+        bomb.y--;
+        if (bomb.y === 0) {
+          if (!isTileSolidForBombServer(room, bomb.x, rows - 2)) {
+            bomb.y = rows - 2;
+            bomb.slideY = rows - 2;
+          } else {
+            bomb.y = 1;
+            bomb.slideY = bomb.y;
+            bomb.vy = 0;
+          }
+        } else {
+          if (isTileSolidForBombServer(room, bomb.x, bomb.y - 1) && bomb.y - 1 !== 0) {
+            bomb.slideY = bomb.y;
+            bomb.vy = 0;
+          }
         }
       }
     }
@@ -2175,7 +2227,7 @@ function placeServerBomb(room, player) {
     bombType: bombType
   };
   room.bombs.push(bomb);
-  player.cooldown = 0.25;
+  player.cooldown = 0.05;
   
   if (bombType !== "normal") {
     player.activeBombType = "normal";
@@ -2286,12 +2338,23 @@ function isMapSolidServer(room, tileX, tileY) {
   return cell === "wall" || cell === "crate" || cell === "zone";
 }
 
+function overlapsBombServer(actor, bomb) {
+  const radius = actor.radius || 13;
+  const tileLeft = bomb.x * TILE;
+  const tileTop = bomb.y * TILE;
+  return (
+    actor.x + radius > tileLeft &&
+    actor.x - radius < tileLeft + TILE &&
+    actor.y + radius > tileTop &&
+    actor.y - radius < tileTop + TILE
+  );
+}
+
 function isSolidServer(room, tileX, tileY, actor = null) {
   if (isMapSolidServer(room, tileX, tileY)) return true;
-  const actorTile = actor ? gridAtServer(actor.x, actor.y) : null;
   return room.bombs.some((bomb) => {
     if (actor && bomb.passableFor && bomb.passableFor.has(actor.id)) return false;
-    if (actorTile && bomb.x === actorTile.x && bomb.y === actorTile.y) return false;
+    if (actor && overlapsBombServer(actor, bomb)) return false;
     return bomb.x === tileX && bomb.y === tileY;
   });
 }
