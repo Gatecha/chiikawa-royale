@@ -127,6 +127,7 @@ const tabContents = document.querySelectorAll(".tab-content");
 const lobbyPlayBtn = document.getElementById("lobbyPlayBtn");
 const matchmakingDialog = document.getElementById("matchmakingDialog");
 const closeDialogBtn = document.getElementById("closeDialogBtn");
+let localBotsDifficulty = "pro";
 
 // New Offline Matchmaking/VS Screen Elements
 const matchmakingPopup = document.getElementById("matchmakingPopup");
@@ -3341,7 +3342,16 @@ function updateAi(bot, dt) {
       const safetyDir = getSafetyStepLocal(bot, here);
       if (safetyDir) {
         bot.aiDir = safetyDir;
-        bot.aiThink = 0.05;
+        // Make reaction time slightly slower on easy/hard
+        if (localBotsDifficulty === "easy") {
+          bot.aiThink = 0.12;
+        } else if (localBotsDifficulty === "hard") {
+          bot.aiThink = 0.08;
+        } else if (localBotsDifficulty === "expert") {
+          bot.aiThink = 0.03;
+        } else {
+          bot.aiThink = 0.05; // pro
+        }
       } else {
         const dirs = [
           { x: 1, y: 0 },
@@ -3353,8 +3363,30 @@ function updateAi(bot, dt) {
         const useful = dirs
           .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
           .sort((a, b) => b.score - a.score);
-        bot.aiDir = useful[0];
-        bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+
+        // Adjust direction selection based on difficulty
+        let selectedDir = useful[0];
+        if (localBotsDifficulty === "easy" && Math.random() < 0.50) {
+          // 50% chance of random direction on Easy
+          selectedDir = dirs[Math.floor(Math.random() * dirs.length)];
+        } else if (localBotsDifficulty === "hard" && Math.random() < 0.15) {
+          // 15% chance of picking second best choice on Hard
+          selectedDir = useful[1] || useful[0];
+        }
+
+        bot.aiDir = selectedDir;
+
+        // Adjust thinking intervals (reaction speed)
+        if (localBotsDifficulty === "easy") {
+          bot.aiThink = danger ? 0.08 : 0.16 + Math.random() * 0.20;
+        } else if (localBotsDifficulty === "hard") {
+          bot.aiThink = danger ? 0.06 : 0.10 + Math.random() * 0.12;
+        } else if (localBotsDifficulty === "expert") {
+          bot.aiThink = danger ? 0.02 : 0.05 + Math.random() * 0.05;
+        } else {
+          // pro (default)
+          bot.aiThink = danger ? 0.04 : 0.08 + Math.random() * 0.10;
+        }
       }
     }
   }
@@ -8977,6 +9009,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // New Main Play Tab Gamemode Selector click handlers
+  const localBotsDifficultyDialog = document.getElementById("localBotsDifficultyDialog");
   document.getElementById("btnPlayOfflineSingle")?.addEventListener("click", () => {
     const nickname = (usernameInput?.value.trim()) || localStorage.getItem("local_username") || "Friend";
     localStorage.setItem("local_username", nickname);
@@ -8984,8 +9017,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
 
     serverMode = "local";
-    startLocalSingleWithMapVote();
+    if (localBotsDifficultyDialog) {
+      localBotsDifficultyDialog.classList.remove("hidden");
+      localBotsDifficultyDialog.classList.add("active");
+    } else {
+      startLocalSingleWithMapVote();
+    }
   });
+
+  document.getElementById("closeBotsDifficultyBtn")?.addEventListener("click", () => {
+    localBotsDifficultyDialog?.classList.remove("active");
+    localBotsDifficultyDialog?.classList.add("hidden");
+  });
+
+  const selectBotsDifficulty = (diff) => {
+    localBotsDifficulty = diff;
+    localBotsDifficultyDialog?.classList.remove("active");
+    localBotsDifficultyDialog?.classList.add("hidden");
+    startLocalSingleWithMapVote();
+  };
+
+  document.getElementById("btnDiffEasy")?.addEventListener("click", () => selectBotsDifficulty("easy"));
+  document.getElementById("btnDiffHard")?.addEventListener("click", () => selectBotsDifficulty("hard"));
+  document.getElementById("btnDiffPro")?.addEventListener("click", () => selectBotsDifficulty("pro"));
+  document.getElementById("btnDiffExpert")?.addEventListener("click", () => selectBotsDifficulty("expert"));
 
   document.getElementById("btnPlayOfflineFour")?.addEventListener("click", () => {
     const nickname = (usernameInput?.value.trim()) || localStorage.getItem("local_username") || "Friend";
