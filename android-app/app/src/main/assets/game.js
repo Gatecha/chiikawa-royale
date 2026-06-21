@@ -192,6 +192,19 @@ const confirmCharacterBtn = document.getElementById("confirmCharacterBtn");
 const selectCardGrid = document.getElementById("selectCardGrid");
 const wardrobeTabs = document.querySelectorAll(".wardrobe-tab");
 
+// Video and character variables moved to top to prevent Temporal Dead Zone ReferenceErrors
+const victoryVideo = document.getElementById("victoryVideo");
+const characterSelectVideos = {
+  chiikawa: "assets/chiikawa/chiikawa_character_animation.mp4",
+  hachiware: "hachiware-lobby.mp4",
+  usagi: "assets/usagi/usagi_character_animation.mp4",
+  momonga: "assets/momonga/momonga_character_animation.mp4",
+};
+let selectedCharacter = "chiikawa";
+let previewCharacter = selectedCharacter;
+let brmVideoEl = null;
+let brmActive = false;
+
 // Settings Indicators
 const connectionStatusIndicator = document.getElementById("connectionStatusIndicator");
 const playerUuidLabel = document.getElementById("playerUuidLabel");
@@ -553,8 +566,6 @@ let hostId = null;
 let localPlayerId = null;
 let reconnectToken = localStorage.getItem("chiikawaReconnectToken") || null;
 let players = [];
-let selectedCharacter = "chiikawa";
-let previewCharacter = selectedCharacter;
 let readyState = false;
 let localMode = false;
 let startCountdownTimer = 0;
@@ -867,13 +878,6 @@ if (spotlightVideo) {
   });
   spotlightVideo.play().catch(() => {});
 }
-
-const characterSelectVideos = {
-  chiikawa: "assets/chiikawa/chiikawa_character_animation.mp4",
-  hachiware: "hachiware-lobby.mp4",
-  usagi: "assets/usagi/usagi_character_animation.mp4",
-  momonga: "assets/momonga/momonga_character_animation.mp4",
-};
 
 function playMutedLoop(video) {
   if (!video) return;
@@ -10128,13 +10132,11 @@ function showBRResultsLocal() {
   });
 }
 
-let brmVideoEl = null;
 let brmCanvasEl = null;
 let brmCtx = null;
 let brmTempCanvas = null;
 let brmTempCtx = null;
 let brmAnimationId = null;
-let brmActive = false;
 let brmPlayerCountVal = 1;
 let brmSimulateInterval = null;
 let brmCountdownInterval = null;
