@@ -408,8 +408,18 @@ function handleMessage(ws, msg) {
       // Clear matchmaking timers when game starts manually
       if (room.matchmakingTimer) { clearTimeout(room.matchmakingTimer); room.matchmakingTimer = null; }
       if (room.matchmakingCountdownInterval) { clearInterval(room.matchmakingCountdownInterval); room.matchmakingCountdownInterval = null; }
+      if (room.matchmakingInterval) { clearInterval(room.matchmakingInterval); room.matchmakingInterval = null; }
 
-      startMapVoting(room);
+      if (!isOnlineServer()) {
+        fillAllRemainingWithBots(room);
+      } else {
+        if (isBattleRoyale(room.mode)) {
+          startBRPreMatch(room);
+        } else {
+          broadcastLobbyUpdate(room);
+          startMapVoting(room);
+        }
+      }
       break;
     }
 

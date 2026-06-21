@@ -428,6 +428,8 @@ let selectedCharacter = "chiikawa";
 let previewCharacter = selectedCharacter;
 let readyState = false;
 let localMode = false;
+let startCountdownTimer = 0;
+let startCountdownState = "";
 let serverMode = "online"; // "online" or "local"
 let pendingLocalConnect = false;
 
@@ -1148,6 +1150,16 @@ function handleServerMessage(msg) {
       if (isBattleRoyale(currentRoomMode) && brmActive) {
         const pCount = document.getElementById("brmPlayerCount");
         if (pCount) pCount.textContent = players.length;
+        
+        const brmStartBtn = document.getElementById("brmStartBtn");
+        if (brmStartBtn) {
+          const isHost = localPlayerId === hostId;
+          if (serverMode === "local" && isHost) {
+            brmStartBtn.style.display = "block";
+          } else {
+            brmStartBtn.style.display = "none";
+          }
+        }
       }
 
       if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1339,6 +1351,8 @@ function handleServerMessage(msg) {
       particles = [];
       roundTime = typeof data.roundTime === "number" ? data.roundTime : roundTime;
       running = true;
+      startCountdownTimer = 3.5;
+      startCountdownState = "3";
       isOnlineMatchmakingActive = false;
       shakeTimer = 0;
       gameMessage = "";
@@ -1409,17 +1423,14 @@ function handleServerMessage(msg) {
           localP.damageDealt = serverPlayer.damageDealt || 0;
 
           if (serverPlayer.id !== localPlayerId) {
-            localP.prevX = localP.targetX !== undefined ? localP.targetX : serverPlayer.x;
-            localP.prevY = localP.targetY !== undefined ? localP.targetY : serverPlayer.y;
             localP.targetX = serverPlayer.x;
             localP.targetY = serverPlayer.y;
             localP.dx = serverPlayer.dx;
             localP.dy = serverPlayer.dy;
-            localP.lerpTime = 0;
           } else {
             // Check desync with adaptive thresholds to prevent high-latency rubberbanding
             const dist = Math.hypot(localP.x - serverPlayer.x, localP.y - serverPlayer.y);
-            const isMoving = localP.dx !== 0 || localP.dy !== 0;
+            const isMoving = (localP.dx !== 0 || localP.dy !== 0) || (serverPlayer.dx !== 0 || serverPlayer.dy !== 0);
             const threshold = isMoving ? 240 : 48; // Large threshold (5 tiles) when moving due to ping delay, small (1 tile) when stopped
             if (dist > threshold) {
               localP.x = serverPlayer.x;
@@ -1826,6 +1837,8 @@ function handleServerMessage(msg) {
 // UI RENDERING & COMPONENT REFRESHES
 // ----------------------------------------------------------------
 
+let alphaWelcomeDialogShown = false;
+
 function switchScreen(targetScreen) {
   [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].forEach((s) => {
     if (s) s.classList.remove("active");
@@ -1834,6 +1847,15 @@ function switchScreen(targetScreen) {
   if (targetScreen !== gameScreen) {
     document.getElementById("couchControlPicker")?.classList.add("hidden");
     document.body.classList.remove("local-couch-active");
+  }
+
+  if (targetScreen === menuScreen && !alphaWelcomeDialogShown) {
+    alphaWelcomeDialogShown = true;
+    const dialog = document.getElementById("alphaWelcomeDialog");
+    if (dialog) {
+      dialog.classList.remove("hidden");
+      dialog.classList.add("active");
+    }
   }
 }
 
@@ -1876,6 +1898,8 @@ function startLocalGame() {
   particles = [];
   roundTime = 150;
   running = true;
+  startCountdownTimer = 3.5;
+  startCountdownState = "3";
   shakeTimer = 0;
   zoneActive = false;
   zoneLayer = 0;
@@ -2155,6 +2179,8 @@ function startLocalFourPlayerGame() {
   particles = [];
   roundTime = 150;
   running = true;
+  startCountdownTimer = 3.5;
+  startCountdownState = "3";
   shakeTimer = 0;
   zoneActive = false;
   zoneLayer = 0;
@@ -4664,6 +4690,63 @@ function drawMessage(message) {
   ctx.restore();
 }
 
+function drawStartCountdown(state) {
+  if (!state) return;
+  ctx.save();
+  
+  // Draw a semi-transparent dark backdrop overlay across the entire canvas to focus attention
+  ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  
+  // Animate size of text based on the remainder of the fractional second
+  const fraction = startCountdownTimer % 1.0;
+  let scale = 1.0;
+  if (state === "START") {
+    // START pops and grows
+    scale = 1.0 + (1.0 - startCountdownTimer / 0.5) * 0.5;
+  } else {
+    // 3, 2, 1 shrinks and fades
+    scale = 0.5 + fraction * 1.2;
+  }
+  
+  ctx.translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+  ctx.scale(scale, scale);
+  
+  // Shadow/Outline glow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+  ctx.shadowBlur = 15;
+  ctx.shadowOffsetX = 4;
+  ctx.shadowOffsetY = 4;
+  
+  // Choose beautiful, premium arcade color schemes for countdown numbers
+  let color = "#ff3399"; // default hot pink
+  let fontSize = "110px";
+  if (state === "3") {
+    color = "#ff3366"; // vibrant coral red
+  } else if (state === "2") {
+    color = "#ffcc00"; // golden yellow
+  } else if (state === "1") {
+    color = "#33ccff"; // electric blue
+  } else if (state === "START") {
+    color = "#39ff14"; // neon green
+    fontSize = "130px";
+  }
+  
+  ctx.fillStyle = color;
+  ctx.font = `900 ${fontSize} Fredoka`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  
+  // Stroke outline for comic/arcade feel
+  ctx.lineWidth = 14;
+  ctx.strokeStyle = "#ffffff";
+  ctx.strokeText(state, 0, 0);
+  
+  ctx.fillText(state, 0, 0);
+  
+  ctx.restore();
+}
+
 function roundedRect(x, y, w, h, r, fill, stroke) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -4878,6 +4961,23 @@ function updateControlledPlayer(player, dx, dy, dt) {
 function update(dt) {
   if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
 
+  if (running && startCountdownTimer > 0) {
+    startCountdownTimer -= dt;
+    if (startCountdownTimer <= 0) {
+      startCountdownTimer = 0;
+      startCountdownState = "";
+    } else if (startCountdownTimer > 2.5) {
+      startCountdownState = "3";
+    } else if (startCountdownTimer > 1.5) {
+      startCountdownState = "2";
+    } else if (startCountdownTimer > 0.5) {
+      startCountdownState = "1";
+    } else {
+      startCountdownState = "START";
+    }
+    return;
+  }
+
   // Tick BR pings
   if (brPings && brPings.length > 0) {
     brPings.forEach(p => { p.timer -= dt; });
@@ -4959,23 +5059,19 @@ function update(dt) {
 
     players.forEach((p) => {
       if (!localMode && p.id !== localPlayerId) {
-        if (p.targetX !== undefined && p.prevX !== undefined) {
-          p.lerpTime = (p.lerpTime || 0) + dt;
-          const tickRate = 0.05; // 50ms server tick
-          if (p.lerpTime <= tickRate) {
-            const t = p.lerpTime / tickRate;
-            p.x = p.prevX + (p.targetX - p.prevX) * t;
-            p.y = p.prevY + (p.targetY - p.prevY) * t;
+        if (p.targetX !== undefined) {
+          const dist = Math.hypot(p.targetX - p.x, p.targetY - p.y);
+          if (dist > 96) {
+            // Snap position instantly on teleport, spawn, or huge desync
+            p.x = p.targetX;
+            p.y = p.targetY;
           } else {
-            // Extrapolate if packet is late, capped at max extrapolation time (e.g. 100ms) to prevent flying off screen
-            if (p.lerpTime < tickRate + 0.1) {
-              p.x += (p.dx || 0) * (p.speed || 142) * dt;
-              p.y += (p.dy || 0) * (p.speed || 142) * dt;
-            }
+            // Smoothly glide position using exponential decay interpolation
+            const rate = 18; // smooth but responsive (converges within ~100-150ms)
+            const alpha = 1 - Math.exp(-rate * dt);
+            p.x += (p.targetX - p.x) * alpha;
+            p.y += (p.targetY - p.y) * alpha;
           }
-        } else if (p.targetX !== undefined) {
-          p.x = p.targetX;
-          p.y = p.targetY;
         }
       }
 
@@ -5148,6 +5244,10 @@ function render() {
   }
 
   ctx.restore();
+
+  if (running && startCountdownTimer > 0) {
+    drawStartCountdown(startCountdownState);
+  }
 
   if (!running && gameMessage) {
     drawMessage(gameMessage);
@@ -6189,6 +6289,15 @@ function updateOnlineMatchmakingPopup() {
     }
   }
 
+  const startMatchEarlyBtn = document.getElementById("startMatchEarlyBtn");
+  if (startMatchEarlyBtn) {
+    if (socket && socket.readyState === WebSocket.OPEN && serverMode === "local" && isHost) {
+      startMatchEarlyBtn.style.display = "block";
+    } else {
+      startMatchEarlyBtn.style.display = "none";
+    }
+  }
+
   const maxPlayers = currentRoomMaxPlayers;
   if (players.length >= maxPlayers) {
     if (titleEl) titleEl.textContent = "MATCH FOUND!";
@@ -6383,6 +6492,8 @@ function startLocalGameWithMatchedBots() {
   particles = [];
   roundTime = 150;
   running = true;
+  startCountdownTimer = 3.5;
+  startCountdownState = "3";
   shakeTimer = 0;
   zoneActive = false;
   zoneLayer = 0;
@@ -6429,6 +6540,17 @@ function showMatchmakingModeSelection() {
   toggleBtn(btnModeSelectBRDuo, 2);
   toggleBtn(btnModeSelectTrio, 3);
   toggleBtn(btnModeSelectBRTrio, 3);
+
+  // Hide BR mode buttons completely if in local 4-player couch lobby mode
+  if (localFourPlayerLobbyActive) {
+    if (btnModeSelectBRSolo) btnModeSelectBRSolo.style.setProperty("display", "none", "important");
+    if (btnModeSelectBRDuo) btnModeSelectBRDuo.style.setProperty("display", "none", "important");
+    if (btnModeSelectBRTrio) btnModeSelectBRTrio.style.setProperty("display", "none", "important");
+  } else {
+    if (btnModeSelectBRSolo) btnModeSelectBRSolo.style.setProperty("display", "flex", "important");
+    if (btnModeSelectBRDuo) btnModeSelectBRDuo.style.setProperty("display", "flex", "important");
+    if (btnModeSelectBRTrio) btnModeSelectBRTrio.style.setProperty("display", "flex", "important");
+  }
 
   matchmakingModeSelectDialog.classList.remove("hidden");
   matchmakingModeSelectDialog.classList.add("active");
@@ -7140,169 +7262,175 @@ function resetLobbyMapSelectToNormal() {
 }
 
 function showTournamentResults(playersList, winnerId, tournamentFinished) {
-  const overlay = document.getElementById("tournamentOverlay");
-  const roundCard = document.getElementById("roundResultsCard");
-  const victoryCard = document.getElementById("grandVictoryCard");
-  const victoryVideo = document.getElementById("victoryVideo");
-
-  if (!overlay || !roundCard || !victoryCard) return;
-
   // Sync global players list for drawing avatars
   if (playersList && playersList.length > 0) {
     players = playersList;
   }
 
-  // Show the overlay
-  overlay.classList.remove("hidden");
+  // Delay showing the tournament results overlay by 2.5 seconds
+  setTimeout(() => {
+    // If the player has already left the game screen (e.g. exited), abort showing results
+    if (!gameScreen || !gameScreen.classList.contains("active")) return;
 
-  if (tournamentFinished) {
-    // Show Grand Victory Screen
-    roundCard.classList.add("hidden");
-    victoryCard.classList.remove("hidden");
+    const overlay = document.getElementById("tournamentOverlay");
+    const roundCard = document.getElementById("roundResultsCard");
+    const victoryCard = document.getElementById("grandVictoryCard");
+    const victoryVideo = document.getElementById("victoryVideo");
 
-    // Clear any active countdown
-    if (roundCountdownInterval) {
-      clearInterval(roundCountdownInterval);
-      roundCountdownInterval = null;
-    }
+    if (!overlay || !roundCard || !victoryCard) return;
 
-    // Identify grand winner
-    const grandWinner = players.find(p => p.id === winnerId || (p.trophies || 0) >= 8);
-    const winnerName = grandWinner ? grandWinner.name : "Winner";
-    const winnerMsgEl = document.getElementById("grandWinnerMessage");
-    if (winnerMsgEl) {
-      winnerMsgEl.textContent = `${winnerName} wins the Tournament! 🏆`;
-    }
+    // Show the overlay
+    overlay.classList.remove("hidden");
 
-    // Play Victory Video
-    if (victoryVideo) {
-      victoryVideo.currentTime = 0;
-      victoryVideo.muted = true;
-      victoryVideo.loop = true;
-      victoryVideo.playsInline = true;
-      victoryVideo.play().catch(err => console.warn("Victory video failed to play:", err));
-    }
+    if (tournamentFinished) {
+      // Show Grand Victory Screen
+      roundCard.classList.add("hidden");
+      victoryCard.classList.remove("hidden");
 
-    // Start confetti particle physics
-    startConfetti();
-  } else {
-    // Show Intermediate Round Results
-    victoryCard.classList.add("hidden");
-    roundCard.classList.remove("hidden");
-
-    const roundWinner = players.find(p => p.id === winnerId);
-    const roundMsgEl = document.getElementById("roundSummaryMessage");
-    if (roundMsgEl) {
-      roundMsgEl.textContent = roundWinner ? `${roundWinner.name} wins this round!` : "Draw!";
-    }
-
-    // Populate players list with cards
-    const resultsRow = document.getElementById("resultsPlayersRow");
-    if (resultsRow) {
-      resultsRow.innerHTML = "";
-      
-      if (isTeamMode(currentRoomMode)) {
-        // Render 2 big team cards instead of individual player cards
-        const teamA = currentTeams?.A || [];
-        const teamB = currentTeams?.B || [];
-        const scoreA = currentTeamTrophies?.A || 0;
-        const scoreB = currentTeamTrophies?.B || 0;
-        
-        const renderTeamCard = (teamTag, members, score) => {
-          const card = document.createElement("div");
-          const isWinner = score >= 8 || (winnerId && members.includes(winnerId));
-          card.className = `result-team-card ${teamTag.toLowerCase()}-theme ${isWinner ? 'winner' : ''}`;
-          
-          let trophiesHtml = "";
-          for (let i = 1; i <= 8; i++) {
-            if (i < score) {
-              trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
-            } else if (i === score && isWinner) {
-              trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
-            } else {
-              trophiesHtml += `<span class="trophy-slot">🏆</span>`;
-            }
-          }
-          
-          const memberNames = members.map(id => {
-            const p = players.find(player => player.id === id);
-            return p ? escapeHTML(p.name) : "Unknown";
-          }).join(", ");
-          
-          card.innerHTML = `
-            <div class="result-team-name">${teamTag}</div>
-            <div class="result-team-members">${memberNames}</div>
-            <div class="result-trophies-container">
-              ${trophiesHtml}
-            </div>
-          `;
-          return card;
-        };
-        
-        resultsRow.appendChild(renderTeamCard("Team A", teamA, scoreA));
-        resultsRow.appendChild(renderTeamCard("Team B", teamB, scoreB));
-        
-      } else {
-        // Normal individual rendering
-        players.forEach((p) => {
-          const card = document.createElement("div");
-          const isWinner = p.id === winnerId;
-          card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
-
-          let trophiesHtml = "";
-          const trophiesCount = p.trophies || 0;
-          for (let i = 1; i <= 8; i++) {
-            if (i < trophiesCount) {
-              trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
-            } else if (i === trophiesCount && isWinner) {
-              // Animate new trophy
-              trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
-            } else {
-              trophiesHtml += `<span class="trophy-slot">🏆</span>`;
-            }
-          }
-
-          card.innerHTML = `
-            <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
-            <div class="result-player-name">${p.name}</div>
-            <div class="result-trophies-container">
-              ${trophiesHtml}
-            </div>
-          `;
-          resultsRow.appendChild(card);
-        });
-      }
-    }
-
-    // Start transition countdown
-    let secondsLeft = 8;
-    const countdownMsg = document.getElementById("nextRoundCountdown");
-    if (countdownMsg) {
-      countdownMsg.textContent = `Next round starts in ${secondsLeft}s...`;
-    }
-
-    if (roundCountdownInterval) {
-      clearInterval(roundCountdownInterval);
-    }
-
-    roundCountdownInterval = setInterval(() => {
-      secondsLeft--;
-      if (secondsLeft <= 0) {
+      // Clear any active countdown
+      if (roundCountdownInterval) {
         clearInterval(roundCountdownInterval);
         roundCountdownInterval = null;
+      }
 
-        // If local mode, transition round automatically
-        if (localMode) {
-          overlay.classList.add("hidden");
-          localStartNextRound();
-        }
-      } else {
-        if (countdownMsg) {
-          countdownMsg.textContent = `Next round starts in ${secondsLeft}s...`;
+      // Identify grand winner
+      const grandWinner = players.find(p => p.id === winnerId || (p.trophies || 0) >= 8);
+      const winnerName = grandWinner ? grandWinner.name : "Winner";
+      const winnerMsgEl = document.getElementById("grandWinnerMessage");
+      if (winnerMsgEl) {
+        winnerMsgEl.textContent = `${winnerName} wins the Tournament! 🏆`;
+      }
+
+      // Play Victory Video
+      if (victoryVideo) {
+        victoryVideo.currentTime = 0;
+        victoryVideo.muted = true;
+        victoryVideo.loop = true;
+        victoryVideo.playsInline = true;
+        victoryVideo.play().catch(err => console.warn("Victory video failed to play:", err));
+      }
+
+      // Start confetti particle physics
+      startConfetti();
+    } else {
+      // Show Intermediate Round Results
+      victoryCard.classList.add("hidden");
+      roundCard.classList.remove("hidden");
+
+      const roundWinner = players.find(p => p.id === winnerId);
+      const roundMsgEl = document.getElementById("roundSummaryMessage");
+      if (roundMsgEl) {
+        roundMsgEl.textContent = roundWinner ? `${roundWinner.name} wins this round!` : "Draw!";
+      }
+
+      // Populate players list with cards
+      const resultsRow = document.getElementById("resultsPlayersRow");
+      if (resultsRow) {
+        resultsRow.innerHTML = "";
+        
+        if (isTeamMode(currentRoomMode)) {
+          // Render 2 big team cards instead of individual player cards
+          const teamA = currentTeams?.A || [];
+          const teamB = currentTeams?.B || [];
+          const scoreA = currentTeamTrophies?.A || 0;
+          const scoreB = currentTeamTrophies?.B || 0;
+          
+          const renderTeamCard = (teamTag, members, score) => {
+            const card = document.createElement("div");
+            const isWinner = score >= 8 || (winnerId && members.includes(winnerId));
+            card.className = `result-team-card ${teamTag.toLowerCase()}-theme ${isWinner ? 'winner' : ''}`;
+            
+            let trophiesHtml = "";
+            for (let i = 1; i <= 8; i++) {
+              if (i < score) {
+                trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+              } else if (i === score && isWinner) {
+                trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+              } else {
+                trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+              }
+            }
+            
+            const memberNames = members.map(id => {
+              const p = players.find(player => player.id === id);
+              return p ? escapeHTML(p.name) : "Unknown";
+            }).join(", ");
+            
+            card.innerHTML = `
+              <div class="result-team-name">${teamTag}</div>
+              <div class="result-team-members">${memberNames}</div>
+              <div class="result-trophies-container">
+                ${trophiesHtml}
+              </div>
+            `;
+            return card;
+          };
+          
+          resultsRow.appendChild(renderTeamCard("Team A", teamA, scoreA));
+          resultsRow.appendChild(renderTeamCard("Team B", teamB, scoreB));
+          
+        } else {
+          // Normal individual rendering
+          players.forEach((p) => {
+            const card = document.createElement("div");
+            const isWinner = p.id === winnerId;
+            card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
+
+            let trophiesHtml = "";
+            const trophiesCount = p.trophies || 0;
+            for (let i = 1; i <= 8; i++) {
+              if (i < trophiesCount) {
+                trophiesHtml += `<span class="trophy-slot active">🏆</span>`;
+              } else if (i === trophiesCount && isWinner) {
+                // Animate new trophy
+                trophiesHtml += `<span class="trophy-slot new-active">🏆</span>`;
+              } else {
+                trophiesHtml += `<span class="trophy-slot">🏆</span>`;
+              }
+            }
+
+            card.innerHTML = `
+              <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
+              <div class="result-player-name">${p.name}</div>
+              <div class="result-trophies-container">
+                ${trophiesHtml}
+              </div>
+            `;
+            resultsRow.appendChild(card);
+          });
         }
       }
-    }, 1000);
-  }
+
+      // Start transition countdown
+      let secondsLeft = 8;
+      const countdownMsg = document.getElementById("nextRoundCountdown");
+      if (countdownMsg) {
+        countdownMsg.textContent = `Next round starts in ${secondsLeft}s...`;
+      }
+
+      if (roundCountdownInterval) {
+        clearInterval(roundCountdownInterval);
+      }
+
+      roundCountdownInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft <= 0) {
+          clearInterval(roundCountdownInterval);
+          roundCountdownInterval = null;
+
+          // If local mode, transition round automatically
+          if (localMode) {
+            overlay.classList.add("hidden");
+            localStartNextRound();
+          }
+        } else {
+          if (countdownMsg) {
+            countdownMsg.textContent = `Next round starts in ${secondsLeft}s...`;
+          }
+        }
+      }, 1000);
+    }
+  }, 2500);
 }
 
 function localStartNextRound() {
@@ -7352,6 +7480,8 @@ function localStartNextRound() {
   particles = [];
   roundTime = 150;
   running = true;
+  startCountdownTimer = 3.5;
+  startCountdownState = "3";
   shakeTimer = 0;
   zoneActive = false;
   zoneLayer = 0;
@@ -7466,7 +7596,13 @@ async function checkAuthSession() {
     }
   } catch (err) {
     console.error("Error checking session:", err);
-    switchScreen(loginScreen);
+    serverMode = "local";
+    const savedLocalName = localStorage.getItem("local_username") || "Friend";
+    if (usernameInput) usernameInput.value = savedLocalName;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+    finishStartup();
+    switchScreen(menuScreen);
+    tryPlayMusic();
   }
 }
 
@@ -7505,14 +7641,38 @@ async function handleAuthenticatedUser(user) {
   } catch (err) {
     console.error("Error handling authenticated user:", err);
     finishStartup();
-    showAppError("Profile load failed. You can still choose a username.", err.message || err);
-    startUsernameIntroFlow(); // fallback to intro
+    const isNetworkError = !navigator.onLine || 
+                           err.message?.includes("Failed to fetch") || 
+                           err.message?.includes("NetworkError") || 
+                           err.message?.includes("timeout") || 
+                           err.name === "TimeoutError";
+    if (isNetworkError) {
+      serverMode = "local";
+      const savedLocalName = localStorage.getItem("local_username") || "Friend";
+      if (usernameInput) usernameInput.value = savedLocalName;
+      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+      switchScreen(menuScreen);
+      tryPlayMusic();
+    } else {
+      showAppError("Profile load failed. You can still choose a username.", err.message || err);
+      startUsernameIntroFlow(); // fallback to intro
+    }
   }
 }
 
 // Bouncing character introduction dialogue typewriter effect
 let introTypewriterInterval = null;
 function startUsernameIntroFlow() {
+  if (!navigator.onLine) {
+    serverMode = "local";
+    const savedLocalName = localStorage.getItem("local_username") || "Friend";
+    if (usernameInput) usernameInput.value = savedLocalName;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+    switchScreen(menuScreen);
+    tryPlayMusic();
+    return;
+  }
+
   switchScreen(introScreen);
   if (usernameForm) usernameForm.classList.add("hidden");
 
@@ -8719,6 +8879,13 @@ document.getElementById("btnLogoutAccount")?.addEventListener("click", async () 
 document.addEventListener("DOMContentLoaded", () => {
   const startModeSelectionDialog = document.getElementById("startModeSelectionDialog");
   const localPlaySetupDialog = document.getElementById("localPlaySetupDialog");
+  const alphaWelcomeDialog = document.getElementById("alphaWelcomeDialog");
+  const closeAlphaWelcomeBtn = document.getElementById("closeAlphaWelcomeBtn");
+
+  closeAlphaWelcomeBtn?.addEventListener("click", () => {
+    alphaWelcomeDialog?.classList.remove("active");
+    alphaWelcomeDialog?.classList.add("hidden");
+  });
   const btnSelectOnline = document.getElementById("btnSelectOnline");
   const btnSelectLocal = document.getElementById("btnSelectLocal");
   const closeStartModeBtn = document.getElementById("closeStartModeBtn");
@@ -9558,6 +9725,8 @@ function startLocalBRGame() {
   particles = [];
   roundTime = 600;
   running = true;
+  startCountdownTimer = 3.5;
+  startCountdownState = "3";
   shakeTimer = 0;
   localMatchRewarded = false;
   gameMessage = "";
@@ -9626,6 +9795,15 @@ function initBRMatchmakingUI() {
     });
   }
   
+  const brmStartBtn = document.getElementById("brmStartBtn");
+  if (brmStartBtn) {
+    brmStartBtn.addEventListener("click", () => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        sendServerMessage("start_game");
+      }
+    });
+  }
+  
   const returnLobbyBtn = document.getElementById("brReturnLobbyBtn");
   if (returnLobbyBtn) {
     returnLobbyBtn.addEventListener("click", () => {
@@ -9640,6 +9818,16 @@ function showBRMatchmakingScreen(chosenMode) {
   brmActive = true;
   brmPlayerCountVal = 1;
   currentRoomMode = chosenMode;
+  
+  const brmStartBtn = document.getElementById("brmStartBtn");
+  if (brmStartBtn) {
+    const isHost = localPlayerId === hostId;
+    if (serverMode === "local" && isHost) {
+      brmStartBtn.style.display = "block";
+    } else {
+      brmStartBtn.style.display = "none";
+    }
+  }
   
   const screen = document.getElementById("brMatchmakingScreen");
   if (screen) {
