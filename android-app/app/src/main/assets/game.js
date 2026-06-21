@@ -10455,6 +10455,7 @@ function startLocalBRGame() {
   localBombId = 0;
   cameraX = 0;
   cameraY = 0;
+  currentRoomMode = "br_solo";
   
   currentMapType = "classic";
   
@@ -10493,8 +10494,6 @@ function startLocalBRGame() {
     p.placement = null;
     p.kills = 0;
     p.damageDealt = 0;
-    p.x = p.gridX * TILE + TILE / 2;
-    p.y = p.gridY * TILE + TILE / 2;
   });
   
   bombs = [];
@@ -10617,7 +10616,7 @@ function showBRMatchmakingScreen(chosenMode) {
   const brmStartBtn = document.getElementById("brmStartBtn");
   if (brmStartBtn) {
     const isHost = localPlayerId === hostId;
-    if (serverMode === "local" && isHost) {
+    if (localOfflineModeChoice === "br" || (serverMode === "local" && isHost)) {
       brmStartBtn.style.display = "block";
     } else {
       brmStartBtn.style.display = "none";
