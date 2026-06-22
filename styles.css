@@ -4156,7 +4156,11 @@ body.local-four-lobby-active .lobby-card {
   height: 100%;
   object-fit: cover;
   pointer-events: none;
+  /* Counter-skew the image so it appears straight inside the slanted card */
+  transform: skewX(13deg);
+  transform-origin: center center;
 }
+
 
 /* Sliding animation classes keeping the un-skew */
 .slide-out-left {

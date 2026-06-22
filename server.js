@@ -1817,7 +1817,7 @@ function triggerExplosion(room, bomb) {
 
   broadcastToRoom(room, {
     type: "bomb_exploded",
-    data: { bombId: bomb.id, cells, destroyedCrates, spawnedPickups, deadPlayers, map: room.map },
+    data: { bombId: bomb.id, ownerId: bomb.ownerId, cells, destroyedCrates, spawnedPickups, deadPlayers, map: room.map },
   });
 
   if (isBattleRoyale(room.mode)) {

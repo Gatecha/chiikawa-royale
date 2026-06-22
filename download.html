@@ -231,5 +231,9 @@
     </div>
 
     <script src="download.js"></script>
+    <script>
+      // Disable right-click context menu on the entire downloads page
+      document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+    </script>
   </body>
 </html>

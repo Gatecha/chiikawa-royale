@@ -1625,7 +1625,10 @@ function handleServerMessage(msg) {
         if (p) p.alive = false;
       });
 
-      shakeTimer = 0.35;
+      // In BR mode only shake for MY own bomb; in classic mode always shake
+      if (!isBattleRoyale(currentRoomMode) || data.ownerId === localPlayerId) {
+        shakeTimer = 0.35;
+      }
       updateHudSidebar();
       break;
 
@@ -2883,7 +2886,10 @@ function localTriggerExplosion(bomb) {
   });
 
   blasts.push({ cells, timer: 0.48, age: 0 });
-  shakeTimer = 0.35;
+  // In BR mode only shake for MY own bomb; in classic mode always shake
+  if (!isBattleRoyale(currentRoomMode) || bomb.ownerId === localPlayerId) {
+    shakeTimer = 0.35;
+  }
   cells.forEach((cell) => {
     players.forEach((p) => {
       if (!p.alive || p.invuln > 0) return;
@@ -6986,14 +6992,36 @@ let isOnlineMatchmakingActive = false;
 function startOnlineMatchmakingTimer() {
   if (onlineMatchmakingInterval) return;
   let elapsedSeconds = 0;
+  let botsFilled = false;
   if (matchmakingTimer) matchmakingTimer.textContent = "00:00";
   onlineMatchmakingInterval = setInterval(() => {
     elapsedSeconds++;
     const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
     const s = String(elapsedSeconds % 60).padStart(2, "0");
     if (matchmakingTimer) matchmakingTimer.textContent = `${m}:${s}`;
+
+    // After 20 seconds, fill remaining empty slots with bots
+    if (elapsedSeconds >= 20 && !botsFilled && isOnlineMatchmakingActive) {
+      botsFilled = true;
+      const maxPlayers = currentRoomMaxPlayers;
+      const currentCount = players.length;
+      const slotsNeeded = maxPlayers - currentCount;
+      if (slotsNeeded > 0 && socket && socket.readyState === WebSocket.OPEN) {
+        const titleEl = matchmakingPopup ? matchmakingPopup.querySelector(".matchmaking-title") : null;
+        if (titleEl) titleEl.textContent = "FILLING WITH BOTS...";
+        // Send one add_bot per missing slot with small stagger
+        for (let i = 0; i < slotsNeeded; i++) {
+          setTimeout(() => {
+            if (isOnlineMatchmakingActive && socket && socket.readyState === WebSocket.OPEN) {
+              sendServerMessage("add_bot");
+            }
+          }, i * 400);
+        }
+      }
+    }
   }, 1000);
 }
+
 
 function stopOnlineMatchmakingTimer() {
   if (onlineMatchmakingInterval) {
