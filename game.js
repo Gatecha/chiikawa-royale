@@ -156,6 +156,8 @@ const leaveLobbyBtn = document.getElementById("leaveLobbyBtn");
 const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
 const lobbyChatForm = document.getElementById("lobbyChatForm");
+const ingameChatForm = document.getElementById("ingameChatForm");
+const ingameChatInput = document.getElementById("ingameChatInput");
 
 // Game HUD elements
 const timerEl = document.getElementById("roundTimer");
@@ -2018,6 +2020,20 @@ function switchScreen(targetScreen) {
   if (targetScreen !== gameScreen) {
     document.getElementById("couchControlPicker")?.classList.add("hidden");
     document.body.classList.remove("local-couch-active");
+    document.getElementById("ingameChatBox")?.classList.add("hidden");
+  } else {
+    const chatBox = document.getElementById("ingameChatBox");
+    const chatMsgs = document.getElementById("ingameChatMessages");
+    if (chatBox) {
+      if (serverMode === "online") {
+        chatBox.classList.remove("hidden");
+      } else {
+        chatBox.classList.add("hidden");
+      }
+    }
+    if (chatMsgs) {
+      chatMsgs.innerHTML = "";
+    }
   }
 
   if (targetScreen === menuScreen) {
@@ -3243,6 +3259,24 @@ function addChatMessage(sender, text, isSystem = false, isMe = false) {
   if (lobbyChatMessages) {
     lobbyChatMessages.appendChild(msgEl.cloneNode(true));
     lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
+  }
+
+  const ingameChatMessages = document.getElementById("ingameChatMessages");
+  if (ingameChatMessages) {
+    const ingameMsg = document.createElement("div");
+    ingameMsg.className = `ingame-chat-msg ${isSystem ? "system" : ""} ${isMe ? "me" : ""}`;
+    if (isSystem) {
+      ingameMsg.textContent = text;
+    } else {
+      ingameMsg.innerHTML = `<span class="sender">${escapeHTML(sender)}:</span><span class="text">${escapeHTML(text)}</span>`;
+    }
+    ingameChatMessages.appendChild(ingameMsg);
+    ingameChatMessages.scrollTop = ingameChatMessages.scrollHeight;
+
+    // Fade out after 5 seconds
+    setTimeout(() => {
+      ingameMsg.classList.add("fade-out");
+    }, 5000);
   }
 }
 
@@ -6581,6 +6615,17 @@ lobbyChatForm?.addEventListener("submit", (e) => {
   }
 });
 
+ingameChatForm?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!ingameChatInput) return;
+  const text = ingameChatInput.value.trim();
+  if (text) {
+    sendServerMessage("send_chat", { text });
+    ingameChatInput.value = "";
+  }
+  ingameChatInput.blur();
+});
+
 document.getElementById("lobbyChatFormPopup")?.addEventListener("submit", (e) => {
   e.preventDefault();
   const input = document.getElementById("lobbyChatInputPopup");
@@ -7397,6 +7442,22 @@ function resetCouchControls() {
 
 // Keyboard event listeners
 window.addEventListener("keydown", (event) => {
+  const ingameChatInput = document.getElementById("ingameChatInput");
+  if (document.activeElement === ingameChatInput) {
+    if (event.key === "Escape") {
+      ingameChatInput.blur();
+    }
+    return;
+  }
+  
+  if (event.key === "Enter" && serverMode === "online" && running) {
+    if (ingameChatInput) {
+      event.preventDefault();
+      ingameChatInput.focus();
+      return;
+    }
+  }
+
   const key = normalizeInputKey(event);
   if (!key) return;
   keys.add(key);
@@ -7429,6 +7490,8 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("keyup", (event) => {
+  const ingameChatInput = document.getElementById("ingameChatInput");
+  if (document.activeElement === ingameChatInput) return;
   const key = normalizeInputKey(event);
   if (!key) return;
   keys.delete(key);
@@ -7484,16 +7547,24 @@ function bindMobileJoystick(joystick) {
     const dx = clientX - cx;
     const dy = clientY - cy;
     
-    // Clamp knob inside the square pad (independent X and Y clamping!)
-    const halfWidth = rect.width / 2;
-    const halfHeight = rect.height / 2;
-    const padPadding = 12; // margin from border
-    
-    const maxKnobX = halfWidth - padPadding;
-    const maxKnobY = halfHeight - padPadding;
-    
-    const knobX = Math.max(-maxKnobX, Math.min(maxKnobX, dx));
-    const knobY = Math.max(-maxKnobY, Math.min(maxKnobY, dy));
+    let knobX, knobY;
+    if (preferredMobileControls === "joystick") {
+      // Circular clamping
+      const max = rect.width * 0.4;
+      const distance = Math.hypot(dx, dy);
+      const scale = distance > max ? max / distance : 1;
+      knobX = dx * scale;
+      knobY = dy * scale;
+    } else {
+      // Finger pad square clamping
+      const halfWidth = rect.width / 2;
+      const halfHeight = rect.height / 2;
+      const padPadding = 12; // margin from border
+      const maxKnobX = halfWidth - padPadding;
+      const maxKnobY = halfHeight - padPadding;
+      knobX = Math.max(-maxKnobX, Math.min(maxKnobX, dx));
+      knobY = Math.max(-maxKnobY, Math.min(maxKnobY, dy));
+    }
     
     if (knob) knob.style.transform = `translate(${knobX}px, ${knobY}px)`;
 
@@ -7548,6 +7619,34 @@ function initTouchControls() {
   if (mobileJoystick) {
     bindMobileJoystick(mobileJoystick);
   }
+
+  // Bind D-pad Buttons
+  const bindDpadButton = (btnId, keyToSimulate) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    
+    const handleStart = (e) => {
+      e.preventDefault();
+      btn.setPointerCapture?.(e.pointerId);
+      getTouchKeySet().add(keyToSimulate);
+      btn.classList.add("pressed");
+    };
+    const handleEnd = (e) => {
+      e.preventDefault();
+      getTouchKeySet().delete(keyToSimulate);
+      btn.classList.remove("pressed");
+    };
+    
+    btn.addEventListener("pointerdown", handleStart);
+    btn.addEventListener("pointerup", handleEnd);
+    btn.addEventListener("pointercancel", handleEnd);
+    btn.addEventListener("lostpointercapture", handleEnd);
+  };
+  
+  bindDpadButton("btnTouchUp", "w");
+  bindDpadButton("btnTouchLeft", "a");
+  bindDpadButton("btnTouchRight", "d");
+  bindDpadButton("btnTouchDown", "s");
   
   const btnBomb = document.getElementById("btnTouchBomb");
   if (btnBomb) {
@@ -7697,6 +7796,12 @@ let bgMusicVolume = localStorage.getItem("bgMusicVolume") !== null ? parseInt(lo
 // Preferred connection mode setting (online vs offline)
 let preferredConnectionMode = localStorage.getItem("chiikawaConnectionMode") !== null ? localStorage.getItem("chiikawaConnectionMode") : "online";
 
+// Preferred mobile controls style (joystick, fingerpad, arrows)
+let preferredMobileControls = localStorage.getItem("chiikawaMobileControls") !== null ? localStorage.getItem("chiikawaMobileControls") : "fingerpad";
+
+// Preferred in-game UI layout (default, lefty, compact)
+let preferredUiLayout = localStorage.getItem("chiikawaUiLayout") !== null ? localStorage.getItem("chiikawaUiLayout") : "default";
+
 bgMusic.volume = bgMusicVolume / 100;
 
 function initAudioSettings() {
@@ -7776,6 +7881,67 @@ function initAudioSettings() {
       
       restoreConnectionPreference();
     });
+  }
+
+  const mobileControlsSelect = document.getElementById("mobileControlsSelect");
+  const uiLayoutSelect = document.getElementById("uiLayoutSelect");
+
+  if (mobileControlsSelect) {
+    mobileControlsSelect.value = preferredMobileControls;
+    mobileControlsSelect.addEventListener("change", (e) => {
+      preferredMobileControls = e.target.value;
+      localStorage.setItem("chiikawaMobileControls", preferredMobileControls);
+      applyMobileSettings();
+    });
+  }
+
+  if (uiLayoutSelect) {
+    uiLayoutSelect.value = preferredUiLayout;
+    uiLayoutSelect.addEventListener("change", (e) => {
+      preferredUiLayout = e.target.value;
+      localStorage.setItem("chiikawaUiLayout", preferredUiLayout);
+      applyMobileSettings();
+    });
+  }
+
+  applyMobileSettings();
+}
+
+function applyMobileSettings() {
+  const selectControls = localStorage.getItem("chiikawaMobileControls") || "fingerpad";
+  const selectLayout = localStorage.getItem("chiikawaUiLayout") || "default";
+
+  const joyContainer = document.getElementById("mobileJoystickContainer");
+  const dpadContainer = document.getElementById("mobileDpadContainer");
+  if (joyContainer && dpadContainer) {
+    if (selectControls === "arrows") {
+      joyContainer.classList.add("hidden");
+      dpadContainer.classList.remove("hidden");
+    } else {
+      joyContainer.classList.remove("hidden");
+      dpadContainer.classList.add("hidden");
+      
+      const joystickEl = document.getElementById("mobileJoystick");
+      if (joystickEl) {
+        if (selectControls === "joystick") {
+          joystickEl.classList.add("mode-circular");
+          joystickEl.classList.remove("mode-square");
+        } else {
+          joystickEl.classList.add("mode-square");
+          joystickEl.classList.remove("mode-circular");
+        }
+      }
+    }
+  }
+
+  const gamepad = document.getElementById("mobileGamepad");
+  if (gamepad) {
+    gamepad.classList.remove("layout-lefty", "layout-compact");
+    if (selectLayout === "lefty") {
+      gamepad.classList.add("layout-lefty");
+    } else if (selectLayout === "compact") {
+      gamepad.classList.add("layout-compact");
+    }
   }
 }
 

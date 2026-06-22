@@ -732,6 +732,22 @@
                     </div>
                   </div>
                   <div class="setting-row">
+                    <span>Mobile Controls Style</span>
+                    <select id="mobileControlsSelect" class="settings-select">
+                      <option value="joystick">Joystick (Circular)</option>
+                      <option value="fingerpad">Finger Pad (Square)</option>
+                      <option value="arrows">D-Pad / Arrows</option>
+                    </select>
+                  </div>
+                  <div class="setting-row">
+                    <span>In-Game UI Layout</span>
+                    <select id="uiLayoutSelect" class="settings-select">
+                      <option value="default">Default (Left/Right)</option>
+                      <option value="lefty">Lefty (Swapped)</option>
+                      <option value="compact">Compact (Inwards)</option>
+                    </select>
+                  </div>
+                  <div class="setting-row">
                     <span>Sound Effects Volume</span>
                     <input type="range" id="sfxVolumeSlider" min="0" max="100" value="80" style="cursor:pointer;" />
                   </div>
@@ -1127,6 +1143,14 @@
             <div class="arcade-screen">
               <canvas id="game" width="960" height="720"></canvas>
               
+              <!-- In-Game Chat Widget (Online Only) -->
+              <div id="ingameChatBox" class="ingame-chat-box hidden">
+                <div id="ingameChatMessages" class="ingame-chat-messages"></div>
+                <form id="ingameChatForm" class="ingame-chat-form">
+                  <input id="ingameChatInput" type="text" maxlength="64" placeholder="Press Enter to chat..." autocomplete="off" />
+                </form>
+              </div>
+              
               <!-- Floating Minimap Overlay -->
               <div id="brMinimapContainer" class="br-minimap-container hidden">
                 <canvas id="brMinimapCanvas" width="130" height="130"></canvas>
@@ -1185,11 +1209,18 @@
           </div>
 
           <!-- Mobile Virtual Gamepad -->
-          <div class="mobile-gamepad">
-            <div class="mobile-joystick-container">
-              <div id="mobileJoystick" class="couch-joystick" aria-label="Movement joystick">
+          <div class="mobile-gamepad" id="mobileGamepad">
+            <div class="mobile-joystick-container" id="mobileJoystickContainer">
+              <div id="mobileJoystick" class="couch-joystick mode-square" aria-label="Movement joystick">
                 <div class="couch-joystick-knob"></div>
               </div>
+            </div>
+            <!-- Mobile Virtual D-Pad / Arrows -->
+            <div id="mobileDpadContainer" class="mobile-dpad-container hidden">
+              <button id="btnTouchUp" class="dpad-btn btn-up" type="button" aria-label="Move Up">▲</button>
+              <button id="btnTouchLeft" class="dpad-btn btn-left" type="button" aria-label="Move Left">◀</button>
+              <button id="btnTouchRight" class="dpad-btn btn-right" type="button" aria-label="Move Right">▶</button>
+              <button id="btnTouchDown" class="dpad-btn btn-down" type="button" aria-label="Move Down">▼</button>
             </div>
             <div class="action-buttons">
               <button id="btnTouchPunch" class="gamepad-btn btn-action-punch" type="button" aria-label="Punch">
