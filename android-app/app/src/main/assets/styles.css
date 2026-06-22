@@ -5249,7 +5249,7 @@ body.is-mobile .arcade-controller {
   max-width: 80%;
   max-height: 170%;
   object-fit: contain;
-  margin-bottom: -70px;
+  margin-bottom: 20px;
   filter: drop-shadow(0 15px 20px rgba(0, 0, 0, 0.35));
 }
 

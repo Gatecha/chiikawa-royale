@@ -119,9 +119,9 @@
   document.querySelectorAll(".primary-cta, .secondary-cta, .download-chip").forEach((button) => {
     button.addEventListener("pointerdown", () => {
       button.animate([
-        { transform: "translateY(0)", boxShadow: "0 6px 0 #050306" },
-        { transform: "translateY(4px)", boxShadow: "0 2px 0 #050306" },
-        { transform: "translateY(0)", boxShadow: "0 6px 0 #050306" },
+        { transform: "translateY(0)", boxShadow: "0 6px 0 #2b2730" },
+        { transform: "translateY(4px)", boxShadow: "0 2px 0 #2b2730" },
+        { transform: "translateY(0)", boxShadow: "0 6px 0 #2b2730" },
       ], {
         duration: 180,
         easing: "ease-out",

@@ -11046,7 +11046,7 @@ function renderBRMVideo() {
         
         const dx = (brmCanvasEl.width - dw) / 2;
         // Position in the upper-middle of the canvas with float offset
-        const dy = (brmCanvasEl.height - dh) / 2 - 80 + floatOffset;
+        const dy = (brmCanvasEl.height - dh) / 2 + 10 + floatOffset;
         
         brmCtx.drawImage(brmIconImage, dx, dy, dw, dh);
       }
