@@ -667,6 +667,7 @@ function finishStartup() {
     studioSplashScreen.classList.remove("active");
     studioSplashScreen.style.display = "none";
   }
+  restoreConnectionPreference();
 }
 
 // Custom Map & Voting States
@@ -2008,6 +2009,8 @@ function handleServerMessage(msg) {
 let alphaWelcomeDialogShown = false;
 
 function switchScreen(targetScreen) {
+  const previousActiveScreen = [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].find((s) => s && s.classList.contains("active"));
+
   [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].forEach((s) => {
     if (s) s.classList.remove("active");
   });
@@ -2017,12 +2020,17 @@ function switchScreen(targetScreen) {
     document.body.classList.remove("local-couch-active");
   }
 
-  if (targetScreen === menuScreen && !alphaWelcomeDialogShown) {
-    alphaWelcomeDialogShown = true;
-    const dialog = document.getElementById("alphaWelcomeDialog");
-    if (dialog) {
-      dialog.classList.remove("hidden");
-      dialog.classList.add("active");
+  if (targetScreen === menuScreen) {
+    if (previousActiveScreen === gameScreen) {
+      restoreConnectionPreference();
+    }
+    if (!alphaWelcomeDialogShown) {
+      alphaWelcomeDialogShown = true;
+      const dialog = document.getElementById("alphaWelcomeDialog");
+      if (dialog) {
+        dialog.classList.remove("hidden");
+        dialog.classList.add("active");
+      }
     }
   }
 }
@@ -7471,13 +7479,22 @@ function bindMobileJoystick(joystick) {
     const rect = joystick.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
+    
+    // Position relative to pad center
     const dx = clientX - cx;
     const dy = clientY - cy;
-    const max = rect.width * 0.4;
-    const distance = Math.hypot(dx, dy);
-    const scale = distance > max ? max / distance : 1;
-    const knobX = dx * scale;
-    const knobY = dy * scale;
+    
+    // Clamp knob inside the square pad (independent X and Y clamping!)
+    const halfWidth = rect.width / 2;
+    const halfHeight = rect.height / 2;
+    const padPadding = 12; // margin from border
+    
+    const maxKnobX = halfWidth - padPadding;
+    const maxKnobY = halfHeight - padPadding;
+    
+    const knobX = Math.max(-maxKnobX, Math.min(maxKnobX, dx));
+    const knobY = Math.max(-maxKnobY, Math.min(maxKnobY, dy));
+    
     if (knob) knob.style.transform = `translate(${knobX}px, ${knobY}px)`;
 
     const touchKeys = getTouchKeySet();
@@ -7486,12 +7503,15 @@ function bindMobileJoystick(joystick) {
     touchKeys.delete("s");
     touchKeys.delete("d");
 
-    if (distance < rect.width * 0.15) return;
+    // Deadzone to prevent accidental movement on tiny touches near the center
+    const deadzone = rect.width * 0.12;
+    if (Math.abs(knobX) < deadzone && Math.abs(knobY) < deadzone) return;
 
-    if (Math.abs(dx) > Math.abs(dy)) {
-      touchKeys.add(dx < 0 ? "a" : "d");
+    // Map to direction based on dominant offset
+    if (Math.abs(knobX) > Math.abs(knobY)) {
+      touchKeys.add(knobX < 0 ? "a" : "d");
     } else {
-      touchKeys.add(dy < 0 ? "w" : "s");
+      touchKeys.add(knobY < 0 ? "w" : "s");
     }
   };
 
@@ -7674,6 +7694,9 @@ let sfxVolume = localStorage.getItem("sfxVolume") !== null ? parseInt(localStora
 let bgMusicEnabled = localStorage.getItem("bgMusicEnabled") !== null ? localStorage.getItem("bgMusicEnabled") === "true" : true;
 let bgMusicVolume = localStorage.getItem("bgMusicVolume") !== null ? parseInt(localStorage.getItem("bgMusicVolume")) : 50;
 
+// Preferred connection mode setting (online vs offline)
+let preferredConnectionMode = localStorage.getItem("chiikawaConnectionMode") !== null ? localStorage.getItem("chiikawaConnectionMode") : "online";
+
 bgMusic.volume = bgMusicVolume / 100;
 
 function initAudioSettings() {
@@ -7682,6 +7705,8 @@ function initAudioSettings() {
   const bgMusicVolumeSlider = document.getElementById("bgMusicVolumeSlider");
   const graphicsQualitySelect = document.getElementById("graphicsQualitySelect");
   const renderScaleSelect = document.getElementById("renderScaleSelect");
+  const connectionModeToggle = document.getElementById("connectionModeToggle");
+  const connectionModeLabel = document.getElementById("connectionModeLabel");
   
   if (sfxVolumeSlider) {
     sfxVolumeSlider.value = sfxVolume;
@@ -7739,7 +7764,86 @@ function initAudioSettings() {
       applyGraphicsSettings();
     });
   }
+
+  if (connectionModeToggle) {
+    connectionModeToggle.checked = preferredConnectionMode === "online";
+    if (connectionModeLabel) connectionModeLabel.textContent = preferredConnectionMode === "online" ? "Online" : "Offline";
+    
+    connectionModeToggle.addEventListener("change", (e) => {
+      preferredConnectionMode = e.target.checked ? "online" : "offline";
+      localStorage.setItem("chiikawaConnectionMode", preferredConnectionMode);
+      if (connectionModeLabel) connectionModeLabel.textContent = preferredConnectionMode === "online" ? "Online" : "Offline";
+      
+      restoreConnectionPreference();
+    });
+  }
 }
+
+function restoreConnectionPreference() {
+  const pref = localStorage.getItem("chiikawaConnectionMode") || "online";
+  const toggle = document.getElementById("connectionModeToggle");
+  const label = document.getElementById("connectionModeLabel");
+  if (toggle) {
+    toggle.checked = pref === "online";
+  }
+  if (label) {
+    label.textContent = pref === "online" ? "Online" : "Offline";
+  }
+
+  if (pref === "online" && navigator.onLine) {
+    serverMode = "online";
+    connectWebSocket(false);
+  } else {
+    serverMode = "local";
+    if (socket) {
+      try { socket.close(); } catch (e) {}
+      socket = null;
+    }
+    if (connectionStatusIndicator) {
+      connectionStatusIndicator.textContent = "Offline";
+      connectionStatusIndicator.className = "connection-status offline";
+    }
+  }
+}
+
+// Auto-reconnect listeners
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    console.log("App visible, checking connection preference...");
+    if (!running) {
+      restoreConnectionPreference();
+    } else if (serverMode === "online" && (!socket || socket.readyState === WebSocket.CLOSED)) {
+      connectWebSocket(false);
+    }
+  }
+});
+
+window.addEventListener("focus", () => {
+  console.log("App focused, checking connection preference...");
+  if (!running) {
+    restoreConnectionPreference();
+  } else if (serverMode === "online" && (!socket || socket.readyState === WebSocket.CLOSED)) {
+    connectWebSocket(false);
+  }
+});
+
+window.addEventListener("online", () => {
+  console.log("System came online.");
+  restoreConnectionPreference();
+});
+
+window.addEventListener("offline", () => {
+  console.log("System went offline.");
+  serverMode = "local";
+  if (socket) {
+    try { socket.close(); } catch (e) {}
+    socket = null;
+  }
+  if (connectionStatusIndicator) {
+    connectionStatusIndicator.textContent = "Offline";
+    connectionStatusIndicator.className = "connection-status offline";
+  }
+});
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAudioSettings);
