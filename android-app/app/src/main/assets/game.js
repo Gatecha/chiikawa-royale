@@ -332,7 +332,8 @@ function reloadActiveVideosSettings() {
     }
   }
 
-  // Update matchmaking video
+  // Update matchmaking video disabled (now using static logo icon)
+  /*
   if (brmVideoEl && brmActive) {
     const matchmakingVideos = {
       chiikawa: "assets/matchmaking_animations/chiikawa_br_matchmaking_animation.mp4",
@@ -348,6 +349,7 @@ function reloadActiveVideosSettings() {
       playMutedLoop(brmVideoEl);
     }
   }
+  */
 
   // Update victory video
   if (victoryVideo) {
@@ -10897,6 +10899,8 @@ function showBRResultsLocal() {
 let brmCanvasEl = null;
 let brmCtx = null;
 let brmTempCanvas = null;
+let brmIconImage = new Image();
+brmIconImage.src = "assets/chiikawa-royale-characters.png";
 let brmTempCtx = null;
 let brmAnimationId = null;
 let brmPlayerCountVal = 1;
@@ -10989,6 +10993,7 @@ function showBRMatchmakingScreen(chosenMode) {
     brmCanvasEl.classList.add("falling");
   }
   
+  /*
   const matchmakingVideos = {
     chiikawa: "assets/matchmaking_animations/chiikawa_br_matchmaking_animation.mp4",
     hachiware: "assets/matchmaking_animations/hachiware_br_matchmaking_animation.mp4",
@@ -10999,6 +11004,7 @@ function showBRMatchmakingScreen(chosenMode) {
   brmVideoEl.src = getVideoSrc(videoSrc);
   brmVideoEl.load();
   playMutedLoop(brmVideoEl);
+  */
   
   if (brmAnimationId) cancelAnimationFrame(brmAnimationId);
   renderBRMVideo();
@@ -11021,43 +11027,29 @@ function showBRMatchmakingScreen(chosenMode) {
 function renderBRMVideo() {
   if (!brmActive) return;
   
-  if (brmVideoEl && brmVideoEl.readyState >= 2 && brmCanvasEl && brmCtx) {
-    const vw = brmVideoEl.videoWidth;
-    const vh = brmVideoEl.videoHeight;
+  if (brmCanvasEl && brmCtx) {
+    brmCtx.clearRect(0, 0, brmCanvasEl.width, brmCanvasEl.height);
     
-    if (vw && vh) {
-      if (brmTempCanvas.width !== vw || brmTempCanvas.height !== vh) {
-        brmTempCanvas.width = vw;
-        brmTempCanvas.height = vh;
-      }
+    if (brmIconImage && brmIconImage.complete) {
+      const vw = brmIconImage.width;
+      const vh = brmIconImage.height;
       
-      brmTempCtx.drawImage(brmVideoEl, 0, 0, vw, vh);
-      
-      const frame = brmTempCtx.getImageData(0, 0, vw, vh);
-      const data = frame.data;
-      const l = data.length / 4;
-      
-      for (let i = 0; i < l; i++) {
-        const r = data[i * 4 + 0];
-        const g = data[i * 4 + 1];
-        const b = data[i * 4 + 2];
+      if (vw && vh) {
+        // Compute slow smooth floating animation offset
+        const floatOffset = Math.sin(Date.now() / 400) * 15;
         
-        if (g > 65 && g > r * 1.22 && g > b * 1.22) {
-          data[i * 4 + 3] = 0;
-        }
+        // Scale to fit 85% of canvas width
+        const targetWidth = brmCanvasEl.width * 0.85;
+        const scale = targetWidth / vw;
+        const dw = vw * scale;
+        const dh = vh * scale;
+        
+        const dx = (brmCanvasEl.width - dw) / 2;
+        // Position in the upper-middle of the canvas with float offset
+        const dy = (brmCanvasEl.height - dh) / 2 - 80 + floatOffset;
+        
+        brmCtx.drawImage(brmIconImage, dx, dy, dw, dh);
       }
-      
-      brmTempCtx.putImageData(frame, 0, 0);
-      
-      brmCtx.clearRect(0, 0, brmCanvasEl.width, brmCanvasEl.height);
-      
-      const scale = Math.min(brmCanvasEl.width / vw, brmCanvasEl.height / vh) * 1.55;
-      const dw = vw * scale;
-      const dh = vh * scale;
-      const dx = (brmCanvasEl.width - dw) / 2;
-      const dy = (brmCanvasEl.height - dh) / 2 - 50;
-      
-      brmCtx.drawImage(brmTempCanvas, dx, dy, dw, dh);
     }
   }
   

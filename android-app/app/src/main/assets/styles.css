@@ -8082,6 +8082,7 @@ body.graphics-low .yellow-console {
 
 /* Falling vertical slanted speed lines background */
 .brm-bg-rays {
+  display: none;
   position: absolute;
   top: -200px;
   left: -100px;
