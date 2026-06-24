@@ -7751,6 +7751,7 @@ function safeRequestFullscreen(el) {
 
 // Automatically enter fullscreen on first user touch/click for mobile/tablet devices
 function autoEnterFullscreen() {
+  if (/iPhone|iPod/.test(navigator.userAgent)) return;
   if (isFullscreenActive()) return;
   safeRequestFullscreen();
   document.removeEventListener("touchstart", autoEnterFullscreen);
@@ -9073,8 +9074,19 @@ function initMobileFullscreenPrompt() {
   const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
   const isMobileOrTablet = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Tablet/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth <= 1366) || isCoarsePointer;
   
+  const isIPhone = /iPhone|iPod/.test(navigator.userAgent);
+  if (isIPhone) {
+    document.body.classList.add("is-iphone");
+  }
+  
   if (isMobileOrTablet) {
     document.body.classList.add("is-mobile");
+    
+    // iPhones do not support fullscreen API for elements, so we skip the fullscreen prompt
+    if (isIPhone) {
+      document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+      return;
+    }
     
     // Only show fullscreen prompt in web browser (not in Android APK where protocol is file:)
     if (window.location.protocol !== "file:") {

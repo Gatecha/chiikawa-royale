@@ -8966,3 +8966,260 @@ body.graphics-low .yellow-console {
   right: auto;
   left: 50px;
 }
+
+/* ==========================================================================
+   IPHONE & MOBILE LANDSCAPE RESPONSIVE FIXES (PREVENTS CUTOFF)
+   ========================================================================== */
+
+/* Lock body dynamic viewport height on iPhone to prevent scroll bounce */
+body.is-iphone {
+  position: fixed;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+}
+
+/* Safe Area Notch protections for headers and footers */
+.console-header {
+  padding-left: max(16px, env(safe-area-inset-left, 0px)) !important;
+  padding-right: max(16px, env(safe-area-inset-right, 0px)) !important;
+}
+.console-footer {
+  padding-left: max(16px, env(safe-area-inset-left, 0px)) !important;
+  padding-right: max(16px, env(safe-area-inset-right, 0px)) !important;
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (max-height: 540px) and (orientation: landscape) {
+  /* 1. Viewport & main containers fit */
+  .yellow-console {
+    height: 100% !important;
+    height: 100dvh !important;
+    min-height: 100% !important;
+    min-height: 100dvh !important;
+  }
+  
+  /* 2. Title / Intro Screen UI scaling */
+  .title-characters-wrapper {
+    height: 110px !important;
+  }
+  .title-characters-img {
+    max-height: 140% !important;
+    margin-bottom: 0px !important;
+  }
+  .title-screen-content {
+    padding: 8px 16px !important;
+    gap: 4px !important;
+  }
+  .btn-title-play {
+    font-size: 22px !important;
+    padding: 6px 36px !important;
+    box-shadow: 0 4px 0px var(--ink), 0 6px 10px rgba(0, 0, 0, 0.25) !important;
+  }
+  .title-footer {
+    padding: 4px max(16px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)) !important;
+    gap: 4px !important;
+  }
+  .title-footer-text {
+    font-size: 9px !important;
+  }
+  .btn-discord-footer {
+    padding: 4px 8px !important;
+    font-size: 9px !important;
+  }
+  
+  /* 3. Squad Lobby Screen Slanted Cards row scaling */
+  .squad-lobby-container {
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)) !important;
+  }
+  .lobby-mode-selection {
+    margin-bottom: 4px !important;
+  }
+  .lobby-mode-btn {
+    font-size: 11px !important;
+    padding: 4px 12px !important;
+    height: 30px !important;
+  }
+  .lobby-cards-row {
+    flex-wrap: nowrap !important;
+    gap: 16px !important;
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
+  }
+  .lobby-card-wrapper {
+    flex: none !important;
+  }
+  .lobby-card {
+    height: 48cqh !important;
+    min-height: 125px !important;
+    aspect-ratio: 0.58 !important;
+    width: auto !important;
+    border-width: 2.5px !important;
+    border-radius: 12px !important;
+    box-shadow: 3px 3px 0px var(--ink) !important;
+  }
+  .lobby-card .card-footer-bar {
+    height: 32px !important;
+    padding: 2px 6px !important;
+  }
+  .lobby-card .user-info .user-name {
+    font-size: 9px !important;
+  }
+  .lobby-card .user-info .user-level {
+    font-size: 7px !important;
+  }
+  .lobby-card .invite-btn {
+    font-size: 20px !important;
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  /* 4. Play Tab Screen (Showcase character and Gamemodes) */
+  #tabContent_play {
+    flex-direction: row !important;
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)) !important;
+    gap: 16px !important;
+    overflow-y: auto !important;
+  }
+  .premium-play-showcase {
+    min-height: auto !important;
+    height: 100% !important;
+    padding: 0 !important;
+    max-width: 170px !important;
+  }
+  .showcase-glow-aura {
+    width: 170px !important;
+    height: 220px !important;
+  }
+  .showcase-card-container {
+    width: 125px !important;
+    height: 200px !important;
+    border-radius: 12px !important;
+    border-width: 2.5px !important;
+    margin-bottom: 0px !important;
+    box-shadow: 3px 3px 0px #000 !important;
+  }
+  .showcase-card-footer {
+    padding: 3px 6px !important;
+    height: 34px !important;
+  }
+  .showcase-char-name {
+    font-size: 10px !important;
+  }
+  .showcase-user-name {
+    font-size: 7px !important;
+  }
+  .showcase-level-badge {
+    font-size: 8px !important;
+    padding: 1px 3px !important;
+  }
+  .showcase-stats-panel {
+    display: none !important;
+  }
+  .gamemodes-selection-container {
+    padding: 12px !important;
+    border-radius: 12px !important;
+    border-width: 2.5px !important;
+    max-width: 480px !important;
+    gap: 8px !important;
+    box-shadow: 4px 4px 0px var(--ink) !important;
+  }
+  .gamemodes-selection-container h2 {
+    font-size: 16px !important;
+    -webkit-text-stroke: 1px var(--ink) !important;
+  }
+  .gamemode-section h3 {
+    font-size: 10px !important;
+  }
+  .gamemode-buttons-grid {
+    gap: 6px !important;
+  }
+  .gamemode-buttons-grid .btn {
+    padding: 8px 4px !important;
+    border-radius: 8px !important;
+    border-width: 2px !important;
+  }
+  .gamemode-buttons-grid svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .gamemode-buttons-grid span {
+    font-size: 8.5px !important;
+  }
+  
+  /* 5. Customization Wardrobe card grid scroll */
+  .select-card-panel {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* 6. Overlays fullscreen bounds */
+  .overlay,
+  .br-matchmaking-overlay,
+  .orientation-warning-overlay,
+  .studio-splash-overlay {
+    height: 100% !important;
+    height: 100dvh !important;
+  }
+  
+  /* 7. Gameplay Touch Controls safe areas */
+  .mobile-joystick-container {
+    left: calc(max(80px, env(safe-area-inset-left, 0px) + 20px)) !important;
+    bottom: calc(max(40px, env(safe-area-inset-bottom, 0px) + 10px)) !important;
+  }
+  .action-buttons {
+    right: calc(max(24px, env(safe-area-inset-right, 0px) + 12px)) !important;
+    bottom: calc(max(24px, env(safe-area-inset-bottom, 0px) + 10px)) !important;
+  }
+  
+  /* 8. Gameplay Screen active fit */
+  #gameScreen.active,
+  .game-layout,
+  .arcade-cabinet {
+    height: 100% !important;
+    height: 100dvh !important;
+  }
+  canvas#game {
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: 100% !important;
+    max-height: 100dvh !important;
+  }
+  
+  /* 9. Login/Signup Screen form group spacing to avoid cutoff */
+  .auth-console, .intro-console {
+    padding: 12px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .auth-card, .intro-card {
+    padding: 16px !important;
+    max-width: 400px !important;
+    border-radius: 16px !important;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+  }
+  .auth-title {
+    font-size: 24px !important;
+    margin-bottom: 4px !important;
+  }
+  .auth-subtitle {
+    font-size: 11px !important;
+    margin-bottom: 12px !important;
+  }
+  .form-group {
+    margin-bottom: 10px !important;
+  }
+  .form-group label {
+    font-size: 11px !important;
+    margin-bottom: 4px !important;
+  }
+  .form-group input {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+  .auth-buttons {
+    margin-top: 12px !important;
+  }
+}
