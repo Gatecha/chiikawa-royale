@@ -7751,6 +7751,7 @@ function safeRequestFullscreen(el) {
 
 // Automatically enter fullscreen on first user touch/click for mobile/tablet devices
 function autoEnterFullscreen() {
+  if (/iPhone|iPod/.test(navigator.userAgent)) return;
   if (isFullscreenActive()) return;
   safeRequestFullscreen();
   document.removeEventListener("touchstart", autoEnterFullscreen);
@@ -7774,8 +7775,12 @@ if (document.readyState === "loading") {
 // INITIALIZATION
 // ----------------------------------------------------------------
 
-// Initialize WebSocket.
-connectWebSocket();
+// Initialize WebSocket if online.
+if (navigator.onLine) {
+  connectWebSocket();
+} else {
+  console.log("Device is offline. Skipping initial WebSocket connection.");
+}
 
 // Fullscreen Toggle Event Listener
 const fullscreenToggleBtn = document.getElementById("fullscreenToggleBtn");
@@ -9073,8 +9078,19 @@ function initMobileFullscreenPrompt() {
   const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
   const isMobileOrTablet = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Tablet/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth <= 1366) || isCoarsePointer;
   
+  const isIPhone = /iPhone|iPod/.test(navigator.userAgent);
+  if (isIPhone) {
+    document.body.classList.add("is-iphone");
+  }
+  
   if (isMobileOrTablet) {
     document.body.classList.add("is-mobile");
+    
+    // iPhones do not support fullscreen API for elements, so we skip the fullscreen prompt
+    if (isIPhone) {
+      document.getElementById("mobileFullscreenReminder")?.classList.add("hidden");
+      return;
+    }
     
     // Only show fullscreen prompt in web browser (not in Android APK where protocol is file:)
     if (window.location.protocol !== "file:") {
@@ -9114,6 +9130,14 @@ function initMobileFullscreenPrompt() {
 
 async function checkInitialSession() {
   initMobileFullscreenPrompt();
+
+  // If the device is offline, skip trying to connect online and bypass Supabase checks
+  if (!navigator.onLine) {
+    console.log("Offline mode detected. Skipping online connection and Supabase check.");
+    serverMode = "local";
+    initIntroSequence();
+    return;
+  }
 
   if (serverMode === "local") {
     initIntroSequence();
@@ -9155,8 +9179,7 @@ async function checkInitialSession() {
       initIntroSequence();
     }
   } catch (err) {
-    console.error("Initial session check failed:", err);
-    showAppError("Startup auth check failed. Loading offline menu.", err.message || err);
+    console.warn("Initial session check failed (likely offline or network issue):", err);
     initIntroSequence();
   }
 }
@@ -9935,8 +9958,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Online Play Selected
   btnSelectOnline?.addEventListener("click", () => {
+    if (!navigator.onLine) {
+      alert("You are currently offline. Please connect to the internet to play online mode.");
+      return;
+    }
     startModeSelectionDialog?.classList.add("hidden");
     checkAuthSession();
+  });
+
+  // LAN Mode Selected directly from startup dialog
+  const btnSelectLan = document.getElementById("btnSelectLan");
+  btnSelectLan?.addEventListener("click", () => {
+    startModeSelectionDialog?.classList.add("hidden");
+    
+    // Prompt for nickname
+    const savedName = localStorage.getItem("local_username") || "Friend";
+    const nickname = prompt("Enter your nickname for LAN mode:", savedName);
+    if (nickname === null) {
+      // Cancelled, go back
+      startModeSelectionDialog?.classList.remove("hidden");
+      return;
+    }
+    const cleanName = nickname.trim() || "Friend";
+    localStorage.setItem("local_username", cleanName);
+    if (usernameInput) usernameInput.value = cleanName;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = cleanName;
+    
+    serverMode = "local";
+    updateProgressionUI();
+    switchScreen(menuScreen);
+    connectWebSocket(true);
+    tryPlayMusic();
   });
 
   // Local Play Selected
