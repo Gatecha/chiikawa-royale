@@ -240,7 +240,8 @@ function handleMessage(ws, msg) {
         type: "voice_chat_audio",
         data: {
           playerId: ws.id,
-          audio: data.audio
+          audio: data.audio,
+          sampleRate: data.sampleRate
         }
       });
       wss.clients.forEach((client) => {

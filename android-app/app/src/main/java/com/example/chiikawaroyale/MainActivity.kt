@@ -6,9 +6,14 @@ import android.os.Bundle
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebChromeClient
+import android.webkit.PermissionRequest
+import android.Manifest
+import android.content.pm.PackageManager
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private var pendingPermissionRequest: PermissionRequest? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,6 +21,25 @@ class MainActivity : Activity() {
         
         webView = WebView(this)
         webView.webViewClient = WebViewClient()
+        
+        // Handle media permissions in WebView (e.g. microphone)
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val resources = request.resources
+                for (resource in resources) {
+                    if (resource == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
+                        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                        } else {
+                            pendingPermissionRequest = request
+                            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 101)
+                        }
+                        return
+                    }
+                }
+                super.onPermissionRequest(request)
+            }
+        }
         
         val settings = webView.settings
         settings.javaScriptEnabled = true
@@ -51,6 +75,17 @@ class MainActivity : Activity() {
         setContentView(webView)
         webView.setInitialScale(88)
         webView.loadUrl("file:///android_asset/index.html")
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode == 101) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                pendingPermissionRequest?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+            } else {
+                pendingPermissionRequest?.deny()
+            }
+            pendingPermissionRequest = null
+        }
     }
 
     @Suppress("DEPRECATION")

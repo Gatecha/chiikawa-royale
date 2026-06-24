@@ -794,7 +794,7 @@
 
           <!-- Bottom Console Info -->
           <footer class="console-footer" style="min-height: 42px; height: auto; padding: 6px 16px; justify-content: space-between; gap: 8px; align-items: center; display: flex; box-sizing: border-box; width: 100%;">
-            <span class="badge-text" style="font-size: 11px; font-weight: 600; line-height: 1.4; text-shadow: none; color: #ffffff; letter-spacing: 0.2px; flex: 1; margin-right: 8px;">
+            <span class="badge-text" style="font-size: 11px; font-weight: 600; line-height: 1.4; text-shadow: none; color: #000000; letter-spacing: 0.2px; flex: 1; margin-right: 8px;">
               This game is still in its alpha stage, expect major bugs and optimization issues. If you want to send feedback please send it through our Discord channel:
             </span>
             <a href="https://discord.gg/qpJRXkKzZ3" target="_blank" class="btn-discord-footer" style="display: inline-flex; align-items: center; gap: 4px; background: #5865F2; color: #ffffff; padding: 6px 10px; border-radius: 6px; font-family: 'Fredoka', sans-serif; font-size: 11px; font-weight: 800; text-decoration: none; border: 2px solid #221f25; box-shadow: 1.5px 1.5px 0px #221f25; cursor: pointer; white-space: nowrap; flex-shrink: 0;">
@@ -1131,7 +1131,10 @@
 
           <!-- Bottom Center Area -->
           <div class="hud-bottom-bar">
-            <button id="leaveGameBtn" class="btn btn-sm btn-danger" type="button"><span>Surrender</span></button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button id="leaveGameBtn" class="btn btn-sm btn-danger" type="button"><span>Surrender</span></button>
+              <button id="gameMicBtn" class="btn btn-sm mic-btn" type="button" style="display: none; padding: 6px 12px; font-family: var(--font); font-size: 12px; border-radius: 8px; text-transform: uppercase; font-weight: 700; border: 2px solid var(--ink); box-shadow: 2px 2px 0px var(--ink); cursor: pointer; transition: background 0.2s;">🎙️ Mic: OFF</button>
+            </div>
             <div id="hudGeneralMessage" class="hud-general-msg hidden"></div>
           </div>
 

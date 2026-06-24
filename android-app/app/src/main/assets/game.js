@@ -1761,7 +1761,7 @@ function handleServerMessage(msg) {
         const vol = playerVolumeSettings[data.playerId] !== undefined ? playerVolumeSettings[data.playerId] : 1.0;
         const isMuted = !!playerMutedSettings[data.playerId];
         if (!isMuted) {
-          playRawPCMAudio(data.audio, data.sampleRate || 16000, vol);
+          playRawPCMAudio(data.playerId, data.audio, data.sampleRate || 16000, vol);
         }
 
         if (talkingTimeouts[data.playerId]) clearTimeout(talkingTimeouts[data.playerId]);
@@ -2026,6 +2026,8 @@ function switchScreen(targetScreen) {
     document.getElementById("couchControlPicker")?.classList.add("hidden");
     document.body.classList.remove("local-couch-active");
     document.getElementById("ingameChatBox")?.classList.add("hidden");
+    const gameMicBtn = document.getElementById("gameMicBtn");
+    if (gameMicBtn) gameMicBtn.style.display = "none";
   } else {
     const chatBox = document.getElementById("ingameChatBox");
     const chatMsgs = document.getElementById("ingameChatMessages");
@@ -2038,6 +2040,15 @@ function switchScreen(targetScreen) {
     }
     if (chatMsgs) {
       chatMsgs.innerHTML = "";
+    }
+    const gameMicBtn = document.getElementById("gameMicBtn");
+    if (gameMicBtn) {
+      if (serverMode === "online") {
+        gameMicBtn.style.display = "block";
+        updateMicButtonUI();
+      } else {
+        gameMicBtn.style.display = "none";
+      }
     }
   }
 
@@ -11218,13 +11229,47 @@ function hideBRMatchmaking() {
 
 let recordProcessor = null;
 let recordSource = null;
+let dummyGainNode = null;
 let audioCtxRecord = null;
 let audioStream = null;
 let isMicActive = false;
+let playerVoiceQueues = {}; // playerId -> nextPlayTime
+
+function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+  if (inputSampleRate === outputSampleRate) {
+    return buffer;
+  }
+  if (inputSampleRate < outputSampleRate) {
+    return buffer;
+  }
+  const sampleRateRatio = inputSampleRate / outputSampleRate;
+  const newLength = Math.round(buffer.length / sampleRateRatio);
+  const result = new Float32Array(newLength);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+  while (offsetResult < result.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+    let accum = 0, count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+      accum += buffer[i];
+      count++;
+    }
+    result[offsetResult] = count > 0 ? accum / count : 0;
+    offsetResult++;
+    offsetBuffer = nextOffsetBuffer;
+  }
+  return result;
+}
 
 async function startMicCapture() {
   try {
-    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
     
     audioCtxRecord = new (window.AudioContext || window.webkitAudioContext)();
     const sampleRate = audioCtxRecord.sampleRate;
@@ -11233,16 +11278,28 @@ async function startMicCapture() {
     // Buffer size 8192 (~185ms at 44.1kHz, ~170ms at 48kHz)
     recordProcessor = audioCtxRecord.createScriptProcessor(8192, 1, 1);
     
+    // dummyGainNode set to 0 to prevent local loopback to output speakers
+    dummyGainNode = audioCtxRecord.createGain();
+    dummyGainNode.gain.value = 0.0;
+    
     recordProcessor.onaudioprocess = (e) => {
+      // Clear output buffer to be absolutely sure there is no leak/feedback loop
+      const outputBuffer = e.outputBuffer;
+      for (let channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
+        outputBuffer.getChannelData(channel).fill(0);
+      }
+      
       if (socket && socket.readyState === WebSocket.OPEN) {
         const inputData = e.inputBuffer.getChannelData(0); // Float32Array
+        const targetSampleRate = 16000;
+        const downsampledData = downsampleBuffer(inputData, sampleRate, targetSampleRate);
         
         // Convert Float32 to Int16 to save bandwidth
-        const buffer = new ArrayBuffer(inputData.length * 2);
+        const buffer = new ArrayBuffer(downsampledData.length * 2);
         const view = new DataView(buffer);
         let sum = 0;
-        for (let i = 0; i < inputData.length; i++) {
-          let s = Math.max(-1, Math.min(1, inputData[i]));
+        for (let i = 0; i < downsampledData.length; i++) {
+          let s = Math.max(-1, Math.min(1, downsampledData[i]));
           sum += s * s;
           view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         }
@@ -11255,11 +11312,11 @@ async function startMicCapture() {
           binary += String.fromCharCode.apply(null, uint8.subarray(i, i + chunkSize));
         }
         const base64data = btoa(binary);
-        sendServerMessage("voice_chat_audio", { audio: base64data, sampleRate: sampleRate });
+        sendServerMessage("voice_chat_audio", { audio: base64data, sampleRate: targetSampleRate });
         
         // Local player talking indicator based on volume threshold
         if (localPlayerId) {
-          let rms = Math.sqrt(sum / inputData.length);
+          let rms = Math.sqrt(sum / downsampledData.length);
           if (rms > 0.015) { // Voice active threshold
             if (talkingTimeouts[localPlayerId]) clearTimeout(talkingTimeouts[localPlayerId]);
             talkingPlayers[localPlayerId] = true;
@@ -11274,7 +11331,8 @@ async function startMicCapture() {
     };
     
     recordSource.connect(recordProcessor);
-    recordProcessor.connect(audioCtxRecord.destination);
+    recordProcessor.connect(dummyGainNode);
+    dummyGainNode.connect(audioCtxRecord.destination);
     
     isMicActive = true;
     updateMicButtonUI();
@@ -11295,6 +11353,9 @@ function stopMicCapture() {
   if (recordSource) {
     try { recordSource.disconnect(); } catch (e) {}
   }
+  if (dummyGainNode) {
+    try { dummyGainNode.disconnect(); } catch (e) {}
+  }
   if (audioCtxRecord) {
     try { audioCtxRecord.close(); } catch (e) {}
   }
@@ -11305,6 +11366,7 @@ function stopMicCapture() {
   }
   recordProcessor = null;
   recordSource = null;
+  dummyGainNode = null;
   audioCtxRecord = null;
   audioStream = null;
   isMicActive = false;
@@ -11314,7 +11376,7 @@ function stopMicCapture() {
 
 function toggleLobbyMic() {
   if (serverMode !== "online" || !roomCode) {
-    showToastMsg("Voice chat is only available in online squad lobbies! ⚠️");
+    showToastMsg("Voice chat is only available in online matches and lobbies! ⚠️");
     return;
   }
   if (isMicActive) {
@@ -11326,23 +11388,43 @@ function toggleLobbyMic() {
 
 function updateMicButtonUI() {
   const micBtn = document.getElementById("lobbyMicBtn");
-  if (!micBtn) return;
-  if (isMicActive) {
-    micBtn.classList.add("active");
-    micBtn.style.background = "var(--green)";
-    micBtn.style.color = "#fff";
-  } else {
-    micBtn.classList.remove("active");
-    micBtn.style.background = "";
-    micBtn.style.color = "";
+  const gameMicBtn = document.getElementById("gameMicBtn");
+  
+  if (micBtn) {
+    if (isMicActive) {
+      micBtn.classList.add("active");
+      micBtn.style.background = "var(--green)";
+      micBtn.style.color = "#fff";
+    } else {
+      micBtn.classList.remove("active");
+      micBtn.style.background = "";
+      micBtn.style.color = "";
+    }
+  }
+  
+  if (gameMicBtn) {
+    if (isMicActive) {
+      gameMicBtn.classList.add("active");
+      gameMicBtn.style.background = "var(--green)";
+      gameMicBtn.style.color = "#fff";
+      gameMicBtn.innerHTML = "🎙️ Mic: ON";
+    } else {
+      gameMicBtn.classList.remove("active");
+      gameMicBtn.style.background = "var(--red)";
+      gameMicBtn.style.color = "#fff";
+      gameMicBtn.innerHTML = "🎙️ Mic: OFF";
+    }
   }
 }
 
 let audioCtxVoice = null;
-function playRawPCMAudio(base64Data, sampleRate = 44100, volume = 1.0) {
+function playRawPCMAudio(playerId, base64Data, sampleRate = 16000, volume = 1.0) {
   try {
     if (!audioCtxVoice) {
       audioCtxVoice = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtxVoice.state === "suspended") {
+      audioCtxVoice.resume();
     }
     
     // Decode base64 to array buffer of Int16
@@ -11361,6 +11443,15 @@ function playRawPCMAudio(base64Data, sampleRate = 44100, volume = 1.0) {
       channelData[i] = int16Array[i] / 32768.0;
     }
     
+    // Sequential scheduling using jitter buffer queue
+    let nextPlayTime = playerVoiceQueues[playerId] || 0;
+    const now = audioCtxVoice.currentTime;
+    const lookahead = 0.05; // 50ms buffer to absorb network jitter
+    
+    if (nextPlayTime < now || nextPlayTime - now > 0.3) {
+      nextPlayTime = now + lookahead;
+    }
+    
     const source = audioCtxVoice.createBufferSource();
     source.buffer = audioBuffer;
     
@@ -11369,7 +11460,9 @@ function playRawPCMAudio(base64Data, sampleRate = 44100, volume = 1.0) {
     
     source.connect(gainNode);
     gainNode.connect(audioCtxVoice.destination);
-    source.start();
+    
+    source.start(nextPlayTime);
+    playerVoiceQueues[playerId] = nextPlayTime + audioBuffer.duration;
   } catch (e) {
     console.error("Failed to play raw PCM audio chunk:", e);
   }
@@ -11380,6 +11473,11 @@ function initVoiceChatAndLobbyModeUI() {
   if (micBtn && !micBtn.dataset.bound) {
     micBtn.dataset.bound = "true";
     micBtn.addEventListener("click", toggleLobbyMic);
+  }
+  const gameMicBtn = document.getElementById("gameMicBtn");
+  if (gameMicBtn && !gameMicBtn.dataset.bound) {
+    gameMicBtn.dataset.bound = "true";
+    gameMicBtn.addEventListener("click", toggleLobbyMic);
   }
 
   const btnLobbyModeTeam = document.getElementById("btnLobbyModeTeam");
