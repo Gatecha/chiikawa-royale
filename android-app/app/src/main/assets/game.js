@@ -11942,3 +11942,48 @@ function bindKnockListenersOnce() {
     }
   });
 }
+
+
+// =================================================================
+// GAMEMODES POPUP MODAL LOGIC
+// =================================================================
+
+function closeGamemodesPopup() {
+  const popup = document.getElementById("gamemodesPopup");
+  if (popup) popup.classList.add("hidden");
+}
+
+function openGamemodesPopup() {
+  const popup = document.getElementById("gamemodesPopup");
+  if (popup) popup.classList.remove("hidden");
+}
+
+function bindGamemodesPopupListeners() {
+  document.getElementById("btnOpenGamemodesPopup")?.addEventListener("click", openGamemodesPopup);
+  document.getElementById("closeGamemodesBtn")?.addEventListener("click", closeGamemodesPopup);
+  document.getElementById("gamemodesPopup")?.addEventListener("click", (e) => {
+    if (e.target === document.getElementById("gamemodesPopup")) {
+      closeGamemodesPopup();
+    }
+  });
+
+  const modeButtons = [
+    "btnPlayOfflineSingle",
+    "btnPlayOfflineFour",
+    "btnPlayOfflineBots",
+    "btnPlayOnlineMultiplayer",
+    "btnPlayOnlineBR"
+  ];
+  modeButtons.forEach(id => {
+    document.getElementById(id)?.addEventListener("click", () => {
+      closeGamemodesPopup();
+    });
+  });
+}
+
+// Bind immediately (or wait for DOM if not fully loaded)
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  bindGamemodesPopupListeners();
+} else {
+  document.addEventListener("DOMContentLoaded", bindGamemodesPopupListeners);
+}
