@@ -11625,187 +11625,6 @@ let knockActiveContactId = null;
 let knockChats = {};
 let knockListenersBound = false;
 
-const zzzScripts = {
-  zzz_unknown: {
-    steps: [
-      {
-        msg: "「Random Play」 비디오 가게죠~?",
-        choices: [
-          { text: "네, 맞습니다", nextStep: 1 },
-          { text: "누구세요?", nextStep: 2 }
-        ]
-      },
-      {
-        msg: "아! 다행이다! 혹시 특수 카테고리 테이프 중에 '치이카와 배틀로얄' 있나요? 한정판이라 다른 데선 안 팔더라고요...",
-        choices: [
-          { text: "네, 대여 가능해요!", nextStep: 3 },
-          { text: "그건 예약제예요", nextStep: 4 }
-        ]
-      },
-      {
-        msg: "아, 실례했습니다! 저는 뉴에리두의 로프꾼인데, 영상 아카이브 보다가 번호를 잘못 입력했나 봐요... 죄송해요!",
-        choices: [
-          { text: "괜찮습니다", nextStep: 5 },
-          { text: "로프꾼이 뭐죠?", nextStep: 5 }
-        ]
-      },
-      {
-        msg: "와! 대박! 지금 당장 빌리러 갈게요! 가게 위치가 6단지 맞죠?",
-        choices: [
-          { text: "네, 어서 오세요!", nextStep: 6 },
-          { text: "벌써 문 닫았어요", nextStep: 6 }
-        ]
-      },
-      {
-        msg: "흑... 그렇군요. 역시 엄청 귀한 작품이라... 그럼 예약자 명단에 제 이름을 올려주실 수 있나요?",
-        choices: [
-          { text: "이름을 알려주세요", nextStep: 6 },
-          { text: "예약이 가득 찼어요", nextStep: 6 }
-        ]
-      },
-      {
-        msg: "감사합니다! 다음에 6단지 근처 갈 일 있으면 비디오 빌리러 갈게요! 좋은 하루 보내세요! ✨",
-        choices: []
-      },
-      {
-        msg: "네! 바로 갈게요! 좀 이따 봬요! 😊",
-        choices: []
-      }
-    ],
-    quotes: [
-      "와, 비디오 가게 일이 엄청 바쁘시네요!",
-      "테이프 빌릴 준비 해 둘게요. 로프꾼으로 일하러 가야 돼서 이만!",
-      "치이카와 배틀로얄 비디오 테이프 돌려보는 중이에요. 정말 재밌네요!",
-      "뉴에리두 6단지에 오시면 'Random Play'에 꼭 들러주세요!"
-    ]
-  },
-  zzz_ben: {
-    steps: [
-      {
-        msg: "이보게! 벨로보그 중공업의 벤이다. 저번에 부탁했던 안전 수칙 계산 자료는 다 보냈다네. 잘 받았나?",
-        choices: [
-          { text: "네, 확인했어요!", nextStep: 1 },
-          { text: "어떤 자료요?", nextStep: 2 }
-        ]
-      },
-      {
-        msg: "오! 다행이군. 안전 계수를 1.5배로 상향 조정해 두었으니 안심하고 작업에 쓰게나. 그럼 현장에서 보세!",
-        choices: []
-      },
-      {
-        msg: "허허, 바쁜 모양이군. 기둥 강도랑 폭탄 가열 온도 분산 비율에 관한 수학 계산서 말일세. 내 메일을 다시 확인해 보게나.",
-        choices: []
-      }
-    ],
-    quotes: [
-      "오늘도 안전 제일일세! 강도를 아끼지 말게나.",
-      "숫자는 거짓말을 하지 않지. 계산 오류는 목숨과 직결된다네.",
-      "벨로보그 중공업은 튼튼한 건축물과 안전을 자부하지!",
-      "혹시 수학 계산이 더 필요하면 언제든지 나에게 물어보게나."
-    ]
-  },
-  zzz_anton: {
-    steps: [
-      {
-        msg: "어이 형씨! 오늘 드릴 훈련 강도는 최고 수치로 해 뒀어! 준비운동은 철저히 하고 왔겠지?",
-        choices: [
-          { text: "당연하지, 마이 브라더!", nextStep: 1 },
-          { text: "오늘 좀 피곤한데...", nextStep: 2 }
-        ]
-      },
-      {
-        msg: "하하하! 역시 내 브라더야! 그 열정만 있으면 오늘 공동 굴착 작업도 끄떡없겠어. 기어 올리고 가자고!",
-        choices: []
-      },
-      {
-        msg: "음? 형씨답지 않게 약한 소릴 하는군! 피로 회복 음료라도 한 잔 마시고 시작하자고. 브라더의 엔진은 꺼지지 않는다!",
-        choices: []
-      }
-    ],
-    quotes: [
-      "달려보자고 브라더! 드릴의 회전 속도를 최고로 올린다!",
-      "남자의 낭만은 역시 뚫는 것이다! 뚫지 못할 벽은 없어!",
-      "오늘 훈련은 아주 마음에 들었어. 다음에도 함께 땀 흘리자고!",
-      "엔진 시동 걸고, 풀 파워로 간다!"
-    ]
-  },
-  zzz_grace: {
-    steps: [
-      {
-        msg: "안녕! 혹시 새로 획득한 폭탄 아이템 부품 정보 좀 줄 수 있어? 그 작은 녀석의 도화선이랑 내부 화약 혼합비가 너무 궁금해...!",
-        choices: [
-          { text: "치이카와가 만든 거예요", nextStep: 1 },
-          { text: "비밀입니다", nextStep: 2 }
-        ]
-      },
-      {
-        msg: "치이카와? 귀여운 친구네! 그 애의 작은 손으로 이런 정밀한 격발 기구를 만들다니... 내 기계 아기들만큼 매력적이야!",
-        choices: []
-      },
-      {
-        msg: "치사하게 비밀이라니... 치사해! 분석 한 번만 해 보게 해 주면 안 돼? 딱 5분만 분해해 볼게, 부품 손상은 절대 없을 거야!",
-        choices: []
-      }
-    ],
-    quotes: [
-      "기계들이 아주 사랑스럽게 돌아가고 있어! 엔진 소리가 너무 이뻐~",
-      "이 나사의 피치는 정말 완벽해... 어떻게 조여졌는지 만져보기만 해도 설레!",
-      "새로운 부품이 들어왔는데 같이 분해해 볼래? 정말 재밌을 거야!",
-      "오래된 철판에서 나는 기름 냄새... 정말 마음이 편안해져."
-    ]
-  },
-  zzz_zhuyuan: {
-    steps: [
-      {
-        msg: "치안국의 주연 경비팀장입니다. 오늘 6단지 폭탄 투척 훈련 구역의 안전 펜스에 균열이 보고되었는데, 상황을 알고 계시나요?",
-        choices: [
-          { text: "제가 균열을 막았어요", nextStep: 1 },
-          { text: "저는 모르는 일이에요", nextStep: 2 }
-        ]
-      },
-      {
-        msg: "아, 그렇군요! 신속한 대처에 감사드립니다. 하지만 다음에는 현장 통제 요원의 지시에 따라 위험 지역에서 먼저 대피해 주세요.",
-        choices: []
-      },
-      {
-        msg: "확인해 주셔서 감사합니다. 안전을 위해 훈련이 끝날 때까지 6단지 안전구역 밖으로 나오지 않도록 주의해 주시기 바랍니다.",
-        choices: []
-      }
-    ],
-    quotes: [
-      "공공질서와 안전을 지키는 것은 치안관의 제1의 의무입니다.",
-      "오늘 훈련 일정에 차질이 없도록 조치를 취하겠습니다.",
-      "시민의 안전을 위협하는 행위에 대해서는 무관용 원칙으로 대응합니다.",
-      "수고 많으십니다. 이상이 생기면 즉시 치안국에 무전해 주세요."
-    ]
-  },
-  zzz_willow: {
-    steps: [
-      {
-        msg: "쉿... 포레스트에 오신 걸 환영해요. 이곳의 식물들은 폭탄 소리를 아주 싫어한답니다... 평화를 지켜주실래요?",
-        choices: [
-          { text: "평화를 지킬게요", nextStep: 1 },
-          { text: "폭탄이 최고야!", nextStep: 2 }
-        ]
-      },
-      {
-        msg: "고마워요... 자연의 정령들이 당신의 앞길에 꽃길을 비춰줄 거예요...",
-        choices: []
-      },
-      {
-        msg: "아... 귀가 너무 아파요... 포레스트의 잎사귀들이 떨고 있어요... 부디 훈련 구역에서만 폭탄을 터뜨려 주세요.",
-        choices: []
-      }
-    ],
-    quotes: [
-      "바람 소리를 들어보세요... 나무들도 살아 숨 쉬고 있답니다.",
-      "꽃잎 위에 앉은 이슬이 아침 햇살을 받아 반짝이네요. 무척 아름다워요.",
-      "포레스트의 평화는 우리가 함께 지켜나가는 것이에요.",
-      "가만히 눈을 감으면 자연의 위로가 느껴질 거예요..."
-    ]
-  }
-};
-
 function initKnockChats() {
   if (Object.keys(knockChats).length > 0) return;
 
@@ -11821,31 +11640,6 @@ function initKnockChats() {
     preview: "Join a room to chat",
     unread: false
   };
-
-  // Initialize ZZZ Interactive Chats
-  const zzzContacts = [
-    { id: "zzz_unknown", name: "알 수 없는 연락처", avatar: "💀", preview: "「Random Play」 비디오 가게죠~?" },
-    { id: "zzz_ben", name: "벤", avatar: "🐻", preview: "[처리 완료] 슈뢰딩거와..." },
-    { id: "zzz_anton", name: "앤톤", avatar: "🤖", preview: "[처리 완료] 메탈톤의..." },
-    { id: "zzz_grace", name: "그레이스", avatar: "🔧", preview: "[처리 완료] 육체노동의..." },
-    { id: "zzz_zhuyuan", name: "주연", avatar: "👮‍♀️", preview: "갑자기 왜 이렇게" },
-    { id: "zzz_willow", name: "월로우 포레스트", avatar: "🌲", preview: "#월로우 포레스트" }
-  ];
-
-  zzzContacts.forEach(c => {
-    knockChats[c.id] = {
-      id: c.id,
-      name: c.name,
-      avatar: c.avatar,
-      type: "zzz",
-      history: [
-        { sender: c.name, text: zzzScripts[c.id].steps[0].msg, isSystem: false, ts: Date.now() - 5000 }
-      ],
-      preview: c.preview,
-      unread: true,
-      zzzStep: 0
-    };
-  });
 }
 
 function openKnockChat() {
@@ -11870,8 +11664,16 @@ function openKnockChat() {
     renderKnockChatList();
 
     if (!knockActiveContactId) {
-      const firstId = roomCode ? "room" : "zzz_unknown";
-      selectKnockContact(firstId);
+      if (roomCode) {
+        selectKnockContact("room");
+      } else {
+        const friendIds = Object.keys(knockChats).filter(id => id !== "room");
+        if (friendIds.length > 0) {
+          selectKnockContact(friendIds[0]);
+        } else {
+          selectKnockContact("room");
+        }
+      }
     } else {
       selectKnockContact(knockActiveContactId);
     }
@@ -11921,12 +11723,7 @@ function renderKnockChatList() {
     item.setAttribute("data-chat-id", c.id);
 
     let avatarClass = "zzz-unknown";
-    if (c.id === "zzz_ben") avatarClass = "zzz-ben";
-    else if (c.id === "zzz_anton") avatarClass = "zzz-anton";
-    else if (c.id === "zzz_grace") avatarClass = "zzz-grace";
-    else if (c.id === "zzz_zhuyuan") avatarClass = "zzz-zhuyuan";
-    else if (c.id === "zzz_willow") avatarClass = "zzz-willow";
-    else if (c.type === "friend") avatarClass = "friend-avatar";
+    if (c.type === "friend") avatarClass = "friend-avatar";
     else if (c.type === "room") avatarClass = "room-avatar";
 
     const badgeHTML = c.unread ? `<span class="knock-chat-dot"></span>` : `<span class="knock-chat-dots">...</span>`;
@@ -11968,21 +11765,8 @@ function selectKnockContact(chatId) {
   const inputArea = document.getElementById("knockInputArea");
   const choicesPanel = document.getElementById("knockChoicesPanel");
 
-  if (knockChats[chatId].type === "zzz") {
-    const stepIdx = knockChats[chatId].zzzStep;
-    const script = zzzScripts[chatId];
-    if (script && script.steps[stepIdx] && script.steps[stepIdx].choices && script.steps[stepIdx].choices.length > 0) {
-      inputArea.classList.add("hidden");
-      choicesPanel.classList.remove("hidden");
-      populateKnockChoices(chatId, script.steps[stepIdx].choices);
-    } else {
-      choicesPanel.classList.add("hidden");
-      inputArea.classList.remove("hidden");
-    }
-  } else {
-    choicesPanel.classList.add("hidden");
-    inputArea.classList.remove("hidden");
-  }
+  choicesPanel.classList.add("hidden");
+  inputArea.classList.remove("hidden");
 }
 
 function renderKnockMessages() {
@@ -11997,6 +11781,7 @@ function renderKnockMessages() {
     const row = document.createElement("div");
     if (m.isSystem) {
       row.className = "knock-msg-row system";
+      row.innerHTML = `<span class="knock-system-bubble">&lt;span class="knock-system-bubble"&gt;${escapeHTML(m.text)}&lt;/span&gt;</span>`; // fix nested string
       row.innerHTML = `<span class="knock-system-bubble">${escapeHTML(m.text)}</span>`;
     } else {
       const isMe = m.sender === "Me" || m.sender === currentSocialUsername;
@@ -12012,9 +11797,6 @@ function renderKnockMessages() {
         else if (selectedCharacter === "momonga") charEmoji = "🐿️";
         avatarContent = charEmoji;
         avatarClass = "friend-avatar";
-      } else if (chat.type === "zzz") {
-        avatarContent = chat.avatar;
-        avatarClass = "zzz-" + chat.id.replace("zzz_", "");
       } else if (chat.type === "room") {
         avatarContent = "👤";
         avatarClass = "friend-avatar";
@@ -12035,53 +11817,6 @@ function renderKnockMessages() {
   });
 
   container.scrollTop = container.scrollHeight;
-}
-
-function populateKnockChoices(chatId, choices) {
-  const list = document.getElementById("knockChoicesList");
-  if (!list) return;
-  list.innerHTML = "";
-
-  choices.forEach((c, idx) => {
-    const btn = document.createElement("div");
-    btn.className = "knock-choice-btn";
-    btn.textContent = c.text;
-    btn.addEventListener("click", () => {
-      handleKnockChoiceSelect(chatId, c);
-    });
-    list.appendChild(btn);
-  });
-}
-
-function handleKnockChoiceSelect(chatId, choiceObj) {
-  const chat = knockChats[chatId];
-  if (!chat) return;
-
-  chat.history.push({ sender: "Me", text: choiceObj.text, isSystem: false, ts: Date.now() });
-  chat.preview = choiceObj.text;
-  
-  chat.zzzStep = choiceObj.nextStep;
-  renderKnockMessages();
-
-  const choicesPanel = document.getElementById("knockChoicesPanel");
-  if (choicesPanel) choicesPanel.classList.add("hidden");
-
-  setTimeout(() => {
-    const script = zzzScripts[chatId];
-    const nextStepIdx = chat.zzzStep;
-
-    if (script && script.steps[nextStepIdx]) {
-      const nextMsg = script.steps[nextStepIdx].msg;
-      chat.history.push({ sender: chat.name, text: nextMsg, isSystem: false, ts: Date.now() });
-      chat.preview = nextMsg;
-    }
-    
-    selectKnockContact(chatId);
-    
-    if (typeof playSound === "function") {
-      try { playSound("click"); } catch(e) {}
-    }
-  }, 1200);
 }
 
 function addKnockRoomChatMessage(sender, text, isSystem, isMe) {
@@ -12177,21 +11912,6 @@ function sendKnockChatMessage(text) {
       if (typeof showToastMsg === "function") {
         showToastMsg("Cannot send. Offline ⚠️");
       }
-    }
-  } else if (chat.type === "zzz") {
-    const quotes = zzzScripts[chatId].quotes;
-    if (quotes && quotes.length > 0) {
-      setTimeout(() => {
-        const randQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        chat.history.push({ sender: chat.name, text: randQuote, isSystem: false, ts: Date.now() });
-        chat.preview = randQuote;
-        if (knockActiveContactId === chatId) {
-          renderKnockMessages();
-        } else {
-          chat.unread = true;
-          renderKnockChatList();
-        }
-      }, 1000);
     }
   }
 
