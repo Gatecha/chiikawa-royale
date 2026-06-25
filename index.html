@@ -404,7 +404,14 @@
               <!-- RIGHT/CENTER COLUMN: Open Gamemodes Trigger Button -->
               <div class="gamemode-trigger-wrapper" style="flex: 2; max-width: 600px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
                 <button id="btnOpenGamemodesPopup" class="gamemode-trigger-btn" type="button">
-                  SELECT GAMEMODE
+                  <div class="select-paw-badge" aria-hidden="true" style="left: -4px; top: -1px;">
+                    <span></span><span></span><span></span><span></span>
+                  </div>
+                  <span class="select-button-copy">SELECT</span>
+                  <strong>GAMEMODE</strong>
+                  <div class="select-button-state" aria-hidden="true">
+                    <span>READY TO SELECT</span>
+                  </div>
                 </button>
               </div>
 
@@ -416,7 +423,7 @@
                 <!-- Header -->
                 <div class="knock-chat-header" style="border-bottom: 4.5px solid #000;">
                   <div class="knock-header-left">
-                    <span class="knock-phone-icon">🎮</span>
+                    <span class="knock-phone-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95;"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></span>
                     <span class="knock-header-title">SELECT GAMEMODE</span>
                   </div>
                   <button id="closeGamemodesBtn" class="knock-close-btn" type="button">✕</button>
