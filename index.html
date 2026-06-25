@@ -493,9 +493,10 @@
                     <button class="wardrobe-tab" data-wardrobe-mode="effects" type="button">Effects</button>
                     <button class="wardrobe-tab" data-wardrobe-mode="bombs" type="button">Bombs</button>
                   </div>
-                  <div class="select-main-video-wrap">
-                    <video id="characterSelectVideo" class="select-main-video-source" src="assets/chiikawa/chiikawa_character_animation.mp4" muted loop playsinline preload="auto"></video>
-                    <canvas id="characterSelectCanvas" class="select-main-video" width="580" height="580"></canvas>
+                  <div class="select-main-video-wrap" style="overflow: hidden;">
+                    <div id="wardrobePreviewContainer" class="wardrobe-preview-container select-main-video">
+                      <img class="wardrobe-prev-img active" src="assets/cards/chiikawa.png" alt="Chiikawa" data-char="chiikawa">
+                    </div>
                   </div>
                   <button id="confirmCharacterBtn" class="select-nameplate" type="button">
                     <div class="select-paw-badge" aria-hidden="true">

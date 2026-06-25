@@ -807,6 +807,50 @@ body.android-apk .badge-text {
   transform: translateY(-2%) scale(1.22);
 }
 
+.wardrobe-preview-container {
+  aspect-ratio: 1 / 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wardrobe-prev-img {
+  position: absolute;
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wardrobe-prev-img.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.wardrobe-prev-img.slide-from-right {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.wardrobe-prev-img.slide-to-left {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.wardrobe-prev-img.slide-from-left {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.wardrobe-prev-img.slide-to-right {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
 .select-nameplate {
   position: absolute;
   left: 22px;
@@ -1987,7 +2031,7 @@ input[type="text"]:focus {
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: #0d0c10;
+  background: #fdf1b9;
   border: none;
   border-radius: 0;
   box-shadow: none;
@@ -2014,7 +2058,7 @@ input[type="text"]:focus {
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: #000;
+  background: #fdf1b9;
   z-index: 5;
 }
 
@@ -2161,7 +2205,7 @@ input[type="text"]:focus {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #000;
+  background: #fdf1b9;
   border: none;
   box-shadow: none;
   padding: 0;
@@ -2175,7 +2219,7 @@ input[type="text"]:focus {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #000;
+  background: #fdf1b9;
   border: none;
   border-radius: 0;
 }
@@ -5090,7 +5134,7 @@ body.is-mobile .arcade-controller {
     border: none;
     border-radius: 0;
     box-shadow: none;
-    background: #000000;
+    background: #fdf1b9;
     z-index: 9999;
     margin: 0;
     padding: 0;

@@ -904,20 +904,63 @@ document.querySelectorAll(".character-card video").forEach((video) => {
   playMutedLoop(video);
 });
 
-function syncCharacterSelectPreview(kind) {
-  if (!characterSelectVideo || !characterSelectVideos[kind]) return;
-  const targetSrc = getVideoSrc(characterSelectVideos[kind]);
-  if (!characterSelectVideo.src.endsWith(targetSrc)) {
-    characterSelectVideo.src = targetSrc;
-    characterSelectVideo.load();
+const characterOrder = ["chiikawa", "hachiware", "usagi", "momonga"];
+let currentWardrobeChar = "chiikawa";
+
+function changeWardrobeCharacter(newCharacterId) {
+  const container = document.getElementById("wardrobePreviewContainer");
+  if (!container) return;
+  
+  const oldImg = container.querySelector(".wardrobe-prev-img");
+  const newImgPath = `assets/cards/${newCharacterId}.png`;
+  
+  if (oldImg && oldImg.dataset.char === newCharacterId) return;
+  
+  const oldIndex = characterOrder.indexOf(currentWardrobeChar);
+  const newIndex = characterOrder.indexOf(newCharacterId);
+  currentWardrobeChar = newCharacterId;
+  
+  const isSlideLeft = newIndex >= oldIndex;
+  
+  const newImg = document.createElement("img");
+  newImg.src = newImgPath;
+  newImg.dataset.char = newCharacterId;
+  newImg.alt = newCharacterId;
+  
+  if (isSlideLeft) {
+    newImg.className = "wardrobe-prev-img slide-from-right";
+  } else {
+    newImg.className = "wardrobe-prev-img slide-from-left";
   }
-  playMutedLoop(characterSelectVideo);
+  
+  container.appendChild(newImg);
+  newImg.offsetHeight; // Force reflow
+  
+  if (oldImg) {
+    if (isSlideLeft) {
+      oldImg.className = "wardrobe-prev-img slide-to-left";
+    } else {
+      oldImg.className = "wardrobe-prev-img slide-to-right";
+    }
+  }
+  
+  newImg.className = "wardrobe-prev-img active";
+  
+  const toRemove = oldImg;
+  setTimeout(() => {
+    if (toRemove) toRemove.remove();
+  }, 400);
+}
+
+function syncCharacterSelectPreview(kind) {
   if (characterSelectName) {
     characterSelectName.textContent = characterStyle[kind]?.label || kind;
   }
   if (characterSelectState) {
     characterSelectState.textContent = kind === selectedCharacter ? "Selected" : "Ready to select";
   }
+
+  changeWardrobeCharacter(kind);
 
   // Dynamic premium background theme changes for Look / Wardrobe tab
   const selectScreenEl = document.querySelector(".character-select-screen");
@@ -4610,40 +4653,6 @@ function tailOnContext(actx, x, y, color, size = 8) {
 function drawBackground() {
   ctx.fillStyle = "#fdf1b9";
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  
-  ctx.fillStyle = "rgba(255, 127, 174, 0.45)";
-  const confettiCount = Math.max(8, Math.round(34 * activeGraphics.effectDensity));
-  for (let i = 0; i < confettiCount; i += 1) {
-    const x = (i * 137) % CANVAS_WIDTH;
-    const y = 22 + ((i * 79) % (CANVAS_HEIGHT - 44));
-    ctx.fillRect(x, y, 8, 8);
-  }
-  
-  if (activeGraphics.effectDensity > 0.3) {
-    ctx.strokeStyle = "#221f25";
-    ctx.lineWidth = 3;
-    drawBunting(28, 38, 250);
-    drawBunting(690, 42, 250);
-  }
-}
-
-function drawBunting(x, y, w) {
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.quadraticCurveTo(x + w / 2, y + 42, x + w, y);
-  ctx.stroke();
-  for (let i = 0; i < 8; i += 1) {
-    const px = x + 20 + i * 28;
-    const py = y + 5 + Math.sin(i / 7 * Math.PI) * 28;
-    ctx.fillStyle = ["#ff9fc3", "#a9ead0", "#a7d7ff", "#fff27c"][i % 4];
-    ctx.beginPath();
-    ctx.moveTo(px, py);
-    ctx.lineTo(px + 18, py + 5);
-    ctx.lineTo(px + 7, py + 24);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
 }
 
 function drawMiniMapPreview(canvas, mapType) {
