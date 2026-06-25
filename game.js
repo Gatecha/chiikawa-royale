@@ -904,54 +904,6 @@ document.querySelectorAll(".character-card video").forEach((video) => {
   playMutedLoop(video);
 });
 
-const characterOrder = ["chiikawa", "hachiware", "usagi", "momonga"];
-let currentWardrobeChar = "chiikawa";
-
-function changeWardrobeCharacter(newCharacterId) {
-  const container = document.getElementById("wardrobePreviewContainer");
-  if (!container) return;
-  
-  const oldImg = container.querySelector(".wardrobe-prev-img");
-  const newImgPath = `assets/cards/${newCharacterId}.png`;
-  
-  if (oldImg && oldImg.dataset.char === newCharacterId) return;
-  
-  const oldIndex = characterOrder.indexOf(currentWardrobeChar);
-  const newIndex = characterOrder.indexOf(newCharacterId);
-  currentWardrobeChar = newCharacterId;
-  
-  const isSlideLeft = newIndex >= oldIndex;
-  
-  const newImg = document.createElement("img");
-  newImg.src = newImgPath;
-  newImg.dataset.char = newCharacterId;
-  newImg.alt = newCharacterId;
-  
-  if (isSlideLeft) {
-    newImg.className = "wardrobe-prev-img slide-from-right";
-  } else {
-    newImg.className = "wardrobe-prev-img slide-from-left";
-  }
-  
-  container.appendChild(newImg);
-  newImg.offsetHeight; // Force reflow
-  
-  if (oldImg) {
-    if (isSlideLeft) {
-      oldImg.className = "wardrobe-prev-img slide-to-left";
-    } else {
-      oldImg.className = "wardrobe-prev-img slide-to-right";
-    }
-  }
-  
-  newImg.className = "wardrobe-prev-img active";
-  
-  const toRemove = oldImg;
-  setTimeout(() => {
-    if (toRemove) toRemove.remove();
-  }, 400);
-}
-
 function syncCharacterSelectPreview(kind) {
   if (characterSelectName) {
     characterSelectName.textContent = characterStyle[kind]?.label || kind;
@@ -960,7 +912,14 @@ function syncCharacterSelectPreview(kind) {
     characterSelectState.textContent = kind === selectedCharacter ? "Selected" : "Ready to select";
   }
 
-  changeWardrobeCharacter(kind);
+  if (characterSelectVideo && characterSelectVideos[kind]) {
+    const targetSrc = getVideoSrc(characterSelectVideos[kind]);
+    if (!characterSelectVideo.src.endsWith(targetSrc)) {
+      characterSelectVideo.src = targetSrc;
+      characterSelectVideo.load();
+    }
+    playMutedLoop(characterSelectVideo);
+  }
 
   // Dynamic premium background theme changes for Look / Wardrobe tab
   const selectScreenEl = document.querySelector(".character-select-screen");
@@ -6092,7 +6051,7 @@ function loop(now) {
   // Smoothly animate the yellow-console swirls background on active console screens
   if (activeGraphics.animateMenus && shouldDrawMenu) {
     document.querySelectorAll(".yellow-console").forEach((el) => {
-      const offset = (now / 90) % 40;
+      const offset = (now / 90) % 240;
       el.style.setProperty('--grad-offset', `${offset}px`);
     });
   }
