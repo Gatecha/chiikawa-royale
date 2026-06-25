@@ -2069,16 +2069,21 @@ function switchScreen(targetScreen) {
     document.getElementById("couchControlPicker")?.classList.add("hidden");
     document.body.classList.remove("local-couch-active");
     document.getElementById("ingameChatBox")?.classList.add("hidden");
+    document.getElementById("ingameChatToggleBtn")?.classList.add("hidden");
     const gameMicBtn = document.getElementById("gameMicBtn");
     if (gameMicBtn) gameMicBtn.style.display = "none";
   } else {
     const chatBox = document.getElementById("ingameChatBox");
     const chatMsgs = document.getElementById("ingameChatMessages");
+    const toggleBtn = document.getElementById("ingameChatToggleBtn");
     if (chatBox) {
+      chatBox.classList.add("hidden");
+    }
+    if (toggleBtn) {
       if (serverMode === "online") {
-        chatBox.classList.remove("hidden");
+        toggleBtn.classList.remove("hidden");
       } else {
-        chatBox.classList.add("hidden");
+        toggleBtn.classList.add("hidden");
       }
     }
     if (chatMsgs) {
@@ -11986,4 +11991,45 @@ if (document.readyState === "complete" || document.readyState === "interactive")
   bindGamemodesPopupListeners();
 } else {
   document.addEventListener("DOMContentLoaded", bindGamemodesPopupListeners);
+}
+
+
+// =================================================================
+// IN-GAME CHAT TOGGLE LOGIC
+// =================================================================
+
+function bindIngameChatToggleListeners() {
+  const toggleBtn = document.getElementById("ingameChatToggleBtn");
+  const minBtn = document.getElementById("minimizeIngameChatBtn");
+  const chatInput = document.getElementById("ingameChatInput");
+  const chatBox = document.getElementById("ingameChatBox");
+
+  if (!chatInput) return;
+
+  toggleBtn?.addEventListener("click", () => {
+    chatInput.focus();
+  });
+
+  minBtn?.addEventListener("click", () => {
+    chatInput.blur();
+  });
+
+  chatInput.addEventListener("focus", () => {
+    chatBox?.classList.remove("hidden");
+    toggleBtn?.classList.add("hidden");
+  });
+
+  chatInput.addEventListener("blur", () => {
+    chatBox?.classList.add("hidden");
+    if (serverMode === "online" && running) {
+      toggleBtn?.classList.remove("hidden");
+    }
+  });
+}
+
+// Bind immediately or wait for DOM
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  bindIngameChatToggleListeners();
+} else {
+  document.addEventListener("DOMContentLoaded", bindIngameChatToggleListeners);
 }

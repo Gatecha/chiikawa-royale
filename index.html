@@ -357,24 +357,24 @@
           <!-- Main Content Area -->
           <div class="console-body">
             <!-- PLAY TAB CONTENT (Redesigned centered premium Player Card interface) -->
-            <div class="tab-content active" id="tabContent_play" style="flex-direction: row; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 24px; box-sizing: border-box;">
+            <div class="tab-content active" id="tabContent_play" style="flex-direction: row; align-items: center; justify-content: center; gap: 32px; width: 100%; height: 100%; padding: 24px; box-sizing: border-box;">
               
-              <!-- CENTERED COLUMN: Open Gamemodes Trigger Button -->
-              <div class="gamemode-trigger-wrapper" style="display: flex; align-items: center; justify-content: center; width: 100%;">
-                <button id="btnOpenGamemodesPopup" class="gamemode-trigger-btn" type="button">
-                  SELECT GAMEMODE
-                </button>
-              </div>
-
-              <!-- Hidden legacy showcase container to preserve full JS compatibility -->
-              <div style="display: none !important;">
-                <div class="premium-play-showcase">
-                  <div class="showcase-glow-aura"></div>
-                  <div class="showcase-card-container">
-                    <div class="showcase-card-inner">
-                      <img id="playCharacterCardImg" src="assets/lobby cards/chiikawa character card.png" alt="Active Character Card" />
+              <!-- LEFT COLUMN: Character Card / Level / Rank -->
+              <div class="premium-play-showcase" style="flex: 1; max-width: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+                <!-- Outer glow / aura decoration -->
+                <div class="showcase-glow-aura"></div>
+                
+                <!-- Player Card Container -->
+                <div class="showcase-card-container" style="margin-bottom: 16px;">
+                  <div class="showcase-card-inner">
+                    <img id="playCharacterCardImg" src="assets/lobby cards/chiikawa character card.png" alt="Active Character Card" />
+                  </div>
+                  
+                  <!-- Capsule Footer info bar like lobby cards -->
+                  <div class="showcase-card-footer">
+                    <div class="showcase-rank-badge" id="playRankIcon">
+                      <!-- Dynamic SVG rank icon goes here -->
                     </div>
-                    <div class="showcase-rank-badge" id="playRankIcon"></div>
                     <div class="showcase-user-details">
                       <div class="showcase-char-name" id="playCharName">Hachiware</div>
                       <div class="showcase-user-name" id="playUserName">PlayerOne</div>
@@ -384,19 +384,28 @@
                       <span id="playLevelNum">4</span>
                     </div>
                   </div>
-                  <div class="showcase-stats-panel">
-                    <div class="showcase-rank-title">
-                      <span id="playRankTier">GOLD</span> <span id="playRankDiv">I</span>
-                    </div>
-                    <div class="showcase-xp-section">
-                      <div class="showcase-xp-label">SEASON LEVEL PROGRESS</div>
-                      <div class="showcase-xp-bar-track">
-                        <div id="playXpBarFill" class="showcase-xp-bar-fill"></div>
-                        <span id="playXpText" class="showcase-xp-text">200 / 500</span>
-                      </div>
+                </div>
+
+                <!-- Showcase rank & progression details under the card -->
+                <div class="showcase-stats-panel" style="width: 100%; box-sizing: border-box; transform: none; margin: 0;">
+                  <div class="showcase-rank-title">
+                    <span id="playRankTier">GOLD</span> <span id="playRankDiv">I</span>
+                  </div>
+                  <div class="showcase-xp-section">
+                    <div class="showcase-xp-label">SEASON LEVEL PROGRESS</div>
+                    <div class="showcase-xp-bar-track">
+                      <div id="playXpBarFill" class="showcase-xp-bar-fill"></div>
+                      <span id="playXpText" class="showcase-xp-text">200 / 500</span>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- RIGHT/CENTER COLUMN: Open Gamemodes Trigger Button -->
+              <div class="gamemode-trigger-wrapper" style="flex: 2; max-width: 600px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+                <button id="btnOpenGamemodesPopup" class="gamemode-trigger-btn" type="button">
+                  SELECT GAMEMODE
+                </button>
               </div>
 
             </div>
@@ -1227,8 +1236,18 @@
             <div class="arcade-screen">
               <canvas id="game" width="960" height="720"></canvas>
               
+              <!-- In-Game Chat Toggle Button -->
+              <button id="ingameChatToggleBtn" class="ingame-chat-toggle-btn hidden" type="button">
+                <svg viewBox="0 0 24 24" class="ingame-chat-btn-svg"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-6 9H6V9h8v2zm4-3H6V6h12v2zm-4 6H6v-2h8v2z" fill="currentColor"/></svg>
+                <span>CHAT</span>
+              </button>
+
               <!-- In-Game Chat Widget (Online Only) -->
               <div id="ingameChatBox" class="ingame-chat-box hidden">
+                <div class="ingame-chat-header">
+                  <span>💬 IN-GAME CHAT</span>
+                  <button id="minimizeIngameChatBtn" class="ingame-chat-min-btn" type="button">✕</button>
+                </div>
                 <div id="ingameChatMessages" class="ingame-chat-messages"></div>
                 <form id="ingameChatForm" class="ingame-chat-form">
                   <input id="ingameChatInput" type="text" maxlength="64" placeholder="Press Enter to chat..." autocomplete="off" />
