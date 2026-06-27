@@ -369,7 +369,7 @@ function handleMessage(ws, msg) {
     case "add_bot": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
-      const maxPlayers = room.mode === "team" ? TEAM_MAX_PLAYERS : STANDARD_MAX_PLAYERS;
+      const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
       if (room.players.length >= maxPlayers) return;
       addBotToRoom(room);
       broadcastLobbyUpdate(room);

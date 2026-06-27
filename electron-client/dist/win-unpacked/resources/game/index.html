@@ -123,7 +123,9 @@
       <section id="loginScreen" class="screen">
         <div class="yellow-console auth-console">
           <div class="auth-card glass">
-            <h1 class="auth-title">CHIIKAWA ROYALE</h1>
+            <div class="auth-loading-logo" aria-label="Chiikawa Royale">
+              <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale" class="auth-logo-characters-img" />
+            </div>
             <p class="auth-subtitle">Login or Create Account to Join the Battle!</p>
 
             <form id="authForm" class="auth-form">
@@ -141,7 +143,6 @@
               <div class="auth-buttons">
                 <button id="btnLogin" class="btn btn-primary" type="submit">Log In</button>
                 <button id="btnSignup" class="btn btn-secondary" type="button">Create Account</button>
-                <button id="btnPlayOffline" class="btn btn-accent" type="button" style="margin-top: 10px; width: 100%;">Play Locally / LAN</button>
               </div>
 
               <div class="social-login-separator">
@@ -2516,5 +2517,11 @@
       // Disable right-click context menu on the entire game page
       document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
     </script>
+
+    <!-- Fullscreen Countdown Overlay -->
+    <div id="fullscreenCountdownOverlay" class="fullscreen-countdown-overlay hidden">
+      <div id="fullscreenCountdownNum" class="fullscreen-countdown-num">3</div>
+    </div>
+
   </body>
 </html>
