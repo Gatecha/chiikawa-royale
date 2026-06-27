@@ -49,6 +49,19 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  // Go fullscreen when playing the game, restore when back in launcher
+  mainWindow.webContents.on('did-navigate', (event, url) => {
+    if (url.includes('index.html')) {
+      mainWindow.setFullScreen(true);
+      mainWindow.setResizable(true);
+    } else if (url.includes('launcher.html')) {
+      mainWindow.setFullScreen(false);
+      mainWindow.setResizable(false);
+      mainWindow.setSize(960, 640);
+      mainWindow.center();
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
