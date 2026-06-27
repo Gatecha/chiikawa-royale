@@ -10810,3 +10810,60 @@ body.is-iphone {
 .level-rewards-list::-webkit-scrollbar-thumb:hover {
   background: #ffe28c;
 }
+
+/* ZZZ Aesthetic sliding screen swipe transition */
+.swipe-transition-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.swipe-bar {
+  width: 100%;
+  height: 33.4%;
+  transform: translateX(-100%);
+}
+
+.swipe-bar.bar-1 {
+  background: #ffffff;
+}
+
+.swipe-bar.bar-2 {
+  background: #e2e4e9;
+}
+
+.swipe-bar.bar-3 {
+  background: #1c1d20;
+}
+
+/* Animate swipe class triggers the keyframes */
+.swipe-transition-overlay.animate-swipe .swipe-bar {
+  animation: swipeEffect 0.65s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+}
+
+.swipe-transition-overlay.animate-swipe .bar-2 {
+  animation-delay: 0.06s;
+}
+
+.swipe-transition-overlay.animate-swipe .bar-3 {
+  animation-delay: 0.12s;
+}
+
+@keyframes swipeEffect {
+  0% {
+    transform: translateX(-100%);
+  }
+  40%, 60% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

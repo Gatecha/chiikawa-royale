@@ -710,41 +710,66 @@ const keys = new Set();
 
 // ----------------------------------------------------------------
 // TAB SWITCHING LOGIC
-// ----------------------------------------------------------------
+// -------------------------------------------------
+let isTabTransitioning = false;
 
 tabButtons.forEach((btn) => {
   btn.addEventListener("click", (event) => {
     event.preventDefault();
+    if (isTabTransitioning) return;
+    
     const tabName = btn.getAttribute("data-tab");
+    if (btn.classList.contains("active")) return;
     
-    // Switch active classes on buttons
-    tabButtons.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
+    isTabTransitioning = true;
     
-    // Switch active classes on tab contents
-    tabContents.forEach((content) => content.classList.remove("active"));
-    const targetContent = document.getElementById(`tabContent_${tabName}`);
-    if (targetContent) {
-      targetContent.classList.add("active");
-    }
-
-    if (tabName === "quests") {
-      if (typeof syncQuestsUI === "function") syncQuestsUI();
-      if (typeof syncLevelTabUI === "function") syncLevelTabUI();
+    const overlay = document.getElementById("tabTransitionOverlay");
+    if (overlay) {
+      overlay.classList.add("animate-swipe");
     }
     
-    // Toggle squad lobby styling on console
-    const consoleEl = document.querySelector(".yellow-console");
-    if (consoleEl) {
-      if (tabName === "squad") {
-        consoleEl.classList.add("squad-lobby-active");
-        if (currentSocialUserId) updateMyPresenceStatus("in-lobby");
-      } else {
-        consoleEl.classList.remove("squad-lobby-active");
-        if (currentSocialUserId) updateMyPresenceStatus("menu");
+    setTimeout(() => {
+      // Switch active classes on buttons
+      tabButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      
+      // Switch active classes on tab contents
+      tabContents.forEach((content) => content.classList.remove("active"));
+      const targetContent = document.getElementById(`tabContent_${tabName}`);
+      if (targetContent) {
+        targetContent.classList.add("active");
       }
-      consoleEl.classList.toggle("character-select-active", tabName === "look");
-    }
+
+      if (typeof updateFooterColor === "function") {
+        updateFooterColor(tabName);
+      }
+
+      if (tabName === "quests") {
+        if (typeof syncQuestsUI === "function") syncQuestsUI();
+        if (typeof syncLevelTabUI === "function") syncLevelTabUI();
+      }
+      
+      // Toggle squad lobby styling on console
+      const consoleEl = document.querySelector(".yellow-console");
+      if (consoleEl) {
+        if (tabName === "squad") {
+          consoleEl.classList.add("squad-lobby-active");
+          if (currentSocialUserId) updateMyPresenceStatus("in-lobby");
+        } else {
+          consoleEl.classList.remove("squad-lobby-active");
+          if (currentSocialUserId) updateMyPresenceStatus("menu");
+        }
+        consoleEl.classList.toggle("character-select-active", tabName === "look");
+      }
+    }, 300);
+    
+    setTimeout(() => {
+      if (overlay) {
+        overlay.classList.remove("animate-swipe");
+      }
+      isTabTransitioning = false;
+    }, 800);
+    
     cancelMatchmaking();
   });
 });
@@ -12521,6 +12546,7 @@ document.addEventListener("DOMContentLoaded", () => {
   syncBombWardrobe();
   initGachaShop();
   initQuestsSystem();
+  if (typeof updateFooterColor === "function") updateFooterColor("play");
 });
 
 // =================================================================
@@ -12852,5 +12878,30 @@ function syncLevelTabUI() {
     }
     
     list.appendChild(card);
+  }
+}
+
+function updateFooterColor(tabName) {
+  const footer = document.querySelector(".console-footer");
+  if (!footer) return;
+  const badgeText = footer.querySelector(".badge-text");
+  
+  if (tabName === "look") {
+    footer.style.background = "#101215";
+    footer.style.borderColor = "#000000";
+    if (badgeText) badgeText.style.color = "#ffffff";
+  } else if (tabName === "quests") {
+    footer.style.background = "#0c0d0e";
+    footer.style.borderColor = "#000000";
+    if (badgeText) badgeText.style.color = "#ffffff";
+  } else if (tabName === "shop") {
+    footer.style.background = "#4a0080";
+    footer.style.borderColor = "#000000";
+    if (badgeText) badgeText.style.color = "#ffffff";
+  } else {
+    // Default yellow screens (play, squad, gear)
+    footer.style.background = "rgba(0, 0, 0, 0.15)";
+    footer.style.borderColor = "";
+    if (badgeText) badgeText.style.color = "#000000";
   }
 }
