@@ -1564,6 +1564,10 @@ function handleServerMessage(msg) {
     }
 
     case "game_started":
+      if (shouldShowVsBeforeGameStart(data)) {
+        showServerVsThenStart(data);
+        break;
+      }
       if (isMicActive) {
         stopMicCapture();
       }
@@ -2465,15 +2469,39 @@ function getLocalFourVoteActors() {
 }
 
 function startLocalSingleWithMapVote() {
-  startLocalMapVote(getLocalSingleVoteActors(), () => {
-    startLocalGame();
-    tryPlayMusic();
+  const voteActors = getLocalSingleVoteActors();
+  startLocalMapVote(voteActors, () => {
+    showVsLoadingScreen(voteActors, () => {
+      startLocalGame();
+      tryPlayMusic();
+    });
   });
 }
 
 function startLocalFourWithMapVote() {
-  startLocalMapVote(getLocalFourVoteActors(), () => {
-    startLocalFourPlayerGame();
+  const voteActors = getLocalFourVoteActors();
+  startLocalMapVote(voteActors, () => {
+    showVsLoadingScreen(voteActors, () => {
+      startLocalFourPlayerGame();
+      tryPlayMusic();
+    });
+  });
+}
+
+function shouldShowVsBeforeGameStart(data) {
+  const mode = data?.mode || currentRoomMode;
+  return !data?.__vsLoadingShown && !isBattleRoyale(mode);
+}
+
+function showServerVsThenStart(data) {
+  showVsLoadingScreen(data?.players || players, () => {
+    handleServerMessage({
+      type: "game_started",
+      data: {
+        ...data,
+        __vsLoadingShown: true,
+      },
+    });
     tryPlayMusic();
   });
 }
@@ -7062,6 +7090,7 @@ let matchmakingTimeouts = [];
 let matchmakingSeconds = 0;
 let matchedBots = [];
 let vsProgressInterval = null;
+let vsCompletionTimeout = null;
 
 function startMatchmakingSearch() {
   if (!matchmakingPopup) return;
@@ -7368,50 +7397,67 @@ function cancelMatchmaking() {
   }
   clearInterval(matchmakingTimerInterval);
   clearInterval(vsProgressInterval);
+  clearTimeout(vsCompletionTimeout);
   matchmakingTimeouts.forEach(clearTimeout);
   matchmakingTimeouts = [];
 }
 
 function startVsScreen() {
-  if (!vsLoadingScreen) return;
-  
-  // Show VS Loading Screen
-  vsLoadingScreen.classList.remove("hidden");
-  vsLoadingScreen.classList.add("active");
-  
-  // Set players inside the VS cards:
-  // Card 1: Player
-  const vsName1 = document.getElementById("vsName_1");
-  const vsImg1 = document.getElementById("vsImg_1");
-  if (vsName1) vsName1.textContent = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
-  if (vsImg1) vsImg1.src = `assets/cards/${selectedCharacter}.png`;
-  
-  // Card 2, 3, 4: CPU Bots
+  const playerName = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
   const bot1 = matchedBots[0] || "usagi";
   const bot2 = matchedBots[1] || "momonga";
   const bot3 = matchedBots[2] || "chiikawa";
-  
-  const vsName2 = document.getElementById("vsName_2");
-  const vsImg2 = document.getElementById("vsImg_2");
-  if (vsName2) vsName2.textContent = characterStyle[bot1].label + " CPU";
-  if (vsImg2) vsImg2.src = `assets/cards/${bot1}.png`;
-  
-  const vsName3 = document.getElementById("vsName_3");
-  const vsImg3 = document.getElementById("vsImg_3");
-  if (vsName3) vsName3.textContent = characterStyle[bot2].label + " CPU";
-  if (vsImg3) vsImg3.src = `assets/cards/${bot2}.png`;
-  
-  const vsName4 = document.getElementById("vsName_4");
-  const vsImg4 = document.getElementById("vsImg_4");
-  if (vsName4) vsName4.textContent = characterStyle[bot3].label + " CPU";
-  if (vsImg4) vsImg4.src = `assets/cards/${bot3}.png`;
-  
-  // Set card themes based on characters
-  setVsCardTheme(1, selectedCharacter);
-  setVsCardTheme(2, bot1);
-  setVsCardTheme(3, bot2);
-  setVsCardTheme(4, bot3);
-  
+  showVsLoadingScreen([
+    { id: "local_player", name: playerName, kind: selectedCharacter },
+    { id: "cpu_1", name: characterStyle[bot1].label + " CPU", kind: bot1 },
+    { id: "cpu_2", name: characterStyle[bot2].label + " CPU", kind: bot2 },
+    { id: "cpu_3", name: characterStyle[bot3].label + " CPU", kind: bot3 },
+  ], startLocalGameWithMatchedBots);
+}
+
+function getVsFallbackCombatants() {
+  return [
+    { id: "fallback_player", name: "You", kind: selectedCharacter },
+    { id: "fallback_usagi", name: "Usagi CPU", kind: "usagi" },
+    { id: "fallback_momonga", name: "Momonga CPU", kind: "momonga" },
+    { id: "fallback_chiikawa", name: "Chiikawa CPU", kind: "chiikawa" },
+  ];
+}
+
+function normalizeVsCombatants(combatants) {
+  const fallback = getVsFallbackCombatants();
+  const source = Array.isArray(combatants) && combatants.length ? combatants : fallback;
+  return Array.from({ length: 4 }, (_, index) => {
+    const item = source[index] || fallback[index];
+    const kind = item?.kind || fallback[index].kind;
+    const fallbackName = index === 0 ? "You" : `${characterStyle[kind]?.label || "CPU"} CPU`;
+    return {
+      kind,
+      name: item?.name || fallbackName,
+    };
+  });
+}
+
+function showVsLoadingScreen(combatants, onComplete, durationMs = 5000) {
+  if (!vsLoadingScreen) {
+    onComplete?.();
+    return;
+  }
+
+  const lineup = normalizeVsCombatants(combatants);
+
+  vsLoadingScreen.classList.remove("hidden");
+  vsLoadingScreen.classList.add("active");
+
+  lineup.forEach((fighter, index) => {
+    const slot = index + 1;
+    const nameEl = document.getElementById(`vsName_${slot}`);
+    const imgEl = document.getElementById(`vsImg_${slot}`);
+    if (nameEl) nameEl.textContent = fighter.name;
+    if (imgEl) imgEl.src = `assets/cards/${fighter.kind}.png`;
+    setVsCardTheme(slot, fighter.kind);
+  });
+
   // Reset slide-in animations on VS cards
   const cardsLeft = vsLoadingScreen.querySelectorAll(".card-slide-left");
   const cardsRight = vsLoadingScreen.querySelectorAll(".card-slide-right");
@@ -7433,41 +7479,38 @@ function startVsScreen() {
     vsLogo.style.animation = 'vsImpact 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.25) forwards, vsPulse 1.8s infinite ease-in-out 0.5s';
   }
   
-  // Reset progress bar
-  let progress = 0;
+  const startedAt = performance.now();
   if (vsProgressBarFill) vsProgressBarFill.style.width = "0%";
   if (vsLoadingStatus) vsLoadingStatus.textContent = "PREPARING ARENA... 0%";
-  
-  // Load steps
+
   const statusTexts = [
     "LOADING ARENA...",
     "SUMMONING BOMBS...",
-    "COMMUNING WITH BOT SPIRITS...",
+    "LOCKING IN RIVALS...",
     "READY TO BATTLE!"
   ];
-  
+
   clearInterval(vsProgressInterval);
+  clearTimeout(vsCompletionTimeout);
   vsProgressInterval = setInterval(() => {
-    progress += Math.floor(Math.random() * 8) + 4;
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(vsProgressInterval);
-      
-      // Complete! Launch game after 0.5s delay
-      setTimeout(() => {
-        // Hide VS screen
-        vsLoadingScreen.classList.remove("active");
-        vsLoadingScreen.classList.add("hidden");
-        
-        // Launch actual offline game
-        startLocalGameWithMatchedBots();
-      }, 500);
-    }
-    
+    const elapsed = performance.now() - startedAt;
+    const progress = Math.min(99, Math.floor((elapsed / durationMs) * 100));
     if (vsProgressBarFill) vsProgressBarFill.style.width = `${progress}%`;
     const textIndex = Math.min(statusTexts.length - 1, Math.floor((progress / 100) * statusTexts.length));
     if (vsLoadingStatus) vsLoadingStatus.textContent = `${statusTexts[textIndex]} ${progress}%`;
   }, 150);
+
+  vsCompletionTimeout = setTimeout(() => {
+    clearInterval(vsProgressInterval);
+    vsProgressInterval = null;
+    if (vsProgressBarFill) vsProgressBarFill.style.width = "100%";
+    if (vsLoadingStatus) vsLoadingStatus.textContent = "READY TO BATTLE! 100%";
+    setTimeout(() => {
+      vsLoadingScreen.classList.remove("active");
+      vsLoadingScreen.classList.add("hidden");
+      onComplete?.();
+    }, 220);
+  }, durationMs);
 }
 
 function setVsCardTheme(slotNum, charKind) {
