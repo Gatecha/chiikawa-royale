@@ -131,22 +131,18 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
       fs.mkdirSync(targetPath, { recursive: true });
     }
 
-    const currentExe = process.execPath;
-    const destExe = path.join(targetPath, 'Chiikawa_Royale.exe');
+    const srcDir = path.dirname(process.execPath);
 
-    sendProgress(30, 'Copying game executable...');
-    fs.copyFileSync(currentExe, destExe);
-
-    sendProgress(50, 'Copying game resources...');
-    const srcResources = process.resourcesPath;
-    const destResources = path.join(targetPath, 'resources');
-
-    // Copy resources folder recursively
+    // Copy directory recursively
     function copyDirRecursive(src, dest) {
       if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
       for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
         const s = path.join(src, entry.name);
         const d = path.join(dest, entry.name);
+        
+        // Skip installer lock files if any
+        if (entry.name === '.installed') continue;
+        
         if (entry.isDirectory()) {
           copyDirRecursive(s, d);
         } else {
@@ -154,14 +150,19 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
         }
       }
     }
+
+    sendProgress(30, 'Copying program files and dependencies...');
     
     // Disable ASAR interception during file copying to copy app.asar as a normal file
     process.noAsar = true;
     try {
-      copyDirRecursive(srcResources, destResources);
+      copyDirRecursive(srcDir, targetPath);
     } finally {
       process.noAsar = false;
     }
+
+    const destExe = path.join(targetPath, 'Chiikawa_Royale.exe');
+    const destResources = path.join(targetPath, 'resources');
 
     sendProgress(80, 'Creating desktop shortcut...');
     if (createShortcut) {
@@ -188,9 +189,13 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
 
     sendProgress(100, 'Installation complete! Launching game...');
 
-    // Launch installed app
+    // Launch installed app with correct working directory
     const { spawn } = require('child_process');
-    spawn(destExe, [], { detached: true, stdio: 'ignore' }).unref();
+    spawn(destExe, [], { 
+      detached: true, 
+      stdio: 'ignore',
+      cwd: targetPath
+    }).unref();
 
     setTimeout(() => {
       app.quit();
