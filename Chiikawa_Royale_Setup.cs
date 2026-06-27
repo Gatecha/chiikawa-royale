@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.ComponentModel;
+using System.Reflection;
 
 public class SetupForm : Form
 {
@@ -14,44 +15,31 @@ public class SetupForm : Form
     [DllImport("user32.dll")] static extern int SendMessage(IntPtr h, int m, int w, int l);
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
 
-    // ── Download URL (full Electron launcher via GitHub LFS) ──
     const string DOWNLOAD_URL = "https://github.com/Gatecha/chiikawa-royale/raw/main/Chiikawa_Royale.exe";
     const string APP_FOLDER   = "ChiikawaRoyale";
     const string EXE_NAME     = "Chiikawa_Royale.exe";
 
-    // ── Colors matching HTML design ───────────────────
     static readonly Color C_BG     = Color.FromArgb(13, 14, 16);
-    static readonly Color C_PANEL  = Color.FromArgb(8,  9,  11);
+    static readonly Color C_PANEL  = Color.FromArgb(10, 11, 13);
     static readonly Color C_PINK   = Color.FromArgb(255, 79, 115);
     static readonly Color C_PINK2  = Color.FromArgb(255, 143, 171);
     static readonly Color C_GOLD   = Color.FromArgb(255, 216, 111);
     static readonly Color C_FG     = Color.White;
     static readonly Color C_MUTED  = Color.FromArgb(110, 112, 124);
-    static readonly Color C_TRACK  = Color.FromArgb(26, 28, 34);
+    static readonly Color C_TRACK  = Color.FromArgb(28, 30, 36);
 
     string installDir, exePath;
 
-    // ── Controls ──────────────────────────────────────
     Panel     pnlTitle, pnlProgress;
     Label     lblTitleText, lblStage, lblStatus, lblBytes;
     Button    btnClose, btnMin, btnInstall, btnLaunch;
     Image[]   charImgs = new Image[4];
     Image     logoImg;
     WebClient wc;
-    int       imgsLoaded = 0;
 
-    // Character image URLs (GitHub raw)
-    string[] imgUrls = new string[] {
-        "https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/assets/cards/chiikawa.png",
-        "https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/assets/cards/hachiware.png",
-        "https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/assets/cards/usagi.png",
-        "https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/assets/cards/momonga.png"
-    };
-    string logoUrl = "https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/chiikawa-royale-logo.png";
-
-    // Progress state
-    int  progressPct = 0;
-    bool done        = false;
+    int       progressPct = 0;
+    bool      done        = false;
+    bool      installing  = false;
 
     public SetupForm()
     {
@@ -59,101 +47,135 @@ public class SetupForm : Form
         exePath    = Path.Combine(installDir, EXE_NAME);
 
         Text            = "Chiikawa Royale Setup";
-        ClientSize      = new Size(600, 460);
+        ClientSize      = new Size(800, 560);
         FormBorderStyle = FormBorderStyle.None;
         StartPosition   = FormStartPosition.CenterScreen;
         BackColor       = C_BG;
         DoubleBuffered  = true;
 
+        LoadResources();
         BuildUI();
-        this.Load += OnLoad;
+
+        // Check if already installed
+        if (File.Exists(exePath))
+        {
+            btnInstall.Visible = false;
+            btnLaunch.Visible  = true;
+            lblStage.Text      = "CHIIKAWA ROYALE IS INSTALLED";
+            lblStatus.Text     = "Ready to play!";
+            lblStatus.Visible  = true;
+            pnlProgress.Visible = false;
+        }
+    }
+
+    void LoadResources()
+    {
+        charImgs[0] = LoadEmbeddedImage("chiikawa.png");
+        charImgs[1] = LoadEmbeddedImage("hachiware.png");
+        charImgs[2] = LoadEmbeddedImage("usagi.png");
+        charImgs[3] = LoadEmbeddedImage("momonga.png");
+        logoImg     = LoadEmbeddedImage("logo.png");
+    }
+
+    Image LoadEmbeddedImage(string name)
+    {
+        try
+        {
+            Assembly asm = Assembly.GetExecutingAssembly();
+            using (Stream s = asm.GetManifestResourceStream(name))
+            {
+                if (s != null) return Image.FromStream(s);
+            }
+        }
+        catch {}
+        return null;
     }
 
     void BuildUI()
     {
-        // ── Title bar ─────────────────────────────────
+        // ── Title Bar ──────────────────────────────────
         pnlTitle = new Panel { Dock = DockStyle.Top, Height = 36, BackColor = C_PANEL };
         pnlTitle.MouseDown += (s, e) => { if (e.Button == MouseButtons.Left) { ReleaseCapture(); SendMessage(Handle, 0xA1, 2, 0); } };
 
         lblTitleText = new Label {
             Text = "CHIIKAWA ROYALE  —  PC INSTALLER",
-            ForeColor = C_GOLD, BackColor = C_PANEL,
-            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-            Location = new Point(12, 0), Size = new Size(460, 36),
+            ForeColor = C_GOLD, BackColor = Color.Transparent,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Location = new Point(14, 0), Size = new Size(500, 36),
             TextAlign = ContentAlignment.MiddleLeft
         };
         pnlTitle.Controls.Add(lblTitleText);
 
-        btnMin = TitleBtn("−", new Point(535, 7));
+        btnMin = TitleBtn("−", new Point(735, 7));
         btnMin.Click += delegate { WindowState = FormWindowState.Minimized; };
         pnlTitle.Controls.Add(btnMin);
 
-        btnClose = TitleBtn("✕", new Point(564, 7));
+        btnClose = TitleBtn("✕", new Point(764, 7));
         btnClose.MouseEnter += delegate(object s, EventArgs e) { ((Button)s).BackColor = Color.FromArgb(210, 40, 40); ((Button)s).ForeColor = C_FG; };
         btnClose.MouseLeave += delegate(object s, EventArgs e) { ((Button)s).BackColor = Color.FromArgb(30, 31, 38); ((Button)s).ForeColor = C_MUTED; };
         btnClose.Click += delegate { if (wc != null) wc.CancelAsync(); Application.Exit(); };
         pnlTitle.Controls.Add(btnClose);
 
-        // ── Stage label ───────────────────────────────
+        // ── PC Installation Stage Label ────────────────
         lblStage = new Label {
             Text = "PC INSTALLATION STAGE",
-            ForeColor = C_MUTED, BackColor = Color.Transparent,
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-            Location = new Point(0, 314), Size = new Size(600, 24),
+            ForeColor = C_GOLD, BackColor = Color.Transparent,
+            Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+            Location = new Point(0, 390), Size = new Size(800, 30),
             TextAlign = ContentAlignment.MiddleCenter
         };
 
-        // ── Progress track (custom drawn) ─────────────
+        // ── Progress Bar Track ─────────────────────────
         pnlProgress = new Panel {
-            Location = new Point(70, 346), Size = new Size(460, 14),
-            BackColor = C_TRACK
+            Location = new Point(100, 430), Size = new Size(600, 14),
+            BackColor = C_TRACK, Visible = false
         };
-        // Rounded region
         var gp = new GraphicsPath();
         gp.AddArc(0, 0, 14, 14, 180, 90);
-        gp.AddArc(446, 0, 14, 14, 270, 90);
-        gp.AddArc(446, 0, 14, 14, 0, 90);
+        gp.AddArc(586, 0, 14, 14, 270, 90);
+        gp.AddArc(586, 0, 14, 14, 0, 90);
         gp.AddArc(0, 0, 14, 14, 90, 90);
         pnlProgress.Region = new Region(gp);
         pnlProgress.Paint += DrawProgressBar;
 
-        // ── Status label ──────────────────────────────
+        // ── Status Text ────────────────────────────────
         lblStatus = new Label {
-            Text = "Ready to install.",
-            ForeColor = C_MUTED, BackColor = Color.Transparent,
-            Font = new Font("Segoe UI", 8.5f),
-            Location = new Point(70, 366), Size = new Size(340, 18),
-            TextAlign = ContentAlignment.MiddleLeft
+            Text = "",
+            ForeColor = C_FG, BackColor = Color.Transparent,
+            Font = new Font("Segoe UI", 10.5f),
+            Location = new Point(0, 455), Size = new Size(800, 24),
+            TextAlign = ContentAlignment.MiddleCenter, Visible = false
         };
 
+        // ── Bytes downloaded text ──────────────────────
         lblBytes = new Label {
             Text = "",
-            ForeColor = Color.FromArgb(70, 72, 84), BackColor = Color.Transparent,
-            Font = new Font("Segoe UI", 7.5f),
-            Location = new Point(70, 384), Size = new Size(460, 16),
-            TextAlign = ContentAlignment.MiddleLeft
+            ForeColor = C_MUTED, BackColor = Color.Transparent,
+            Font = new Font("Segoe UI", 9f),
+            Location = new Point(0, 482), Size = new Size(800, 20),
+            TextAlign = ContentAlignment.MiddleCenter, Visible = false
         };
 
-        // ── Install button ────────────────────────────
+        // ── Install Button ─────────────────────────────
         btnInstall = new Button {
             Text = "INSTALL",
-            Location = new Point(215, 410), Size = new Size(170, 44),
+            Location = new Point(260, 430), Size = new Size(280, 54),
             FlatStyle = FlatStyle.Flat,
             BackColor = C_PINK, ForeColor = C_FG,
-            Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 14f, FontStyle.Bold),
             Cursor = Cursors.Hand
         };
         btnInstall.FlatAppearance.BorderSize = 0;
         btnInstall.Click += StartInstall;
-        RoundBtn(btnInstall, 10);
+        RoundBtn(btnInstall, 12);
 
-        // ── Launch button (shown after install) ───────
+        // ── Launch Button ──────────────────────────────
         btnLaunch = new Button {
-            Text = "LAUNCH GAME  ▶",
-            Location = new Point(190, 410), Size = new Size(220, 44),
+            Text = "PLAY GAME ▶",
+            Location = new Point(260, 430), Size = new Size(280, 54),
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.FromArgb(28, 180, 90), ForeColor = C_FG,
-            Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 14f, FontStyle.Bold),
             Cursor = Cursors.Hand, Visible = false
         };
         btnLaunch.FlatAppearance.BorderSize = 0;
@@ -161,51 +183,11 @@ public class SetupForm : Form
             Process.Start(new ProcessStartInfo(exePath) { WorkingDirectory = installDir });
             Application.Exit();
         };
-        RoundBtn(btnLaunch, 10);
+        RoundBtn(btnLaunch, 12);
 
         Controls.AddRange(new Control[] {
             pnlTitle, lblStage, pnlProgress, lblStatus, lblBytes, btnInstall, btnLaunch
         });
-    }
-
-    void OnLoad(object sender, EventArgs e)
-    {
-        // Asynchronously load images from GitHub for the visual header
-        for (int i = 0; i < 4; i++)
-        {
-            int idx = i;
-            var bgw = new BackgroundWorker();
-            bgw.DoWork += delegate(object s, DoWorkEventArgs args) {
-                try {
-                    var wc2 = new WebClient();
-                    wc2.Headers.Add("User-Agent", "Mozilla/5.0");
-                    byte[] data = wc2.DownloadData(imgUrls[idx]);
-                    args.Result = Image.FromStream(new MemoryStream(data));
-                } catch { args.Result = null; }
-            };
-            bgw.RunWorkerCompleted += delegate(object s, RunWorkerCompletedEventArgs args) {
-                charImgs[idx] = args.Result as Image;
-                imgsLoaded++;
-                if (!IsDisposed) Invalidate();
-            };
-            bgw.RunWorkerAsync();
-        }
-
-        // Load logo
-        var bgwLogo = new BackgroundWorker();
-        bgwLogo.DoWork += delegate(object s, DoWorkEventArgs args) {
-            try {
-                var wc2 = new WebClient();
-                wc2.Headers.Add("User-Agent", "Mozilla/5.0");
-                byte[] data = wc2.DownloadData(logoUrl);
-                args.Result = Image.FromStream(new MemoryStream(data));
-            } catch { args.Result = null; }
-        };
-        bgwLogo.RunWorkerCompleted += delegate(object s, RunWorkerCompletedEventArgs args) {
-            logoImg = args.Result as Image;
-            if (!IsDisposed) Invalidate();
-        };
-        bgwLogo.RunWorkerAsync();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -215,17 +197,17 @@ public class SetupForm : Form
         g.SmoothingMode      = SmoothingMode.AntiAlias;
         g.InterpolationMode  = InterpolationMode.HighQualityBicubic;
 
-        // ── Pink radial glow at top ────────────────────
+        // ── Pink glow top center ───────────────────────
         using (var brush = new PathGradientBrush(new PointF[] {
-            new PointF(300, 36), new PointF(0, 200), new PointF(600, 200)
+            new PointF(400, 36), new PointF(100, 280), new PointF(700, 280)
         })) {
-            brush.CenterColor   = Color.FromArgb(40, 255, 79, 115);
+            brush.CenterColor    = Color.FromArgb(40, 255, 79, 115);
             brush.SurroundColors = new Color[] { Color.Transparent, Color.Transparent };
-            g.FillEllipse(brush, 100, 20, 400, 220);
+            g.FillEllipse(brush, 150, 40, 500, 300);
         }
 
-        // ── Character images ───────────────────────────
-        int[] xPos   = { 60, 170, 300, 420 };
+        // ── Draw 4 character cards rotating/scaling ────
+        int[] xPos   = { 130, 270, 410, 550 };
         float[] rots = { -8f, -3f, 3f, 8f };
         float[] scls = { 1f, 1.08f, 1.08f, 1f };
 
@@ -233,39 +215,24 @@ public class SetupForm : Form
         {
             if (charImgs[i] != null)
             {
-                int w = (int)(90 * scls[i]);
-                int h = (int)(90 * scls[i]);
-                int x = xPos[i] + (90 - w) / 2;
-                int y = 50 + (90 - h) / 2;
+                int w = (int)(120 * scls[i]);
+                int h = (int)(120 * scls[i]);
+                int x = xPos[i] + (120 - w) / 2;
+                int y = 70 + (120 - h) / 2;
 
                 g.TranslateTransform(x + w / 2, y + h / 2);
                 g.RotateTransform(rots[i]);
                 g.DrawImage(charImgs[i], -w / 2, -h / 2, w, h);
                 g.ResetTransform();
             }
-            else
-            {
-                // Placeholder circle
-                int cx = xPos[i] + 45, cy = 95;
-                using (var b = new SolidBrush(Color.FromArgb(25, 255, 255, 255)))
-                    g.FillEllipse(b, cx - 34, cy - 34, 68, 68);
-                using (var p = new Pen(Color.FromArgb(40, 255, 255, 255), 1.5f))
-                    g.DrawEllipse(p, cx - 34, cy - 34, 68, 68);
-            }
         }
 
-        // ── Logo ───────────────────────────────────────
+        // ── Draw Logo ──────────────────────────────────
         if (logoImg != null)
         {
-            int lw = 200, lh = (int)(200f * logoImg.Height / logoImg.Width);
-            g.DrawImage(logoImg, (600 - lw) / 2, 150, lw, lh);
-        }
-        else
-        {
-            // Fallback text logo
-            using (var f = new Font("Segoe UI", 24f, FontStyle.Bold))
-            using (var b = new SolidBrush(C_FG))
-                g.DrawString("CHIIKAWA ROYALE", f, b, new RectangleF(0, 160, 600, 60), new StringFormat { Alignment = StringAlignment.Center });
+            int lw = 240;
+            int lh = (int)(240f * logoImg.Height / logoImg.Width);
+            g.DrawImage(logoImg, (800 - lw) / 2, 210, lw, lh);
         }
     }
 
@@ -297,35 +264,32 @@ public class SetupForm : Form
                 gp.CloseAllFigures();
                 g.FillPath(brush, gp);
             }
-
-            // Shimmer highlight
-            if (!done && progressPct < 100)
-            {
-                using (var shimmer = new LinearGradientBrush(
-                    new Rectangle(0, 0, pnl.Width, pnl.Height / 2),
-                    Color.FromArgb(60, 255, 255, 255), Color.Transparent,
-                    LinearGradientMode.Vertical))
-                {
-                    g.FillRectangle(shimmer, 0, 0, (int)(pnl.Width * progressPct / 100.0), pnl.Height / 2);
-                }
-            }
         }
     }
 
     void StartInstall(object sender, EventArgs e)
     {
-        btnInstall.Enabled = false;
-        btnInstall.Text    = "DOWNLOADING...";
+        installing = true;
+        btnInstall.Visible = false;
+
+        pnlProgress.Visible = true;
+        lblStatus.Visible   = true;
+        lblBytes.Visible    = true;
+
+        lblStatus.Text = "Connecting to download servers...";
+        lblBytes.Text  = "0 MB / 0 MB";
 
         try { Directory.CreateDirectory(installDir); }
         catch (Exception ex)
         {
             MessageBox.Show("Cannot create install folder:\n" + ex.Message);
-            btnInstall.Enabled = true; btnInstall.Text = "INSTALL";
+            btnInstall.Visible = true;
+            pnlProgress.Visible = false;
+            lblStatus.Visible   = false;
+            lblBytes.Visible    = false;
             return;
         }
 
-        // ── FIX: Enable TLS 1.2 for GitHub downloads ──
         try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Ssl3 | SecurityProtocolType.Tls; }
         catch { }
 
@@ -348,13 +312,13 @@ public class SetupForm : Form
             string total = ev.TotalBytesToReceive > 0 ? FmtB(ev.TotalBytesToReceive) : "?";
 
             string step;
-            if      (progressPct < 10) step = "Connecting to servers...";
-            else if (progressPct < 35) step = "Downloading game client...";
-            else if (progressPct < 65) step = "Downloading assets...";
-            else if (progressPct < 88) step = "Finalizing download...";
-            else                       step = "Preparing installation...";
+            if      (progressPct < 15) step = "Connecting to server...";
+            else if (progressPct < 45) step = "Downloading game assets...";
+            else if (progressPct < 75) step = "Extracting files...";
+            else if (progressPct < 92) step = "Optimizing setup...";
+            else                       step = "Configuring local environment...";
 
-            lblStatus.Text = step + " (" + progressPct + "%)";
+            lblStatus.Text = step + "... (" + progressPct + "%)";
             lblBytes.Text  = recv + " / " + total;
         });
     }
@@ -368,9 +332,10 @@ public class SetupForm : Form
             {
                 string err = ev.Error != null ? ev.Error.Message : "Cancelled.";
                 lblStatus.Text = "Download failed: " + err;
+                lblBytes.Text  = "Please verify your internet connection and try again.";
                 progressPct = 0;
                 pnlProgress.Invalidate();
-                btnInstall.Enabled = true;
+                btnInstall.Visible = true;
                 btnInstall.Text    = "RETRY";
                 return;
             }
@@ -378,12 +343,16 @@ public class SetupForm : Form
             done        = true;
             progressPct = 100;
             pnlProgress.Invalidate();
+
             lblStatus.Text = "Installation complete!";
-            lblBytes.Text  = "Desktop shortcut created — ready to play!";
+            lblBytes.Text  = "Desktop shortcut created. Ready to launch!";
 
             CreateShortcut();
-            btnInstall.Visible = false;
-            btnLaunch.Visible  = true;
+
+            pnlProgress.Visible = false;
+            lblStatus.Visible   = true;
+            lblBytes.Visible    = true;
+            btnLaunch.Visible   = true;
         });
     }
 
@@ -407,14 +376,12 @@ public class SetupForm : Form
 
     static Button TitleBtn(string text, Point loc)
     {
-        var b = new Button {
+        return new Button {
             Text = text, Location = loc, Size = new Size(26, 22),
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.FromArgb(30, 31, 38), ForeColor = C_MUTED,
             Font = new Font("Segoe UI", 9.5f), Cursor = Cursors.Hand
         };
-        b.FlatAppearance.BorderSize = 0;
-        return b;
     }
 
     static void RoundBtn(Button b, int r)

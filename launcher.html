@@ -520,9 +520,9 @@
 <body>
 
   <!-- ════════════════════════════════════════
-       INSTALLER SCREEN
+       INSTALLER SCREEN (Bypassed — now in Setup)
   ════════════════════════════════════════ -->
-  <div id="installerScreen" class="screen visible">
+  <div id="installerScreen" class="screen">
     <div class="app-titlebar" id="installerTitlebar">
       <div class="titlebar-left">
         <img src="chiikawa-royale-logo.png" class="titlebar-icon" alt="">
@@ -560,7 +560,7 @@
   <!-- ════════════════════════════════════════
        LAUNCHER SCREEN
   ════════════════════════════════════════ -->
-  <div id="launcherScreen" class="screen">
+  <div id="launcherScreen" class="screen visible">
     <div class="app-titlebar" id="launcherTitlebar">
       <div class="titlebar-left">
         <img src="chiikawa-royale-logo.png" class="titlebar-icon" alt="">
@@ -645,6 +645,9 @@
 
     // ── Electron API detection ────────────────────────
     const isElectron = typeof window.electronAPI !== 'undefined' && window.electronAPI.isElectron;
+
+    // Load news immediately since launcher is active by default
+    loadNewsList('news');
 
     // ── Window controls ───────────────────────────────
     document.getElementById('minimizeInstallerBtn').addEventListener('click', () => {
@@ -746,6 +749,9 @@
     // ── Play button ───────────────────────────────────
     document.getElementById('playBtn').addEventListener('click', () => {
       launchOverlay.classList.add('active');
+      if (isElectron && window.electronAPI.startGame) {
+        window.electronAPI.startGame();
+      }
       setTimeout(() => { window.location.href = 'index.html'; }, 2000);
     });
 

@@ -12,7 +12,7 @@
     "productName": "Chiikawa Royale",
     "win": {
       "target": "portable",
-      "icon": "../chiikawa-royale-logo.png",
+      "icon": "chiikawa-royale-logo.ico",
       "sign": null,
       "signAndEditExecutable": false
     },
@@ -22,6 +22,7 @@
     "files": [
       "main.js",
       "package.json",
+      "chiikawa-royale-logo.ico",
       "../launcher.html",
       "../launcher.css",
       "../assets/**/*",

@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 
+// Set app identity for taskbar icon
+app.setAppUserModelId('com.chiikawaroyale.launcher');
+
 // Prevent multiple instances
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -17,7 +20,7 @@ function createWindow() {
     resizable: false,
     transparent: false,
     backgroundColor: '#0f1012',
-    icon: path.join(__dirname, '..', 'chiikawa-royale-logo.png'),
+    icon: path.join(__dirname, 'chiikawa-royale-logo.ico'),
     title: 'Chiikawa Royale',
     webPreferences: {
       nodeIntegration: false,
@@ -52,8 +55,8 @@ function createWindow() {
   // Go fullscreen when playing the game, restore when back in launcher
   mainWindow.webContents.on('did-navigate', (event, url) => {
     if (url.includes('index.html')) {
-      mainWindow.setFullScreen(true);
       mainWindow.setResizable(true);
+      mainWindow.setFullScreen(true);
     } else if (url.includes('launcher.html')) {
       mainWindow.setFullScreen(false);
       mainWindow.setResizable(false);
@@ -83,6 +86,13 @@ ipcMain.on('window-maximize', () => {
     } else {
       mainWindow.maximize();
     }
+  }
+});
+
+ipcMain.on('start-game', () => {
+  if (mainWindow) {
+    mainWindow.setResizable(true);
+    mainWindow.setFullScreen(true);
   }
 });
 
