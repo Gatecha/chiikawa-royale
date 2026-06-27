@@ -780,33 +780,132 @@
             </div>
 
             <!-- SHOP TAB CONTENT -->
-            <div class="tab-content" id="tabContent_shop">
-              <div class="tab-panel-inner card-inner shop-panel" style="display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; height: 100%; overflow-y: auto;">
+            <div class="tab-content" id="tabContent_shop" style="height: 100%; padding: 0; background: linear-gradient(135deg, #8b2be2 0%, #4a0080 100%);">
+              <div class="shop-layout-container" style="display: flex; gap: 20px; padding: 20px; box-sizing: border-box; height: 100%; width: 100%; overflow: hidden; align-items: stretch;">
                 
-                <!-- Shop Header -->
-                <div class="shop-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 4px solid #000; padding-bottom: 12px; flex-shrink: 0;">
-                  <h3 style="font-family: var(--font); font-size: 24px; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Magical Gacha Shop</h3>
-                  <div class="shop-wallet-display" style="display: flex; align-items: center; gap: 8px; background: #000; padding: 6px 14px; border-radius: 20px; border: 2.5px solid #333;">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="#ffd86f" style="display: inline-block; vertical-align: middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-                    <strong style="color: #ffd86f; font-family: var(--font-clean); font-size: 15px; margin-left: 2px;"><span id="shopGemsDisplay">0</span> Gems</strong>
+                <!-- Left Phone Navigation Sidebar -->
+                <div class="shop-phone-sidebar" style="position: relative; width: 240px; background: #0f1012; border: 6px solid #000; border-radius: 36px; box-shadow: 8px 8px 0 #000; display: flex; flex-direction: column; padding: 32px 14px; box-sizing: border-box; flex-shrink: 0; justify-content: center; height: calc(100% - 10px); z-index: 5;">
+                  <!-- Phone Notch Indicator -->
+                  <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 70px; height: 8px; background: #000; border-radius: 4px; border: 1.5px solid #222;"></div>
+                  
+                  <!-- Phone Navigation Buttons -->
+                  <div class="shop-phone-nav-list" style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px; margin-bottom: auto; width: 100%;">
+                    
+                    <button class="shop-nav-btn active" data-shop-subtab="gacha" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">⭐</span>
+                      <span>gacha</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="outfits" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">👕</span>
+                      <span>outfits</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="bombs" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">💣</span>
+                      <span>bombs</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="gem_shop" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">💎</span>
+                      <span>gem shop</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="bundles" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">🎁</span>
+                      <span>bundles</span>
+                    </button>
+                    
                   </div>
+
+                  <!-- Wallet Balance Display inside Phone Bottom -->
+                  <div class="shop-phone-wallet" style="margin-top: auto; background: #000; border: 3px solid #000; border-radius: 16px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 2px 2px 0 rgba(0,0,0,0.5); width: 100%; box-sizing: border-box;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="#ffd86f"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    <strong style="color: #ffd86f; font-family: var(--font-clean); font-size: 13px; font-weight: 900;"><span id="shopGemsDisplay">0</span> Gems</strong>
+                  </div>
+
+                  <!-- Phone Home Indicator Bar -->
+                  <div style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); width: 45px; height: 5px; background: #222; border-radius: 3px;"></div>
                 </div>
 
-                <!-- Magical Chiikawa Banner Card -->
-                <div class="shop-gacha-banner" id="magicalChiikawaBannerBtn" style="position: relative; border-radius: 20px; border: 4.5px solid #000; box-shadow: 8px 8px 0 #000; overflow: hidden; background: #000; cursor: pointer; display: flex; flex-direction: column; min-height: 240px; aspect-ratio: 16/9; max-width: 640px; margin: 10px auto 20px; flex-shrink: 0;">
-                  <!-- Video playing banner animation -->
-                  <video class="shop-gacha-banner-media" src="assets/banners/magical chiikawa banner animation.mp4" loop muted autoplay playsinline style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;"></video>
-                  <div class="shop-gacha-banner-shade" style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%);"></div>
+                <!-- Right Shop Content Area -->
+                <div class="shop-content-area" style="flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; height: calc(100% - 10px); padding-right: 8px; box-sizing: border-box; z-index: 4;">
                   
-                  <div class="shop-gacha-banner-copy" style="position: absolute; left: 24px; bottom: 24px; right: 24px; z-index: 2; color: #fff; text-align: left; max-width: 70%;">
-                    <small style="color: #ffd86f; font-family: var(--font-clean); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Featured Gacha</small>
-                    <strong style="font-family: var(--font); font-size: 26px; text-transform: uppercase; color: #fff; display: block; margin-bottom: 6px; text-shadow: 2px 2px 0 #000;">magical chiikawa</strong>
-                    <p style="font-family: var(--font-clean); font-size: 13px; color: #bbb; margin: 0; line-height: 1.4; text-shadow: 1px 1px 0 #000;">Draw once for 300 gems to win one unowned custom colored bomb skin! Won items leave the pool.</p>
+                  <!-- GACHA SUB-TAB CONTENT -->
+                  <div id="shopSubTabContent_gacha" class="shop-subtab-content active" style="display: flex; flex-direction: column; height: 100%; width: 100%;">
+                    
+                    <!-- ZZZ-style Gacha Banner Card -->
+                    <div class="shop-gacha-banner" id="magicalChiikawaBannerBtn" style="position: relative; border-radius: 20px; border: 4.5px solid #000; box-shadow: 8px 8px 0 #000; overflow: hidden; background: #000; cursor: pointer; display: flex; flex-direction: column; height: 100%; min-height: 380px; width: 100%;">
+                      
+                      <!-- Top Info Header Bar (ZZZ-style yellow label bar) -->
+                      <div class="gacha-banner-header-bar" style="position: absolute; top: 0; left: 0; right: 0; height: 42px; background: #000; border-bottom: 4px solid #000; z-index: 3; display: flex; align-items: center; padding: 0 20px; justify-content: space-between;">
+                        <span style="font-family: var(--font); color: #ffd86f; font-size: 14px; text-transform: uppercase; font-weight: 900; letter-spacing: 0.5px;">"Magical Chiikawa" Limited Draw</span>
+                        <div style="background: #ff3366; color: #fff; font-family: var(--font-clean); font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px; border: 2px solid #000; transform: rotate(1deg);">40d left</div>
+                      </div>
+
+                      <!-- Video playing banner animation -->
+                      <video class="shop-gacha-banner-media" src="assets/banners/magical chiikawa banner animation.mp4" loop muted autoplay playsinline style="position: absolute; inset: 42px 0 0; width: 100%; height: calc(100% - 42px); object-fit: cover;"></video>
+                      <div class="shop-gacha-banner-shade" style="position: absolute; inset: 42px 0 0; background: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%);"></div>
+                      
+                      <!-- Fire badge +70% -->
+                      <div class="gacha-banner-badge" style="position: absolute; left: 24px; top: 62px; background: #ff3c00; color: #fff; font-family: var(--font); font-size: 15px; font-weight: 900; padding: 4px 14px; border-radius: 12px; border: 3px solid #000; transform: rotate(-2deg); box-shadow: 2px 2px 0 #000; z-index: 2;">
+                        +100% Drop Rate!
+                      </div>
+
+                      <div class="shop-gacha-banner-copy" style="position: absolute; left: 24px; bottom: 24px; right: 24px; z-index: 2; color: #fff; text-align: left; max-width: 65%;">
+                        <small style="color: #ffd86f; font-family: var(--font-clean); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Exclusive Gacha</small>
+                        <strong style="font-family: var(--font); font-size: 28px; text-transform: uppercase; color: #fff; display: block; margin-bottom: 6px; text-shadow: 2px 2px 0 #000; letter-spacing: 0.5px;">magical chiikawa</strong>
+                        <p style="font-family: var(--font-clean); font-size: 13px; color: #bbb; margin: 0; line-height: 1.4; text-shadow: 1px 1px 0 #000;">Draw once for 300 gems to win one unowned custom colored bomb skin! Won items leave the pool.</p>
+                      </div>
+
+                      <!-- ZZZ-style Draw button/price in card -->
+                      <div class="shop-gacha-banner-cta" style="position: absolute; right: 24px; bottom: 24px; z-index: 2; background: #ffd86f; color: #000; border: 4.5px solid #000; border-radius: 20px; font-family: var(--font); font-size: 15px; font-weight: 900; padding: 10px 24px; box-shadow: 4px 4px 0 #000; text-transform: uppercase; display: flex; align-items: center; gap: 6px; transition: transform 0.1s;">
+                        <span>Draw</span>
+                        <div style="display: inline-flex; align-items: center; gap: 2px; background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 10px;">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="#000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                          <span>300</span>
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
 
-                  <div class="shop-gacha-banner-cta" style="position: absolute; right: 24px; top: 24px; z-index: 2; background: #ffd86f; color: #000; border: 3px solid #000; border-radius: 20px; font-family: var(--font-clean); font-size: 12px; font-weight: 900; padding: 6px 14px; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">
-                    Draw 300 Gems
+                  <!-- OUTFITS SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_outfits" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">👕</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Outfits Available</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Today's outfits stock is empty. Please check back later!</small>
+                    </div>
                   </div>
+
+                  <!-- BOMBS SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_bombs" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">💣</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Bombs Available</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Check back later for purchasable bomb designs.</small>
+                    </div>
+                  </div>
+
+                  <!-- GEM SHOP SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_gem_shop" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">💎</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">Gems Shop Closed</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Payment configurations are offline. Check back later!</small>
+                    </div>
+                  </div>
+
+                  <!-- BUNDLES SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_bundles" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">🎁</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Bundles Found</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Special bundles will appear here during seasonal events!</small>
+                    </div>
+                  </div>
+
                 </div>
 
               </div>

@@ -10384,3 +10384,58 @@ body.is-iphone {
 .shop-gacha-banner-cta:hover {
   background: #ffe395;
 }
+
+/* Phone sidebar buttons styling (ZZZ-style) */
+.shop-nav-btn {
+  background: transparent;
+  border: none;
+  color: #a0a5b5;
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 900;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s, transform 0.15s;
+  box-sizing: border-box;
+}
+
+.shop-nav-btn:hover {
+  color: #fff;
+  transform: translateX(4px);
+}
+
+.shop-nav-btn.active {
+  background: #83cf00 !important;
+  color: #000 !important;
+  border: 3.5px solid #000 !important;
+  border-radius: 14px !important;
+  box-shadow: 3.5px 3.5px 0 #000 !important;
+  transform: skewX(-6deg) !important;
+  padding: 8px 12px !important;
+}
+
+.shop-nav-btn.active .shop-nav-icon {
+  filter: brightness(0.2) contrast(1.5);
+}
+
+.shop-nav-icon {
+  font-size: 16px;
+  transition: transform 0.15s;
+}
+
+.shop-nav-btn:hover .shop-nav-icon {
+  transform: scale(1.15) rotate(-4deg);
+}
+
+/* Visibility transitions for sub-tabs */
+.shop-subtab-content {
+  display: none;
+}
+.shop-subtab-content.active {
+  display: flex !important;
+}

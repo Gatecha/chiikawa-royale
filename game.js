@@ -12203,12 +12203,40 @@ function initGachaShop() {
     }
   });
 
+  // Phone sub-tab click listeners
+  const subTabButtons = document.querySelectorAll(".shop-nav-btn");
+  subTabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const subTabName = btn.getAttribute("data-shop-subtab");
+      
+      // Remove active class from other buttons
+      subTabButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      
+      // Hide all subtab contents
+      document.querySelectorAll(".shop-subtab-content").forEach((content) => {
+        content.classList.remove("active");
+        content.style.display = "none";
+      });
+      
+      // Show targeted subtab content
+      const target = document.getElementById(`shopSubTabContent_${subTabName}`);
+      if (target) {
+        target.classList.add("active");
+        target.style.display = "flex";
+      }
+    });
+  });
+
   // Tab click wallet updates
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener("click", () => {
       const tabName = btn.getAttribute("data-tab");
       if (tabName === "shop") {
         updateShopWalletDisplay();
+        // Reset subtab to Gacha on main shop tab click
+        const firstSubtab = document.querySelector('.shop-nav-btn[data-shop-subtab="gacha"]');
+        if (firstSubtab) firstSubtab.click();
       }
     });
   });
