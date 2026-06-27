@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdate:        () => ipcRenderer.invoke('check-for-update'),
   shouldSkipLoading:     () => ipcRenderer.sendSync('should-skip-loading'),
   isInstalled:           () => ipcRenderer.sendSync('is-installed'),
+  getDefaultInstallPath: () => ipcRenderer.sendSync('get-default-install-path'),
   selectFolder:          () => ipcRenderer.invoke('select-folder'),
   installGame:           (targetPath, createShortcut) => {
     ipcRenderer.on('install-progress', (_e, data) => {

@@ -589,7 +589,7 @@ const isElectron = !!(api && api.isElectron);
 let updateAvailable = false;
 let isUpdating      = false;
 let needsRestart    = false;
-let installPath     = "C:\\Games\\Chiikawa Royale";
+let installPath     = (api && api.getDefaultInstallPath) ? api.getDefaultInstallPath() : "C:\\Games\\Chiikawa Royale";
 
 /* ── News Data ────────────────────────────────── */
 const newsData = {
@@ -798,6 +798,13 @@ async function checkForUpdates() {
     instBottomDock.style.display = 'flex';
     $id('instLabel').textContent = 'GAME INSTALLER';
     
+    // Update default install path dynamically from API
+    if (api && api.getDefaultInstallPath) {
+      installPath = api.getDefaultInstallPath();
+      lblInstallPath.textContent = `Installation location: ${installPath}`;
+      txtPathInput.value = installPath;
+    }
+    
     termsCb.addEventListener('change', () => {
       btnStartInst.disabled = !termsCb.checked;
     });
@@ -928,5 +935,15 @@ playBtn.addEventListener('click', async () => {
   }
 });
 </script>
+
+<!-- ── CUSTOM ALERT ── -->
+<div id="alertOv" class="alert-ov hidden">
+  <div class="alert-card">
+    <div id="alertTitle" class="alert-ttl"></div>
+    <div id="alertBody" class="alert-msg"></div>
+    <button id="alertOk" class="alert-ok">OK</button>
+  </div>
+</div>
+
 </body>
 </html>

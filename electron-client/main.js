@@ -109,6 +109,12 @@ ipcMain.on('should-skip-loading', (event) => {
   returningFromGame = false;
 });
 
+// ── IPC: get default install path (sync) ──────────────────────────────────────
+ipcMain.on('get-default-install-path', (event) => {
+  const home = app.getPath('home');
+  event.returnValue = path.join(home, 'Games', 'Chiikawa Royale');
+});
+
 // ── Installer helper functions ────────────────────────────────────────────────
 function isInstalled() {
   if (!app.isPackaged) return true;
@@ -150,9 +156,11 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
 
     // Copy directory recursively
     function copyDirRecursive(src, dest) {
+      if (src === dest) return;
       if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
       for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
         const s = path.join(src, entry.name);
+        if (s === dest) continue;
         
         // Force the copied executable name to always be Chiikawa_Royale.exe
         let destName = entry.name;
