@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1258,18 +1258,32 @@
       lastTap = currentTime;
     });
 
-    // Window controls
+    // Window controls — use native Electron APIs when running as desktop client
+    const isElectron = typeof window.electronAPI !== 'undefined' && window.electronAPI.isElectron;
+
     document.getElementById("closeInstallerBtn").addEventListener("click", () => {
-      installerWin.classList.remove("visible");
+      if (isElectron) {
+        window.electronAPI.close(); // Close the native app
+      } else {
+        installerWin.classList.remove("visible");
+      }
     });
 
     document.getElementById("closeLauncherBtn").addEventListener("click", () => {
-      launcherWin.classList.remove("visible");
-      taskbarAppLauncher.classList.add("hidden");
+      if (isElectron) {
+        window.electronAPI.close(); // Close the native app
+      } else {
+        launcherWin.classList.remove("visible");
+        taskbarAppLauncher.classList.add("hidden");
+      }
     });
 
     document.getElementById("minimizeLauncherBtn").addEventListener("click", () => {
-      launcherWin.classList.remove("visible");
+      if (isElectron) {
+        window.electronAPI.minimize(); // Native minimize to taskbar
+      } else {
+        launcherWin.classList.remove("visible");
+      }
     });
 
     taskbarAppLauncher.addEventListener("click", () => {

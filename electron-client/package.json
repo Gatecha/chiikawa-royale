@@ -1,0 +1,54 @@
+{
+  "name": "chiikawa-royale",
+  "version": "1.1.13",
+  "description": "Chiikawa Royale - Official PC Client",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.chiikawaroyale.client",
+    "productName": "Chiikawa Royale",
+    "win": {
+      "target": "portable",
+      "icon": "../chiikawa-royale-logo.png",
+      "sign": null,
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "Chiikawa_Royale.exe"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "../launcher.html",
+      "../launcher.css",
+      "../assets/**/*",
+      "../chiikawa-royale-logo.png",
+      "../index.html",
+      "../style.css",
+      "../game.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "game",
+        "filter": [
+          "*.html",
+          "*.css",
+          "*.js",
+          "*.png",
+          "*.jpg",
+          "*.mp4",
+          "*.mp3",
+          "assets/**"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  }
+}
