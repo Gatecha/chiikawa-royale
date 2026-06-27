@@ -10541,6 +10541,15 @@ body.is-iphone {
   display: inline;
 }
 
+.checkpoint-fire {
+  display: inline;
+  font-size: 13px;
+}
+
+.checkpoint-node.claimed .checkpoint-fire {
+  display: none;
+}
+
 .checkpoint-node.claimed .checkpoint-pts {
   display: none;
 }
@@ -10758,4 +10767,26 @@ body.is-iphone {
 
 .quests-tab-btn, .checkpoint-node, .quest-card {
   user-select: none;
+}
+
+/* Purple Shop animated concentric ripples background */
+.shop-animated-bg {
+  background: repeating-radial-gradient(circle at 50% 55%,
+    #8b2be2 var(--grad-offset, 0px),
+    #8b2be2 calc(var(--grad-offset, 0px) + 12px),
+    #4a0080 calc(var(--grad-offset, 0px) + 12px),
+    #4a0080 calc(var(--grad-offset, 0px) + 48px),
+    #8b2be2 calc(var(--grad-offset, 0px) + 48px),
+    #8b2be2 calc(var(--grad-offset, 0px) + 76px),
+    #4a0080 calc(var(--grad-offset, 0px) + 76px),
+    #4a0080 calc(var(--grad-offset, 0px) + 100px),
+    #8b2be2 calc(var(--grad-offset, 0px) + 100px),
+    #8b2be2 calc(var(--grad-offset, 0px) + 108px),
+    #4a0080 calc(var(--grad-offset, 0px) + 108px),
+    #4a0080 calc(var(--grad-offset, 0px) + 160px),
+    #8b2be2 calc(var(--grad-offset, 0px) + 160px),
+    #8b2be2 calc(var(--grad-offset, 0px) + 176px),
+    #4a0080 calc(var(--grad-offset, 0px) + 176px),
+    #4a0080 calc(var(--grad-offset, 0px) + 240px)
+  ) !important;
 }

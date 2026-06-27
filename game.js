@@ -1696,6 +1696,12 @@ function handleServerMessage(msg) {
         collector.energyDrinkCount = data.playerStats.energyDrinkCount || 0;
         collector.reviveKitCount = data.playerStats.reviveKitCount || 0;
         collector.activeBombType = data.playerStats.activeBombType || "normal";
+
+        if (data.playerId === localPlayerId) {
+          let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
+          localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+        }
+
         burstSparkles(collector.x, collector.y);
       }
       updateHudSidebar();
@@ -3014,6 +3020,12 @@ function localCheckPickup(player) {
   else if (pickup.type === "bandage") player.bandageCount = (player.bandageCount || 0) + 1;
   else if (pickup.type === "medkit") player.medkitCount = (player.medkitCount || 0) + 1;
   else if (pickup.type === "energy_drink") player.energyDrinkCount = (player.energyDrinkCount || 0) + 1;
+
+  if (player.id === localPlayerId) {
+    let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
+    localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+  }
+
   burstSparkles(player.x, player.y);
   updateHudSidebar();
 }
@@ -6191,7 +6203,7 @@ function loop(now) {
 
   // Smoothly animate the yellow-console swirls background on active console screens
   if (activeGraphics.animateMenus && shouldDrawMenu) {
-    document.querySelectorAll(".yellow-console").forEach((el) => {
+    document.querySelectorAll(".yellow-console, .shop-animated-bg").forEach((el) => {
       const offset = (now / 90) % 240;
       el.style.setProperty('--grad-offset', `${offset}px`);
     });
@@ -12556,8 +12568,8 @@ function initQuestsSystem() {
   bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_gems", "quest_gems_completed", "quest_gems_claimed", 100, () => {
-    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  bindQuestClaimButton("qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
   bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
@@ -12660,10 +12672,10 @@ function syncQuestsUI() {
   const matchCompleted = localStorage.getItem("quest_match_completed") === "true";
   updateQuestCardUI("qprog_match", "qbtn_match", "quest_match_completed", "quest_match_claimed", matchCompleted ? 1 : 0, 1);
   
-  // Sync Card 3: Gems spent
-  const gemsSpent = parseInt(localStorage.getItem("quest_gems_progress") || "0");
-  if (gemsSpent >= 300) localStorage.setItem("quest_gems_completed", "true");
-  updateQuestCardUI("qprog_gems", "qbtn_gems", "quest_gems_completed", "quest_gems_claimed", gemsSpent, 300);
+  // Sync Card 3: Pickups collected
+  const pickupsCollected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
+  if (pickupsCollected >= 3) localStorage.setItem("quest_pickups_completed", "true");
+  updateQuestCardUI("qprog_pickups", "qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", pickupsCollected, 3);
   
   // Sync Card 4: Bombs placed
   const bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
