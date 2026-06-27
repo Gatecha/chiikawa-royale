@@ -138,7 +138,14 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
       if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
       for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
         const s = path.join(src, entry.name);
-        const d = path.join(dest, entry.name);
+        
+        // Force the copied executable name to always be Chiikawa_Royale.exe
+        let destName = entry.name;
+        if (s === process.execPath) {
+          destName = 'Chiikawa_Royale.exe';
+        }
+        
+        const d = path.join(dest, destName);
         
         // Skip installer lock files if any
         if (entry.name === '.installed') continue;
@@ -189,17 +196,33 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
 
     sendProgress(100, 'Installation complete! Launching game...');
 
-    // Launch installed app with correct working directory
-    const { spawn } = require('child_process');
-    spawn(destExe, [], { 
-      detached: true, 
-      stdio: 'ignore',
-      cwd: targetPath
-    }).unref();
+    // Launch installed app via shell.openPath (clean, handles spaces/renaming)
+    // with a child_process spawn fallback containing error listener to avoid uncaught crashes.
+    shell.openPath(destExe).then((errMsg) => {
+      if (errMsg) {
+        console.error('Failed to launch game via shell.openPath, trying spawn fallback:', errMsg);
+        try {
+          const { spawn } = require('child_process');
+          const child = spawn(destExe, [], { 
+            detached: true, 
+            stdio: 'ignore',
+            cwd: targetPath
+          });
+          child.on('error', (err) => {
+            console.error('Fallback spawn failed:', err);
+          });
+          child.unref();
+        } catch (e) {
+          console.error('Spawn fallback error:', e);
+        }
+      }
+    }).catch((err) => {
+      console.error('shell.openPath error:', err);
+    });
 
     setTimeout(() => {
       app.quit();
-    }, 1000);
+    }, 1200);
 
     return { success: true };
   } catch (err) {
