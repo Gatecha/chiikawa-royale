@@ -1487,11 +1487,17 @@ function handleServerMessage(msg) {
         radius: 13,
       }));
 
-      bombs = (data.bombs || []).map((bomb) => ({
-        ...bomb,
-        pulse: 0,
-        passableFor: new Set(players.map((p) => p.id)),
-      }));
+      bombs = (data.bombs || []).map((bomb) => {
+        const color = (bomb.ownerId === localPlayerId)
+          ? (localStorage.getItem("equipped_bomb") || "default")
+          : (bomb.color || "default");
+        return {
+          ...bomb,
+          pulse: 0,
+          passableFor: new Set(players.map((p) => p.id)),
+          color: color
+        };
+      });
       blasts = [];
       pickups = data.pickups || [];
       particles = [];
