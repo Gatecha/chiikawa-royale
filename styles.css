@@ -3463,11 +3463,11 @@ body.local-four-lobby-active .lobby-card {
 .results-card {
   position: relative;
   z-index: 20;
-  background: rgba(22, 20, 28, 0.95);
+  background: #0f1012;
   color: #fff;
-  border: 6px solid #18161a;
-  border-radius: 20px;
-  box-shadow: 12px 12px 0px #18161a;
+  border: 4.5px solid #000;
+  border-radius: 24px;
+  box-shadow: 10px 10px 0px #000;
   padding: 32px 40px;
   display: flex;
   flex-direction: column;
@@ -3481,21 +3481,21 @@ body.local-four-lobby-active .lobby-card {
 .results-title {
   font-family: 'DynaPuff', cursive;
   font-size: 36px;
-  color: #ff2fa7;
-  -webkit-text-stroke: 1.5px #18161a;
-  text-shadow: 2px 2px 0px #18161a;
+  color: #ffd86f;
+  text-shadow: 3px 3px 0px #000;
   margin: 0;
 }
 
 .round-msg {
   font-family: 'Fredoka', sans-serif;
   font-size: 20px;
-  font-weight: 700;
-  color: #555;
-  background: #f1eeff;
-  padding: 8px 20px;
-  border-radius: 12px;
-  border: 3px solid #18161a;
+  font-weight: 900;
+  color: #000;
+  background: #ffd86f;
+  padding: 8px 24px;
+  border-radius: 8px;
+  border: 3.5px solid #000;
+  box-shadow: 3px 3px 0px #000;
 }
 
 .results-players-row {
@@ -3508,9 +3508,9 @@ body.local-four-lobby-active .lobby-card {
 }
 
 .result-player-card {
-  background: #1a1820;
+  background: #1c1d20;
   color: #fff;
-  border: 4px solid #18161a;
+  border: 3.5px solid #000;
   border-radius: 16px;
   padding: 16px;
   display: flex;
@@ -3518,15 +3518,14 @@ body.local-four-lobby-active .lobby-card {
   align-items: center;
   gap: 8px;
   width: 160px;
-  box-shadow: 6px 6px 0px #18161a;
+  box-shadow: 4px 4px 0px #000;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .result-player-card.winner {
-  border-color: #ffd338;
-  box-shadow: 6px 6px 0px #ffd338;
-  transform: translateY(-6px);
-  animation: winnerCardBounce 1s infinite alternate ease-in-out;
+  border-color: #ffd86f !important;
+  box-shadow: 5px 5px 0px #ffd86f !important;
+  background: #25272a;
 }
 
 /* 3v3 Team Tournament Results Card */
@@ -3604,8 +3603,8 @@ body.local-four-lobby-active .lobby-card {
 .result-avatar-canvas {
   width: 60px;
   height: 60px;
-  background: #f6fbff;
-  border: 3px solid #18161a;
+  background: #0f1012;
+  border: 2.5px solid #000;
   border-radius: 50%;
 }
 
@@ -3613,7 +3612,8 @@ body.local-four-lobby-active .lobby-card {
   font-family: 'Fredoka', sans-serif;
   font-size: 15px;
   font-weight: 900;
-  color: #18161a;
+  color: #ffffff;
+  text-shadow: 1px 1px 0 #000;
 }
 
 .result-trophies-container {
@@ -3827,83 +3827,117 @@ body.local-four-lobby-active .lobby-card {
 .lobby-map-voting {
   margin: 16px 0;
   padding: 16px;
-  background: #fdfaf4;
-  border: 4px solid var(--ink);
-  border-radius: 16px;
-  box-shadow: 4px 4px 0px var(--ink);
+  background: #1c1d20;
+  border: 4.5px solid #000;
+  border-radius: 20px;
+  box-shadow: 8px 8px 0px #000;
 }
 
 .vote-header {
   font-family: var(--font);
   font-weight: 900;
-  font-size: 15px;
+  font-size: 26px;
   margin-bottom: 10px;
-  color: var(--ink);
+  color: #fff;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+}
+
+#mapVoteTimer {
+  display: inline-block;
+  background: #0f1012;
+  border: 3.5px solid #000;
+  border-radius: 12px;
+  padding: 4px 18px;
+  font-family: var(--font);
+  font-size: 26px;
+  color: #ff3399;
+  text-shadow: 0 0 10px rgba(255, 51, 153, 0.6);
+  animation: pulseTimer 1s infinite alternate;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+}
+
+@keyframes pulseTimer {
+  0% { transform: scale(1); filter: brightness(1); }
+  100% { transform: scale(1.05); filter: brightness(1.2); }
 }
 
 .map-vote-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr); /* 2x2 grid for clean aesthetic */
+  gap: 14px;
 }
 
 .map-vote-card {
-  background: var(--white);
-  border: 3px solid var(--ink);
-  border-radius: 12px;
-  padding: 10px;
+  background: #2e2f32;
+  border: 3.5px solid #000;
+  border-radius: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
-  transition: all 0.15s ease-out;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   user-select: none;
-  box-shadow: 3px 3px 0px var(--ink);
+  box-shadow: 4px 4px 0px #000;
+  box-sizing: border-box;
 }
 
 .map-vote-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 5px 5px 0px var(--ink);
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 6px 6px 0px #000;
+  background: #38393c;
 }
 
 .map-vote-card.voted {
-  border-color: #ff3399;
-  box-shadow: 4px 4px 0px #ff3399;
-  transform: translateY(-3px);
+  border-color: #ffd86f !important;
+  box-shadow: 5px 5px 0px #ffd86f !important;
+  transform: translateY(-4px) scale(1.04);
+  background: #3e3f42;
+  animation: cardPulseGlow 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes cardPulseGlow {
+  0% {
+    box-shadow: 5px 5px 0px #ffd86f;
+  }
+  100% {
+    box-shadow: 5px 5px 12px rgba(255, 216, 111, 0.6), 5px 5px 0px #ffd86f;
+  }
 }
 
 .map-vote-title {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
-  color: var(--ink);
+  color: #fff;
+  text-shadow: 1.5px 1.5px 0 #000;
 }
 
 .map-vote-preview-canvas {
   width: 100%;
-  height: 72px;
-  border-radius: 6px;
-  border: 2px solid var(--ink);
+  height: 76px;
+  border-radius: 8px;
+  border: 3px solid #000 !important;
   box-sizing: border-box;
   display: block;
 }
 
 .map-vote-count {
-  font-size: 10px;
-  font-weight: 800;
-  color: #555;
-  background: #eee;
-  padding: 2px 6px;
-  border-radius: 6px;
-  border: 2px solid var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  color: #ffd86f;
+  background: #0f1012;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 2.5px solid #000;
+  box-shadow: 1.5px 1.5px 0 #000;
 }
 
 .map-vote-card.voted .map-vote-count {
-  background: #ffebf2;
-  color: #ff3399;
-  border-color: #ff3399;
+  background: #ffd86f;
+  color: #000;
+  border-color: #000;
 }
 
 @media (max-width: 1100px) {
@@ -7538,17 +7572,17 @@ body.graphics-low .yellow-console {
 }
 .map-vote-card.voted {
   animation: cardBounce 0.3s ease-out;
-  border-color: #ff3399 !important;
-  box-shadow: 0 0 15px rgba(255, 51, 153, 0.6) !important;
+  border-color: #ffd86f !important;
+  box-shadow: 5px 5px 0px #ffd86f, 0 0 15px rgba(255, 216, 111, 0.6) !important;
 }
 
 @keyframes winningGlow {
-  0% { box-shadow: 0 0 10px #2ecc71; transform: scale(1); }
-  100% { box-shadow: 0 0 25px #2ecc71; transform: scale(1.15); }
+  0% { box-shadow: 5px 5px 0px #000, 0 0 10px #ffd86f; transform: scale(1.04) translateY(-4px); }
+  100% { box-shadow: 5px 5px 0px #000, 0 0 25px #ffd86f; transform: scale(1.08) translateY(-8px); }
 }
 .map-vote-card.winning-map {
   animation: winningGlow 0.5s ease-in-out infinite alternate;
-  border-color: #2ecc71 !important;
+  border-color: #ffd86f !important;
 }
 
 /* Responsive Gameplay HUD Layout */
@@ -10866,4 +10900,21 @@ body.is-iphone {
   100% {
     transform: translateX(100%);
   }
+}
+
+/* ZZZ Staggered Card Entrance and Crown Float Animations */
+@keyframes resultCardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes crownFloat {
+  0% { transform: translateX(-50%) translateY(0) scale(1); }
+  100% { transform: translateX(-50%) translateY(-6px) scale(1.1); }
 }

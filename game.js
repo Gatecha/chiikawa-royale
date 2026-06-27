@@ -740,6 +740,19 @@ tabButtons.forEach((btn) => {
         targetContent.classList.add("active");
       }
 
+      // Switch header title text content based on active section
+      const consoleTitle = document.querySelector(".console-title");
+      if (consoleTitle) {
+        let displayTitle = "LOBBY";
+        if (tabName === "play") displayTitle = "LOBBY";
+        else if (tabName === "look") displayTitle = "WARDROBE";
+        else if (tabName === "squad") displayTitle = "SQUAD";
+        else if (tabName === "quests") displayTitle = "ERRANDS";
+        else if (tabName === "shop") displayTitle = "SHOP";
+        else if (tabName === "gear") displayTitle = "SETTINGS";
+        consoleTitle.textContent = displayTitle;
+      }
+
       if (typeof updateFooterColor === "function") {
         updateFooterColor(tabName);
       }
@@ -8573,10 +8586,14 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
           
         } else {
           // Normal individual rendering
-          players.forEach((p) => {
+          players.forEach((p, idx) => {
             const card = document.createElement("div");
             const isWinner = p.id === winnerId;
             card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
+            
+            // Staggered entrance animation
+            card.style.animation = "resultCardEntrance 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both";
+            card.style.animationDelay = `${idx * 150}ms`;
 
             let trophiesHtml = "";
             const trophiesCount = p.trophies || 0;
@@ -8591,9 +8608,13 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
               }
             }
 
+            card.style.position = "relative";
+            const crownBadge = isWinner ? `<div class="result-crown-badge" style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); font-size: 20px; filter: drop-shadow(1.5px 1.5px 0 #000); animation: crownFloat 0.8s ease-in-out infinite alternate; z-index: 10;">👑</div>` : "";
+
             card.innerHTML = `
+              ${crownBadge}
               <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
-              <div class="result-player-name">${p.name}</div>
+              <div class="result-player-name">${escapeHTML(p.name)}</div>
               <div class="result-trophies-container">
                 ${trophiesHtml}
               </div>

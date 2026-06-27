@@ -1886,7 +1886,9 @@
       <canvas id="victoryConfettiCanvas" class="confetti-canvas"></canvas>
       
       <!-- Intermediate Round Results Card -->
-      <div id="roundResultsCard" class="results-card glass pop-in hidden">
+      <div id="roundResultsCard" class="results-card glass pop-in hidden" style="position: relative; overflow: hidden; padding: 0 40px 32px 40px;">
+        <!-- ZZZ warning stripes header -->
+        <div class="zzz-hazard-bar" style="height: 14px; background: repeating-linear-gradient(45deg, #ffd86f, #ffd86f 10px, #000 10px, #000 20px); border-bottom: 4.5px solid #000; margin: 0 -40px 24px -40px; width: calc(100% + 80px);"></div>
         <h2 class="results-title">Round Results</h2>
         <div id="roundSummaryMessage" class="round-msg">Hachiware wins this round!</div>
         <div id="resultsPlayersRow" class="results-players-row">
@@ -1977,9 +1979,13 @@
 
     <!-- Pre-Match Map Voting Screen Overlay -->
     <div id="mapVoteOverlay" class="overlay hidden">
-      <div class="lobby-map-voting" style="max-width: 480px; width: 90%; margin: auto; text-align: center; color: var(--ink);">
-        <div class="vote-header" style="font-size: 24px; margin-bottom: 8px;">MAP VOTING</div>
-        <div id="mapVoteTimer" style="font-family: var(--font); font-size: 20px; font-weight: 800; color: #ff3399; margin-bottom: 20px;">10</div>
+      <div class="lobby-map-voting" style="max-width: 520px; width: 90%; margin: auto; text-align: center; position: relative; overflow: hidden; padding: 0 20px 24px 20px;">
+        <!-- ZZZ warning stripes header -->
+        <div class="zzz-hazard-bar" style="height: 14px; background: repeating-linear-gradient(45deg, #ffd86f, #ffd86f 10px, #000 10px, #000 20px); border-bottom: 4.5px solid #000; margin: 0 -20px 16px -20px;"></div>
+        <div class="vote-header" style="font-size: 28px; margin-bottom: 12px; font-weight: 900; letter-spacing: 1.5px; text-shadow: 2px 2px 0 #000; color: #fff;">MAP VOTING</div>
+        <div style="margin-bottom: 20px;">
+          <div id="mapVoteTimer">10</div>
+        </div>
         
         <div class="map-vote-cards">
           <!-- Classic Green Map -->
