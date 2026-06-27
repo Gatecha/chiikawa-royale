@@ -12553,15 +12553,29 @@ function initQuestsSystem() {
 
   // Bind quest card action buttons (Claim buttons)
   bindQuestClaimButton("qbtn_login", "quest_login_completed", "quest_login_claimed", 100);
-  bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100);
-  bindQuestClaimButton("qbtn_gems", "quest_gems_completed", "quest_gems_claimed", 100);
-  bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100);
+  bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_gems", "quest_gems_completed", "quest_gems_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
 
   // Weekly quests Claim buttons
-  bindQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100);
-  bindQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100);
-  bindQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100);
-  bindQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100);
+  bindQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  });
 
   // Bind engagement progress milestones
   bindMilestoneNode("chk_100", 100);
@@ -12573,7 +12587,7 @@ function initQuestsSystem() {
   syncLevelTabUI();
 }
 
-function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal) {
+function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   
@@ -12591,6 +12605,8 @@ function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal) {
       
       showToastMsg(`Claimed ${pointsVal} Engagement Points!`);
       syncQuestsUI();
+    } else if (!completed && !claimed && typeof goAction === "function") {
+      goAction();
     }
   });
 }
@@ -12699,6 +12715,24 @@ function updateQuestCardUI(progElId, btnId, compKey, claimKey, currentVal, targe
   
   const completed = localStorage.getItem(compKey) === "true";
   const claimed = localStorage.getItem(claimKey) === "true";
+
+  // Set card sub-footer text
+  const card = btn.closest(".quest-card");
+  if (card) {
+    const subFooter = card.querySelector(".quest-card-sub-footer");
+    if (subFooter) {
+      if (claimed) {
+        subFooter.innerHTML = "<span>● Errand Completed</span>";
+        subFooter.className = "quest-card-sub-footer claimed-copy";
+      } else if (completed) {
+        subFooter.innerHTML = "<span>● Errand Complete!</span>";
+        subFooter.className = "quest-card-sub-footer unclaimed-copy";
+      } else {
+        subFooter.innerHTML = "<span>● Errand in progress</span>";
+        subFooter.className = "quest-card-sub-footer";
+      }
+    }
+  }
   
   btn.className = "quest-card-action-btn";
   if (claimed) {
@@ -12711,8 +12745,8 @@ function updateQuestCardUI(progElId, btnId, compKey, claimKey, currentVal, targe
     btn.disabled = false;
   } else {
     btn.textContent = "Go";
-    btn.classList.add("disabled");
-    btn.disabled = true;
+    btn.classList.add("go-btn");
+    btn.disabled = false;
   }
 }
 

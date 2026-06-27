@@ -966,8 +966,8 @@
                       <!-- Progress Checkpoints Track -->
                       <div class="engagement-track-container" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; position: relative;">
                         <!-- The Track Line -->
-                        <div style="position: absolute; left: 0; right: 0; top: 12px; height: 8px; background: #222; border-radius: 4px; border: 1.5px solid #000; overflow: hidden; z-index: 1;">
-                          <div id="engagementProgressBar" style="width: 0%; height: 100%; background: #83cf00; transition: width 0.3s ease;"></div>
+                        <div class="engagement-track-bar">
+                          <div id="engagementProgressBar"></div>
                         </div>
 
                         <!-- Checkpoints circles -->
@@ -1007,41 +1007,81 @@
                       
                       <!-- Quest Card 1: Log in -->
                       <div class="quest-card" id="qcard_login">
-                        <div class="quest-card-progress"><span id="qprog_login">0/1</span></div>
-                        <div class="quest-card-desc">Log in to the game</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn disabled" id="qbtn_login" type="button">Claimed</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_login">0/1</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Log in to the game</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_login" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
                       <!-- Quest Card 2: Play 1 Match -->
                       <div class="quest-card" id="qcard_match">
-                        <div class="quest-card-progress"><span id="qprog_match">0/1</span></div>
-                        <div class="quest-card-desc">Play 1 practice or online match</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn" id="qbtn_match" type="button">Claim</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_match">0/1</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Play 1 practice or online match</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_match" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
-                      <!-- Quest Card 3: Spend 100 Gems -->
+                      <!-- Quest Card 3: Spend 300 Gems -->
                       <div class="quest-card" id="qcard_gems">
-                        <div class="quest-card-progress"><span id="qprog_gems">0/1</span></div>
-                        <div class="quest-card-desc">Spend gems on gacha pulls</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn" id="qbtn_gems" type="button">Claim</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_gems">0/300</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Spend gems on gacha pulls</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_gems" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
                       <!-- Quest Card 4: Place 10 Bombs -->
                       <div class="quest-card" id="qcard_bombs">
-                        <div class="quest-card-progress"><span id="qprog_bombs">0/1</span></div>
-                        <div class="quest-card-desc">Place 10 bombs in matches</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn" id="qbtn_bombs" type="button">Claim</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_bombs">0/10</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Place 10 bombs in matches</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_bombs" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
@@ -1072,41 +1112,81 @@
                       
                       <!-- Weekly Quest Card 1: Win 3 Matches -->
                       <div class="quest-card" id="qcard_win3">
-                        <div class="quest-card-progress"><span id="qprog_win3">0/3</span></div>
-                        <div class="quest-card-desc">Win 3 matches in total</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn" id="qbtn_win3" type="button">Claim</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_win3">0/3</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Win 3 matches in total</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_win3" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
                       <!-- Weekly Quest Card 2: Spin Gacha 3 Times -->
                       <div class="quest-card" id="qcard_spin3">
-                        <div class="quest-card-progress"><span id="qprog_spin3">0/3</span></div>
-                        <div class="quest-card-desc">Draw from Gacha shop 3 times</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn" id="qbtn_spin3" type="button">Claim</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_spin3">0/3</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Draw from Gacha shop 3 times</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_spin3" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
                       <!-- Weekly Quest Card 3: Defeat 5 Enemies -->
                       <div class="quest-card" id="qcard_kills">
-                        <div class="quest-card-progress"><span id="qprog_kills">0/5</span></div>
-                        <div class="quest-card-desc">Defeat 5 players or bots</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn" id="qbtn_kills" type="button">Claim</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_kills">0/5</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Defeat 5 players or bots</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_kills" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
                       <!-- Weekly Quest Card 4: Spend 1000 Gems -->
                       <div class="quest-card" id="qcard_spend1000">
-                        <div class="quest-card-progress"><span id="qprog_spend1000">0/1000</span></div>
-                        <div class="quest-card-desc">Spend 1000 total Gems</div>
-                        <div class="quest-card-footer">
-                          <div class="quest-card-reward">🔥 100</div>
-                          <button class="quest-card-action-btn" id="qbtn_spend1000" type="button">Claim</button>
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_spend1000">0/1000</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Spend 1000 total Gems</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_spend1000" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
                         </div>
                       </div>
 
