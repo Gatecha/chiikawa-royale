@@ -7454,14 +7454,17 @@ body.local-couch-active canvas#game {
 
 .couch-control-panel {
   position: absolute;
-  width: 132px;
-  min-height: 154px;
-  display: grid;
-  grid-template-rows: auto auto auto;
-  justify-items: center;
-  gap: 5px;
-  pointer-events: auto;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
   z-index: 28;
+}
+
+.couch-control-panel > * {
+  pointer-events: auto;
 }
 
 .couch-control-panel.slot-1 {
@@ -7519,9 +7522,16 @@ body.local-couch-active canvas#game {
   display: none;
 }
 
-.couch-joystick {
+.couch-joystick-wrapper {
+  position: relative;
   width: 140px;
   height: 140px;
+  margin-top: 15px;
+}
+
+.couch-joystick {
+  width: 100%;
+  height: 100%;
   border: 3px solid #000;
   display: grid;
   place-items: center;
@@ -7573,48 +7583,78 @@ body.local-couch-active canvas#game {
 }
 
 .couch-mini-action {
-  border: 2px solid #000;
+  position: absolute;
+  border: 3px solid #000;
   color: #fff;
   font-family: var(--font);
   font-weight: 900;
-  box-shadow: 2px 2px 0 #000;
-  pointer-events: auto;
-  touch-action: none;
+  text-transform: uppercase;
+  border-radius: 50%;
+  box-shadow: 3px 3px 0 #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+  z-index: 5;
 }
 
-.couch-mini-actions {
-  display: flex;
-  gap: 5px;
+/* Bomb Button: Top of Joystick */
+.couch-mini-action.bomb {
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 51, 153, 0.94); /* Pink */
+  font-size: 10px;
+  text-shadow: 1.5px 1.5px 0 #000;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, -8px);
 }
 
-.couch-mini-action {
-  width: 60px;
-  height: 34px;
-  border-radius: 10px;
+.couch-mini-action.bomb:active {
+  transform: translate(-50%, -6px) scale(0.94);
+  box-shadow: 1.5px 1.5px 0 #000;
+}
+
+/* Punch Button: Side of Joystick */
+.left-side .couch-mini-action.punch {
+  width: 46px;
+  height: 46px;
+  background: rgba(38, 194, 255, 0.94); /* Blue */
   font-size: 8px;
   text-shadow: 1px 1px 0 #000;
+  left: 100%;
+  top: 50%;
+  transform: translate(8px, -50%);
 }
 
-.couch-mini-action.punch {
-  background: rgba(38, 194, 255, 0.92);
+.left-side .couch-mini-action.punch:active {
+  transform: translate(10px, -46%) scale(0.94);
+  box-shadow: 1.5px 1.5px 0 #000;
 }
 
-.couch-mini-action.bomb {
-  background: rgba(255, 51, 153, 0.92);
+.right-side .couch-mini-action.punch {
+  width: 46px;
+  height: 46px;
+  background: rgba(38, 194, 255, 0.94); /* Blue */
+  font-size: 8px;
+  text-shadow: 1px 1px 0 #000;
+  right: 100%;
+  top: 50%;
+  transform: translate(-8px, -50%);
 }
 
-.couch-mini-action:active {
-  transform: translate(1px, 1px) scale(0.94);
-  box-shadow: 1px 1px 0 #000;
+.right-side .couch-mini-action.punch:active {
+  transform: translate(-10px, -46%) scale(0.94);
+  box-shadow: 1.5px 1.5px 0 #000;
 }
 
 @media (max-height: 560px), (max-width: 820px) {
   .couch-control-panel {
-    width: 112px;
-    min-height: 128px;
-    gap: 3px;
+    width: 170px;
+    gap: 8px;
   }
 
   .couch-control-panel.slot-1 {
@@ -7648,9 +7688,15 @@ body.local-couch-active canvas#game {
     height: 23px;
   }
 
-  .couch-joystick {
+  .couch-joystick-wrapper {
     width: 110px;
     height: 110px;
+    margin-top: 10px;
+  }
+
+  .couch-joystick {
+    width: 100%;
+    height: 100%;
   }
 
   .couch-joystick-knob {
@@ -7658,10 +7704,16 @@ body.local-couch-active canvas#game {
     height: 48px;
   }
 
-  .couch-mini-action {
-    width: 50px;
-    height: 28px;
-    border-radius: 8px;
+  .couch-mini-action.bomb {
+    width: 44px;
+    height: 44px;
+    font-size: 8px;
+  }
+
+  .left-side .couch-mini-action.punch,
+  .right-side .couch-mini-action.punch {
+    width: 38px;
+    height: 38px;
     font-size: 7px;
   }
 }

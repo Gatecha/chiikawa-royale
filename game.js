@@ -2586,18 +2586,19 @@ function updateCouchControlPicker() {
   humans.forEach((player) => {
     const slotNumber = (player.couchSlotIndex ?? humans.indexOf(player)) + 1;
     const panel = document.createElement("div");
-    panel.className = `couch-control-panel slot-${slotNumber}`;
+    const sideClass = (slotNumber === 1 || slotNumber === 4) ? "left-side" : "right-side";
+    panel.className = `couch-control-panel slot-${slotNumber} ${sideClass}`;
     panel.innerHTML = `
       <div class="couch-player-label" data-kind="${player.kind}">
         <img src="assets/cards/${player.kind}.png" alt="${escapeHTML(player.name)}" />
         <span>${player.trophies || 0}</span>
       </div>
-      <div class="couch-joystick" aria-label="P${slotNumber} movement joystick">
-        <div class="couch-joystick-knob"></div>
-      </div>
-      <div class="couch-mini-actions">
-        <button class="couch-mini-action punch" type="button" data-action="punch" aria-label="P${slotNumber} punch">PUNCH</button>
+      <div class="couch-joystick-wrapper">
+        <div class="couch-joystick" aria-label="P${slotNumber} movement joystick">
+          <div class="couch-joystick-knob"></div>
+        </div>
         <button class="couch-mini-action bomb" type="button" data-action="bomb" aria-label="P${slotNumber} bomb">BOMB</button>
+        <button class="couch-mini-action punch" type="button" data-action="punch" aria-label="P${slotNumber} punch">PUNCH</button>
       </div>
     `;
     bindCouchControlPanel(panel, player);
@@ -2615,11 +2616,13 @@ function getCouchTouchKeys(playerId) {
 function bindCouchPress(button, onStart, onEnd) {
   const start = (event) => {
     event.preventDefault();
+    event.stopPropagation();
     button.classList.add("pressed");
     onStart();
   };
   const end = (event) => {
     event.preventDefault();
+    event.stopPropagation();
     button.classList.remove("pressed");
     onEnd?.();
   };
@@ -6253,7 +6256,11 @@ function render(dt) {
   } else {
     cameraCenterX = (map[0] ? map[0].length : COLS) * TILE / 2;
     cameraCenterY = (map ? map.length : ROWS) * TILE / 2;
-    ctx.translate(OFFSET_X, OFFSET_Y);
+    const cols = map[0] ? map[0].length : COLS;
+    const rows = map ? map.length : ROWS;
+    const dynamicOffsetX = (CANVAS_WIDTH - cols * TILE) / 2;
+    const dynamicOffsetY = (CANVAS_HEIGHT - rows * TILE) / 2;
+    ctx.translate(dynamicOffsetX, dynamicOffsetY);
   }
 
   if (running || gameMessage) {
@@ -10398,6 +10405,14 @@ document.addEventListener("DOMContentLoaded", () => {
       btnLocalModeNormal.classList.add("btn-secondary");
       btnLocalModeNormal.classList.remove("btn-primary");
     });
+  }
+
+  const isApp = window.location.protocol === "file:" || /Android/i.test(navigator.userAgent);
+  if (isApp) {
+    const modeSelector = document.querySelector(".mode-options-grid");
+    if (modeSelector) modeSelector.style.display = "none";
+    const divider = modeSelector?.nextElementSibling;
+    if (divider && divider.tagName === "DIV") divider.style.display = "none";
   }
 
   document.getElementById("btnPlayOfflineSingle")?.addEventListener("click", () => {

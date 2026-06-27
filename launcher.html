@@ -142,7 +142,7 @@
 
     /* ── TOP-RIGHT CHIPS ── */
     .overlay-tr {
-      position: absolute; top: 10px; right: 52px; z-index: 10;
+      position: absolute; top: 10px; right: 120px; z-index: 10;
       display: flex; align-items: center; gap: 6px;
     }
     .chip {
@@ -279,10 +279,7 @@
 ════════════════════════════════════════ -->
 <div id="installerScreen" class="screen visible">
   <div class="tb">
-    <div class="tb-l">
-      <img src="chiikawa-royale-logo.png" class="tb-icon" alt="">
-      <span class="tb-title">CHIIKAWA ROYALE — PC CLIENT</span>
-    </div>
+    <div class="tb-l"></div>
     <div class="tb-r">
       <button class="tb-btn" id="minInstBtn" title="Minimize">
         <svg viewBox="0 0 10 2"><rect y="0" width="10" height="2"/></svg>
@@ -325,10 +322,7 @@
 <div id="launcherScreen" class="screen">
   <!-- Title bar -->
   <div class="tb">
-    <div class="tb-l">
-      <img src="chiikawa-royale-logo.png" class="tb-icon" alt="">
-      <span class="tb-title">CHIIKAWA ROYALE — GAME LAUNCHER</span>
-    </div>
+    <div class="tb-l"></div>
     <div class="tb-r">
       <button class="tb-btn" id="minLaunchBtn" title="Minimize">
         <svg viewBox="0 0 10 2"><rect y="0" width="10" height="2"/></svg>
@@ -344,7 +338,7 @@
 
     <!-- Background video -->
     <video class="bg-vid" autoplay loop muted playsinline>
-      <source src="assets/banners/magical chiikawa banner animation.mp4" type="video/mp4">
+      <source src="assets/launcher background/chiikawa royale launcher animation background.mp4" type="video/mp4">
     </video>
 
     <!-- Vignette -->
@@ -593,7 +587,14 @@ playBtn.addEventListener('click', async () => {
       const result = await api.downloadUpdate((p) => {
         updFill.style.width = p.pct + '%';
         updLbl.textContent  = p.label || '';
-        if (p.stage === 'done')  playBtn.textContent = 'RESTARTING...';
+        if (p.stage === 'done') {
+          playBtn.textContent = 'PLAY';
+          playBtn.disabled = false;
+          playBtn.classList.remove('upd');
+          updateAvailable = false;
+          updWrap.classList.remove('on');
+          showAlert('UPDATE COMPLETE', 'Game updated successfully! Click PLAY to start.');
+        }
         if (p.stage === 'error') {
           isUpdating = false; playBtn.disabled = false;
           updWrap.classList.remove('on');
