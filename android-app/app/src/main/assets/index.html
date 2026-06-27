@@ -123,7 +123,9 @@
       <section id="loginScreen" class="screen">
         <div class="yellow-console auth-console">
           <div class="auth-card glass">
-            <h1 class="auth-title">CHIIKAWA ROYALE</h1>
+            <div class="auth-loading-logo" aria-label="Chiikawa Royale">
+              <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale" class="auth-logo-characters-img" />
+            </div>
             <p class="auth-subtitle">Login or Create Account to Join the Battle!</p>
 
             <form id="authForm" class="auth-form">
@@ -141,7 +143,6 @@
               <div class="auth-buttons">
                 <button id="btnLogin" class="btn btn-primary" type="submit">Log In</button>
                 <button id="btnSignup" class="btn btn-secondary" type="button">Create Account</button>
-                <button id="btnPlayOffline" class="btn btn-accent" type="button" style="margin-top: 10px; width: 100%;">Play Locally / LAN</button>
               </div>
 
               <div class="social-login-separator">
@@ -170,12 +171,6 @@
             <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(34, 31, 37, 0.7); font-weight: 600; text-align: center; line-height: 1.4; max-width: 500px;">
               This game is still on its alpha stage, expect major bugs and optimization issues. If you want to send feedback please send it through our discord channel:
             </div>
-            <a href="https://discord.gg/qpJRXkKzZ3" target="_blank" class="btn-discord-footer" style="display: inline-flex; align-items: center; gap: 6px; background: #5865F2; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-family: 'Fredoka', sans-serif; font-size: 11px; font-weight: 800; text-decoration: none; border: 2px solid #221f25; box-shadow: 2px 2px 0px #221f25; cursor: pointer;">
-              <svg viewBox="0 0 127.14 96.36" width="14" height="14" style="fill: #ffffff;">
-                <path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,53.22,6.83,77.19,77.19,0,0,0,49.88,0,105.15,105.15,0,0,0,19.44,8.07C3.66,31.58-1.86,54.65,1,77.53A105.73,105.73,0,0,0,32,96.36a77.7,77.7,0,0,0,7.06-11.59,68.45,68.45,0,0,1-11.14-5.32c.94-.69,1.84-1.39,2.69-2.1a75.11,75.11,0,0,0,73,0c.85.71,1.75,1.41,2.69,2.1a68.45,68.45,0,0,1-11.14,5.32,77.7,77.7,0,0,0,7.06,11.59,105.73,105.73,0,0,0,31-18.83C129,54.65,123.5,31.58,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.41,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z" />
-              </svg>
-              JOIN DISCORD
-            </a>
           </footer>
         </div>
       </section>
@@ -208,12 +203,6 @@
             <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(34, 31, 37, 0.7); font-weight: 600; text-align: center; line-height: 1.4; max-width: 500px;">
               This game is still on its alpha stage, expect major bugs and optimization issues. If you want to send feedback please send it through our discord channel:
             </div>
-            <a href="https://discord.gg/qpJRXkKzZ3" target="_blank" class="btn-discord-footer" style="display: inline-flex; align-items: center; gap: 6px; background: #5865F2; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-family: 'Fredoka', sans-serif; font-size: 11px; font-weight: 800; text-decoration: none; border: 2px solid #221f25; box-shadow: 2px 2px 0px #221f25; cursor: pointer;">
-              <svg viewBox="0 0 127.14 96.36" width="14" height="14" style="fill: #ffffff;">
-                <path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,53.22,6.83,77.19,77.19,0,0,0,49.88,0,105.15,105.15,0,0,0,19.44,8.07C3.66,31.58-1.86,54.65,1,77.53A105.73,105.73,0,0,0,32,96.36a77.7,77.7,0,0,0,7.06-11.59,68.45,68.45,0,0,1-11.14-5.32c.94-.69,1.84-1.39,2.69-2.1a75.11,75.11,0,0,0,73,0c.85.71,1.75,1.41,2.69,2.1a68.45,68.45,0,0,1-11.14,5.32,77.7,77.7,0,0,0,7.06,11.59,105.73,105.73,0,0,0,31-18.83C129,54.65,123.5,31.58,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.41,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z" />
-              </svg>
-              JOIN DISCORD
-            </a>
           </footer>
         </div>
       </section>
@@ -248,12 +237,6 @@
             <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(34, 31, 37, 0.7); font-weight: 600; text-align: center; line-height: 1.4; max-width: 500px;">
               This game is still on its alpha stage, expect major bugs and optimization issues. If you want to send feedback please send it through our discord channel:
             </div>
-            <a href="https://discord.gg/qpJRXkKzZ3" target="_blank" class="btn-discord-footer" style="display: inline-flex; align-items: center; gap: 6px; background: #5865F2; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-family: 'Fredoka', sans-serif; font-size: 11px; font-weight: 800; text-decoration: none; border: 2px solid #221f25; box-shadow: 2px 2px 0px #221f25; cursor: pointer;">
-              <svg viewBox="0 0 127.14 96.36" width="14" height="14" style="fill: #ffffff;">
-                <path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,53.22,6.83,77.19,77.19,0,0,0,49.88,0,105.15,105.15,0,0,0,19.44,8.07C3.66,31.58-1.86,54.65,1,77.53A105.73,105.73,0,0,0,32,96.36a77.7,77.7,0,0,0,7.06-11.59,68.45,68.45,0,0,1-11.14-5.32c.94-.69,1.84-1.39,2.69-2.1a75.11,75.11,0,0,0,73,0c.85.71,1.75,1.41,2.69,2.1a68.45,68.45,0,0,1-11.14,5.32,77.7,77.7,0,0,0,7.06,11.59,105.73,105.73,0,0,0,31-18.83C129,54.65,123.5,31.58,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.41,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z" />
-              </svg>
-              JOIN DISCORD
-            </a>
           </footer>
         </div>
       </section>
@@ -261,6 +244,12 @@
       <!-- 1. MAIN LOBBY SCREEN (NEW - matches user screenshot) -->
       <section id="menuScreen" class="screen">
         <div class="yellow-console">
+          <!-- ZZZ Aesthetic Swipe Transition Overlay -->
+          <div id="tabTransitionOverlay" class="swipe-transition-overlay">
+            <div class="swipe-bar bar-1"></div>
+            <div class="swipe-bar bar-2"></div>
+            <div class="swipe-bar bar-3"></div>
+          </div>
           <!-- Top Navigation Header -->
           <header class="console-header">
             <!-- Normal Header Elements -->
@@ -308,6 +297,13 @@
                     <circle cx="6" cy="12" r="0.8" fill="white" stroke="none"/>
                     <circle cx="18" cy="12" r="3"/>
                     <circle cx="18" cy="12" r="0.8" fill="white" stroke="none"/>
+                  </svg>
+                </span>
+              </button>
+              <button class="tab-btn tab-quests" data-tab="quests" type="button" aria-label="Quests">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" class="svg-icon" fill="white">
+                    <path d="M19 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 15H9v-2h8v2zm0-4H9v-2h8v2zm0-4H9V8h8v2zM3 7h2v2H3V7zm0 4h2v2H3v-2zm0 4h2v2H3v-2z" />
                   </svg>
                 </span>
               </button>
@@ -404,14 +400,8 @@
               <!-- RIGHT/CENTER COLUMN: Open Gamemodes Trigger Button -->
               <div class="gamemode-trigger-wrapper" style="flex: 2; max-width: 600px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
                 <button id="btnOpenGamemodesPopup" class="gamemode-trigger-btn" type="button">
-                  <div class="select-paw-badge" aria-hidden="true" style="left: -4px; top: -1px;">
-                    <span></span><span></span><span></span><span></span>
-                  </div>
                   <span class="select-button-copy">SELECT</span>
                   <strong>GAMEMODE</strong>
-                  <div class="select-button-state" aria-hidden="true">
-                    <span>READY TO SELECT</span>
-                  </div>
                 </button>
               </div>
 
@@ -524,6 +514,8 @@
                   <div class="select-main-video-wrap">
                     <video id="characterSelectVideo" class="select-main-video-source" src="assets/chiikawa/chiikawa_character_animation.mp4" muted loop playsinline preload="auto"></video>
                     <canvas id="characterSelectCanvas" class="select-main-video" width="580" height="580"></canvas>
+                    <img id="bombSelectPreviewImg" class="select-main-video" src="" alt="Bomb Preview" style="width: 100%; height: 100%; object-fit: contain; transform: scale(0.7); display: none; margin: auto;" />
+                    <div id="effectSelectPreviewContainer" class="select-main-video" style="width: 100%; height: 100%; display: none; align-items: center; justify-content: center; margin: auto;"></div>
                   </div>
                   <button id="confirmCharacterBtn" class="select-nameplate" type="button">
                     <div class="select-paw-badge" aria-hidden="true">
@@ -587,6 +579,146 @@
                     <span class="empty-character-slot"></span>
                     <span class="empty-character-slot"></span>
                     <span class="empty-character-slot"></span>
+
+                    <!-- Bomb Skins (Wardrobe) -->
+                    <button class="bomb-card active" data-bomb-color="default" type="button" aria-label="Select Default Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/default-bomb.svg" alt="Default Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Default</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="pink" type="button" aria-label="Select Pink Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/pink-bomb.svg" alt="Pink Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Pink</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="blue" type="button" aria-label="Select Blue Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/blue-bomb.svg" alt="Blue Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Blue</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="green" type="button" aria-label="Select Green Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/green-bomb.svg" alt="Green Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Green</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="gold" type="button" aria-label="Select Gold Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/gold-bomb.svg" alt="Gold Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Gold</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="purple" type="button" aria-label="Select Purple Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/purple-bomb.svg" alt="Purple Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Purple</span>
+                    </button>
+
+                    <!-- Effect Skins (Wardrobe) -->
+                    <button class="effect-card active" data-effect-color="default" type="button" aria-label="Select Default Effect">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <svg viewBox="0 0 100 100" class="card-character-image" style="width: 58px; height: 58px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000); transform: scale(1.15);">
+                          <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="#ff6f4f" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+                          <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="#fff06d" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+                        </svg>
+                      </span>
+                      <span class="card-character-name">Default</span>
+                    </button>
+
+                    <button class="effect-card locked" data-effect-color="pink" type="button" aria-label="Select Pink Effect">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <svg viewBox="0 0 100 100" class="card-character-image" style="width: 58px; height: 58px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000); transform: scale(1.15);">
+                          <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="#ff2f73" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+                          <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="#ff9ebb" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+                        </svg>
+                      </span>
+                      <span class="card-character-name">Pink</span>
+                    </button>
+
+                    <button class="effect-card locked" data-effect-color="blue" type="button" aria-label="Select Blue Effect">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <svg viewBox="0 0 100 100" class="card-character-image" style="width: 58px; height: 58px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000); transform: scale(1.15);">
+                          <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="#1852e0" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+                          <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="#18baff" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+                        </svg>
+                      </span>
+                      <span class="card-character-name">Blue</span>
+                    </button>
+
+                    <button class="effect-card locked" data-effect-color="green" type="button" aria-label="Select Green Effect">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <svg viewBox="0 0 100 100" class="card-character-image" style="width: 58px; height: 58px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000); transform: scale(1.15);">
+                          <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="#1b854f" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+                          <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="#39d98a" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+                        </svg>
+                      </span>
+                      <span class="card-character-name">Green</span>
+                    </button>
+
+                    <button class="effect-card locked" data-effect-color="gold" type="button" aria-label="Select Gold Effect">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <svg viewBox="0 0 100 100" class="card-character-image" style="width: 58px; height: 58px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000); transform: scale(1.15);">
+                          <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="#d35400" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+                          <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="#ffd86f" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+                        </svg>
+                      </span>
+                      <span class="card-character-name">Gold</span>
+                    </button>
+
+                    <button class="effect-card locked" data-effect-color="purple" type="button" aria-label="Select Purple Effect">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <svg viewBox="0 0 100 100" class="card-character-image" style="width: 58px; height: 58px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000); transform: scale(1.15);">
+                          <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="#5e1b85" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+                          <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="#b94cff" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+                        </svg>
+                      </span>
+                      <span class="card-character-name">Purple</span>
+                    </button>
 
                     <span class="item-empty-slot"><strong>Empty</strong></span>
                     <span class="item-empty-slot"><strong>Empty</strong></span>
@@ -724,14 +856,470 @@
                </div>
             </div>
 
-            <!-- SHOP TAB CONTENT (Alpha stage warning) -->
-            <div class="tab-content" id="tabContent_shop">
-              <div class="tab-panel-inner card-inner shop-panel" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; height:100%; gap:16px;">
-                <div class="alpha-warning-icon" style="font-size: 48px; filter: drop-shadow(0 4px 0 #000); margin-bottom: 8px;">🚧</div>
-                <h3 style="font-family: var(--font); font-size: 24px; color: #ffd84a; margin: 0; text-transform: uppercase;">Alpha Stage Notice</h3>
-                <p class="tab-description" style="font-family: var(--font-clean); font-size: 16px; color: #000000 !important; max-width: 460px; line-height: 1.5; margin: 0;">
-                  This game is under alpha stage, shop features won't be available.
-                </p>
+            <!-- SHOP TAB CONTENT -->
+            <div class="tab-content shop-animated-bg" id="tabContent_shop" style="height: 100%; padding: 0;">
+              <div class="shop-layout-container" style="display: flex; gap: 20px; padding: 20px; box-sizing: border-box; height: 100%; width: 100%; overflow: hidden; align-items: stretch;">
+                
+                <!-- Left Phone Navigation Sidebar -->
+                <div class="shop-phone-sidebar" style="position: relative; width: 240px; background: #0f1012; border: 6px solid #000; border-radius: 36px; box-shadow: 8px 8px 0 #000; display: flex; flex-direction: column; padding: 32px 14px; box-sizing: border-box; flex-shrink: 0; justify-content: center; height: calc(100% - 10px); z-index: 5;">
+                  <!-- Phone Notch Indicator -->
+                  <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 70px; height: 8px; background: #000; border-radius: 4px; border: 1.5px solid #222;"></div>
+                  
+                  <!-- Phone Navigation Buttons -->
+                  <div class="shop-phone-nav-list" style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px; margin-bottom: auto; width: 100%;">
+                    
+                    <button class="shop-nav-btn active" data-shop-subtab="gacha" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">⭐</span>
+                      <span>gacha</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="outfits" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">👕</span>
+                      <span>outfits</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="bombs" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">💣</span>
+                      <span>bombs</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="gem_shop" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">💎</span>
+                      <span>gem shop</span>
+                    </button>
+                    
+                    <button class="shop-nav-btn" data-shop-subtab="bundles" type="button" style="width: 100%;">
+                      <span class="shop-nav-icon">🎁</span>
+                      <span>bundles</span>
+                    </button>
+                    
+                  </div>
+
+                  <!-- Wallet Balance Display inside Phone Bottom -->
+                  <div class="shop-phone-wallet" style="margin-top: auto; background: #000; border: 3px solid #000; border-radius: 16px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 2px 2px 0 rgba(0,0,0,0.5); width: 100%; box-sizing: border-box;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="#ffd86f"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    <strong style="color: #ffd86f; font-family: var(--font-clean); font-size: 13px; font-weight: 900;"><span id="shopGemsDisplay">0</span> Gems</strong>
+                  </div>
+
+                  <!-- Phone Home Indicator Bar -->
+                  <div style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); width: 45px; height: 5px; background: #222; border-radius: 3px;"></div>
+                </div>
+
+                <!-- Right Shop Content Area -->
+                <div class="shop-content-area" style="flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; height: calc(100% - 10px); padding-right: 8px; box-sizing: border-box; z-index: 4;">
+                  
+                  <!-- GACHA SUB-TAB CONTENT -->
+                  <div id="shopSubTabContent_gacha" class="shop-subtab-content active" style="display: flex; flex-direction: column; height: 100%; width: 100%;">
+                    
+                    <!-- ZZZ-style Gacha Banner Card -->
+                    <div class="shop-gacha-banner" id="magicalChiikawaBannerBtn" style="position: relative; border-radius: 20px; border: 4.5px solid #000; box-shadow: 8px 8px 0 #000; overflow: hidden; background: #000; cursor: pointer; display: flex; flex-direction: column; height: 100%; min-height: 380px; width: 100%;">
+                      
+                      <!-- Top Info Header Bar (ZZZ-style yellow label bar) -->
+                      <div class="gacha-banner-header-bar" style="position: absolute; top: 0; left: 0; right: 0; height: 42px; background: #000; border-bottom: 4px solid #000; z-index: 3; display: flex; align-items: center; padding: 0 20px; justify-content: space-between;">
+                        <span style="font-family: var(--font); color: #ffd86f; font-size: 14px; text-transform: uppercase; font-weight: 900; letter-spacing: 0.5px;">"Magical Chiikawa" Limited Draw</span>
+                        <div style="background: #ff3366; color: #fff; font-family: var(--font-clean); font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px; border: 2px solid #000; transform: rotate(1deg);">40d left</div>
+                      </div>
+
+                      <!-- Video playing banner animation -->
+                      <video class="shop-gacha-banner-media" src="assets/banners/magical chiikawa banner animation.mp4" loop muted autoplay playsinline style="position: absolute; inset: 42px 0 0; width: 100%; height: calc(100% - 42px); object-fit: cover;"></video>
+                      <div class="shop-gacha-banner-shade" style="position: absolute; inset: 42px 0 0; background: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%);"></div>
+                      
+                      <!-- Fire badge +70% -->
+                      <div class="gacha-banner-badge" style="position: absolute; left: 24px; top: 62px; background: #ff3c00; color: #fff; font-family: var(--font); font-size: 15px; font-weight: 900; padding: 4px 14px; border-radius: 12px; border: 3px solid #000; transform: rotate(-2deg); box-shadow: 2px 2px 0 #000; z-index: 2;">
+                        +100% Drop Rate!
+                      </div>
+
+                      <div class="shop-gacha-banner-copy" style="position: absolute; left: 24px; bottom: 24px; right: 24px; z-index: 2; color: #fff; text-align: left; max-width: 65%;">
+                        <small style="color: #ffd86f; font-family: var(--font-clean); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Exclusive Gacha</small>
+                        <strong style="font-family: var(--font); font-size: 28px; text-transform: uppercase; color: #fff; display: block; margin-bottom: 6px; text-shadow: 2px 2px 0 #000; letter-spacing: 0.5px;">magical chiikawa</strong>
+                        <p style="font-family: var(--font-clean); font-size: 13px; color: #bbb; margin: 0; line-height: 1.4; text-shadow: 1px 1px 0 #000;">Draw once for 300 gems to win one unowned custom colored bomb skin! Won items leave the pool.</p>
+                      </div>
+
+                      <!-- ZZZ-style Draw button/price in card -->
+                      <div class="shop-gacha-banner-cta" style="position: absolute; right: 24px; bottom: 24px; z-index: 2; background: #ffd86f; color: #000; border: 4.5px solid #000; border-radius: 20px; font-family: var(--font); font-size: 15px; font-weight: 900; padding: 10px 24px; box-shadow: 4px 4px 0 #000; text-transform: uppercase; display: flex; align-items: center; gap: 6px; transition: transform 0.1s;">
+                        <span>Draw</span>
+                        <div style="display: inline-flex; align-items: center; gap: 2px; background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 10px;">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="#000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                          <span>300</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <!-- OUTFITS SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_outfits" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">👕</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Outfits Available</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Today's outfits stock is empty. Please check back later!</small>
+                    </div>
+                  </div>
+
+                  <!-- BOMBS SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_bombs" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">💣</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Bombs Available</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Check back later for purchasable bomb designs.</small>
+                    </div>
+                  </div>
+
+                  <!-- GEM SHOP SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_gem_shop" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">💎</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">Gems Shop Closed</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Payment configurations are offline. Check back later!</small>
+                    </div>
+                  </div>
+
+                  <!-- BUNDLES SUB-TAB CONTENT (Empty State) -->
+                  <div id="shopSubTabContent_bundles" class="shop-subtab-content" style="display: none; height: 100%;">
+                    <div class="shop-empty-state" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">🎁</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Bundles Found</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Special bundles will appear here during seasonal events!</small>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+            <!-- QUESTS TAB CONTENT -->
+            <div class="tab-content" id="tabContent_quests" style="height: 100%; padding: 0; background: linear-gradient(135deg, #18191c 0%, #0c0d0e 100%);">
+              
+              <!-- ZZZ Notebook Outer Binder Frame -->
+              <div class="quests-notebook-container" style="display: flex; height: 100%; width: 100%; padding: 25px; box-sizing: border-box; align-items: stretch; overflow: hidden; position: relative;">
+                
+                <!-- Quests Top Tabs (Binder tabs sticking out of the notebook top) -->
+                <div class="quests-binder-tabs" style="position: absolute; top: 25px; left: 80px; transform: translateY(-100%); display: flex; gap: 6px; z-index: 1;">
+                  <button class="quests-tab-btn" data-quests-tab="weekly" type="button">Weekly</button>
+                  <button class="quests-tab-btn active" data-quests-tab="daily" type="button">Daily</button>
+                  <button class="quests-tab-btn" data-quests-tab="level" type="button">Level</button>
+                  <button class="quests-tab-btn" data-quests-tab="quests" type="button">Quests</button>
+                </div>
+
+                <!-- Left Orange Spine Plate -->
+                <div class="quests-orange-spine" style="width: 54px; background: linear-gradient(180deg, #ff4c00 0%, #cc3300 100%); border: 4.5px solid #000; border-radius: 20px 0 0 20px; display: flex; flex-direction: column; align-items: center; padding: 24px 0; box-sizing: border-box; justify-content: flex-start; z-index: 3; box-shadow: 4px 4px 0 #000; border-right: none; position: relative;">
+                  <!-- Binder Rings (Floating keychains on the left) -->
+                  <div class="binder-coils" style="position: absolute; left: -14px; top: 30px; display: flex; flex-direction: column; gap: 32px; z-index: 10;">
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                  </div>
+                  <!-- Vertical Spine Label -->
+                  <span style="font-family: var(--font); color: #000; font-size: 15px; font-weight: 900; text-transform: uppercase; writing-mode: vertical-lr; transform: rotate(180deg); letter-spacing: 2px; margin-top: 20px;">schedule</span>
+                </div>
+
+                <!-- Notebook Main Body Sheet -->
+                <div class="quests-notebook-sheet" style="flex-grow: 1; background: #1c1d20; border: 4.5px solid #000; border-radius: 0 24px 24px 0; box-shadow: 8px 8px 0 #000; z-index: 2; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; position: relative;">
+                  
+                  <!-- DAILY TAB PAGE -->
+                  <div id="questsTabContent_daily" class="quests-page active" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Top Engagement Progress Area -->
+                    <div class="engagement-tracker" style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); gap: 20px;">
+                      
+                      <!-- Left Engagement Label -->
+                      <div style="display: flex; flex-direction: column; flex-shrink: 0;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Max Engagement Today</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; text-shadow: 1px 1px 0 #000; display: flex; align-items: center; gap: 4px;">
+                          <span style="font-size: 14px;">🔥</span> <span id="currentEngagementVal">0</span> / 400
+                        </strong>
+                      </div>
+
+                      <!-- Progress Checkpoints Track -->
+                      <div class="engagement-track-container" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; position: relative;">
+                        <!-- The Track Line -->
+                        <div class="engagement-track-bar">
+                          <div id="engagementProgressBar"></div>
+                        </div>
+
+                        <!-- Checkpoints circles -->
+                        <div style="display: flex; justify-content: space-between; position: relative; z-index: 2; width: 100%;">
+                          
+                          <!-- Checkpoint 100 -->
+                          <button class="checkpoint-node" id="chk_100" data-milestone="100" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">100</span>
+                          </button>
+
+                          <!-- Checkpoint 200 -->
+                          <button class="checkpoint-node" id="chk_200" data-milestone="200" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">200</span>
+                          </button>
+
+                          <!-- Checkpoint 300 -->
+                          <button class="checkpoint-node" id="chk_300" data-milestone="300" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">300</span>
+                          </button>
+
+                          <!-- Checkpoint 400 -->
+                          <button class="checkpoint-node" id="chk_400" data-milestone="400" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">400</span>
+                          </button>
+
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <!-- Quests Grid Container -->
+                    <div class="quests-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; flex-grow: 1;">
+                      
+                      <!-- Quest Card 1: Log in -->
+                      <div class="quest-card" id="qcard_login">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_login">0/1</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Log in to the game</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_login" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Quest Card 2: Play 1 Match -->
+                      <div class="quest-card" id="qcard_match">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_match">0/1</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Play 1 practice or online match</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_match" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Quest Card 3: Collect 3 Power-ups -->
+                      <div class="quest-card" id="qcard_pickups">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_pickups">0/3</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Collect 3 power-ups in matches</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_pickups" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Quest Card 4: Place 10 Bombs -->
+                      <div class="quest-card" id="qcard_bombs">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_bombs">0/10</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Place 10 bombs in matches</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_bombs" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <!-- Quests Page Footer Info -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">Earn points by completing daily commissions to claim gem milestones!</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #ffd86f; font-weight: 900;">⏱ Refreshes in 17h 58m</span>
+                    </div>
+
+                  </div>
+
+                  <!-- WEEKLY TAB PAGE -->
+                  <div id="questsTabContent_weekly" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Top Weekly Info Area -->
+                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);">
+                      <div style="display: flex; flex-direction: column;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase;">Weekly Targets</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; margin-top: 2px;">Season Errands</strong>
+                      </div>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: bold;">Unlock larger reward checkpoints below!</span>
+                    </div>
+
+                    <!-- Weekly Quests Grid -->
+                    <div class="quests-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; flex-grow: 1;">
+                      
+                      <!-- Weekly Quest Card 1: Win 3 Matches -->
+                      <div class="quest-card" id="qcard_win3">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_win3">0/3</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Win 3 matches in total</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_win3" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Weekly Quest Card 2: Spin Gacha 3 Times -->
+                      <div class="quest-card" id="qcard_spin3">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_spin3">0/3</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Draw from Gacha shop 3 times</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_spin3" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Weekly Quest Card 3: Defeat 5 Enemies -->
+                      <div class="quest-card" id="qcard_kills">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_kills">0/5</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Defeat 5 players or bots</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_kills" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Weekly Quest Card 4: Spend 1000 Gems -->
+                      <div class="quest-card" id="qcard_spend1000">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_spend1000">0/1000</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Spend 1000 total Gems</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_spend1000" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">Weekly errands refresh every Sunday at midnight.</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #ffd86f; font-weight: 900;">⏱ Refreshes in 4d 12h</span>
+                    </div>
+
+                  </div>
+
+                  <!-- LEVEL TAB PAGE -->
+                  <div id="questsTabContent_level" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Level & XP Status Header (ZZZ-style) -->
+                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 16px 20px; display: flex; flex-direction: column; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); gap: 12px; flex-shrink: 0;">
+                      
+                      <!-- Level Indicator and XP text -->
+                      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                          <div style="background: #ff4c00; color: #000; font-family: var(--font); font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 6px; border: 2px solid #000; transform: skewX(-6deg);">SEASON</div>
+                          <strong style="font-family: var(--font); font-size: 24px; color: #fff; text-shadow: 2px 2px 0 #000; letter-spacing: 0.5px;">LEVEL <span id="questsTabLevelVal">1</span></strong>
+                        </div>
+                        <span style="font-family: var(--font-clean); font-size: 13px; color: #ffd86f; font-weight: 900;" id="questsTabXpVal">0 / 100 XP</span>
+                      </div>
+
+                      <!-- XP Progress Bar -->
+                      <div style="width: 100%; height: 10px; background: #222; border-radius: 5px; border: 2px solid #000; overflow: hidden; position: relative;">
+                        <div id="questsTabXpProgressBar" style="width: 0%; height: 100%; background: #83cf00; transition: width 0.3s ease;"></div>
+                      </div>
+
+                    </div>
+
+                    <!-- Level Rewards Scrollable List -->
+                    <div class="level-rewards-list" id="levelRewardsScrollList" style="flex-grow: 1; margin: 16px 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 6px; box-sizing: border-box; max-height: 380px; height: 380px;">
+                      
+                      <!-- Level Reward Items will be generated dynamically via JS -->
+
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">Unlock 5 Gems for each level achieved!</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: 900;">★ Reach new levels by playing matches</span>
+                    </div>
+
+                  </div>
+
+                  <!-- QUESTS TAB PAGE (Empty State) -->
+                  <div id="questsTabContent_quests" class="quests-page" style="display: none; height: 100%; width: 100%;">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">📜</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Quests Available</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Main story missions and side errands are currently empty.</small>
+                    </div>
+                  </div>
+
+                </div>
+
               </div>
             </div>
 
@@ -813,7 +1401,7 @@
           </div>
 
           <!-- Bottom Console Info -->
-          <footer class="console-footer" style="min-height: 42px; height: auto; padding: 6px 16px; justify-content: space-between; gap: 8px; align-items: center; display: flex; box-sizing: border-box; width: 100%;">
+          <footer id="lobbyConsoleFooter" class="console-footer" style="min-height: 42px; height: auto; padding: 6px 16px; justify-content: space-between; gap: 8px; align-items: center; display: flex; box-sizing: border-box; width: 100%;">
             <span class="badge-text" style="font-size: 11px; font-weight: 600; line-height: 1.4; text-shadow: none; color: #000000; letter-spacing: 0.2px; flex: 1; margin-right: 8px;">
               This game is still in its alpha stage, expect major bugs and optimization issues. If you want to send feedback please send it through our Discord channel:
             </span>
@@ -1361,7 +1949,9 @@
       <canvas id="victoryConfettiCanvas" class="confetti-canvas"></canvas>
       
       <!-- Intermediate Round Results Card -->
-      <div id="roundResultsCard" class="results-card glass pop-in hidden">
+      <div id="roundResultsCard" class="results-card glass pop-in hidden" style="position: relative; overflow: hidden; padding: 0 40px 32px 40px;">
+        <!-- ZZZ warning stripes header -->
+        <div class="zzz-hazard-bar" style="height: 14px; background: repeating-linear-gradient(45deg, #ffd86f, #ffd86f 10px, #000 10px, #000 20px); border-bottom: 4.5px solid #000; margin: 0 -40px 24px -40px; width: calc(100% + 80px);"></div>
         <h2 class="results-title">Round Results</h2>
         <div id="roundSummaryMessage" class="round-msg">Hachiware wins this round!</div>
         <div id="resultsPlayersRow" class="results-players-row">
@@ -1383,7 +1973,8 @@
         <div id="grandWinnerMessage" class="winner-msg">Hachiware wins the Tournament!</div>
         
         <div class="victory-video-wrapper">
-          <video id="victoryVideo" src="hachiware-lobby.mp4" loop muted playsinline class="victory-video"></video>
+          <video id="victoryVideo" src="hachiware-lobby.mp4" loop muted playsinline style="display: none;"></video>
+          <canvas id="victoryVideoCanvas" width="480" height="480" class="victory-video"></canvas>
         </div>
         
         <button id="victoryLobbyBtn" class="btn-match-play btn-victory-lobby" type="button">Return to Lobby</button>
@@ -1451,9 +2042,13 @@
 
     <!-- Pre-Match Map Voting Screen Overlay -->
     <div id="mapVoteOverlay" class="overlay hidden">
-      <div class="lobby-map-voting" style="max-width: 480px; width: 90%; margin: auto; text-align: center; color: var(--ink);">
-        <div class="vote-header" style="font-size: 24px; margin-bottom: 8px;">MAP VOTING</div>
-        <div id="mapVoteTimer" style="font-family: var(--font); font-size: 20px; font-weight: 800; color: #ff3399; margin-bottom: 20px;">10</div>
+      <div class="lobby-map-voting" style="max-width: 520px; width: 90%; margin: auto; text-align: center; position: relative; overflow: hidden; padding: 0 20px 24px 20px;">
+        <!-- ZZZ warning stripes header -->
+        <div class="zzz-hazard-bar" style="height: 14px; background: repeating-linear-gradient(45deg, #ffd86f, #ffd86f 10px, #000 10px, #000 20px); border-bottom: 4.5px solid #000; margin: 0 -20px 16px -20px;"></div>
+        <div class="vote-header" style="font-size: 28px; margin-bottom: 12px; font-weight: 900; letter-spacing: 1.5px; text-shadow: 2px 2px 0 #000; color: #fff;">MAP VOTING</div>
+        <div style="margin-bottom: 20px;">
+          <div id="mapVoteTimer">10</div>
+        </div>
         
         <div class="map-vote-cards">
           <!-- Classic Green Map -->
@@ -1494,26 +2089,31 @@
     <!-- Social Modal (Friends + Online Users) -->
     <div id="socialModal" class="dialog-overlay hidden">
       <div class="social-modal-card card glass">
-        <button id="closeSocialModal" class="btn-close-dialog" type="button">&times;</button>
+        <!-- Modal Header with Title & Close button in knock aesthetic -->
+        <div class="knock-chat-header" style="border-bottom: 4.5px solid #000;">
+          <div class="knock-header-left">
+            <svg class="knock-phone-icon" viewBox="0 0 24 24" width="24" height="24" fill="white" style="display: flex; align-items: center; justify-content: center;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <span class="knock-header-title">social</span>
+          </div>
+          <button id="closeSocialModal" class="knock-close-btn" type="button">&times;</button>
+        </div>
 
-        <!-- Modal Header with Tabs -->
-        <div class="social-modal-header">
-          <h2 class="social-modal-title">Social</h2>
+        <!-- Tabs aligned horizontally in knock style -->
+        <div class="social-modal-header" style="border-bottom: none; padding: 12px 20px 4px 20px;">
           <div class="social-tabs">
-            <button class="social-tab-btn active" data-social-tab="online" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> Online Users</button>
-            <button class="social-tab-btn" data-social-tab="friends" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> My Friends</button>
+            <button class="social-tab-btn active" data-social-tab="online" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> Online Users</button>
+            <button class="social-tab-btn" data-social-tab="friends" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> My Friends</button>
             <button class="social-tab-btn" data-social-tab="pending" style="display: inline-flex; align-items: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg> Requests
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg> Requests
               <span id="pendingBadge" class="social-notif-badge hidden">0</span>
             </button>
           </div>
         </div>
 
-        <!-- Search Bar -->
-        <div class="social-search-bar">
-          <svg viewBox="0 0 24 24" class="search-icon"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>
-          <input id="socialSearchInput" type="text" placeholder="Search players by username..." autocomplete="off" />
-          <button id="socialSearchBtn" class="btn btn-sm btn-primary" type="button">Search</button>
+        <!-- Search Bar styled like knock chat form -->
+        <div class="social-search-bar" style="background: #1c1c1f; border-bottom: 3.5px solid #000; padding: 12px 16px;">
+          <input id="socialSearchInput" class="knock-chat-input" type="text" placeholder="Search players by username..." autocomplete="off" />
+          <button id="socialSearchBtn" class="knock-send-btn" type="button">Search</button>
         </div>
 
         <!-- Tab Contents -->
@@ -1550,29 +2150,36 @@
     </div>
 
     <!-- Start Mode Selection Dialog Popup -->
-    <div id="startModeSelectionDialog" class="dialog-overlay hidden">
-      <div class="card glass dialog-card server-select-card" style="max-width: 480px !important;">
-        <h2>Select Game Mode</h2>
-        <p>Choose how you want to play Chiikawa Royale.</p>
+    <div id="startModeSelectionDialog" class="dialog-overlay hidden" style="background: rgba(15, 16, 18, 0.95); backdrop-filter: blur(12px);">
+      <div class="card glass dialog-card server-select-card mode-selection-dialog-card" style="max-width: 480px !important; position: relative; overflow: hidden; padding: 0 40px 32px 40px; background: #0f1012; border: 4.5px solid #000; border-radius: 24px; box-shadow: 10px 10px 0px #000; display: flex; flex-direction: column; align-items: center; gap: 16px;">
+        <!-- ZZZ warning stripes header -->
+        <div class="zzz-hazard-bar" style="height: 14px; background: repeating-linear-gradient(45deg, #ffd86f, #ffd86f 10px, #000 10px, #000 20px); border-bottom: 4.5px solid #000; margin: 0 -40px 24px -40px; width: calc(100% + 80px);"></div>
         
-        <div class="server-options-grid" style="display: flex; flex-direction: column; gap: 12px; margin: 20px 0; width: 100%;">
-          <button id="btnSelectOnline" class="btn btn-primary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 20px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; transition: transform 0.2s;">
-            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg></span>
-            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Online Mode</span>
-            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; font-weight: 500; opacity: 0.8; line-height: 1.3;">Battle players worldwide on global servers.</span>
+        <h2 style="font-family: 'DynaPuff', cursive; font-size: 32px; color: #ffd86f; text-shadow: 3px 3px 0px #000; margin: 0 0 4px 0;">SELECT GAME MODE</h2>
+        <p style="font-family: 'Fredoka', sans-serif; font-size: 14px; color: #8a8f98; font-weight: 700; margin: 0;">Choose how you want to play Chiikawa Royale.</p>
+        
+        <div class="server-options-grid" style="display: flex; flex-direction: column; gap: 16px; margin: 20px 0; width: 100%;">
+          
+          <button id="btnSelectOnline" class="btn-mode-option" type="button">
+            <div class="option-icon-container">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#ffd86f"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            </div>
+            <div class="option-text-container">
+              <span class="option-title">Online Mode</span>
+              <span class="option-desc">Battle players worldwide on global servers.</span>
+            </div>
           </button>
           
-          <button id="btnSelectLan" class="btn btn-accent btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 20px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; transition: transform 0.2s;">
-            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></span>
-            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">LAN Mode</span>
-            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; font-weight: 500; opacity: 0.8; line-height: 1.3;">Join other players on the same local network / Wi-Fi.</span>
+          <button id="btnSelectLocal" class="btn-mode-option" type="button">
+            <div class="option-icon-container">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#ffd86f"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            </div>
+            <div class="option-text-container">
+              <span class="option-title">Offline Mode</span>
+              <span class="option-desc">Play offline Solo vs Bots or Couch Coop on one screen.</span>
+            </div>
           </button>
           
-          <button id="btnSelectLocal" class="btn btn-secondary btn-server-option" type="button" style="display: flex; flex-direction: column; align-items: center; padding: 12px 20px; border-radius: 12px; text-align: center; gap: 4px; cursor: pointer; transition: transform 0.2s;">
-            <span class="option-icon" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
-            <span class="option-title" style="font-family: var(--font); font-size: 16px; font-weight: 700; text-transform: uppercase;">Local Mode (Offline)</span>
-            <span class="option-desc" style="font-family: var(--font-clean); font-size: 11px; font-weight: 500; opacity: 0.8; line-height: 1.3;">Play offline Solo vs Bots or Couch Coop on one screen.</span>
-          </button>
         </div>
         
         <button id="closeStartModeBtn" class="btn-close-dialog" type="button" aria-label="Close">✕</button>
@@ -1822,6 +2429,63 @@
       </div>
     </div>
 
+    <!-- Gacha Modal Overlay -->
+    <div id="gachaModalOverlay" class="dialog-overlay hidden" style="display: flex; align-items: center; justify-content: center; z-index: 9999;">
+      <div class="social-modal-card card" style="width: 700px; max-width: 95vw; background: #141416; border: 4.5px solid #000; border-radius: 24px; box-shadow: 10px 10px 0px #000; font-family: 'Outfit', 'Inter', sans-serif; overflow: hidden; position: relative; display: flex; flex-direction: column;">
+        
+        <!-- Modal Header -->
+        <div class="knock-chat-header" style="border-bottom: 4.5px solid #000; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #0d0d0e; flex-shrink: 0;">
+          <div class="knock-header-left">
+            <span class="knock-header-title" style="font-family: var(--font); color: #fff; font-size: 20px; text-transform: uppercase;">magical chiikawa</span>
+          </div>
+          <button id="closeGachaModalBtn" class="knock-close-btn" type="button" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #000; background: #ff3366; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 2px 2px 0 #000; display: flex; align-items: center; justify-content: center; line-height: 1;">&times;</button>
+        </div>
+
+        <!-- Help Panel (Description) -->
+        <div class="gacha-help-panel" style="background: rgba(255, 216, 111, 0.06); padding: 12px 20px; border-bottom: 3.5px solid #000; flex-shrink: 0;">
+          <strong style="color: #ffd86f; font-size: 11px; text-transform: uppercase; font-family: var(--font-clean); display: block; margin-bottom: 3px; letter-spacing: 0.5px;">draw strategy</strong>
+          <p style="margin: 0; font-size: 12px; color: #aaa; font-family: var(--font-clean); line-height: 1.4;">Each draw costs 300 gems. You will get a randomly colored bomb skin that you don't already own. Once obtained, it is removed from the draw pool!</p>
+        </div>
+
+        <!-- Gacha Stage -->
+        <div class="gacha-stage" id="gachaStage" style="position: relative; height: 160px; background: #000; overflow: hidden; border-bottom: 3.5px solid #000; display: flex; align-items: center; justify-content: flex-start; flex-shrink: 0;">
+          <!-- Spinning Reel Container -->
+          <div id="gachaReel" class="gacha-reel" style="display: flex; gap: 14px; padding: 0 24px; transform: translateX(0); width: max-content; align-items: center;">
+            <!-- Will be dynamically populated with tiles -->
+          </div>
+          <!-- Pointer / Focus indicator -->
+          <div class="gacha-pointer" style="position: absolute; top: 0; bottom: 0; width: 4px; background: #ff3333; left: 50%; transform: translateX(-50%); z-index: 10; box-shadow: 0 0 8px #ff3333; pointer-events: none;"></div>
+          <div class="gacha-focus-ring" style="position: absolute; top: 18px; bottom: 18px; width: 104px; border: 4.5px solid #ffd86f; left: 50%; transform: translateX(-50%); z-index: 9; border-radius: 16px; pointer-events: none; box-shadow: 0 0 10px rgba(255,216,111,0.4);"></div>
+        </div>
+
+        <!-- Pool Grid -->
+        <div class="gacha-pool-grid" id="gachaPoolGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; padding: 20px; background: #0d0d0e; border-bottom: 4.5px solid #000; overflow-y: auto; max-height: 220px; flex-grow: 1;">
+          <!-- Will be dynamically populated with items -->
+        </div>
+
+        <!-- Win Result Overlay (indicator when finished) -->
+        <div id="gachaWinIndicator" class="gacha-win-indicator hidden" style="background: rgba(0, 0, 0, 0.9); position: absolute; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; opacity: 0; transition: opacity 0.3s;">
+          <div id="gachaWinItemAvatar" class="gacha-win-avatar" style="width: 80px; height: 80px; border-radius: 20px; border: 4px solid #000; box-shadow: 4px 4px 0 #000; background: #1c1c1f; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; transform: scale(1.15);"></div>
+          <span style="font-family: var(--font-clean); font-size: 13px; text-transform: uppercase; color: #ffd86f; font-weight: 800; letter-spacing: 0.5px;">Congratulations!</span>
+          <strong id="gachaWinItemName" style="font-family: var(--font); font-size: 26px; text-transform: uppercase; margin-top: 6px; letter-spacing: 0.5px; color: #fff;">Pink Bomb</strong>
+          <button id="gachaWinClaimBtn" class="knock-send-btn" type="button" style="margin-top: 24px; height: 42px; padding: 0 24px; background: #83cf00; color: #000; font-family: var(--font); font-weight: 900; border: 3px solid #000; border-radius: 12px; box-shadow: 3px 3px 0 #000; cursor: pointer; text-transform: uppercase;">Claim Skin</button>
+        </div>
+
+        <!-- Gacha Footer -->
+        <div class="gacha-modal-footer" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #141416; flex-shrink: 0;">
+          <div class="gacha-draw-info" style="display: flex; flex-direction: column; text-align: left;">
+            <span id="gachaRewardsLeftText" style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">5 rewards left</span>
+            <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="#ffd86f"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+              <span id="gachaWalletGems" style="font-family: var(--font-clean); font-size: 14px; font-weight: 900; color: #ffd86f;">2,830</span>
+            </div>
+          </div>
+          <button id="gachaDrawBtn" class="knock-send-btn" type="button" style="height: 44px; padding: 0 30px; font-size: 13px; background: #ffd86f; color: #000; font-family: var(--font); font-weight: 900; border: 3.5px solid #000; border-radius: 12px; box-shadow: 3px 3px 0 #000; cursor: pointer; text-transform: uppercase; display: flex; align-items: center; gap: 6px;"></button>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Orientation Lock Warning Overlay -->
     <div id="orientationWarning" class="orientation-warning-overlay">
       <div class="warning-content">
@@ -1853,5 +2517,11 @@
       // Disable right-click context menu on the entire game page
       document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
     </script>
+
+    <!-- Fullscreen Countdown Overlay -->
+    <div id="fullscreenCountdownOverlay" class="fullscreen-countdown-overlay hidden">
+      <div id="fullscreenCountdownNum" class="fullscreen-countdown-num">3</div>
+    </div>
+
   </body>
 </html>

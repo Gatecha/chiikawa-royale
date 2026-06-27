@@ -3,6 +3,7 @@
   "version": "1.1.13",
   "description": "Chiikawa Royale - Official PC Client",
   "main": "main.js",
+  "author": "Chihua Studio",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win --x64"
@@ -10,26 +11,24 @@
   "build": {
     "appId": "com.chiikawaroyale.client",
     "productName": "Chiikawa Royale",
+    "copyright": "Copyright © 2026 Chihua Studio",
     "win": {
       "target": "portable",
       "icon": "gamelogo.ico",
       "sign": null,
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "requestedExecutionLevel": "asInvoker"
     },
     "portable": {
-      "artifactName": "Chiikawa_Royale.exe"
+      "artifactName": "Chiikawa_Royale.exe",
+      "requestExecutionLevel": "user"
     },
     "files": [
       "main.js",
+      "preload.js",
       "package.json",
       "gamelogo.ico",
-      "../launcher.html",
-      "../launcher.css",
-      "../assets/**/*",
-      "../chiikawa-royale-logo.png",
-      "../index.html",
-      "../style.css",
-      "../game.js"
+      "chiikawa-royale-logo.ico"
     ],
     "extraResources": [
       {
@@ -43,6 +42,7 @@
           "*.jpg",
           "*.mp4",
           "*.mp3",
+          "*.ico",
           "assets/**"
         ]
       }

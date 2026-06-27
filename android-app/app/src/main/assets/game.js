@@ -194,8 +194,9 @@ const confirmCharacterBtn = document.getElementById("confirmCharacterBtn");
 const selectCardGrid = document.getElementById("selectCardGrid");
 const wardrobeTabs = document.querySelectorAll(".wardrobe-tab");
 
-// Video and character variables moved to top to prevent Temporal Dead Zone ReferenceErrors
 const victoryVideo = document.getElementById("victoryVideo");
+const victoryVideoCanvas = document.getElementById("victoryVideoCanvas");
+const victoryVideoCtx = victoryVideoCanvas ? victoryVideoCanvas.getContext("2d") : null;
 const characterSelectVideos = {
   chiikawa: "assets/chiikawa/chiikawa_character_animation.mp4",
   hachiware: "hachiware-lobby.mp4",
@@ -709,36 +710,79 @@ const keys = new Set();
 
 // ----------------------------------------------------------------
 // TAB SWITCHING LOGIC
-// ----------------------------------------------------------------
+// -------------------------------------------------
+let isTabTransitioning = false;
 
 tabButtons.forEach((btn) => {
   btn.addEventListener("click", (event) => {
     event.preventDefault();
+    if (isTabTransitioning) return;
+    
     const tabName = btn.getAttribute("data-tab");
+    if (btn.classList.contains("active")) return;
     
-    // Switch active classes on buttons
-    tabButtons.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
+    isTabTransitioning = true;
     
-    // Switch active classes on tab contents
-    tabContents.forEach((content) => content.classList.remove("active"));
-    const targetContent = document.getElementById(`tabContent_${tabName}`);
-    if (targetContent) {
-      targetContent.classList.add("active");
+    const overlay = document.getElementById("tabTransitionOverlay");
+    if (overlay) {
+      overlay.classList.add("animate-swipe");
     }
     
-    // Toggle squad lobby styling on console
-    const consoleEl = document.querySelector(".yellow-console");
-    if (consoleEl) {
-      if (tabName === "squad") {
-        consoleEl.classList.add("squad-lobby-active");
-        if (currentSocialUserId) updateMyPresenceStatus("in-lobby");
-      } else {
-        consoleEl.classList.remove("squad-lobby-active");
-        if (currentSocialUserId) updateMyPresenceStatus("menu");
+    setTimeout(() => {
+      // Switch active classes on buttons
+      tabButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      
+      // Switch active classes on tab contents
+      tabContents.forEach((content) => content.classList.remove("active"));
+      const targetContent = document.getElementById(`tabContent_${tabName}`);
+      if (targetContent) {
+        targetContent.classList.add("active");
       }
-      consoleEl.classList.toggle("character-select-active", tabName === "look");
-    }
+
+      // Switch header title text content based on active section
+      const consoleTitle = document.querySelector(".console-title");
+      if (consoleTitle) {
+        let displayTitle = "LOBBY";
+        if (tabName === "play") displayTitle = "LOBBY";
+        else if (tabName === "look") displayTitle = "WARDROBE";
+        else if (tabName === "squad") displayTitle = "SQUAD";
+        else if (tabName === "quests") displayTitle = "ERRANDS";
+        else if (tabName === "shop") displayTitle = "SHOP";
+        else if (tabName === "gear") displayTitle = "SETTINGS";
+        consoleTitle.textContent = displayTitle;
+      }
+
+      if (typeof updateFooterColor === "function") {
+        updateFooterColor(tabName);
+      }
+
+      if (tabName === "quests") {
+        if (typeof syncQuestsUI === "function") syncQuestsUI();
+        if (typeof syncLevelTabUI === "function") syncLevelTabUI();
+      }
+      
+      // Toggle squad lobby styling on console
+      const consoleEl = document.querySelector(".yellow-console");
+      if (consoleEl) {
+        if (tabName === "squad") {
+          consoleEl.classList.add("squad-lobby-active");
+          if (currentSocialUserId) updateMyPresenceStatus("in-lobby");
+        } else {
+          consoleEl.classList.remove("squad-lobby-active");
+          if (currentSocialUserId) updateMyPresenceStatus("menu");
+        }
+        consoleEl.classList.toggle("character-select-active", tabName === "look");
+      }
+    }, 300);
+    
+    setTimeout(() => {
+      if (overlay) {
+        overlay.classList.remove("animate-swipe");
+      }
+      isTabTransitioning = false;
+    }, 800);
+    
     cancelMatchmaking();
   });
 });
@@ -905,6 +949,13 @@ document.querySelectorAll(".character-card video").forEach((video) => {
 });
 
 function syncCharacterSelectPreview(kind) {
+  const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+  const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+  if (bombSelectPreviewImg && characterSelectCanvas) {
+    characterSelectCanvas.style.display = "block";
+    bombSelectPreviewImg.style.display = "none";
+  }
+
   if (characterSelectName) {
     characterSelectName.textContent = characterStyle[kind]?.label || kind;
   }
@@ -965,6 +1016,24 @@ function syncSquadLobbyVideo(kind) {
 }
 
 function confirmCharacterSelection() {
+  const mode = selectCardGrid ? selectCardGrid.dataset.mode : "characters";
+  if (mode === "bombs") {
+    const equippedBomb = previewBombColor || "default";
+    localStorage.setItem("equipped_bomb", equippedBomb);
+    syncBombWardrobe();
+    syncBombSelectPreview(equippedBomb);
+    showToastMsg(`Equipped ${equippedBomb.toUpperCase()} bomb skin!`);
+    return;
+  }
+  if (mode === "effects") {
+    const equippedEffect = previewEffectColor || "default";
+    localStorage.setItem("equipped_effect", equippedEffect);
+    syncEffectWardrobe();
+    syncEffectSelectPreview(equippedEffect);
+    showToastMsg(`Equipped ${equippedEffect.toUpperCase()} explosion effect!`);
+    return;
+  }
+
   selectedCharacter = previewCharacter;
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
@@ -1002,6 +1071,38 @@ wardrobeTabs.forEach((tab) => {
     tab.classList.add("active");
     if (selectCardGrid) {
       selectCardGrid.dataset.mode = mode;
+    }
+    
+    // Hide/show the appropriate preview slots
+    const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+    const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+    const effectSelectPreviewContainer = document.getElementById("effectSelectPreviewContainer");
+    
+    if (mode === "bombs") {
+      if (characterSelectCanvas) characterSelectCanvas.style.display = "none";
+      if (effectSelectPreviewContainer) effectSelectPreviewContainer.style.display = "none";
+      if (bombSelectPreviewImg) bombSelectPreviewImg.style.display = "block";
+      
+      previewBombColor = localStorage.getItem("equipped_bomb") || "default";
+      if (typeof syncBombWardrobe === "function") syncBombWardrobe();
+      if (typeof syncBombSelectPreview === "function") syncBombSelectPreview(previewBombColor);
+    } else if (mode === "effects") {
+      if (characterSelectCanvas) characterSelectCanvas.style.display = "none";
+      if (bombSelectPreviewImg) bombSelectPreviewImg.style.display = "none";
+      if (effectSelectPreviewContainer) effectSelectPreviewContainer.style.display = "flex";
+      
+      previewEffectColor = localStorage.getItem("equipped_effect") || "default";
+      if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
+      if (typeof syncEffectSelectPreview === "function") syncEffectSelectPreview(previewEffectColor);
+    } else {
+      // characters or clothes
+      if (bombSelectPreviewImg) bombSelectPreviewImg.style.display = "none";
+      if (effectSelectPreviewContainer) effectSelectPreviewContainer.style.display = "none";
+      if (characterSelectCanvas) characterSelectCanvas.style.display = "block";
+      
+      if (mode === "characters") {
+        if (typeof syncCharacterSelectPreview === "function") syncCharacterSelectPreview(previewCharacter);
+      }
     }
   });
 });
@@ -1463,6 +1564,10 @@ function handleServerMessage(msg) {
     }
 
     case "game_started":
+      if (shouldShowVsBeforeGameStart(data)) {
+        showServerVsThenStart(data);
+        break;
+      }
       if (isMicActive) {
         stopMicCapture();
       }
@@ -1483,11 +1588,21 @@ function handleServerMessage(msg) {
         radius: 13,
       }));
 
-      bombs = (data.bombs || []).map((bomb) => ({
-        ...bomb,
-        pulse: 0,
-        passableFor: new Set(players.map((p) => p.id)),
-      }));
+      bombs = (data.bombs || []).map((bomb) => {
+        const color = (bomb.ownerId === localPlayerId)
+          ? (localStorage.getItem("equipped_bomb") || "default")
+          : (bomb.color || "default");
+        const effectColor = (bomb.ownerId === localPlayerId)
+          ? (localStorage.getItem("equipped_effect") || "default")
+          : (bomb.effectColor || "default");
+        return {
+          ...bomb,
+          pulse: 0,
+          passableFor: new Set(players.map((p) => p.id)),
+          color: color,
+          effectColor: effectColor
+        };
+      });
       blasts = [];
       pickups = data.pickups || [];
       particles = [];
@@ -1593,6 +1708,12 @@ function handleServerMessage(msg) {
       break;
 
     case "bomb_placed":
+      const placedColor = (data.bomb.ownerId === localPlayerId)
+        ? (localStorage.getItem("equipped_bomb") || "default")
+        : (data.bomb.color || "default");
+      const placedEffectColor = (data.bomb.ownerId === localPlayerId)
+        ? (localStorage.getItem("equipped_effect") || "default")
+        : (data.bomb.effectColor || "default");
       bombs.push({
         id: data.bomb.id,
         x: data.bomb.x,
@@ -1602,15 +1723,20 @@ function handleServerMessage(msg) {
         timer: data.bomb.timer,
         pulse: 0,
         passableFor: new Set(players.map((p) => p.id)),
+        color: placedColor,
+        effectColor: placedEffectColor
       });
       break;
 
     case "bomb_exploded":
+      const explBomb = bombs.find((b) => b.id === data.bombId);
+      const explColor = explBomb ? (explBomb.effectColor || "default") : "default";
       bombs = bombs.filter((b) => b.id !== data.bombId);
       blasts.push({
         cells: data.cells,
         timer: 0.48,
         age: 0,
+        color: explColor,
       });
 
       data.destroyedCrates.forEach((crate) => {
@@ -1653,6 +1779,12 @@ function handleServerMessage(msg) {
         collector.energyDrinkCount = data.playerStats.energyDrinkCount || 0;
         collector.reviveKitCount = data.playerStats.reviveKitCount || 0;
         collector.activeBombType = data.playerStats.activeBombType || "normal";
+
+        if (data.playerId === localPlayerId) {
+          let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
+          localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+        }
+
         burstSparkles(collector.x, collector.y);
       }
       updateHudSidebar();
@@ -1682,9 +1814,16 @@ function handleServerMessage(msg) {
       if (data.teamTrophies) currentTeamTrophies = data.teamTrophies;
       if (data.teams) currentTeams = data.teams;
 
+      // Progress daily match quest
+      localStorage.setItem("quest_match_completed", "true");
+
       // Give progression rewards
       const isWinner = data.winnerId === localPlayerId;
       if (isWinner) {
+        // Progress weekly win quest
+        let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
+        localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+
         if (data.tournamentFinished) {
           crownCount += 2; gemsCount += 300;
           addChatMessage("System", "TOURNAMENT VICTORY! You earned 300 gems and 2 crowns! 👑🏆", true);
@@ -2330,15 +2469,39 @@ function getLocalFourVoteActors() {
 }
 
 function startLocalSingleWithMapVote() {
-  startLocalMapVote(getLocalSingleVoteActors(), () => {
-    startLocalGame();
-    tryPlayMusic();
+  const voteActors = getLocalSingleVoteActors();
+  startLocalMapVote(voteActors, () => {
+    showVsLoadingScreen(voteActors, () => {
+      startLocalGame();
+      tryPlayMusic();
+    });
   });
 }
 
 function startLocalFourWithMapVote() {
-  startLocalMapVote(getLocalFourVoteActors(), () => {
-    startLocalFourPlayerGame();
+  const voteActors = getLocalFourVoteActors();
+  startLocalMapVote(voteActors, () => {
+    showVsLoadingScreen(voteActors, () => {
+      startLocalFourPlayerGame();
+      tryPlayMusic();
+    });
+  });
+}
+
+function shouldShowVsBeforeGameStart(data) {
+  const mode = data?.mode || currentRoomMode;
+  return !data?.__vsLoadingShown && !isBattleRoyale(mode);
+}
+
+function showServerVsThenStart(data) {
+  showVsLoadingScreen(data?.players || players, () => {
+    handleServerMessage({
+      type: "game_started",
+      data: {
+        ...data,
+        __vsLoadingShown: true,
+      },
+    });
     tryPlayMusic();
   });
 }
@@ -2847,6 +3010,15 @@ function localPlaceBomb(player) {
   const tileHasBomb = bombs.some((b) => b.x === tile.x && b.y === tile.y);
   if (activeBombsCount >= player.bombs || tileHasBomb) return;
 
+  // Read equipped bomb skin (only local player gets customization, bots default)
+  const color = (player.id === localPlayerId) ? (localStorage.getItem("equipped_bomb") || "default") : "default";
+  const effectColor = (player.id === localPlayerId) ? (localStorage.getItem("equipped_effect") || "default") : "default";
+
+  if (player.id === localPlayerId) {
+    let bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
+    localStorage.setItem("quest_bombs_progress", Math.min(10, bombsPlaced + 1).toString());
+  }
+
   bombs.push({
     id: `local_bomb_${++localBombId}`,
     x: tile.x,
@@ -2856,6 +3028,8 @@ function localPlaceBomb(player) {
     timer: 2.25,
     pulse: 0,
     passableFor: new Set([player.id]),
+    color: color,
+    effectColor: effectColor
   });
   player.cooldown = 0.05;
 }
@@ -2903,7 +3077,7 @@ function localTriggerExplosion(bomb) {
     }
   });
 
-  blasts.push({ cells, timer: 0.48, age: 0 });
+  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.effectColor || "default" });
   // In BR mode only shake for MY own bomb; in classic mode always shake
   if (!isBattleRoyale(currentRoomMode) || bomb.ownerId === localPlayerId) {
     shakeTimer = 0.35;
@@ -2914,12 +3088,21 @@ function localTriggerExplosion(bomb) {
       const tile = gridAt(p.x, p.y);
       if (tile.x === cell.x && tile.y === cell.y) {
         if (isBattleRoyale(currentRoomMode)) {
+          const hpBefore = p.hp;
           damageLocalPlayerFromBomb(p, 60);
+          if (p.hp <= 0 && hpBefore > 0 && p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
+            let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
+            localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+          }
         } else {
           p.alive = false;
           p.moveTarget = null;
           p.moveFrom = null;
           p.moveDir = null;
+          if (p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
+            let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
+            localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+          }
         }
       }
     });
@@ -2946,6 +3129,12 @@ function localCheckPickup(player) {
   else if (pickup.type === "bandage") player.bandageCount = (player.bandageCount || 0) + 1;
   else if (pickup.type === "medkit") player.medkitCount = (player.medkitCount || 0) + 1;
   else if (pickup.type === "energy_drink") player.energyDrinkCount = (player.energyDrinkCount || 0) + 1;
+
+  if (player.id === localPlayerId) {
+    let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
+    localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+  }
+
   burstSparkles(player.x, player.y);
   updateHudSidebar();
 }
@@ -2986,6 +3175,15 @@ function localCheckGameEnd() {
 function awardLocalMatchProgress(playerWon) {
   if (localMatchRewarded) return;
   localMatchRewarded = true;
+
+  // Progress daily match quest
+  localStorage.setItem("quest_match_completed", "true");
+
+  // Progress weekly win quest
+  if (playerWon) {
+    let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
+    localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+  }
 
   const gainedXp = playerWon ? 120 : 45;
   const gainedGems = playerWon ? 85 : 25;
@@ -3171,6 +3369,9 @@ async function loadProgression() {
 }
 
 async function saveProgression() {
+  if (typeof updateShopWalletDisplay === "function") {
+    updateShopWalletDisplay();
+  }
   // If Supabase is not active, fallback to localStorage
   if (!supabaseClient) {
     localStorage.setItem(
@@ -5191,14 +5392,35 @@ function drawBomb(bomb) {
   ctx.save();
   ctx.translate(c.x, c.y);
   ctx.scale(scale, scale);
-  ctx.fillStyle = "#25212a";
+  
+  // Custom bomb skin colors
+  let bombColor = "#25212a";
+  let fuseColor = "#f9d86a";
+  if (bomb.color === "pink") {
+    bombColor = "#ff2f73";
+    fuseColor = "#ffd86f";
+  } else if (bomb.color === "blue") {
+    bombColor = "#18baff";
+    fuseColor = "#ffffff";
+  } else if (bomb.color === "green") {
+    bombColor = "#39d98a";
+    fuseColor = "#ffffff";
+  } else if (bomb.color === "gold") {
+    bombColor = "#ffd86f";
+    fuseColor = "#ffffff";
+  } else if (bomb.color === "purple") {
+    bombColor = "#b94cff";
+    fuseColor = "#ffd86f";
+  }
+
+  ctx.fillStyle = bombColor;
   ctx.strokeStyle = "#111";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(0, 3, 16, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = "#f9d86a";
+  ctx.strokeStyle = fuseColor;
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(8, -12);
@@ -5213,13 +5435,34 @@ function drawBomb(bomb) {
 
 function drawBlast(blast) {
   const alpha = Math.max(0, blast.timer / 0.48);
+  
+  // Custom blast skin colors
+  let innerColor = "#fff06d";
+  let outerColor = "#ff6f4f";
+  if (blast.color === "pink") {
+    outerColor = "#ff2f73";
+    innerColor = "#ff9ebb";
+  } else if (blast.color === "blue") {
+    outerColor = "#1852e0";
+    innerColor = "#18baff";
+  } else if (blast.color === "green") {
+    outerColor = "#1b854f";
+    innerColor = "#39d98a";
+  } else if (blast.color === "gold") {
+    outerColor = "#d35400";
+    innerColor = "#ffd86f";
+  } else if (blast.color === "purple") {
+    outerColor = "#5e1b85";
+    innerColor = "#b94cff";
+  }
+
   blast.cells.forEach((cell) => {
     if (!isTileVisible(cell.x, cell.y)) return;
     const c = centerOf(cell.x, cell.y);
     ctx.save();
     ctx.globalAlpha = 0.9 * alpha + 0.1;
-    ctx.fillStyle = "#fff06d";
-    ctx.strokeStyle = "#ff6f4f";
+    ctx.fillStyle = innerColor;
+    ctx.strokeStyle = outerColor;
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(c.x, c.y, 23 + Math.sin(blast.age * 38) * 3, 0, Math.PI * 2);
@@ -5378,12 +5621,38 @@ function drawMessage(message) {
 }
 
 function drawStartCountdown(state) {
-  if (!state) return;
+  if (!state) {
+    // Hide the fullscreen overlay when there's no state
+    const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+    if (fsOverlay) fsOverlay.classList.add('hidden');
+    return;
+  }
   ctx.save();
   
   // Draw a semi-transparent dark backdrop overlay across the entire canvas to focus attention
   ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  
+  // ── Fullscreen HTML overlay (covers areas outside the canvas too) ──
+  const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+  const fsNum = document.getElementById('fullscreenCountdownNum');
+  if (fsOverlay && fsNum) {
+    fsOverlay.classList.remove('hidden');
+    const displayText = state;
+    // Only re-trigger animation if the number changed
+    if (fsNum.dataset.lastState !== state) {
+      fsNum.dataset.lastState = state;
+      // Set text and color class
+      fsNum.className = 'fullscreen-countdown-num';
+      if (state === '3') fsNum.classList.add('color-3');
+      else if (state === '2') fsNum.classList.add('color-2');
+      else if (state === '1') fsNum.classList.add('color-1');
+      else if (state === 'START') fsNum.classList.add('color-start');
+      fsNum.textContent = displayText;
+      // Re-trigger CSS animation by forcing reflow
+      void fsNum.offsetWidth;
+    }
+  }
   
   // Animate size of text based on the remainder of the fractional second
   const fraction = startCountdownTimer % 1.0;
@@ -5549,6 +5818,25 @@ function drawSquadLobbyCharacter() {
 
   squadLobbyCtx.drawImage(squadLobbyVideo, drawX, drawY, drawW, drawH);
   removeGreenScreenFromCanvas(squadLobbyCtx, width, height);
+}
+
+function drawVictoryPreview() {
+  const victoryCard = document.getElementById("grandVictoryCard");
+  if (!victoryCard || victoryCard.classList.contains("hidden")) return;
+  if (!victoryVideoCtx || !victoryVideoCanvas || !victoryVideo || victoryVideo.readyState < 2) return;
+
+  const width = victoryVideoCanvas.width;
+  const height = victoryVideoCanvas.height;
+  victoryVideoCtx.clearRect(0, 0, width, height);
+
+  const scale = Math.min(width / victoryVideo.videoWidth, height / victoryVideo.videoHeight) * 1.5;
+  const drawW = victoryVideo.videoWidth * scale;
+  const drawH = victoryVideo.videoHeight * scale;
+  const drawX = (width - drawW) / 2;
+  const drawY = height - drawH * 0.95;
+
+  victoryVideoCtx.drawImage(victoryVideo, drawX, drawY, drawW, drawH);
+  removeGreenScreenFromCanvas(victoryVideoCtx, width, height);
 }
 
 function drawCharacterCardPreviews() {
@@ -6011,6 +6299,12 @@ function render(dt) {
 
   if (running && startCountdownTimer > 0) {
     drawStartCountdown(startCountdownState);
+  } else {
+    // Ensure fullscreen overlay is hidden when countdown is not active
+    const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+    if (fsOverlay && !fsOverlay.classList.contains('hidden')) {
+      fsOverlay.classList.add('hidden');
+    }
   }
 
   if (!running && gameMessage) {
@@ -6050,7 +6344,7 @@ function loop(now) {
 
   // Smoothly animate the yellow-console swirls background on active console screens
   if (activeGraphics.animateMenus && shouldDrawMenu) {
-    document.querySelectorAll(".yellow-console").forEach((el) => {
+    document.querySelectorAll(".yellow-console, .shop-animated-bg").forEach((el) => {
       const offset = (now / 90) % 240;
       el.style.setProperty('--grad-offset', `${offset}px`);
     });
@@ -6076,6 +6370,7 @@ function loop(now) {
   const overlay = document.getElementById("tournamentOverlay");
   if (overlay && !overlay.classList.contains("hidden") && shouldDrawMenu) {
     drawResultsAvatars();
+    drawVictoryPreview();
   }
   
   requestAnimationFrame(loop);
@@ -6827,6 +7122,7 @@ let matchmakingTimeouts = [];
 let matchmakingSeconds = 0;
 let matchedBots = [];
 let vsProgressInterval = null;
+let vsCompletionTimeout = null;
 
 function startMatchmakingSearch() {
   if (!matchmakingPopup) return;
@@ -7133,50 +7429,75 @@ function cancelMatchmaking() {
   }
   clearInterval(matchmakingTimerInterval);
   clearInterval(vsProgressInterval);
+  clearTimeout(vsCompletionTimeout);
   matchmakingTimeouts.forEach(clearTimeout);
   matchmakingTimeouts = [];
 }
 
 function startVsScreen() {
-  if (!vsLoadingScreen) return;
-  
-  // Show VS Loading Screen
-  vsLoadingScreen.classList.remove("hidden");
-  vsLoadingScreen.classList.add("active");
-  
-  // Set players inside the VS cards:
-  // Card 1: Player
-  const vsName1 = document.getElementById("vsName_1");
-  const vsImg1 = document.getElementById("vsImg_1");
-  if (vsName1) vsName1.textContent = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
-  if (vsImg1) vsImg1.src = `assets/cards/${selectedCharacter}.png`;
-  
-  // Card 2, 3, 4: CPU Bots
+  const playerName = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
   const bot1 = matchedBots[0] || "usagi";
   const bot2 = matchedBots[1] || "momonga";
   const bot3 = matchedBots[2] || "chiikawa";
-  
-  const vsName2 = document.getElementById("vsName_2");
-  const vsImg2 = document.getElementById("vsImg_2");
-  if (vsName2) vsName2.textContent = characterStyle[bot1].label + " CPU";
-  if (vsImg2) vsImg2.src = `assets/cards/${bot1}.png`;
-  
-  const vsName3 = document.getElementById("vsName_3");
-  const vsImg3 = document.getElementById("vsImg_3");
-  if (vsName3) vsName3.textContent = characterStyle[bot2].label + " CPU";
-  if (vsImg3) vsImg3.src = `assets/cards/${bot2}.png`;
-  
-  const vsName4 = document.getElementById("vsName_4");
-  const vsImg4 = document.getElementById("vsImg_4");
-  if (vsName4) vsName4.textContent = characterStyle[bot3].label + " CPU";
-  if (vsImg4) vsImg4.src = `assets/cards/${bot3}.png`;
-  
-  // Set card themes based on characters
-  setVsCardTheme(1, selectedCharacter);
-  setVsCardTheme(2, bot1);
-  setVsCardTheme(3, bot2);
-  setVsCardTheme(4, bot3);
-  
+  showVsLoadingScreen([
+    { id: "local_player", name: playerName, kind: selectedCharacter },
+    { id: "cpu_1", name: characterStyle[bot1].label + " CPU", kind: bot1 },
+    { id: "cpu_2", name: characterStyle[bot2].label + " CPU", kind: bot2 },
+    { id: "cpu_3", name: characterStyle[bot3].label + " CPU", kind: bot3 },
+  ], startLocalGameWithMatchedBots);
+}
+
+function getVsFallbackCombatants() {
+  return [
+    { id: "fallback_player", name: "You", kind: selectedCharacter },
+    { id: "fallback_usagi", name: "Usagi CPU", kind: "usagi" },
+    { id: "fallback_momonga", name: "Momonga CPU", kind: "momonga" },
+    { id: "fallback_chiikawa", name: "Chiikawa CPU", kind: "chiikawa" },
+  ];
+}
+
+function normalizeVsCombatants(combatants) {
+  const fallback = getVsFallbackCombatants();
+  const source = Array.isArray(combatants) && combatants.length ? combatants : fallback;
+  return Array.from({ length: 4 }, (_, index) => {
+    const item = source[index] || fallback[index];
+    const kind = item?.kind || fallback[index].kind;
+    const fallbackName = index === 0 ? "You" : `${characterStyle[kind]?.label || "CPU"} CPU`;
+    return {
+      kind,
+      name: item?.name || fallbackName,
+    };
+  });
+}
+
+function showVsLoadingScreen(combatants, onComplete, durationMs = 5000) {
+  if (!vsLoadingScreen) {
+    onComplete?.();
+    return;
+  }
+
+  const lineup = normalizeVsCombatants(combatants);
+  if (vsLoadingScreen.parentElement !== document.body) {
+    document.body.appendChild(vsLoadingScreen);
+  }
+  const mapVoteOverlay = document.getElementById("mapVoteOverlay");
+  if (mapVoteOverlay) {
+    mapVoteOverlay.classList.remove("active");
+    mapVoteOverlay.classList.add("hidden");
+  }
+
+  vsLoadingScreen.classList.remove("hidden");
+  vsLoadingScreen.classList.add("active");
+
+  lineup.forEach((fighter, index) => {
+    const slot = index + 1;
+    const nameEl = document.getElementById(`vsName_${slot}`);
+    const imgEl = document.getElementById(`vsImg_${slot}`);
+    if (nameEl) nameEl.textContent = fighter.name;
+    if (imgEl) imgEl.src = `assets/cards/${fighter.kind}.png`;
+    setVsCardTheme(slot, fighter.kind);
+  });
+
   // Reset slide-in animations on VS cards
   const cardsLeft = vsLoadingScreen.querySelectorAll(".card-slide-left");
   const cardsRight = vsLoadingScreen.querySelectorAll(".card-slide-right");
@@ -7198,41 +7519,38 @@ function startVsScreen() {
     vsLogo.style.animation = 'vsImpact 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.25) forwards, vsPulse 1.8s infinite ease-in-out 0.5s';
   }
   
-  // Reset progress bar
-  let progress = 0;
+  const startedAt = performance.now();
   if (vsProgressBarFill) vsProgressBarFill.style.width = "0%";
   if (vsLoadingStatus) vsLoadingStatus.textContent = "PREPARING ARENA... 0%";
-  
-  // Load steps
+
   const statusTexts = [
     "LOADING ARENA...",
     "SUMMONING BOMBS...",
-    "COMMUNING WITH BOT SPIRITS...",
+    "LOCKING IN RIVALS...",
     "READY TO BATTLE!"
   ];
-  
+
   clearInterval(vsProgressInterval);
+  clearTimeout(vsCompletionTimeout);
   vsProgressInterval = setInterval(() => {
-    progress += Math.floor(Math.random() * 8) + 4;
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(vsProgressInterval);
-      
-      // Complete! Launch game after 0.5s delay
-      setTimeout(() => {
-        // Hide VS screen
-        vsLoadingScreen.classList.remove("active");
-        vsLoadingScreen.classList.add("hidden");
-        
-        // Launch actual offline game
-        startLocalGameWithMatchedBots();
-      }, 500);
-    }
-    
+    const elapsed = performance.now() - startedAt;
+    const progress = Math.min(99, Math.floor((elapsed / durationMs) * 100));
     if (vsProgressBarFill) vsProgressBarFill.style.width = `${progress}%`;
     const textIndex = Math.min(statusTexts.length - 1, Math.floor((progress / 100) * statusTexts.length));
     if (vsLoadingStatus) vsLoadingStatus.textContent = `${statusTexts[textIndex]} ${progress}%`;
   }, 150);
+
+  vsCompletionTimeout = setTimeout(() => {
+    clearInterval(vsProgressInterval);
+    vsProgressInterval = null;
+    if (vsProgressBarFill) vsProgressBarFill.style.width = "100%";
+    if (vsLoadingStatus) vsLoadingStatus.textContent = "READY TO BATTLE! 100%";
+    setTimeout(() => {
+      vsLoadingScreen.classList.remove("active");
+      vsLoadingScreen.classList.add("hidden");
+      onComplete?.();
+    }, 220);
+  }, durationMs);
 }
 
 function setVsCardTheme(slotNum, charKind) {
@@ -8394,10 +8712,14 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
           
         } else {
           // Normal individual rendering
-          players.forEach((p) => {
+          players.forEach((p, idx) => {
             const card = document.createElement("div");
             const isWinner = p.id === winnerId;
             card.className = `result-player-card ${isWinner ? 'winner' : ''}`;
+            
+            // Staggered entrance animation
+            card.style.animation = "resultCardEntrance 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both";
+            card.style.animationDelay = `${idx * 150}ms`;
 
             let trophiesHtml = "";
             const trophiesCount = p.trophies || 0;
@@ -8412,9 +8734,13 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
               }
             }
 
+            card.style.position = "relative";
+            const crownBadge = isWinner ? `<div class="result-crown-badge" style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); font-size: 20px; filter: drop-shadow(1.5px 1.5px 0 #000); animation: crownFloat 0.8s ease-in-out infinite alternate; z-index: 10;">👑</div>` : "";
+
             card.innerHTML = `
+              ${crownBadge}
               <canvas id="result_avatar_${p.id}" class="result-avatar-canvas" width="60" height="60"></canvas>
-              <div class="result-player-name">${p.name}</div>
+              <div class="result-player-name">${escapeHTML(p.name)}</div>
               <div class="result-trophies-container">
                 ${trophiesHtml}
               </div>
@@ -9553,12 +9879,13 @@ function makeStatusInfo(userId) {
 }
 
 function buildSocialUserItem(userId, username, character, statusInfo, isFriend, showInvite) {
-  const charImg = `assets/cards/${character || "chiikawa"}.png`;
   const isOnline = statusInfo.dot !== "offline";
   const li = document.createElement("li");
   li.className = "social-user-item";
   li.innerHTML = `
-    <img class="social-user-avatar" src="${charImg}" alt="${escapeHTML(username)}" />
+    <div class="knock-avatar friend-avatar">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </div>
     <div class="social-user-info">
       <div class="social-user-name">${escapeHTML(username)}</div>
       <div class="social-user-status"><span class="status-dot ${statusInfo.dot}"></span> ${statusInfo.text}</div>
@@ -9607,13 +9934,14 @@ function renderFriendsTab() {
     const info = myFriendshipMap[friendId];
     if (!info) return;
     const presence = onlinePresenceMap[friendId];
-    const charImg = presence?.character || info.character || "chiikawa";
     const statusInfo = makeStatusInfo(friendId);
     const isOnline = statusInfo.dot !== "offline";
     const li = document.createElement("li");
     li.className = "social-user-item";
     li.innerHTML = `
-      <img class="social-user-avatar" src="assets/cards/${charImg}.png" alt="${escapeHTML(info.username)}" />
+      <div class="knock-avatar friend-avatar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
       <div class="social-user-info">
         <div class="social-user-name">${escapeHTML(info.username)}</div>
         <div class="social-user-status"><span class="status-dot ${statusInfo.dot}"></span> ${statusInfo.text}</div>
@@ -9647,7 +9975,9 @@ function renderLanRoomsTab() {
     li.className = "social-user-item";
     const playerNames = (room.players || []).map((p) => p.ai ? "CPU" : escapeHTML(p.name)).join(", ");
     li.innerHTML = `
-      <img class="social-user-avatar" src="assets/cards/${room.players?.[0]?.kind || "chiikawa"}.png" alt="">
+      <div class="knock-avatar room-avatar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+      </div>
       <div class="social-user-info">
         <div class="social-user-name">Room ${escapeHTML(room.roomCode)} ${isCurrentRoom ? "(your room)" : ""}</div>
         <div class="social-user-status"><span class="status-dot online"></span> ${escapeHTML(room.mode || "standard").toUpperCase()} - ${room.playerCount}/${room.maxPlayers} - ${escapeHTML(room.state)}</div>
@@ -9680,7 +10010,9 @@ function renderPendingTab() {
     const li = document.createElement("li");
     li.className = "social-user-item";
     li.innerHTML = `
-      <img class="social-user-avatar" src="assets/cards/${rp.character || "chiikawa"}.png" alt="${escapeHTML(rp.username || "")}" />
+      <div class="knock-avatar friend-avatar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
       <div class="social-user-info">
         <div class="social-user-name">${escapeHTML(rp.username || "Unknown")}</div>
         <div class="social-user-status">Wants to be your friend!</div>
@@ -12001,4 +12333,855 @@ if (document.readyState === "complete" || document.readyState === "interactive")
   bindIngameChatToggleListeners();
 } else {
   document.addEventListener("DOMContentLoaded", bindIngameChatToggleListeners);
+}
+
+// =================================================================
+// GACHA SHOP & BOMB WARDROBE SYSTEM LOGIC
+// =================================================================
+
+const gachaPool = [
+  { id: "pink-bomb", name: "Pink Bomb", color: "pink", type: "bomb", file: "assets/shop/pink-bomb.svg", chance: "10% Chance" },
+  { id: "blue-bomb", name: "Blue Bomb", color: "blue", type: "bomb", file: "assets/shop/blue-bomb.svg", chance: "10% Chance" },
+  { id: "green-bomb", name: "Green Bomb", color: "green", type: "bomb", file: "assets/shop/green-bomb.svg", chance: "10% Chance" },
+  { id: "gold-bomb", name: "Gold Bomb", color: "gold", type: "bomb", file: "assets/shop/gold-bomb.svg", chance: "10% Chance" },
+  { id: "purple-bomb", name: "Purple Bomb", color: "purple", type: "bomb", file: "assets/shop/purple-bomb.svg", chance: "10% Chance" },
+  { id: "pink-effect", name: "Pink Flame", color: "pink", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "blue-effect", name: "Blue Flame", color: "blue", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "green-effect", name: "Green Flame", color: "green", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "gold-effect", name: "Golden Blast", color: "gold", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "purple-effect", name: "Shadow Blast", color: "purple", type: "effect", isSvgMarkup: true, chance: "10% Chance" }
+];
+
+function getGachaItemImageHtml(item, size = 44) {
+  if (item.isSvgMarkup) {
+    let outerColor = "#ff6f4f";
+    let innerColor = "#fff06d";
+    if (item.color === "pink") { outerColor = "#ff2f73"; innerColor = "#ff9ebb"; }
+    else if (item.color === "blue") { outerColor = "#1852e0"; innerColor = "#18baff"; }
+    else if (item.color === "green") { outerColor = "#1b854f"; innerColor = "#39d98a"; }
+    else if (item.color === "gold") { outerColor = "#d35400"; innerColor = "#ffd86f"; }
+    else if (item.color === "purple") { outerColor = "#5e1b85"; innerColor = "#b94cff"; }
+
+    return `
+      <svg viewBox="0 0 100 100" style="width: ${size}px; height: ${size}px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000);">
+        <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="${outerColor}" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+        <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="${innerColor}" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+    `;
+  } else {
+    return `<img src="${item.file}" style="width: ${size}px; height: ${size}px; transform: scale(1.1); filter: drop-shadow(0 2px 0 #000);" alt="${item.name}">`;
+  }
+}
+
+let gachaDrawing = false;
+let previewBombColor = localStorage.getItem("equipped_bomb") || "default";
+let previewEffectColor = localStorage.getItem("equipped_effect") || "default";
+
+function syncBombSelectPreview(color) {
+  const bombNameMap = {
+    default: "Default Bomb",
+    pink: "Pink Bomb",
+    blue: "Blue Bomb",
+    green: "Green Bomb",
+    gold: "Gold Bomb",
+    purple: "Purple Bomb",
+  };
+  
+  if (characterSelectName) {
+    characterSelectName.textContent = bombNameMap[color] || (color.toUpperCase() + " Bomb");
+  }
+  
+  if (characterSelectState) {
+    const equipped = localStorage.getItem("equipped_bomb") || "default";
+    characterSelectState.textContent = color === equipped ? "Selected" : "Select";
+  }
+
+  const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+  const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+  const effectSelectPreviewContainer = document.getElementById("effectSelectPreviewContainer");
+  if (bombSelectPreviewImg && characterSelectCanvas && effectSelectPreviewContainer) {
+    characterSelectCanvas.style.display = "none";
+    effectSelectPreviewContainer.style.display = "none";
+    bombSelectPreviewImg.style.display = "block";
+    bombSelectPreviewImg.src = `assets/shop/${color}-bomb.svg`;
+    
+    // Trigger bounce pop & floating reflow
+    bombSelectPreviewImg.classList.remove("active-preview");
+    void bombSelectPreviewImg.offsetWidth;
+    bombSelectPreviewImg.classList.add("active-preview");
+  }
+}
+
+function syncBombWardrobe() {
+  const ownedBombs = {
+    pink: localStorage.getItem("owned_bomb_pink") === "true",
+    blue: localStorage.getItem("owned_bomb_blue") === "true",
+    green: localStorage.getItem("owned_bomb_green") === "true",
+    gold: localStorage.getItem("owned_bomb_gold") === "true",
+    purple: localStorage.getItem("owned_bomb_purple") === "true",
+  };
+  
+  const bombCards = document.querySelectorAll(".bomb-card");
+  bombCards.forEach((card) => {
+    const color = card.getAttribute("data-bomb-color");
+    if (color === "default" || ownedBombs[color]) {
+      card.classList.remove("locked");
+    } else {
+      card.classList.add("locked");
+    }
+    
+    if (color === previewBombColor) {
+      card.classList.add("active");
+    } else {
+      card.classList.remove("active");
+    }
+  });
+}
+
+function syncEffectSelectPreview(color) {
+  const effectNameMap = {
+    default: "Default Blast",
+    pink: "Pink Flame",
+    blue: "Blue Flame",
+    green: "Green Flame",
+    gold: "Golden Blast",
+    purple: "Shadow Blast",
+  };
+  
+  if (characterSelectName) {
+    characterSelectName.textContent = effectNameMap[color] || (color.toUpperCase() + " Blast");
+  }
+  
+  if (characterSelectState) {
+    const equipped = localStorage.getItem("equipped_effect") || "default";
+    characterSelectState.textContent = color === equipped ? "Selected" : "Select";
+  }
+
+  const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+  const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+  const effectSelectPreviewContainer = document.getElementById("effectSelectPreviewContainer");
+  if (bombSelectPreviewImg && characterSelectCanvas && effectSelectPreviewContainer) {
+    characterSelectCanvas.style.display = "none";
+    bombSelectPreviewImg.style.display = "none";
+    effectSelectPreviewContainer.style.display = "flex";
+    
+    let outerColor = "#ff6f4f";
+    let innerColor = "#fff06d";
+    if (color === "pink") { outerColor = "#ff2f73"; innerColor = "#ff9ebb"; }
+    else if (color === "blue") { outerColor = "#1852e0"; innerColor = "#18baff"; }
+    else if (color === "green") { outerColor = "#1b854f"; innerColor = "#39d98a"; }
+    else if (color === "gold") { outerColor = "#d35400"; innerColor = "#ffd86f"; }
+    else if (color === "purple") { outerColor = "#5e1b85"; innerColor = "#b94cff"; }
+
+    effectSelectPreviewContainer.innerHTML = `
+      <svg viewBox="0 0 100 100" style="width: 280px; height: 280px; filter: drop-shadow(4px 4px 0 #000); animation: selectFloat 2.5s ease-in-out infinite alternate;">
+        <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="${outerColor}" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+        <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="${innerColor}" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+    `;
+    
+    effectSelectPreviewContainer.classList.remove("active-preview");
+    void effectSelectPreviewContainer.offsetWidth;
+    effectSelectPreviewContainer.classList.add("active-preview");
+  }
+}
+
+function syncEffectWardrobe() {
+  const ownedEffects = {
+    pink: localStorage.getItem("owned_effect_pink") === "true",
+    blue: localStorage.getItem("owned_effect_blue") === "true",
+    green: localStorage.getItem("owned_effect_green") === "true",
+    gold: localStorage.getItem("owned_effect_gold") === "true",
+    purple: localStorage.getItem("owned_effect_purple") === "true",
+  };
+  
+  const effectCards = document.querySelectorAll(".effect-card");
+  effectCards.forEach((card) => {
+    const color = card.getAttribute("data-effect-color");
+    if (color === "default" || ownedEffects[color]) {
+      card.classList.remove("locked");
+    } else {
+      card.classList.add("locked");
+    }
+    
+    if (color === previewEffectColor) {
+      card.classList.add("active");
+    } else {
+      card.classList.remove("active");
+    }
+  });
+}
+
+function updateShopWalletDisplay() {
+  const shopWallet = document.getElementById("shopGemsDisplay");
+  if (shopWallet) shopWallet.textContent = gemsCount.toLocaleString();
+  const gachaWallet = document.getElementById("gachaWalletGems");
+  if (gachaWallet) gachaWallet.textContent = gemsCount.toLocaleString();
+}
+
+function initGachaShop() {
+  const shopBtn = document.getElementById("magicalChiikawaBannerBtn");
+  if (shopBtn) {
+    shopBtn.addEventListener("click", () => {
+      openGachaModal();
+    });
+  }
+  
+  // Set wallet display initially
+  updateShopWalletDisplay();
+
+  // Close gacha modal
+  document.getElementById("closeGachaModalBtn")?.addEventListener("click", closeGachaModal);
+  
+  // Draw button
+  document.getElementById("gachaDrawBtn")?.addEventListener("click", handleGachaDraw);
+
+  // Claim button
+  document.getElementById("gachaWinClaimBtn")?.addEventListener("click", () => {
+    const winIndicator = document.getElementById("gachaWinIndicator");
+    if (winIndicator) {
+      winIndicator.style.opacity = "0";
+      setTimeout(() => winIndicator.classList.add("hidden"), 300);
+    }
+  });
+
+  // Phone sub-tab click listeners
+  const subTabButtons = document.querySelectorAll(".shop-nav-btn");
+  subTabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const subTabName = btn.getAttribute("data-shop-subtab");
+      
+      // Remove active class from other buttons
+      subTabButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      
+      // Hide all subtab contents
+      document.querySelectorAll(".shop-subtab-content").forEach((content) => {
+        content.classList.remove("active");
+        content.style.display = "none";
+      });
+      
+      // Show targeted subtab content
+      const target = document.getElementById(`shopSubTabContent_${subTabName}`);
+      if (target) {
+        target.classList.add("active");
+        target.style.display = "flex";
+      }
+    });
+  });
+
+  // Tab click wallet updates
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tabName = btn.getAttribute("data-tab");
+      if (tabName === "shop") {
+        updateShopWalletDisplay();
+        // Reset subtab to Gacha on main shop tab click
+        const firstSubtab = document.querySelector('.shop-nav-btn[data-shop-subtab="gacha"]');
+        if (firstSubtab) firstSubtab.click();
+      }
+    });
+  });
+}
+
+function openGachaModal() {
+  const modal = document.getElementById("gachaModalOverlay");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  
+  updateShopWalletDisplay();
+  renderGachaPool();
+  resetGachaReel();
+}
+
+function closeGachaModal() {
+  if (gachaDrawing) return; // Prevent closing while drawing!
+  const modal = document.getElementById("gachaModalOverlay");
+  if (modal) modal.classList.add("hidden");
+}
+
+function renderGachaPool() {
+  const grid = document.getElementById("gachaPoolGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  
+  let unownedCount = 0;
+  
+  gachaPool.forEach(item => {
+    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+    const owned = localStorage.getItem(ownedKey) === "true";
+    if (!owned) unownedCount++;
+    
+    const div = document.createElement("div");
+    div.className = `gacha-pool-item ${owned ? "owned" : ""}`;
+    div.innerHTML = `
+      ${getGachaItemImageHtml(item, 44)}
+      <span>${item.type.toUpperCase()}</span>
+      <strong>${item.name}</strong>
+      <small>${owned ? "OWNED" : item.chance}</small>
+    `;
+    grid.appendChild(div);
+  });
+  
+  const leftText = document.getElementById("gachaRewardsLeftText");
+  if (leftText) leftText.textContent = `${unownedCount} rewards left`;
+  
+  const drawBtn = document.getElementById("gachaDrawBtn");
+  if (drawBtn) {
+    if (unownedCount === 0) {
+      drawBtn.textContent = "COMPLETE";
+      drawBtn.disabled = true;
+    } else {
+      drawBtn.innerHTML = `Draw <svg viewBox="0 0 24 24" width="14" height="14" fill="#000" style="display: inline-block; vertical-align: middle; margin-left: 2px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> 300`;
+      drawBtn.disabled = false;
+    }
+  }
+}
+
+function resetGachaReel() {
+  const reel = document.getElementById("gachaReel");
+  if (!reel) return;
+  
+  reel.style.transition = "none";
+  reel.style.transform = "translateX(0)";
+  
+  // Fill the reel with random items initially
+  reel.innerHTML = "";
+  for (let i = 0; i < 15; i++) {
+    const item = gachaPool[Math.floor(Math.random() * gachaPool.length)];
+    const tile = document.createElement("div");
+    tile.className = "gacha-reel-tile";
+    tile.innerHTML = getGachaItemImageHtml(item, 44);
+    reel.appendChild(tile);
+  }
+}
+
+function handleGachaDraw() {
+  if (gachaDrawing) return;
+  
+  // Check gem count
+  if (gemsCount < 300) {
+    showToastMsg("Not enough Gems!");
+    return;
+  }
+  
+  // Find unowned pool items
+  const unowned = gachaPool.filter(item => {
+    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+    return localStorage.getItem(ownedKey) !== "true";
+  });
+  if (unowned.length === 0) {
+    showToastMsg("You own all rewards!");
+    return;
+  }
+  
+  // Deduct gems
+  gemsCount -= 300;
+  const gemsEl = document.getElementById("gemsCount");
+  if (gemsEl) gemsEl.textContent = gemsCount;
+  updateShopWalletDisplay();
+
+  // Progress daily gems spent quest
+  let dailyGemsSpent = parseInt(localStorage.getItem("quest_gems_progress") || "0");
+  localStorage.setItem("quest_gems_progress", Math.min(300, dailyGemsSpent + 300).toString());
+
+  // Progress weekly spin quest
+  let weeklySpins = parseInt(localStorage.getItem("quest_spin3_progress") || "0");
+  localStorage.setItem("quest_spin3_progress", Math.min(3, weeklySpins + 1).toString());
+
+  // Progress weekly spend quest
+  let weeklySpend = parseInt(localStorage.getItem("quest_spend1000_progress") || "0");
+  localStorage.setItem("quest_spend1000_progress", Math.min(1000, weeklySpend + 300).toString());
+
+  saveProgression();
+  
+  gachaDrawing = true;
+  document.getElementById("gachaDrawBtn").disabled = true;
+  document.getElementById("closeGachaModalBtn").disabled = true;
+  
+  // Select a random unowned item as the winner
+  const winner = unowned[Math.floor(Math.random() * unowned.length)];
+  
+  // Construct the gacha reel items list:
+  // We want to generate around 40 items. The winner goes at index 32.
+  const totalReelLength = 40;
+  const winnerIndex = 32;
+  
+  const reel = document.getElementById("gachaReel");
+  reel.style.transition = "none";
+  reel.style.transform = "translateX(0)";
+  reel.innerHTML = "";
+  
+  const generatedReelItems = [];
+  for (let i = 0; i < totalReelLength; i++) {
+    let item;
+    if (i === winnerIndex) {
+      item = winner;
+    } else {
+      // Pick random item
+      item = gachaPool[Math.floor(Math.random() * gachaPool.length)];
+    }
+    generatedReelItems.push(item);
+    
+    const tile = document.createElement("div");
+    tile.className = `gacha-reel-tile ${i === winnerIndex ? "is-result" : ""}`;
+    tile.innerHTML = getGachaItemImageHtml(item, 44);
+    reel.appendChild(tile);
+  }
+  
+  // Force reflow
+  void reel.offsetWidth;
+  
+  // Calculate stop offset
+  const stageWidth = document.getElementById("gachaStage").getBoundingClientRect().width;
+  const tileWidth = 96;
+  const gap = 14;
+  const pad = 24; // padding left of the reel
+  
+  // Center of winning tile relative to start of reel
+  const tileCenter = pad + winnerIndex * (tileWidth + gap) + tileWidth / 2;
+  const stopOffset = stageWidth / 2 - tileCenter;
+  
+  // Start animation
+  reel.style.transition = "transform 5s cubic-bezier(0.1, 0.8, 0.1, 1)";
+  reel.style.transform = `translateX(${stopOffset}px)`;
+  
+  setTimeout(() => {
+    // Reveal winner
+    gachaDrawing = false;
+    document.getElementById("closeGachaModalBtn").disabled = false;
+    
+    // Save to owned
+    const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
+    localStorage.setItem(ownedKey, "true");
+    
+    // Sync pool and wardrobe
+    renderGachaPool();
+    syncBombWardrobe();
+    syncEffectWardrobe();
+    
+    // Show win indicator
+    const winItemAvatar = document.getElementById("gachaWinItemAvatar");
+    winItemAvatar.innerHTML = getGachaItemImageHtml(winner, 52);
+    
+    document.getElementById("gachaWinItemName").textContent = winner.name;
+    const winIndicator = document.getElementById("gachaWinIndicator");
+    if (winIndicator) {
+      winIndicator.classList.remove("hidden");
+      // Trigger smooth fade in
+      winIndicator.style.opacity = "0";
+      setTimeout(() => winIndicator.style.opacity = "1", 50);
+    }
+    
+    showToastMsg(`You unlocked the ${winner.name}!`);
+  }, 5200);
+}
+
+// Bind bomb skin wardrobe clicks and gacha init on page load
+document.addEventListener("DOMContentLoaded", () => {
+  // Ensure default items are marked as owned
+  localStorage.setItem("owned_bomb_default", "true");
+  localStorage.setItem("owned_effect_default", "true");
+
+  const bombCards = document.querySelectorAll(".bomb-card");
+  bombCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      if (card.classList.contains("locked")) {
+        showToastMsg("Unlock this bomb skin in the Gacha Shop first!");
+        return;
+      }
+      const bombColor = card.getAttribute("data-bomb-color");
+      previewBombColor = bombColor;
+      
+      // Update card active states
+      bombCards.forEach((c) => c.classList.remove("active"));
+      card.classList.add("active");
+      
+      // Update nameplate preview
+      syncBombSelectPreview(previewBombColor);
+    });
+  });
+
+  const effectCards = document.querySelectorAll(".effect-card");
+  effectCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      if (card.classList.contains("locked")) {
+        showToastMsg("Unlock this explosion effect in the Gacha Shop first!");
+        return;
+      }
+      const effectColor = card.getAttribute("data-effect-color");
+      previewEffectColor = effectColor;
+      
+      // Update card active states
+      effectCards.forEach((c) => c.classList.remove("active"));
+      card.classList.add("active");
+      
+      // Update nameplate preview
+      syncEffectSelectPreview(previewEffectColor);
+    });
+  });
+  
+  // Initial syncs
+  syncBombWardrobe();
+  syncEffectWardrobe();
+  initGachaShop();
+  initQuestsSystem();
+  if (typeof updateFooterColor === "function") updateFooterColor("play");
+});
+
+// =================================================================
+// ZZZ-STYLE QUESTS & ERRANDS SYSTEM
+// =================================================================
+
+function initQuestsSystem() {
+  // Bind quests top binder tabs
+  const questsTabs = document.querySelectorAll(".quests-tab-btn");
+  questsTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const targetTab = tab.getAttribute("data-quests-tab");
+      
+      // Toggle button active classes
+      questsTabs.forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      
+      // Hide all quests pages
+      document.querySelectorAll(".quests-page").forEach((page) => {
+        page.classList.remove("active");
+        page.style.display = "none";
+      });
+      
+      // Show target page
+      const targetPage = document.getElementById(`questsTabContent_${targetTab}`);
+      if (targetPage) {
+        targetPage.classList.add("active");
+        targetPage.style.display = "flex";
+      }
+
+      // Specific tab sync
+      if (targetTab === "level") {
+        syncLevelTabUI();
+      } else {
+        syncQuestsUI();
+      }
+    });
+  });
+
+  // Automatically mark login quest as completed on load
+  localStorage.setItem("quest_login_completed", "true");
+
+  // Bind quest card action buttons (Claim buttons)
+  bindQuestClaimButton("qbtn_login", "quest_login_completed", "quest_login_claimed", 100);
+  bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+
+  // Weekly quests Claim buttons
+  bindQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  });
+
+  // Bind engagement progress milestones
+  bindMilestoneNode("chk_100", 100);
+  bindMilestoneNode("chk_200", 200);
+  bindMilestoneNode("chk_300", 300);
+  bindMilestoneNode("chk_400", 400);
+
+  syncQuestsUI();
+  syncLevelTabUI();
+}
+
+function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  
+  btn.addEventListener("click", () => {
+    const completed = localStorage.getItem(compKey) === "true";
+    const claimed = localStorage.getItem(claimKey) === "true";
+    
+    if (completed && !claimed) {
+      localStorage.setItem(claimKey, "true");
+      
+      // Add engagement points
+      let engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
+      engagement = Math.min(400, engagement + pointsVal);
+      localStorage.setItem("daily_engagement", engagement.toString());
+      
+      showToastMsg(`Claimed ${pointsVal} Engagement Points!`);
+      syncQuestsUI();
+    } else if (!completed && !claimed && typeof goAction === "function") {
+      goAction();
+    }
+  });
+}
+
+function bindMilestoneNode(nodeId, milestoneVal) {
+  const node = document.getElementById(nodeId);
+  if (!node) return;
+  
+  node.addEventListener("click", () => {
+    const engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
+    const claimed = localStorage.getItem(`claimed_milestone_${milestoneVal}`) === "true";
+    
+    if (engagement >= milestoneVal && !claimed) {
+      localStorage.setItem(`claimed_milestone_${milestoneVal}`, "true");
+      
+      // Grant reward of 10 gems
+      gemsCount += 10;
+      const gemsEl = document.getElementById("gemsCount");
+      if (gemsEl) gemsEl.textContent = gemsCount;
+      updateShopWalletDisplay();
+      saveProgression();
+      
+      showToastMsg(`Claimed Milestone Reward: +10 Gems!`);
+      syncQuestsUI();
+    }
+  });
+}
+
+function syncQuestsUI() {
+  // Sync daily engagement
+  const engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
+  const currentValEl = document.getElementById("currentEngagementVal");
+  if (currentValEl) currentValEl.textContent = engagement;
+  
+  const progressBar = document.getElementById("engagementProgressBar");
+  if (progressBar) {
+    const pct = (engagement / 400) * 100;
+    progressBar.style.width = `${pct}%`;
+  }
+  
+  // Milestone node updates
+  updateMilestoneNode("chk_100", 100, engagement);
+  updateMilestoneNode("chk_200", 200, engagement);
+  updateMilestoneNode("chk_300", 300, engagement);
+  updateMilestoneNode("chk_400", 400, engagement);
+
+  // Sync Card 1: Login
+  updateQuestCardUI("qprog_login", "qbtn_login", "quest_login_completed", "quest_login_claimed", 1, 1);
+  
+  // Sync Card 2: Match
+  const matchCompleted = localStorage.getItem("quest_match_completed") === "true";
+  updateQuestCardUI("qprog_match", "qbtn_match", "quest_match_completed", "quest_match_claimed", matchCompleted ? 1 : 0, 1);
+  
+  // Sync Card 3: Pickups collected
+  const pickupsCollected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
+  if (pickupsCollected >= 3) localStorage.setItem("quest_pickups_completed", "true");
+  updateQuestCardUI("qprog_pickups", "qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", pickupsCollected, 3);
+  
+  // Sync Card 4: Bombs placed
+  const bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
+  if (bombsPlaced >= 10) localStorage.setItem("quest_bombs_completed", "true");
+  updateQuestCardUI("qprog_bombs", "qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", bombsPlaced, 10);
+
+  // Sync Weekly Quests
+  // Weekly 1: Win 3
+  const wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
+  if (wins >= 3) localStorage.setItem("quest_win3_completed", "true");
+  updateQuestCardUI("qprog_win3", "qbtn_win3", "quest_win3_completed", "quest_win3_claimed", wins, 3);
+
+  // Weekly 2: Spin 3
+  const spins = parseInt(localStorage.getItem("quest_spin3_progress") || "0");
+  if (spins >= 3) localStorage.setItem("quest_spin3_completed", "true");
+  updateQuestCardUI("qprog_spin3", "qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", spins, 3);
+
+  // Weekly 3: Kills
+  const kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
+  if (kills >= 5) localStorage.setItem("quest_kills_completed", "true");
+  updateQuestCardUI("qprog_kills", "qbtn_kills", "quest_kills_completed", "quest_kills_claimed", kills, 5);
+
+  // Weekly 4: Spend 1000
+  const spend = parseInt(localStorage.getItem("quest_spend1000_progress") || "0");
+  if (spend >= 1000) localStorage.setItem("quest_spend1000_completed", "true");
+  updateQuestCardUI("qprog_spend1000", "qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", spend, 1000);
+}
+
+function updateMilestoneNode(nodeId, milestoneVal, currentEngagement) {
+  const node = document.getElementById(nodeId);
+  if (!node) return;
+  
+  const claimed = localStorage.getItem(`claimed_milestone_${milestoneVal}`) === "true";
+  
+  node.className = "checkpoint-node";
+  if (claimed) {
+    node.classList.add("claimed");
+  } else if (currentEngagement >= milestoneVal) {
+    node.classList.add("unlocked");
+  }
+}
+
+function updateQuestCardUI(progElId, btnId, compKey, claimKey, currentVal, targetVal) {
+  const progEl = document.getElementById(progElId);
+  const btn = document.getElementById(btnId);
+  if (!progEl || !btn) return;
+  
+  progEl.textContent = `${currentVal}/${targetVal}`;
+  
+  const completed = localStorage.getItem(compKey) === "true";
+  const claimed = localStorage.getItem(claimKey) === "true";
+
+  // Set card sub-footer text
+  const card = btn.closest(".quest-card");
+  if (card) {
+    const subFooter = card.querySelector(".quest-card-sub-footer");
+    if (subFooter) {
+      if (claimed) {
+        subFooter.innerHTML = "<span>● Errand Completed</span>";
+        subFooter.className = "quest-card-sub-footer claimed-copy";
+      } else if (completed) {
+        subFooter.innerHTML = "<span>● Errand Complete!</span>";
+        subFooter.className = "quest-card-sub-footer unclaimed-copy";
+      } else {
+        subFooter.innerHTML = "<span>● Errand in progress</span>";
+        subFooter.className = "quest-card-sub-footer";
+      }
+    }
+  }
+  
+  btn.className = "quest-card-action-btn";
+  if (claimed) {
+    btn.textContent = "Claimed";
+    btn.classList.add("disabled");
+    btn.disabled = true;
+  } else if (completed) {
+    btn.textContent = "Claim";
+    btn.classList.add("claimable");
+    btn.disabled = false;
+  } else {
+    btn.textContent = "Go";
+    btn.classList.add("go-btn");
+    btn.disabled = false;
+  }
+}
+
+function syncLevelTabUI() {
+  const questsTabLevelVal = document.getElementById("questsTabLevelVal");
+  const questsTabXpVal = document.getElementById("questsTabXpVal");
+  const questsTabXpProgressBar = document.getElementById("questsTabXpProgressBar");
+  
+  if (questsTabLevelVal) questsTabLevelVal.textContent = seasonLevel;
+  if (questsTabXpVal) questsTabXpVal.textContent = `${seasonXp} / ${seasonXpToNext} XP`;
+  if (questsTabXpProgressBar) {
+    const pct = (seasonXp / seasonXpToNext) * 100;
+    questsTabXpProgressBar.style.width = `${Math.min(100, pct)}%`;
+  }
+
+  const list = document.getElementById("levelRewardsScrollList");
+  if (!list) return;
+  list.innerHTML = "";
+  
+  const maxLevelToShow = 100;
+  for (let lvl = 2; lvl <= maxLevelToShow; lvl++) {
+    const reached = seasonLevel >= lvl;
+    const claimed = localStorage.getItem(`level_reward_claimed_${lvl}`) === "true";
+    
+    const card = document.createElement("div");
+    card.style.background = "#212224";
+    card.style.border = "3px solid #000";
+    card.style.borderRadius = "12px";
+    card.style.padding = "10px 16px";
+    card.style.display = "flex";
+    card.style.alignItems = "center";
+    card.style.justifyContent = "space-between";
+    card.style.boxShadow = "2px 2px 0 #000";
+    
+    let titleColor = reached ? "#fff" : "#555";
+    let badgeBg = reached ? "#ffd86f" : "#36363b";
+    let badgeText = reached ? "#000" : "#888";
+    
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="background: ${badgeBg}; color: ${badgeText}; font-family: var(--font); font-size: 12px; font-weight: 900; padding: 4px 10px; border-radius: 8px; border: 2px solid #000;">LVL ${lvl}</div>
+        <span style="font-family: var(--font); font-size: 13px; color: ${titleColor}; text-shadow: 1px 1px 0 #000;">Level ${lvl} Milestone</span>
+      </div>
+      
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-family: var(--font); font-size: 12px; color: #ffd86f; font-weight: 900; display: flex; align-items: center; gap: 3px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#ffd86f" style="display: inline-block; vertical-align: middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> 5
+        </span>
+        
+        <button class="level-claim-btn" data-level-milestone="${lvl}" type="button" style="padding: 4px 12px; font-family: var(--font); font-size: 11px; font-weight: 900; text-transform: uppercase; border-radius: 8px; border: 2.5px solid #000; box-shadow: 1.5px 1.5px 0 #000; cursor: pointer; transition: transform 0.1s;"></button>
+      </div>
+    `;
+    
+    const btn = card.querySelector(".level-claim-btn");
+    if (claimed) {
+      btn.textContent = "Claimed";
+      btn.style.background = "#444";
+      btn.style.color = "#888";
+      btn.style.borderColor = "#000";
+      btn.style.boxShadow = "none";
+      btn.style.cursor = "not-allowed";
+      btn.disabled = true;
+    } else if (reached) {
+      btn.textContent = "Claim";
+      btn.style.background = "#83cf00";
+      btn.style.color = "#000";
+      btn.classList.add("claimable");
+      btn.disabled = false;
+      
+      btn.addEventListener("click", () => {
+        localStorage.setItem(`level_reward_claimed_${lvl}`, "true");
+        
+        // Grant 5 gems
+        gemsCount += 5;
+        const gemsEl = document.getElementById("gemsCount");
+        if (gemsEl) gemsEl.textContent = gemsCount;
+        updateShopWalletDisplay();
+        saveProgression();
+        
+        showToastMsg(`Claimed Level ${lvl} reward: +5 Gems!`);
+        syncLevelTabUI();
+      });
+    } else {
+      btn.textContent = "Locked";
+      btn.style.background = "#444";
+      btn.style.color = "#666";
+      btn.style.borderColor = "#000";
+      btn.style.boxShadow = "none";
+      btn.style.cursor = "not-allowed";
+      btn.disabled = true;
+    }
+    
+    list.appendChild(card);
+  }
+}
+
+function updateFooterColor(tabName) {
+  const footer = document.getElementById("lobbyConsoleFooter");
+  if (!footer) return;
+  const badgeText = footer.querySelector(".badge-text");
+  
+  if (tabName === "look") {
+    footer.style.background = "#101215";
+    footer.style.borderColor = "#000000";
+    if (badgeText) badgeText.style.color = "#ffffff";
+  } else if (tabName === "quests") {
+    footer.style.background = "#111215";
+    footer.style.borderColor = "#000000";
+    if (badgeText) badgeText.style.color = "#ffffff";
+  } else if (tabName === "shop") {
+    footer.style.background = "#4a0080";
+    footer.style.borderColor = "#000000";
+    if (badgeText) badgeText.style.color = "#ffffff";
+  } else {
+    // Default yellow screens (play, squad, gear)
+    footer.style.background = "rgba(0, 0, 0, 0.15)";
+    footer.style.borderColor = "";
+    if (badgeText) badgeText.style.color = "#000000";
+  }
 }
