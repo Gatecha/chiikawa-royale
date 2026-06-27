@@ -955,25 +955,36 @@ body.android-apk .badge-text {
 }
 
 .select-paw-badge span:nth-child(1) {
-  width: 28px;
-  height: 21px;
-  left: 19px;
-  top: 31px;
-  border-radius: 50% 50% 44% 44%;
+  width: 32px;
+  height: 24px;
+  left: 22px;
+  top: 38px;
+  border-radius: 50% 50% 45% 45%;
 }
 
-.select-paw-badge span:nth-child(2),
-.select-paw-badge span:nth-child(3),
-.select-paw-badge span:nth-child(4) {
-  width: 22px;
-  height: 22px;
+.select-paw-badge span:nth-child(2) {
+  width: 14px;
+  height: 18px;
+  left: 14px;
+  top: 18px;
   border-radius: 50%;
-  top: 22px;
 }
 
-.select-paw-badge span:nth-child(2) { left: 9px; top: 15px; }
-.select-paw-badge span:nth-child(3) { left: 27px; top: 10px; }
-.select-paw-badge span:nth-child(4) { left: 44px; top: 24px; }
+.select-paw-badge span:nth-child(3) {
+  width: 16px;
+  height: 20px;
+  left: 30px;
+  top: 10px;
+  border-radius: 50%;
+}
+
+.select-paw-badge span:nth-child(4) {
+  width: 14px;
+  height: 18px;
+  left: 48px;
+  top: 18px;
+  border-radius: 50%;
+}
 
 .select-button-state {
   display: flex;
@@ -10237,8 +10248,9 @@ body.is-iphone {
    GACHA SHOP & WARDROBE BOMB SKINS
    ================================================================= */
 
-/* Wardrobe Bomb Card */
-#tabContent_look .bomb-card {
+/* Wardrobe Bomb & Effect Card */
+#tabContent_look .bomb-card,
+#tabContent_look .effect-card {
   position: relative;
   min-width: 0;
   border-radius: 20px;
@@ -10260,23 +10272,27 @@ body.is-iphone {
   padding: 0;
 }
 
-#tabContent_look .bomb-card:hover:not(.locked) {
+#tabContent_look .bomb-card:hover:not(.locked),
+#tabContent_look .effect-card:hover:not(.locked) {
   background: #36363b;
   transform: skewX(-12deg) translateY(-3px);
   box-shadow: 6px 6px 0px #000;
 }
 
-#tabContent_look .bomb-card.active {
+#tabContent_look .bomb-card.active,
+#tabContent_look .effect-card.active {
   border-color: #83cf00;
   background: #181a1d;
 }
 
-#tabContent_look .bomb-card .card-video-crop {
+#tabContent_look .bomb-card .card-video-crop,
+#tabContent_look .effect-card .card-video-crop {
   transform: skewX(12deg) scale(1.15);
   transform-origin: center;
 }
 
-#tabContent_look .bomb-card .card-character-name {
+#tabContent_look .bomb-card .card-character-name,
+#tabContent_look .effect-card .card-character-name {
   transform: skewX(12deg);
   font-family: var(--font);
   font-size: 13px;
@@ -10285,7 +10301,8 @@ body.is-iphone {
   margin-top: 4px;
 }
 
-#tabContent_look .bomb-card .select-icon-badge {
+#tabContent_look .bomb-card .select-icon-badge,
+#tabContent_look .effect-card .select-icon-badge {
   transform: skewX(12deg);
   position: absolute;
   top: 8px;
@@ -10301,16 +10318,19 @@ body.is-iphone {
   z-index: 10;
 }
 
-.bomb-card.active .select-icon-badge {
+.bomb-card.active .select-icon-badge,
+.effect-card.active .select-icon-badge {
   display: grid;
 }
 
-#tabContent_look .bomb-card.locked {
+#tabContent_look .bomb-card.locked,
+#tabContent_look .effect-card.locked {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-#tabContent_look .bomb-card.locked:hover {
+#tabContent_look .bomb-card.locked:hover,
+#tabContent_look .effect-card.locked:hover {
   transform: skewX(-12deg);
   box-shadow: 4px 4px 0px #000;
 }
@@ -10320,8 +10340,19 @@ body.is-iphone {
   display: flex;
 }
 
+#tabContent_look .select-card-grid[data-mode="effects"] .effect-card {
+  display: flex;
+}
+
 .select-card-grid[data-mode="bombs"] .character-card,
-.select-card-grid[data-mode="bombs"] .empty-character-slot {
+.select-card-grid[data-mode="bombs"] .empty-character-slot,
+.select-card-grid[data-mode="bombs"] .effect-card {
+  display: none !important;
+}
+
+.select-card-grid[data-mode="effects"] .character-card,
+.select-card-grid[data-mode="effects"] .empty-character-slot,
+.select-card-grid[data-mode="effects"] .bomb-card {
   display: none !important;
 }
 
@@ -10919,4 +10950,100 @@ body.is-iphone {
 @keyframes crownFloat {
   0% { transform: translateX(-50%) translateY(0) scale(1); }
   100% { transform: translateX(-50%) translateY(-6px) scale(1.1); }
+}
+
+
+/* ZZZ Game Mode Selector Styles */
+.btn-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: #1c1d20;
+  border: 3.5px solid #000;
+  box-shadow: 4px 4px 0px #000;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-sizing: border-box;
+}
+
+.btn-mode-option:hover {
+  transform: scale(1.03) translateY(-2px);
+  border-color: #ffd86f;
+  box-shadow: 5px 5px 0px #ffd86f;
+  background: #25272a;
+}
+
+.btn-mode-option:active {
+  transform: scale(0.98) translateY(1px);
+  box-shadow: 1px 1px 0px #000;
+}
+
+.option-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: #111215;
+  border: 2.5px solid #000;
+  flex-shrink: 0;
+}
+
+.option-text-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.btn-mode-option .option-title {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-mode-option .option-desc {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8a8f98;
+  line-height: 1.3;
+}
+
+.mode-selection-dialog-card .btn-close-dialog {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: #ffd86f;
+  color: #000;
+  border: 3px solid #000;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px #000;
+  transition: all 0.1s;
+  z-index: 10;
+}
+
+.mode-selection-dialog-card .btn-close-dialog:hover {
+  transform: translateY(-2px);
+  box-shadow: 3px 3px 0px #000;
+}
+
+.mode-selection-dialog-card .btn-close-dialog:active {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0px #000;
 }

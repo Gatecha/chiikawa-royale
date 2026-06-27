@@ -1025,6 +1025,14 @@ function confirmCharacterSelection() {
     showToastMsg(`Equipped ${equippedBomb.toUpperCase()} bomb skin!`);
     return;
   }
+  if (mode === "effects") {
+    const equippedEffect = previewEffectColor || "default";
+    localStorage.setItem("equipped_effect", equippedEffect);
+    syncEffectWardrobe();
+    syncEffectSelectPreview(equippedEffect);
+    showToastMsg(`Equipped ${equippedEffect.toUpperCase()} explosion effect!`);
+    return;
+  }
 
   selectedCharacter = previewCharacter;
   syncCharacterSelectPreview(selectedCharacter);
@@ -1064,12 +1072,37 @@ wardrobeTabs.forEach((tab) => {
     if (selectCardGrid) {
       selectCardGrid.dataset.mode = mode;
     }
+    
+    // Hide/show the appropriate preview slots
+    const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+    const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+    const effectSelectPreviewContainer = document.getElementById("effectSelectPreviewContainer");
+    
     if (mode === "bombs") {
+      if (characterSelectCanvas) characterSelectCanvas.style.display = "none";
+      if (effectSelectPreviewContainer) effectSelectPreviewContainer.style.display = "none";
+      if (bombSelectPreviewImg) bombSelectPreviewImg.style.display = "block";
+      
       previewBombColor = localStorage.getItem("equipped_bomb") || "default";
       if (typeof syncBombWardrobe === "function") syncBombWardrobe();
       if (typeof syncBombSelectPreview === "function") syncBombSelectPreview(previewBombColor);
-    } else if (mode === "characters") {
-      if (typeof syncCharacterSelectPreview === "function") syncCharacterSelectPreview(previewCharacter);
+    } else if (mode === "effects") {
+      if (characterSelectCanvas) characterSelectCanvas.style.display = "none";
+      if (bombSelectPreviewImg) bombSelectPreviewImg.style.display = "none";
+      if (effectSelectPreviewContainer) effectSelectPreviewContainer.style.display = "flex";
+      
+      previewEffectColor = localStorage.getItem("equipped_effect") || "default";
+      if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
+      if (typeof syncEffectSelectPreview === "function") syncEffectSelectPreview(previewEffectColor);
+    } else {
+      // characters or clothes
+      if (bombSelectPreviewImg) bombSelectPreviewImg.style.display = "none";
+      if (effectSelectPreviewContainer) effectSelectPreviewContainer.style.display = "none";
+      if (characterSelectCanvas) characterSelectCanvas.style.display = "block";
+      
+      if (mode === "characters") {
+        if (typeof syncCharacterSelectPreview === "function") syncCharacterSelectPreview(previewCharacter);
+      }
     }
   });
 });
@@ -1555,11 +1588,15 @@ function handleServerMessage(msg) {
         const color = (bomb.ownerId === localPlayerId)
           ? (localStorage.getItem("equipped_bomb") || "default")
           : (bomb.color || "default");
+        const effectColor = (bomb.ownerId === localPlayerId)
+          ? (localStorage.getItem("equipped_effect") || "default")
+          : (bomb.effectColor || "default");
         return {
           ...bomb,
           pulse: 0,
           passableFor: new Set(players.map((p) => p.id)),
-          color: color
+          color: color,
+          effectColor: effectColor
         };
       });
       blasts = [];
@@ -1670,6 +1707,9 @@ function handleServerMessage(msg) {
       const placedColor = (data.bomb.ownerId === localPlayerId)
         ? (localStorage.getItem("equipped_bomb") || "default")
         : (data.bomb.color || "default");
+      const placedEffectColor = (data.bomb.ownerId === localPlayerId)
+        ? (localStorage.getItem("equipped_effect") || "default")
+        : (data.bomb.effectColor || "default");
       bombs.push({
         id: data.bomb.id,
         x: data.bomb.x,
@@ -1680,12 +1720,13 @@ function handleServerMessage(msg) {
         pulse: 0,
         passableFor: new Set(players.map((p) => p.id)),
         color: placedColor,
+        effectColor: placedEffectColor
       });
       break;
 
     case "bomb_exploded":
       const explBomb = bombs.find((b) => b.id === data.bombId);
-      const explColor = explBomb ? explBomb.color : "default";
+      const explColor = explBomb ? (explBomb.effectColor || "default") : "default";
       bombs = bombs.filter((b) => b.id !== data.bombId);
       blasts.push({
         cells: data.cells,
@@ -2943,6 +2984,7 @@ function localPlaceBomb(player) {
 
   // Read equipped bomb skin (only local player gets customization, bots default)
   const color = (player.id === localPlayerId) ? (localStorage.getItem("equipped_bomb") || "default") : "default";
+  const effectColor = (player.id === localPlayerId) ? (localStorage.getItem("equipped_effect") || "default") : "default";
 
   if (player.id === localPlayerId) {
     let bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
@@ -2958,7 +3000,8 @@ function localPlaceBomb(player) {
     timer: 2.25,
     pulse: 0,
     passableFor: new Set([player.id]),
-    color: color
+    color: color,
+    effectColor: effectColor
   });
   player.cooldown = 0.05;
 }
@@ -3006,7 +3049,7 @@ function localTriggerExplosion(bomb) {
     }
   });
 
-  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.color });
+  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.effectColor || "default" });
   // In BR mode only shake for MY own bomb; in classic mode always shake
   if (!isBattleRoyale(currentRoomMode) || bomb.ownerId === localPlayerId) {
     shakeTimer = 0.35;
@@ -12214,15 +12257,42 @@ if (document.readyState === "complete" || document.readyState === "interactive")
 // =================================================================
 
 const gachaPool = [
-  { id: "pink-bomb", name: "Pink Bomb", color: "pink", file: "assets/shop/pink-bomb.svg", chance: "20% Chance" },
-  { id: "blue-bomb", name: "Blue Bomb", color: "blue", file: "assets/shop/blue-bomb.svg", chance: "20% Chance" },
-  { id: "green-bomb", name: "Green Bomb", color: "green", file: "assets/shop/green-bomb.svg", chance: "20% Chance" },
-  { id: "gold-bomb", name: "Gold Bomb", color: "gold", file: "assets/shop/gold-bomb.svg", chance: "20% Chance" },
-  { id: "purple-bomb", name: "Purple Bomb", color: "purple", file: "assets/shop/purple-bomb.svg", chance: "20% Chance" }
+  { id: "pink-bomb", name: "Pink Bomb", color: "pink", type: "bomb", file: "assets/shop/pink-bomb.svg", chance: "10% Chance" },
+  { id: "blue-bomb", name: "Blue Bomb", color: "blue", type: "bomb", file: "assets/shop/blue-bomb.svg", chance: "10% Chance" },
+  { id: "green-bomb", name: "Green Bomb", color: "green", type: "bomb", file: "assets/shop/green-bomb.svg", chance: "10% Chance" },
+  { id: "gold-bomb", name: "Gold Bomb", color: "gold", type: "bomb", file: "assets/shop/gold-bomb.svg", chance: "10% Chance" },
+  { id: "purple-bomb", name: "Purple Bomb", color: "purple", type: "bomb", file: "assets/shop/purple-bomb.svg", chance: "10% Chance" },
+  { id: "pink-effect", name: "Pink Flame", color: "pink", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "blue-effect", name: "Blue Flame", color: "blue", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "green-effect", name: "Green Flame", color: "green", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "gold-effect", name: "Golden Blast", color: "gold", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
+  { id: "purple-effect", name: "Shadow Blast", color: "purple", type: "effect", isSvgMarkup: true, chance: "10% Chance" }
 ];
+
+function getGachaItemImageHtml(item, size = 44) {
+  if (item.isSvgMarkup) {
+    let outerColor = "#ff6f4f";
+    let innerColor = "#fff06d";
+    if (item.color === "pink") { outerColor = "#ff2f73"; innerColor = "#ff9ebb"; }
+    else if (item.color === "blue") { outerColor = "#1852e0"; innerColor = "#18baff"; }
+    else if (item.color === "green") { outerColor = "#1b854f"; innerColor = "#39d98a"; }
+    else if (item.color === "gold") { outerColor = "#d35400"; innerColor = "#ffd86f"; }
+    else if (item.color === "purple") { outerColor = "#5e1b85"; innerColor = "#b94cff"; }
+
+    return `
+      <svg viewBox="0 0 100 100" style="width: ${size}px; height: ${size}px; margin: auto; display: block; filter: drop-shadow(2px 2px 0 #000);">
+        <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="${outerColor}" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+        <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="${innerColor}" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+    `;
+  } else {
+    return `<img src="${item.file}" style="width: ${size}px; height: ${size}px; transform: scale(1.1); filter: drop-shadow(0 2px 0 #000);" alt="${item.name}">`;
+  }
+}
 
 let gachaDrawing = false;
 let previewBombColor = localStorage.getItem("equipped_bomb") || "default";
+let previewEffectColor = localStorage.getItem("equipped_effect") || "default";
 
 function syncBombSelectPreview(color) {
   const bombNameMap = {
@@ -12245,8 +12315,10 @@ function syncBombSelectPreview(color) {
 
   const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
   const characterSelectCanvas = document.getElementById("characterSelectCanvas");
-  if (bombSelectPreviewImg && characterSelectCanvas) {
+  const effectSelectPreviewContainer = document.getElementById("effectSelectPreviewContainer");
+  if (bombSelectPreviewImg && characterSelectCanvas && effectSelectPreviewContainer) {
     characterSelectCanvas.style.display = "none";
+    effectSelectPreviewContainer.style.display = "none";
     bombSelectPreviewImg.style.display = "block";
     bombSelectPreviewImg.src = `assets/shop/${color}-bomb.svg`;
     
@@ -12276,6 +12348,80 @@ function syncBombWardrobe() {
     }
     
     if (color === previewBombColor) {
+      card.classList.add("active");
+    } else {
+      card.classList.remove("active");
+    }
+  });
+}
+
+function syncEffectSelectPreview(color) {
+  const effectNameMap = {
+    default: "Default Blast",
+    pink: "Pink Flame",
+    blue: "Blue Flame",
+    green: "Green Flame",
+    gold: "Golden Blast",
+    purple: "Shadow Blast",
+  };
+  
+  if (characterSelectName) {
+    characterSelectName.textContent = effectNameMap[color] || (color.toUpperCase() + " Blast");
+  }
+  
+  if (characterSelectState) {
+    const equipped = localStorage.getItem("equipped_effect") || "default";
+    characterSelectState.textContent = color === equipped ? "Selected" : "Select";
+  }
+
+  const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+  const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+  const effectSelectPreviewContainer = document.getElementById("effectSelectPreviewContainer");
+  if (bombSelectPreviewImg && characterSelectCanvas && effectSelectPreviewContainer) {
+    characterSelectCanvas.style.display = "none";
+    bombSelectPreviewImg.style.display = "none";
+    effectSelectPreviewContainer.style.display = "flex";
+    
+    let outerColor = "#ff6f4f";
+    let innerColor = "#fff06d";
+    if (color === "pink") { outerColor = "#ff2f73"; innerColor = "#ff9ebb"; }
+    else if (color === "blue") { outerColor = "#1852e0"; innerColor = "#18baff"; }
+    else if (color === "green") { outerColor = "#1b854f"; innerColor = "#39d98a"; }
+    else if (color === "gold") { outerColor = "#d35400"; innerColor = "#ffd86f"; }
+    else if (color === "purple") { outerColor = "#5e1b85"; innerColor = "#b94cff"; }
+
+    effectSelectPreviewContainer.innerHTML = `
+      <svg viewBox="0 0 100 100" style="width: 280px; height: 280px; filter: drop-shadow(4px 4px 0 #000); animation: selectFloat 2.5s ease-in-out infinite alternate;">
+        <path d="M50 10 L60 35 L85 35 L65 50 L75 75 L50 60 L25 75 L35 50 L15 35 L40 35 Z" fill="${outerColor}" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+        <path d="M50 25 L55 40 L70 40 L58 50 L63 65 L50 55 L37 65 L42 50 L30 40 L45 40 Z" fill="${innerColor}" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+    `;
+    
+    effectSelectPreviewContainer.classList.remove("active-preview");
+    void effectSelectPreviewContainer.offsetWidth;
+    effectSelectPreviewContainer.classList.add("active-preview");
+  }
+}
+
+function syncEffectWardrobe() {
+  const ownedEffects = {
+    pink: localStorage.getItem("owned_effect_pink") === "true",
+    blue: localStorage.getItem("owned_effect_blue") === "true",
+    green: localStorage.getItem("owned_effect_green") === "true",
+    gold: localStorage.getItem("owned_effect_gold") === "true",
+    purple: localStorage.getItem("owned_effect_purple") === "true",
+  };
+  
+  const effectCards = document.querySelectorAll(".effect-card");
+  effectCards.forEach((card) => {
+    const color = card.getAttribute("data-effect-color");
+    if (color === "default" || ownedEffects[color]) {
+      card.classList.remove("locked");
+    } else {
+      card.classList.add("locked");
+    }
+    
+    if (color === previewEffectColor) {
       card.classList.add("active");
     } else {
       card.classList.remove("active");
@@ -12379,14 +12525,15 @@ function renderGachaPool() {
   let unownedCount = 0;
   
   gachaPool.forEach(item => {
-    const owned = localStorage.getItem(`owned_bomb_${item.color}`) === "true";
+    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+    const owned = localStorage.getItem(ownedKey) === "true";
     if (!owned) unownedCount++;
     
     const div = document.createElement("div");
     div.className = `gacha-pool-item ${owned ? "owned" : ""}`;
     div.innerHTML = `
-      <img src="${item.file}" style="width: 44px; height: 44px; transform: scale(1.1); filter: drop-shadow(0 2px 0 #000);" alt="${item.name}">
-      <span>BOMB</span>
+      ${getGachaItemImageHtml(item, 44)}
+      <span>${item.type.toUpperCase()}</span>
       <strong>${item.name}</strong>
       <small>${owned ? "OWNED" : item.chance}</small>
     `;
@@ -12421,7 +12568,7 @@ function resetGachaReel() {
     const item = gachaPool[Math.floor(Math.random() * gachaPool.length)];
     const tile = document.createElement("div");
     tile.className = "gacha-reel-tile";
-    tile.innerHTML = `<img src="${item.file}" style="width: 44px; height: 44px;" alt="">`;
+    tile.innerHTML = getGachaItemImageHtml(item, 44);
     reel.appendChild(tile);
   }
 }
@@ -12436,9 +12583,12 @@ function handleGachaDraw() {
   }
   
   // Find unowned pool items
-  const unowned = gachaPool.filter(item => localStorage.getItem(`owned_bomb_${item.color}`) !== "true");
+  const unowned = gachaPool.filter(item => {
+    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+    return localStorage.getItem(ownedKey) !== "true";
+  });
   if (unowned.length === 0) {
-    showToastMsg("You own all bomb skins!");
+    showToastMsg("You own all rewards!");
     return;
   }
   
@@ -12492,7 +12642,7 @@ function handleGachaDraw() {
     
     const tile = document.createElement("div");
     tile.className = `gacha-reel-tile ${i === winnerIndex ? "is-result" : ""}`;
-    tile.innerHTML = `<img src="${item.file}" style="width: 44px; height: 44px;" alt="">`;
+    tile.innerHTML = getGachaItemImageHtml(item, 44);
     reel.appendChild(tile);
   }
   
@@ -12519,15 +12669,17 @@ function handleGachaDraw() {
     document.getElementById("closeGachaModalBtn").disabled = false;
     
     // Save to owned
-    localStorage.setItem(`owned_bomb_${winner.color}`, "true");
+    const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
+    localStorage.setItem(ownedKey, "true");
     
     // Sync pool and wardrobe
     renderGachaPool();
     syncBombWardrobe();
+    syncEffectWardrobe();
     
     // Show win indicator
     const winItemAvatar = document.getElementById("gachaWinItemAvatar");
-    winItemAvatar.innerHTML = `<img src="${winner.file}" style="width: 52px; height: 52px;" alt="">`;
+    winItemAvatar.innerHTML = getGachaItemImageHtml(winner, 52);
     
     document.getElementById("gachaWinItemName").textContent = winner.name;
     const winIndicator = document.getElementById("gachaWinIndicator");
@@ -12544,6 +12696,10 @@ function handleGachaDraw() {
 
 // Bind bomb skin wardrobe clicks and gacha init on page load
 document.addEventListener("DOMContentLoaded", () => {
+  // Ensure default items are marked as owned
+  localStorage.setItem("owned_bomb_default", "true");
+  localStorage.setItem("owned_effect_default", "true");
+
   const bombCards = document.querySelectorAll(".bomb-card");
   bombCards.forEach((card) => {
     card.addEventListener("click", () => {
@@ -12562,9 +12718,29 @@ document.addEventListener("DOMContentLoaded", () => {
       syncBombSelectPreview(previewBombColor);
     });
   });
+
+  const effectCards = document.querySelectorAll(".effect-card");
+  effectCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      if (card.classList.contains("locked")) {
+        showToastMsg("Unlock this explosion effect in the Gacha Shop first!");
+        return;
+      }
+      const effectColor = card.getAttribute("data-effect-color");
+      previewEffectColor = effectColor;
+      
+      // Update card active states
+      effectCards.forEach((c) => c.classList.remove("active"));
+      card.classList.add("active");
+      
+      // Update nameplate preview
+      syncEffectSelectPreview(previewEffectColor);
+    });
+  });
   
   // Initial syncs
   syncBombWardrobe();
+  syncEffectWardrobe();
   initGachaShop();
   initQuestsSystem();
   if (typeof updateFooterColor === "function") updateFooterColor("play");
@@ -12903,7 +13079,7 @@ function syncLevelTabUI() {
 }
 
 function updateFooterColor(tabName) {
-  const footer = document.querySelector(".console-footer");
+  const footer = document.getElementById("lobbyConsoleFooter");
   if (!footer) return;
   const badgeText = footer.querySelector(".badge-text");
   
@@ -12912,7 +13088,7 @@ function updateFooterColor(tabName) {
     footer.style.borderColor = "#000000";
     if (badgeText) badgeText.style.color = "#ffffff";
   } else if (tabName === "quests") {
-    footer.style.background = "#0c0d0e";
+    footer.style.background = "#111215";
     footer.style.borderColor = "#000000";
     if (badgeText) badgeText.style.color = "#ffffff";
   } else if (tabName === "shop") {
