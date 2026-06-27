@@ -3745,7 +3745,7 @@ body.local-four-lobby-active .lobby-card {
   border: 4.5px solid #000;
   overflow: hidden;
   box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.95);
-  background: linear-gradient(135deg, #18baff 0%, #b94cff 100%);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5907,20 +5907,19 @@ body.is-mobile .arcade-controller {
   width: 520px;
   max-width: 95vw;
   max-height: 88vh;
+  background: #141416;
+  border: 4.5px solid #000;
+  border-radius: 24px;
+  box-shadow: 10px 10px 0px #000;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius);
-  padding: 0;
   overflow: hidden;
-  background: rgba(20, 18, 24, 0.97);
   color: #fff;
-  border: var(--border);
-  box-shadow: var(--shadow);
+  font-family: 'Outfit', 'Inter', sans-serif;
 }
 
 .social-modal-header {
-  padding: 20px 24px 0;
-  border-bottom: 3px solid var(--ink);
+  padding: 12px 20px;
 }
 
 .social-modal-title {
@@ -5935,38 +5934,47 @@ body.is-mobile .arcade-controller {
 /* Social Tab Buttons */
 .social-tabs {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 6px;
+  background: #000;
+  padding: 6px;
+  border-radius: 20px;
+  border: 2px solid #333;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .social-tab-btn {
-  position: relative;
-  font-family: var(--font-clean);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 16px;
-  border: 3px solid var(--ink);
-  border-bottom: none;
-  border-radius: 10px 10px 0 0;
-  background: #f0ecd8;
-  color: var(--ink);
+  flex: 1;
+  height: 36px;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  color: #888;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: background 0.15s;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .social-tab-btn.active {
   background: #ffd86f;
+  color: #000;
 }
 
 .social-tab-btn:hover:not(.active) {
-  background: #fffbe6;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .social-notif-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #ff3399;
+  background: #eb4d4b;
   color: #fff;
   font-size: 10px;
   font-family: var(--font);
@@ -5977,40 +5985,17 @@ body.is-mobile .arcade-controller {
   height: 18px;
   margin-left: 6px;
   vertical-align: middle;
-  border: 2px solid var(--ink);
+  border: 2px solid #000;
 }
 
 /* Search Bar */
 .social-search-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 24px;
-  border-bottom: 2px solid rgba(34,31,37,0.12);
-  background: rgba(255,216,111,0.12);
-}
-
-.social-search-bar .search-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: #888;
-}
-
-#socialSearchInput {
-  flex: 1;
-  font-family: var(--font-clean);
-  font-size: 14px;
-  padding: 8px 12px;
-  border: 2px solid var(--ink);
-  border-radius: 8px;
-  background: #fff;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-#socialSearchInput:focus {
-  border-color: var(--pink);
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 3.5px solid #000;
+  background: #1c1c1f;
 }
 
 /* Modal Body */
@@ -6065,8 +6050,7 @@ body.is-mobile .arcade-controller {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0;
+  padding: 8px 0;
   margin: 0;
 }
 
@@ -6084,27 +6068,36 @@ body.is-mobile .arcade-controller {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #1e1c22;
+  background: #1c1c1f;
   color: #fff;
-  border: 2px solid rgba(34,31,37,0.1);
-  border-radius: 12px;
-  padding: 10px 14px;
-  transition: background 0.15s, border-color 0.15s;
+  border: 3.5px solid #000;
+  border-radius: 16px;
+  padding: 10px 16px;
+  margin: 8px 16px;
+  box-shadow: 4px 4px 0px #000;
+  transition: transform 0.1s, background-color 0.2s, box-shadow 0.1s;
 }
 
 .social-user-item:hover {
-  background: #2a2830;
-  border-color: var(--yellow);
+  background: #36363b;
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0px #000;
+  border-color: #000;
+}
+
+.social-user-item:active {
+  transform: translateY(2px) translateX(2px);
+  box-shadow: 2px 2px 0px #000;
 }
 
 .social-user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 2.5px solid var(--ink);
+  border: 3px solid #000;
   object-fit: cover;
   flex-shrink: 0;
-  background: #f0ecd8;
+  background: #eee;
 }
 
 .social-user-info {
@@ -6113,22 +6106,22 @@ body.is-mobile .arcade-controller {
 }
 
 .social-user-name {
-  font-family: var(--font);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .social-user-status {
-  font-family: var(--font-clean);
+  font-family: 'Outfit', 'Inter', sans-serif;
   font-size: 12px;
-  color: #888;
+  color: #999;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin-top: 2px;
 }
 
@@ -6139,9 +6132,9 @@ body.is-mobile .arcade-controller {
   flex-shrink: 0;
 }
 
-.status-dot.online   { background: #ffffff; }
-.status-dot.ingame   { background: #ffffff; opacity: 0.6; }
-.status-dot.offline  { background: #ffffff; opacity: 0.25; }
+.status-dot.online   { background: #2ecc71; }
+.status-dot.ingame   { background: #ffd86f; }
+.status-dot.offline  { background: rgba(255, 255, 255, 0.3); }
 
 /* Social action buttons */
 .social-action-btns {
@@ -6155,55 +6148,57 @@ body.is-mobile .arcade-controller {
 .btn-accept-req,
 .btn-decline-req,
 .btn-friend-chat {
-  font-family: var(--font-clean);
+  font-family: 'Outfit', 'Inter', sans-serif;
   font-size: 12px;
-  font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 2px solid var(--ink);
+  font-weight: 900;
+  padding: 6px 14px;
+  border-radius: 12px;
+  border: 3px solid #000;
   cursor: pointer;
+  box-shadow: 2px 2px 0px #000;
   transition: transform 0.1s, box-shadow 0.1s;
 }
 
 .btn-add-friend {
   background: #26c2ff;
-  color: #fff;
+  color: #000;
 }
 
-.btn-add-friend:hover     { transform: translateY(-1px); box-shadow: 2px 2px 0 var(--ink); }
-.btn-add-friend:active    { transform: translateY(1px);  box-shadow: none; }
+.btn-add-friend:hover     { background: #5cd6ff; transform: translateY(-1px); box-shadow: 3px 3px 0 #000; }
+.btn-add-friend:active    { transform: translateY(1px);  box-shadow: 1px 1px 0 #000; }
 
 .btn-invite-to-room {
   background: #ffd86f;
-  color: var(--ink);
+  color: #000;
 }
 
-.btn-invite-to-room:hover  { transform: translateY(-1px); box-shadow: 2px 2px 0 var(--ink); }
-.btn-invite-to-room:active { transform: translateY(1px);  box-shadow: none; }
+.btn-invite-to-room:hover  { background: #ffe39a; transform: translateY(-1px); box-shadow: 3px 3px 0 #000; }
+.btn-invite-to-room:active { transform: translateY(1px);  box-shadow: 1px 1px 0 #000; }
 
 .btn-accept-req {
   background: #2ecc71;
-  color: #fff;
+  color: #000;
 }
 
 .btn-decline-req {
   background: #ff3333;
-  color: #fff;
+  color: #000;
 }
 
-.btn-accept-req:hover   { transform: translateY(-1px); box-shadow: 2px 2px 0 var(--ink); }
-.btn-decline-req:hover  { transform: translateY(-1px); box-shadow: 2px 2px 0 var(--ink); }
+.btn-accept-req:hover   { background: #58d68d; transform: translateY(-1px); box-shadow: 3px 3px 0 #000; }
+.btn-decline-req:hover  { background: #ff5c5c; transform: translateY(-1px); box-shadow: 3px 3px 0 #000; }
 
 .btn-friend-already {
-  font-family: var(--font-clean);
+  font-family: 'Outfit', 'Inter', sans-serif;
   font-size: 11px;
-  font-weight: 700;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 2px solid #ccc;
-  background: #eee;
+  font-weight: 900;
   color: #888;
-  cursor: default;
+  background: #2b2b30;
+  border: 3px solid #000;
+  border-radius: 12px;
+  padding: 5px 12px;
+  box-shadow: 2px 2px 0px #000;
+  display: inline-block;
 }
 
 /* ================================================================
@@ -9993,11 +9988,12 @@ body.is-iphone {
   position: relative;
   height: 74px;
   min-width: 320px;
-  padding: 9px 30px 10px 82px;
+  padding: 10px 24px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  text-align: left;
+  align-items: center;
+  text-align: center;
   border-radius: 48px;
   background: linear-gradient(180deg, #1d1e21, #09090a);
   border: 3px solid #030304;
@@ -10006,6 +10002,14 @@ body.is-iphone {
   cursor: pointer;
   transition: transform 0.1s, box-shadow 0.1s, border-color 0.2s;
   transform: none;
+  font-family: 'Fredoka', 'Arial Black', sans-serif;
+}
+
+.gamemode-trigger-btn strong {
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-top: 1px;
 }
 
 .gamemode-trigger-btn:hover {

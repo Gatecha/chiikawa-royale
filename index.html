@@ -404,14 +404,8 @@
               <!-- RIGHT/CENTER COLUMN: Open Gamemodes Trigger Button -->
               <div class="gamemode-trigger-wrapper" style="flex: 2; max-width: 600px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
                 <button id="btnOpenGamemodesPopup" class="gamemode-trigger-btn" type="button">
-                  <div class="select-paw-badge" aria-hidden="true" style="left: -4px; top: -1px;">
-                    <span></span><span></span><span></span><span></span>
-                  </div>
                   <span class="select-button-copy">SELECT</span>
                   <strong>GAMEMODE</strong>
-                  <div class="select-button-state" aria-hidden="true">
-                    <span>READY TO SELECT</span>
-                  </div>
                 </button>
               </div>
 
@@ -1383,7 +1377,8 @@
         <div id="grandWinnerMessage" class="winner-msg">Hachiware wins the Tournament!</div>
         
         <div class="victory-video-wrapper">
-          <video id="victoryVideo" src="hachiware-lobby.mp4" loop muted playsinline class="victory-video"></video>
+          <video id="victoryVideo" src="hachiware-lobby.mp4" loop muted playsinline style="display: none;"></video>
+          <canvas id="victoryVideoCanvas" width="480" height="480" class="victory-video"></canvas>
         </div>
         
         <button id="victoryLobbyBtn" class="btn-match-play btn-victory-lobby" type="button">Return to Lobby</button>
@@ -1494,26 +1489,31 @@
     <!-- Social Modal (Friends + Online Users) -->
     <div id="socialModal" class="dialog-overlay hidden">
       <div class="social-modal-card card glass">
-        <button id="closeSocialModal" class="btn-close-dialog" type="button">&times;</button>
+        <!-- Modal Header with Title & Close button in knock aesthetic -->
+        <div class="knock-chat-header" style="border-bottom: 4.5px solid #000;">
+          <div class="knock-header-left">
+            <svg class="knock-phone-icon" viewBox="0 0 24 24" width="24" height="24" fill="white" style="display: flex; align-items: center; justify-content: center;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <span class="knock-header-title">social</span>
+          </div>
+          <button id="closeSocialModal" class="knock-close-btn" type="button">&times;</button>
+        </div>
 
-        <!-- Modal Header with Tabs -->
-        <div class="social-modal-header">
-          <h2 class="social-modal-title">Social</h2>
+        <!-- Tabs aligned horizontally in knock style -->
+        <div class="social-modal-header" style="border-bottom: none; padding: 12px 20px 4px 20px;">
           <div class="social-tabs">
-            <button class="social-tab-btn active" data-social-tab="online" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> Online Users</button>
-            <button class="social-tab-btn" data-social-tab="friends" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> My Friends</button>
+            <button class="social-tab-btn active" data-social-tab="online" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> Online Users</button>
+            <button class="social-tab-btn" data-social-tab="friends" style="display: inline-flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> My Friends</button>
             <button class="social-tab-btn" data-social-tab="pending" style="display: inline-flex; align-items: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg> Requests
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg> Requests
               <span id="pendingBadge" class="social-notif-badge hidden">0</span>
             </button>
           </div>
         </div>
 
-        <!-- Search Bar -->
-        <div class="social-search-bar">
-          <svg viewBox="0 0 24 24" class="search-icon"><path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>
-          <input id="socialSearchInput" type="text" placeholder="Search players by username..." autocomplete="off" />
-          <button id="socialSearchBtn" class="btn btn-sm btn-primary" type="button">Search</button>
+        <!-- Search Bar styled like knock chat form -->
+        <div class="social-search-bar" style="background: #1c1c1f; border-bottom: 3.5px solid #000; padding: 12px 16px;">
+          <input id="socialSearchInput" class="knock-chat-input" type="text" placeholder="Search players by username..." autocomplete="off" />
+          <button id="socialSearchBtn" class="knock-send-btn" type="button">Search</button>
         </div>
 
         <!-- Tab Contents -->

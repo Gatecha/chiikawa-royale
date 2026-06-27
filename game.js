@@ -194,8 +194,9 @@ const confirmCharacterBtn = document.getElementById("confirmCharacterBtn");
 const selectCardGrid = document.getElementById("selectCardGrid");
 const wardrobeTabs = document.querySelectorAll(".wardrobe-tab");
 
-// Video and character variables moved to top to prevent Temporal Dead Zone ReferenceErrors
 const victoryVideo = document.getElementById("victoryVideo");
+const victoryVideoCanvas = document.getElementById("victoryVideoCanvas");
+const victoryVideoCtx = victoryVideoCanvas ? victoryVideoCanvas.getContext("2d") : null;
 const characterSelectVideos = {
   chiikawa: "assets/chiikawa/chiikawa_character_animation.mp4",
   hachiware: "hachiware-lobby.mp4",
@@ -5551,6 +5552,25 @@ function drawSquadLobbyCharacter() {
   removeGreenScreenFromCanvas(squadLobbyCtx, width, height);
 }
 
+function drawVictoryPreview() {
+  const victoryCard = document.getElementById("grandVictoryCard");
+  if (!victoryCard || victoryCard.classList.contains("hidden")) return;
+  if (!victoryVideoCtx || !victoryVideoCanvas || !victoryVideo || victoryVideo.readyState < 2) return;
+
+  const width = victoryVideoCanvas.width;
+  const height = victoryVideoCanvas.height;
+  victoryVideoCtx.clearRect(0, 0, width, height);
+
+  const scale = Math.min(width / victoryVideo.videoWidth, height / victoryVideo.videoHeight) * 1.5;
+  const drawW = victoryVideo.videoWidth * scale;
+  const drawH = victoryVideo.videoHeight * scale;
+  const drawX = (width - drawW) / 2;
+  const drawY = height - drawH * 0.95;
+
+  victoryVideoCtx.drawImage(victoryVideo, drawX, drawY, drawW, drawH);
+  removeGreenScreenFromCanvas(victoryVideoCtx, width, height);
+}
+
 function drawCharacterCardPreviews() {
   characterCards.forEach((card) => {
     const video = card.querySelector("video");
@@ -6076,6 +6096,7 @@ function loop(now) {
   const overlay = document.getElementById("tournamentOverlay");
   if (overlay && !overlay.classList.contains("hidden") && shouldDrawMenu) {
     drawResultsAvatars();
+    drawVictoryPreview();
   }
   
   requestAnimationFrame(loop);
@@ -9553,12 +9574,13 @@ function makeStatusInfo(userId) {
 }
 
 function buildSocialUserItem(userId, username, character, statusInfo, isFriend, showInvite) {
-  const charImg = `assets/cards/${character || "chiikawa"}.png`;
   const isOnline = statusInfo.dot !== "offline";
   const li = document.createElement("li");
   li.className = "social-user-item";
   li.innerHTML = `
-    <img class="social-user-avatar" src="${charImg}" alt="${escapeHTML(username)}" />
+    <div class="knock-avatar friend-avatar">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </div>
     <div class="social-user-info">
       <div class="social-user-name">${escapeHTML(username)}</div>
       <div class="social-user-status"><span class="status-dot ${statusInfo.dot}"></span> ${statusInfo.text}</div>
@@ -9607,13 +9629,14 @@ function renderFriendsTab() {
     const info = myFriendshipMap[friendId];
     if (!info) return;
     const presence = onlinePresenceMap[friendId];
-    const charImg = presence?.character || info.character || "chiikawa";
     const statusInfo = makeStatusInfo(friendId);
     const isOnline = statusInfo.dot !== "offline";
     const li = document.createElement("li");
     li.className = "social-user-item";
     li.innerHTML = `
-      <img class="social-user-avatar" src="assets/cards/${charImg}.png" alt="${escapeHTML(info.username)}" />
+      <div class="knock-avatar friend-avatar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
       <div class="social-user-info">
         <div class="social-user-name">${escapeHTML(info.username)}</div>
         <div class="social-user-status"><span class="status-dot ${statusInfo.dot}"></span> ${statusInfo.text}</div>
@@ -9647,7 +9670,9 @@ function renderLanRoomsTab() {
     li.className = "social-user-item";
     const playerNames = (room.players || []).map((p) => p.ai ? "CPU" : escapeHTML(p.name)).join(", ");
     li.innerHTML = `
-      <img class="social-user-avatar" src="assets/cards/${room.players?.[0]?.kind || "chiikawa"}.png" alt="">
+      <div class="knock-avatar room-avatar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+      </div>
       <div class="social-user-info">
         <div class="social-user-name">Room ${escapeHTML(room.roomCode)} ${isCurrentRoom ? "(your room)" : ""}</div>
         <div class="social-user-status"><span class="status-dot online"></span> ${escapeHTML(room.mode || "standard").toUpperCase()} - ${room.playerCount}/${room.maxPlayers} - ${escapeHTML(room.state)}</div>
@@ -9680,7 +9705,9 @@ function renderPendingTab() {
     const li = document.createElement("li");
     li.className = "social-user-item";
     li.innerHTML = `
-      <img class="social-user-avatar" src="assets/cards/${rp.character || "chiikawa"}.png" alt="${escapeHTML(rp.username || "")}" />
+      <div class="knock-avatar friend-avatar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
       <div class="social-user-info">
         <div class="social-user-name">${escapeHTML(rp.username || "Unknown")}</div>
         <div class="social-user-status">Wants to be your friend!</div>
