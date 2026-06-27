@@ -10466,3 +10466,190 @@ body.is-iphone {
     opacity: 1;
   }
 }
+
+/* Quests binder top tabs */
+.quests-tab-btn {
+  background: #36363b;
+  color: #a0a5b5;
+  border: 3.5px solid #000;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  padding: 8px 24px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, transform 0.2s;
+  box-shadow: 2px -2px 0 rgba(0,0,0,0.15);
+  transform: translateY(2px);
+}
+
+.quests-tab-btn:hover {
+  background: #444;
+  color: #fff;
+  transform: translateY(0px);
+}
+
+.quests-tab-btn.active {
+  background: #ffd86f !important;
+  color: #000 !important;
+  transform: translateY(-2px);
+  z-index: 5;
+  box-shadow: 3px -3px 0 rgba(0,0,0,0.25);
+}
+
+/* Quest Node Checkpoints style */
+.checkpoint-node {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid #000;
+  background: #252830;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 2px 2px 0 #000;
+  transition: all 0.2s;
+}
+
+.checkpoint-node.unlocked {
+  background: #ffd86f !important;
+  color: #000 !important;
+}
+
+.checkpoint-node.claimed {
+  background: #83cf00 !important;
+  color: #000 !important;
+}
+
+.checkpoint-node:hover:not(.claimed) {
+  transform: scale(1.1);
+}
+
+.checkpoint-check {
+  display: none;
+}
+
+.checkpoint-node.claimed .checkpoint-check {
+  display: inline;
+}
+
+.checkpoint-node.claimed .checkpoint-pts {
+  display: none;
+}
+
+.checkpoint-pts {
+  font-family: var(--font-clean);
+  font-size: 10px;
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #888;
+  font-weight: 900;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.checkpoint-node.claimed .checkpoint-pts {
+  color: #83cf00;
+}
+
+/* Quest Cards styling */
+.quest-card {
+  background: #212224;
+  border: 4px solid #000;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  box-shadow: 4px 4px 0 #000;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.quest-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0 #000;
+}
+
+.quest-card-progress {
+  font-family: var(--font-clean);
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffd86f;
+  margin-bottom: 8px;
+}
+
+.quest-card-desc {
+  font-family: var(--font);
+  font-size: 14px;
+  color: #fff;
+  line-height: 1.4;
+  flex-grow: 1;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.quest-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.quest-card-reward {
+  font-family: var(--font);
+  font-size: 12px;
+  color: #ffd86f;
+  font-weight: 900;
+}
+
+.quest-card-action-btn {
+  background: #ffd86f;
+  color: #000;
+  border: 3px solid #000;
+  border-radius: 10px;
+  padding: 4px 12px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 1.5px 1.5px 0 #000;
+  transition: transform 0.1s;
+}
+
+.quest-card-action-btn:active {
+  transform: translateY(1px);
+}
+
+.quest-card-action-btn.disabled {
+  background: #444 !important;
+  color: #888 !important;
+  border-color: #000 !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.quest-card-action-btn.claimable {
+  background: #83cf00 !important;
+  animation: pulseGreen 1.5s infinite;
+}
+
+@keyframes pulseGreen {
+  0% { box-shadow: 0 0 0 0 rgba(131, 207, 0, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(131, 207, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(131, 207, 0, 0); }
+}
+
+.quests-tab-btn, .checkpoint-node, .quest-card {
+  user-select: none;
+}

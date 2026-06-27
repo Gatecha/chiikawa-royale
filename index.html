@@ -311,6 +311,13 @@
                   </svg>
                 </span>
               </button>
+              <button class="tab-btn tab-quests" data-tab="quests" type="button" aria-label="Quests">
+                <span class="tab-icon">
+                  <svg viewBox="0 0 24 24" class="svg-icon" fill="white">
+                    <path d="M19 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 15H9v-2h8v2zm0-4H9v-2h8v2zm0-4H9V8h8v2zM3 7h2v2H3V7zm0 4h2v2H3v-2zm0 4h2v2H3v-2z" />
+                  </svg>
+                </span>
+              </button>
               <button class="tab-btn tab-shop" data-tab="shop" type="button" aria-label="Shop">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -904,6 +911,257 @@
                       <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">🎁</div>
                       <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Bundles Found</span>
                       <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Special bundles will appear here during seasonal events!</small>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+            <!-- QUESTS TAB CONTENT -->
+            <div class="tab-content" id="tabContent_quests" style="display: none; height: 100%; padding: 0; background: linear-gradient(135deg, #18191c 0%, #0c0d0e 100%);">
+              
+              <!-- ZZZ Notebook Outer Binder Frame -->
+              <div class="quests-notebook-container" style="display: flex; height: 100%; width: 100%; padding: 25px; box-sizing: border-box; align-items: stretch; overflow: hidden; position: relative;">
+                
+                <!-- Quests Top Tabs (Binder tabs sticking out of the notebook top) -->
+                <div class="quests-binder-tabs" style="position: absolute; top: 25px; left: 80px; transform: translateY(-100%); display: flex; gap: 6px; z-index: 1;">
+                  <button class="quests-tab-btn" data-quests-tab="weekly" type="button">Weekly</button>
+                  <button class="quests-tab-btn active" data-quests-tab="daily" type="button">Daily</button>
+                  <button class="quests-tab-btn" data-quests-tab="level" type="button">Level</button>
+                  <button class="quests-tab-btn" data-quests-tab="quests" type="button">Quests</button>
+                </div>
+
+                <!-- Left Orange Spine Plate -->
+                <div class="quests-orange-spine" style="width: 54px; background: linear-gradient(180deg, #ff4c00 0%, #cc3300 100%); border: 4.5px solid #000; border-radius: 20px 0 0 20px; display: flex; flex-direction: column; align-items: center; padding: 24px 0; box-sizing: border-box; justify-content: flex-start; z-index: 3; box-shadow: 4px 4px 0 #000; border-right: none; position: relative;">
+                  <!-- Binder Rings (Floating keychains on the left) -->
+                  <div class="binder-coils" style="position: absolute; left: -14px; top: 30px; display: flex; flex-direction: column; gap: 32px; z-index: 10;">
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                    <div style="width: 24px; height: 12px; background: #c0c0c0; border: 3px solid #000; border-radius: 6px; transform: rotate(-15deg);"></div>
+                  </div>
+                  <!-- Vertical Spine Label -->
+                  <span style="font-family: var(--font); color: #000; font-size: 15px; font-weight: 900; text-transform: uppercase; writing-mode: vertical-lr; transform: rotate(180deg); letter-spacing: 2px; margin-top: 20px;">schedule</span>
+                </div>
+
+                <!-- Notebook Main Body Sheet -->
+                <div class="quests-notebook-sheet" style="flex-grow: 1; background: #1c1d20; border: 4.5px solid #000; border-radius: 0 24px 24px 0; box-shadow: 8px 8px 0 #000; z-index: 2; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; position: relative;">
+                  
+                  <!-- DAILY TAB PAGE -->
+                  <div id="questsTabContent_daily" class="quests-page active" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Top Engagement Progress Area -->
+                    <div class="engagement-tracker" style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); gap: 20px;">
+                      
+                      <!-- Left Engagement Label -->
+                      <div style="display: flex; flex-direction: column; flex-shrink: 0;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Max Engagement Today</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; text-shadow: 1px 1px 0 #000; display: flex; align-items: center; gap: 4px;">
+                          <span style="font-size: 14px;">🔥</span> <span id="currentEngagementVal">0</span> / 400
+                        </strong>
+                      </div>
+
+                      <!-- Progress Checkpoints Track -->
+                      <div class="engagement-track-container" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; position: relative;">
+                        <!-- The Track Line -->
+                        <div style="position: absolute; left: 0; right: 0; top: 12px; height: 8px; background: #222; border-radius: 4px; border: 1.5px solid #000; overflow: hidden; z-index: 1;">
+                          <div id="engagementProgressBar" style="width: 0%; height: 100%; background: #83cf00; transition: width 0.3s ease;"></div>
+                        </div>
+
+                        <!-- Checkpoints circles -->
+                        <div style="display: flex; justify-content: space-between; position: relative; z-index: 2; width: 100%;">
+                          
+                          <!-- Checkpoint 100 -->
+                          <button class="checkpoint-node" id="chk_100" data-milestone="100" type="button">
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">100</span>
+                          </button>
+
+                          <!-- Checkpoint 200 -->
+                          <button class="checkpoint-node" id="chk_200" data-milestone="200" type="button">
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">200</span>
+                          </button>
+
+                          <!-- Checkpoint 300 -->
+                          <button class="checkpoint-node" id="chk_300" data-milestone="300" type="button">
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">300</span>
+                          </button>
+
+                          <!-- Checkpoint 400 -->
+                          <button class="checkpoint-node" id="chk_400" data-milestone="400" type="button">
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">400</span>
+                          </button>
+
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <!-- Quests Grid Container -->
+                    <div class="quests-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; flex-grow: 1;">
+                      
+                      <!-- Quest Card 1: Log in -->
+                      <div class="quest-card" id="qcard_login">
+                        <div class="quest-card-progress"><span id="qprog_login">0/1</span></div>
+                        <div class="quest-card-desc">Log in to the game</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn disabled" id="qbtn_login" type="button">Claimed</button>
+                        </div>
+                      </div>
+
+                      <!-- Quest Card 2: Play 1 Match -->
+                      <div class="quest-card" id="qcard_match">
+                        <div class="quest-card-progress"><span id="qprog_match">0/1</span></div>
+                        <div class="quest-card-desc">Play 1 practice or online match</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn" id="qbtn_match" type="button">Claim</button>
+                        </div>
+                      </div>
+
+                      <!-- Quest Card 3: Spend 100 Gems -->
+                      <div class="quest-card" id="qcard_gems">
+                        <div class="quest-card-progress"><span id="qprog_gems">0/1</span></div>
+                        <div class="quest-card-desc">Spend gems on gacha pulls</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn" id="qbtn_gems" type="button">Claim</button>
+                        </div>
+                      </div>
+
+                      <!-- Quest Card 4: Place 10 Bombs -->
+                      <div class="quest-card" id="qcard_bombs">
+                        <div class="quest-card-progress"><span id="qprog_bombs">0/1</span></div>
+                        <div class="quest-card-desc">Place 10 bombs in matches</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn" id="qbtn_bombs" type="button">Claim</button>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <!-- Quests Page Footer Info -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">Earn points by completing daily commissions to claim gem milestones!</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #ffd86f; font-weight: 900;">⏱ Refreshes in 17h 58m</span>
+                    </div>
+
+                  </div>
+
+                  <!-- WEEKLY TAB PAGE -->
+                  <div id="questsTabContent_weekly" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Top Weekly Info Area -->
+                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);">
+                      <div style="display: flex; flex-direction: column;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase;">Weekly Targets</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; margin-top: 2px;">Season Errands</strong>
+                      </div>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: bold;">Unlock larger reward checkpoints below!</span>
+                    </div>
+
+                    <!-- Weekly Quests Grid -->
+                    <div class="quests-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; flex-grow: 1;">
+                      
+                      <!-- Weekly Quest Card 1: Win 3 Matches -->
+                      <div class="quest-card" id="qcard_win3">
+                        <div class="quest-card-progress"><span id="qprog_win3">0/3</span></div>
+                        <div class="quest-card-desc">Win 3 matches in total</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn" id="qbtn_win3" type="button">Claim</button>
+                        </div>
+                      </div>
+
+                      <!-- Weekly Quest Card 2: Spin Gacha 3 Times -->
+                      <div class="quest-card" id="qcard_spin3">
+                        <div class="quest-card-progress"><span id="qprog_spin3">0/3</span></div>
+                        <div class="quest-card-desc">Draw from Gacha shop 3 times</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn" id="qbtn_spin3" type="button">Claim</button>
+                        </div>
+                      </div>
+
+                      <!-- Weekly Quest Card 3: Defeat 5 Enemies -->
+                      <div class="quest-card" id="qcard_kills">
+                        <div class="quest-card-progress"><span id="qprog_kills">0/5</span></div>
+                        <div class="quest-card-desc">Defeat 5 players or bots</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn" id="qbtn_kills" type="button">Claim</button>
+                        </div>
+                      </div>
+
+                      <!-- Weekly Quest Card 4: Spend 1000 Gems -->
+                      <div class="quest-card" id="qcard_spend1000">
+                        <div class="quest-card-progress"><span id="qprog_spend1000">0/1000</span></div>
+                        <div class="quest-card-desc">Spend 1000 total Gems</div>
+                        <div class="quest-card-footer">
+                          <div class="quest-card-reward">🔥 100</div>
+                          <button class="quest-card-action-btn" id="qbtn_spend1000" type="button">Claim</button>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">Weekly errands refresh every Sunday at midnight.</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #ffd86f; font-weight: 900;">⏱ Refreshes in 4d 12h</span>
+                    </div>
+
+                  </div>
+
+                  <!-- LEVEL TAB PAGE -->
+                  <div id="questsTabContent_level" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Level & XP Status Header (ZZZ-style) -->
+                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 16px 20px; display: flex; flex-direction: column; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); gap: 12px; flex-shrink: 0;">
+                      
+                      <!-- Level Indicator and XP text -->
+                      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                          <div style="background: #ff4c00; color: #000; font-family: var(--font); font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 6px; border: 2px solid #000; transform: skewX(-6deg);">SEASON</div>
+                          <strong style="font-family: var(--font); font-size: 24px; color: #fff; text-shadow: 2px 2px 0 #000; letter-spacing: 0.5px;">LEVEL <span id="questsTabLevelVal">1</span></strong>
+                        </div>
+                        <span style="font-family: var(--font-clean); font-size: 13px; color: #ffd86f; font-weight: 900;" id="questsTabXpVal">0 / 100 XP</span>
+                      </div>
+
+                      <!-- XP Progress Bar -->
+                      <div style="width: 100%; height: 10px; background: #222; border-radius: 5px; border: 2px solid #000; overflow: hidden; position: relative;">
+                        <div id="questsTabXpProgressBar" style="width: 0%; height: 100%; background: #83cf00; transition: width 0.3s ease;"></div>
+                      </div>
+
+                    </div>
+
+                    <!-- Level Rewards Scrollable List -->
+                    <div class="level-rewards-list" id="levelRewardsScrollList" style="flex-grow: 1; margin: 16px 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 6px; box-sizing: border-box; max-height: 200px;">
+                      
+                      <!-- Level Reward Items will be generated dynamically via JS -->
+
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">Unlock 5 Gems for each level achieved!</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: 900;">★ Reach new levels by playing matches</span>
+                    </div>
+
+                  </div>
+
+                  <!-- QUESTS TAB PAGE (Empty State) -->
+                  <div id="questsTabContent_quests" class="quests-page" style="display: none; height: 100%; width: 100%;">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
+                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">📜</div>
+                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Quests Available</span>
+                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Main story missions and side errands are currently empty.</small>
                     </div>
                   </div>
 
