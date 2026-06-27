@@ -906,6 +906,13 @@ document.querySelectorAll(".character-card video").forEach((video) => {
 });
 
 function syncCharacterSelectPreview(kind) {
+  const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+  const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+  if (bombSelectPreviewImg && characterSelectCanvas) {
+    characterSelectCanvas.style.display = "block";
+    bombSelectPreviewImg.style.display = "none";
+  }
+
   if (characterSelectName) {
     characterSelectName.textContent = characterStyle[kind]?.label || kind;
   }
@@ -12141,6 +12148,19 @@ function syncBombSelectPreview(color) {
   if (characterSelectState) {
     const equipped = localStorage.getItem("equipped_bomb") || "default";
     characterSelectState.textContent = color === equipped ? "Selected" : "Select";
+  }
+
+  const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
+  const characterSelectCanvas = document.getElementById("characterSelectCanvas");
+  if (bombSelectPreviewImg && characterSelectCanvas) {
+    characterSelectCanvas.style.display = "none";
+    bombSelectPreviewImg.style.display = "block";
+    bombSelectPreviewImg.src = `assets/shop/${color}-bomb.svg`;
+    
+    // Trigger bounce pop & floating reflow
+    bombSelectPreviewImg.classList.remove("active-preview");
+    void bombSelectPreviewImg.offsetWidth;
+    bombSelectPreviewImg.classList.add("active-preview");
   }
 }
 

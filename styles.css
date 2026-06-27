@@ -10439,3 +10439,30 @@ body.is-iphone {
 .shop-subtab-content.active {
   display: flex !important;
 }
+
+/* Bomb preview floating and pop animation */
+#bombSelectPreviewImg.active-preview {
+  animation: bombFloat 3.8s ease-in-out infinite, bombPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes bombFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(0.72) rotate(0deg);
+    filter: drop-shadow(0 15px 12px rgba(0, 0, 0, 0.45));
+  }
+  50% {
+    transform: translateY(-16px) scale(0.72) rotate(1deg);
+    filter: drop-shadow(0 28px 20px rgba(0, 0, 0, 0.28));
+  }
+}
+
+@keyframes bombPop {
+  0% {
+    transform: translateY(0) scale(0.2);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(0.72);
+    opacity: 1;
+  }
+}
