@@ -268,8 +268,7 @@ ipcMain.handle('download-update', async () => {
     try { fs.rmSync(tmpZip,     { force: true }); }            catch (_) {}
     try { fs.rmSync(tmpExtract, { recursive: true, force: true }); } catch (_) {}
 
-    send({ stage: 'done', pct: 100, label: 'Update complete! Restarting...' });
-    setTimeout(() => { app.relaunch(); app.exit(0); }, 1500);
+    send({ stage: 'done', pct: 100, label: 'Update complete!' });
     return { success: true };
   } catch (err) {
     send({ stage: 'error', pct: 0, label: `Update failed: ${err.message}` });

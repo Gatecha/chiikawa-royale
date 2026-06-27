@@ -9,6 +9,9 @@
     "build": "electron-builder --win --x64"
   },
   "build": {
+    "directories": {
+      "output": "C:/Users/lexca/AppData/Local/Temp/chiikawa-build-dist"
+    },
     "appId": "com.chiikawaroyale.client",
     "productName": "Chiikawa Royale",
     "copyright": "Copyright © 2026 Chihua Studio",
@@ -16,7 +19,6 @@
       "target": "portable",
       "icon": "gamelogo.ico",
       "sign": null,
-      "signAndEditExecutable": false,
       "requestedExecutionLevel": "asInvoker"
     },
     "portable": {
