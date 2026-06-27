@@ -30,12 +30,12 @@
        SHARED TITLE BAR
     ══════════════════════════════════════════════════ */
     .tb {
-      height: 32px; flex-shrink: 0;
-      background: rgba(4,4,6,0.98);
-      border-bottom: 1px solid var(--border);
+      height: 32px;
+      background: transparent;
+      border-bottom: none;
       display: flex; align-items: center; justify-content: space-between;
       -webkit-app-region: drag;
-      position: relative; z-index: 200;
+      position: absolute; top: 0; left: 0; right: 0; z-index: 200;
     }
     .tb-l { display: flex; align-items: center; gap: 7px; padding-left: 10px; -webkit-app-region: no-drag; }
     .tb-icon { width: 16px; height: 16px; object-fit: contain; }
@@ -64,7 +64,7 @@
     .inst-body {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 0; padding: 10px 40px 28px;
+      gap: 0; padding: 42px 40px 28px;
     }
 
     /* Characters */
@@ -485,7 +485,7 @@ bindWin('closeLaunchBtn',() => { if (isElectron) api.close(); else window.close(
 /* ══════════════════════════════════════════════
    LOADING BAR
 ══════════════════════════════════════════════ */
-(function startLoader() {
+function startLoader() {
   const DURATION = 3000, INTERVAL = 40;
   const steps = [
     { at: 0,  text: 'Checking local files...' },
@@ -512,7 +512,18 @@ bindWin('closeLaunchBtn',() => { if (isElectron) api.close(); else window.close(
       }, 350);
     }
   }, INTERVAL);
-})();
+}
+
+// Snappy skip-loading check if launched from shortcut
+const shouldSkip = isElectron && api.shouldSkipLoading && api.shouldSkipLoading();
+if (shouldSkip) {
+  installerScreen.classList.remove('visible');
+  launcherScreen.classList.add('visible');
+  loadNews('news');
+  checkForUpdates();
+} else {
+  startLoader();
+}
 
 /* ══════════════════════════════════════════════
    INSTALLER → LAUNCHER TRANSITION

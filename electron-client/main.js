@@ -39,15 +39,10 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: false,
     },
-    show: false,
+    show: true, // snaps window open immediately
   });
 
   mainWindow.loadFile(getLauncherPath());
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    mainWindow.focus();
-  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -95,16 +90,27 @@ ipcMain.on('get-game-path', (event) => {
   event.returnValue = getGameIndexPath();
 });
 
+// ── IPC: should skip loading (sync) ───────────────────────────────────────────
+ipcMain.on('should-skip-loading', (event) => {
+  event.returnValue = process.argv.includes('--skip-loading');
+});
+
 // ── IPC: create desktop shortcut ─────────────────────────────────────────────
 ipcMain.handle('create-desktop-shortcut', async () => {
   try {
     const desktop      = app.getPath('desktop');
     const shortcutPath = path.join(desktop, 'Chiikawa Royale.lnk');
     const target       = process.execPath;
+    const gameDir      = getGameDir();
+
+    // Copy icon from game resources path if packaged, or use local
+    const iconPath = path.join(gameDir, 'gamelogo.ico');
 
     const created = shell.writeShortcutLink(shortcutPath, 'create', {
       target,
-      icon: target,
+      args: '--skip-loading',
+      workingDirectory: path.dirname(target),
+      icon: iconPath,
       iconIndex: 0,
       description: 'Chiikawa Royale – Bomb Battle Royale Game',
       appUserModelId: 'com.chiikawaroyale.launcher',
@@ -173,19 +179,53 @@ ipcMain.handle('download-update', async () => {
   try {
     await new Promise((resolve, reject) => {
       function doGet(url) {
-        const opts = Object.assign(require('url').parse(url), { headers: { 'User-Agent': 'ChiikawaRoyale-Launcher/1.0' } });
+        const parsed = require('url').parse(url);
+        const opts = {
+          hostname: parsed.hostname,
+          path: parsed.path,
+          port: parsed.port,
+          headers: { 'User-Agent': 'ChiikawaRoyale-Launcher/1.0' }
+        };
         https.get(opts, (res) => {
-          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) { doGet(res.headers.location); return; }
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            doGet(res.headers.location);
+            return;
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`HTTP status ${res.statusCode}`));
+            return;
+          }
+
           const total = parseInt(res.headers['content-length'] || '0', 10);
           let received = 0;
           const file = fs.createWriteStream(tmpZip);
-          res.on('data', (chunk) => {
-            received += chunk.length; file.write(chunk);
-            const pct = total ? Math.round((received / total) * 70) : 0;
-            send({ stage: 'downloading', pct, label: `Downloading update... ${pct}%` });
+
+          file.on('error', (err) => {
+            file.close();
+            reject(err);
           });
-          res.on('end', () => { file.end(); resolve(); });
-          res.on('error', reject);
+
+          res.on('data', (chunk) => {
+            received += chunk.length;
+            file.write(chunk);
+
+            // GitHub archives usually lack content-length. Estimate pct based on ~30MB size
+            const pct = total 
+              ? Math.round((received / total) * 70) 
+              : Math.min(68, Math.round((received / (45 * 1024 * 1024)) * 70));
+            const mb = (received / (1024 * 1024)).toFixed(1);
+            send({ stage: 'downloading', pct, label: `Downloading update... ${mb} MB` });
+          });
+
+          res.on('end', () => {
+            file.end();
+            resolve();
+          });
+
+          res.on('error', (err) => {
+            file.close();
+            reject(err);
+          });
         }).on('error', reject);
       }
       doGet(GITHUB_ZIP);

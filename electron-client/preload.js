@@ -9,8 +9,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getGamePath:           () => ipcRenderer.sendSync('get-game-path'),
   createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut'),
   checkForUpdate:        () => ipcRenderer.invoke('check-for-update'),
+  shouldSkipLoading:     () => ipcRenderer.sendSync('should-skip-loading'),
   downloadUpdate: (onProgress) => {
     ipcRenderer.on('update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-update');
   },
 });
+
