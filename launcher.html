@@ -73,6 +73,7 @@
       -webkit-app-region: no-drag;
     }
     .titlebar-btn {
+      -webkit-app-region: no-drag;
       width: 28px; height: 22px;
       border: none; border-radius: 4px;
       background: rgba(255,255,255,0.07);
@@ -664,7 +665,7 @@
     });
 
     // ── Auto Loader logic on startup ──────────────────
-    window.addEventListener('DOMContentLoaded', () => {
+    function startAutoLoader() {
       let progress = 0;
       const steps = [
         { limit: 20,  text: 'Checking local files...' },
@@ -691,7 +692,13 @@
           progressStatus.textContent = (step ? step.text : 'Finishing...') + ' (' + progress + '%)';
         }
       }, 70);
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', startAutoLoader);
+    } else {
+      startAutoLoader();
+    }
 
     // ── Transition to launcher ────────────────────────
     installBtn.addEventListener('click', () => {
