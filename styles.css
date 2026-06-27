@@ -10280,7 +10280,7 @@ body.is-iphone {
 }
 
 /* Visibility based on wardrobe tab mode */
-.select-card-grid[data-mode="bombs"] .bomb-card {
+#tabContent_look .select-card-grid[data-mode="bombs"] .bomb-card {
   display: flex;
 }
 
