@@ -110,6 +110,109 @@
     .shortcut-row input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--pink); cursor: pointer; }
     .shortcut-row span { font-size: 11.5px; color: var(--muted); }
 
+    /* ── Custom Installer UI Styles ── */
+    .inst-bottom-dock {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 480px;
+    }
+    
+    .inst-buttons-row {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      margin-bottom: 2px;
+    }
+    
+    .btn-custom-inst {
+      font-family: var(--fb); font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 20px;
+      padding: 9px 24px; cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .btn-custom-inst:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    
+    .btn-start-inst {
+      font-family: var(--fh); font-size: 13px; letter-spacing: 0.05em; color: #000;
+      background: #fff; border: none; border-radius: 20px;
+      padding: 9px 34px; cursor: pointer; font-weight: 700;
+      box-shadow: 0 4px 18px rgba(255,255,255,0.25);
+      transition: transform 0.12s, box-shadow 0.12s, background 0.15s;
+    }
+    .btn-start-inst:hover { transform: translateY(-1.5px); background: #f0f0f0; box-shadow: 0 6px 24px rgba(255,255,255,0.35); }
+    .btn-start-inst:active { transform: translateY(0); }
+    .btn-start-inst:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+    
+    .inst-terms-row {
+      display: flex; align-items: center; gap: 7px; cursor: pointer;
+    }
+    .inst-terms-row input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--pink); cursor: pointer; }
+    .inst-terms-row span { font-size: 11.5px; color: var(--muted); }
+    .inst-terms-row span a { color: var(--pink); text-decoration: none; }
+    .inst-terms-row span a:hover { text-decoration: underline; }
+    
+    .inst-path-info {
+      text-align: center; margin-top: 6px;
+    }
+    .inst-path-info .loc { font-size: 11.5px; color: rgba(255,255,255,0.55); margin-bottom: 4px; }
+    .inst-path-info .space { font-size: 10.5px; color: var(--muted); letter-spacing: 0.02em; }
+
+    /* Custom installation path modal */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .modal-overlay.on { opacity: 1; pointer-events: all; }
+    
+    .modal-box {
+      background: #101014; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      padding: 24px 28px; width: 440px; max-width: 90vw;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 14px; right: 14px; background: transparent; border: none;
+      color: var(--muted); font-size: 16px; cursor: pointer; width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    
+    .modal-title { font-family: var(--fb); font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+    
+    .path-input-group {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .path-input-box {
+      flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px; padding: 7px 12px; color: rgba(255,255,255,0.85); font-family: var(--fb);
+      font-size: 12px; outline: none;
+    }
+    .btn-change-path {
+      background: rgba(255,255,255,0.08); border: 1px solid var(--border); border-radius: 6px;
+      color: #fff; font-family: var(--fb); font-size: 11.5px; padding: 0 14px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-change-path:hover { background: rgba(255,255,255,0.15); }
+    
+    .modal-space-info { font-size: 11px; color: var(--muted); margin-bottom: 16px; display: flex; gap: 14px; }
+    
+    .modal-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+    .modal-option-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .modal-option-row input { width: 13px; height: 13px; accent-color: var(--pink); cursor: pointer; }
+    .modal-option-row span { font-size: 12px; color: rgba(255,255,255,0.7); }
+    
+    .btn-modal-continue {
+      font-family: var(--fh); font-size: 13px; letter-spacing: 0.05em; color: #000;
+      background: #fff; border: none; border-radius: 20px; width: 100%; height: 36px;
+      cursor: pointer; font-weight: 700; transition: background 0.15s;
+    }
+    .btn-modal-continue:hover { background: #e2e2e2; }
+
     /* ══════════════════════════════════════════════════
        LAUNCHER SCREEN  (NTE-style)
     ══════════════════════════════════════════════════ */
@@ -300,19 +403,75 @@
     <img src="chiikawa-royale-logo.png" class="inst-logo" alt="Chiikawa Royale">
     <div class="inst-label" id="instLabel">PC CLIENT — STARTING UP</div>
 
+    <!-- PLAY button (shows only for installed app loading screen) -->
     <button class="btn-iplay" id="instPlayBtn">PLAY</button>
-
+    
+    <!-- Desktop shortcut checkbox (shows only for installed app loading screen) -->
     <label class="shortcut-row" id="shortcutRow" for="shortcutCb">
       <input type="checkbox" id="shortcutCb" checked>
       <span>Add to Desktop shortcut</span>
     </label>
 
+    <!-- Loading progress wrapper -->
     <div class="prog-wrap" id="progWrap">
       <div class="prog-track">
         <div class="prog-fill" id="progFill"></div>
       </div>
       <div class="prog-status" id="progStatus">Loading game components...</div>
     </div>
+
+    <!-- ── Custom Installer Controls ── -->
+    <div class="inst-bottom-dock" id="instBottomDock" style="display: none;">
+      <!-- Buttons -->
+      <div class="inst-buttons-row">
+        <button class="btn-custom-inst" id="btnCustomInst">CUSTOM INSTALL</button>
+        <button class="btn-start-inst" id="btnStartInst">START INSTALL</button>
+      </div>
+
+      <!-- Agreement checkbox -->
+      <label class="inst-terms-row" for="termsCb">
+        <input type="checkbox" id="termsCb" checked>
+        <span>I have read and agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a>.</span>
+      </label>
+
+      <!-- Path & space info -->
+      <div class="inst-path-info">
+        <div class="loc" id="lblInstallPath">Installation location: C:\Games\Chiikawa Royale</div>
+        <div class="space">Available space: 100.0GB &nbsp;|&nbsp; Required space: 250MB</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Custom Installation Path Modal ── -->
+<div class="modal-overlay" id="customPathModal">
+  <div class="modal-box">
+    <button class="modal-close" id="btnModalClose">&times;</button>
+    <div class="modal-title">Choose installation path</div>
+    
+    <div class="path-input-group">
+      <input type="text" class="path-input-box" id="txtPathInput" value="C:\Games\Chiikawa Royale" readonly>
+      <button class="btn-change-path" id="btnSelectFolder">Change</button>
+    </div>
+    
+    <div class="modal-space-info">
+      <span>Available space: 100.0GB</span>
+      <span>Required space: 250MB</span>
+    </div>
+    
+    <div class="modal-options">
+      <label class="modal-option-row" for="modalShortcutCb">
+        <input type="checkbox" id="modalShortcutCb" checked>
+        <span>Create desktop shortcut</span>
+      </label>
+      <label class="modal-option-row" for="modalStartupCb">
+        <input type="checkbox" id="modalStartupCb">
+        <span>Launch on startup</span>
+      </label>
+    </div>
+    
+    <button class="btn-modal-continue" id="btnModalContinue">CONTINUE</button>
   </div>
 </div>
 
@@ -432,7 +591,6 @@
 </div>
 
 <script>
-/* ── Refs ─────────────────────────────────────── */
 const $id = (id) => document.getElementById(id);
 const installerScreen = $id('installerScreen');
 const launcherScreen  = $id('launcherScreen');
@@ -451,6 +609,19 @@ const updLbl          = $id('updLbl');
 const curVer          = $id('curVer');
 const latVer          = $id('latVer');
 
+/* ── Custom Installer Refs ────────────────────── */
+const instBottomDock  = $id('instBottomDock');
+const btnCustomInst   = $id('btnCustomInst');
+const btnStartInst    = $id('btnStartInst');
+const termsCb         = $id('termsCb');
+const lblInstallPath  = $id('lblInstallPath');
+const customPathModal = $id('customPathModal');
+const btnModalClose   = $id('btnModalClose');
+const txtPathInput    = $id('txtPathInput');
+const btnSelectFolder = $id('btnSelectFolder');
+const modalShortcutCb = $id('modalShortcutCb');
+const btnModalContinue = $id('btnModalContinue');
+
 /* ── Electron API ─────────────────────────────── */
 const api        = (typeof window.electronAPI !== 'undefined') ? window.electronAPI : null;
 const isElectron = !!(api && api.isElectron);
@@ -458,6 +629,7 @@ const isElectron = !!(api && api.isElectron);
 /* ── State ────────────────────────────────────── */
 let updateAvailable = false;
 let isUpdating      = false;
+let installPath     = "C:\\Games\\Chiikawa Royale";
 
 /* ══════════════════════════════════════════════
    WINDOW CONTROLS (minimize / close)
@@ -477,15 +649,14 @@ bindWin('minLaunchBtn',  () => { if (isElectron) api.minimize(); });
 bindWin('closeLaunchBtn',() => { if (isElectron) api.close(); else window.close(); });
 
 /* ══════════════════════════════════════════════
-   LOADING BAR
+   LOADING BAR / INSTALL CHECK
 ══════════════════════════════════════════════ */
 function startLoader() {
-  const DURATION = 3000, INTERVAL = 40;
+  const DURATION = 2000, INTERVAL = 40;
   const steps = [
     { at: 0,  text: 'Checking local files...' },
-    { at: 25, text: 'Verifying game assets...' },
-    { at: 55, text: 'Connecting to servers...' },
-    { at: 80, text: 'Syncing player data...' },
+    { at: 35, text: 'Verifying game assets...' },
+    { at: 70, text: 'Connecting to servers...' },
     { at: 95, text: 'Ready!' },
   ];
   let elapsed = 0;
@@ -503,24 +674,112 @@ function startLoader() {
         progWrap.style.display  = 'none';
         instPlayBtn.style.display = 'block';
         shortcutRow.style.display = 'flex';
-      }, 350);
+      }, 300);
     }
   }, INTERVAL);
 }
 
-// Snappy skip-loading check if launched from shortcut
-const shouldSkip = isElectron && api.shouldSkipLoading && api.shouldSkipLoading();
-if (shouldSkip) {
-  installerScreen.classList.remove('visible');
-  launcherScreen.classList.add('visible');
-  loadNews('news');
-  checkForUpdates();
-} else {
-  startLoader();
+// Snappy skip-loading / install check on launch
+(function initAppFlow() {
+  // If not running in Electron (web preview), start loader
+  if (!isElectron) {
+    startLoader();
+    return;
+  }
+
+  // Check if game is installed
+  const installed = api.isInstalled && api.isInstalled();
+  
+  if (!installed) {
+    // Show custom Game Installer screen
+    progWrap.style.display = 'none';
+    instBottomDock.style.display = 'flex';
+    $id('instLabel').textContent = 'GAME INSTALLER';
+    
+    // Bind terms agreement checkbox to START INSTALL state
+    termsCb.addEventListener('change', () => {
+      btnStartInst.disabled = !termsCb.checked;
+    });
+    
+    // Bind buttons
+    btnCustomInst.addEventListener('click', () => {
+      customPathModal.classList.add('on');
+    });
+    
+    btnModalClose.addEventListener('click', () => {
+      customPathModal.classList.remove('on');
+    });
+    
+    btnModalContinue.addEventListener('click', () => {
+      customPathModal.classList.remove('on');
+    });
+    
+    btnSelectFolder.addEventListener('click', async () => {
+      if (api.selectFolder) {
+        const folder = await api.selectFolder();
+        if (folder) {
+          installPath = folder;
+          if (!installPath.endsWith("Chiikawa Royale") && !installPath.endsWith("Chiikawa_Royale")) {
+            // Append folder name for clean install
+            const pathSep = installPath.includes('/') ? '/' : '\\';
+            installPath += pathSep + "Chiikawa Royale";
+          }
+          txtPathInput.value = installPath;
+          lblInstallPath.textContent = `Installation location: ${installPath}`;
+        }
+      }
+    });
+    
+    btnStartInst.addEventListener('click', startInstallation);
+  } else {
+    // Check if launched from shortcut and skip loading screen
+    const shouldSkip = api.shouldSkipLoading && api.shouldSkipLoading();
+    if (shouldSkip) {
+      installerScreen.classList.remove('visible');
+      launcherScreen.classList.add('visible');
+      loadNews('news');
+      checkForUpdates();
+    } else {
+      startLoader();
+    }
+  }
+})();
+
+/* ══════════════════════════════════════════════
+   CUSTOM INSTALLER TRIGGER
+══════════════════════════════════════════════ */
+async function startInstallation() {
+  if (!termsCb.checked) return;
+  
+  // Disable UI and show progress
+  instBottomDock.style.display = 'none';
+  progWrap.style.display = 'block';
+  progFill.style.width = '0%';
+  progStatus.textContent = 'Initializing setup...';
+  $id('instLabel').textContent = 'INSTALLING GAME...';
+  
+  // Set progress callback
+  window.onInstallProgress = (data) => {
+    progFill.style.width = data.pct + '%';
+    progStatus.textContent = `${data.label} (${data.pct}%)`;
+  };
+  
+  try {
+    const createShortcut = modalShortcutCb.checked;
+    const res = await api.installGame(installPath, createShortcut);
+    if (!res.success) {
+      throw new Error(res.error || 'Unknown setup error.');
+    }
+  } catch (err) {
+    showAlert('INSTALLATION FAILED', err.message || 'Setup encountered a write error.');
+    progWrap.style.display = 'none';
+    instBottomDock.style.display = 'flex';
+    $id('instLabel').textContent = 'GAME INSTALLER';
+  }
 }
 
 /* ══════════════════════════════════════════════
-   INSTALLER → LAUNCHER TRANSITION
+   INSTALLER → LAUNCHER TRANSITION (Already Installed Flow)
 ══════════════════════════════════════════════ */
 instPlayBtn.addEventListener('click', async () => {
   // Create desktop shortcut if checkbox is checked

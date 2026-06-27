@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, net } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, net, dialog } = require('electron');
 const path   = require('path');
 const fs     = require('fs');
 const https  = require('https');
@@ -93,6 +93,106 @@ ipcMain.on('get-game-path', (event) => {
 // ── IPC: should skip loading (sync) ───────────────────────────────────────────
 ipcMain.on('should-skip-loading', (event) => {
   event.returnValue = process.argv.includes('--skip-loading');
+});
+
+// ── Installer helper functions ────────────────────────────────────────────────
+function isInstalled() {
+  if (!app.isPackaged) return true;
+  return fs.existsSync(path.join(path.dirname(process.execPath), '.installed'));
+}
+
+// ── IPC: is installed (sync) ──────────────────────────────────────────────────
+ipcMain.on('is-installed', (event) => {
+  event.returnValue = isInstalled();
+});
+
+// ── IPC: select folder dialog ─────────────────────────────────────────────────
+ipcMain.handle('select-folder', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory', 'createDirectory'],
+    title: 'Select Installation Location'
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
+
+// ── IPC: install game ─────────────────────────────────────────────────────────
+ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
+  const sendProgress = (pct, label) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('install-progress', { pct, label });
+    }
+  };
+
+  try {
+    sendProgress(10, 'Creating installation directory...');
+    if (!fs.existsSync(targetPath)) {
+      fs.mkdirSync(targetPath, { recursive: true });
+    }
+
+    const currentExe = process.execPath;
+    const destExe = path.join(targetPath, 'Chiikawa_Royale.exe');
+
+    sendProgress(30, 'Copying game executable...');
+    fs.copyFileSync(currentExe, destExe);
+
+    sendProgress(50, 'Copying game resources...');
+    const srcResources = process.resourcesPath;
+    const destResources = path.join(targetPath, 'resources');
+
+    // Copy resources folder recursively
+    function copyDirRecursive(src, dest) {
+      if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+      for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+        const s = path.join(src, entry.name);
+        const d = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+          copyDirRecursive(s, d);
+        } else {
+          fs.copyFileSync(s, d);
+        }
+      }
+    }
+    copyDirRecursive(srcResources, destResources);
+
+    sendProgress(80, 'Creating desktop shortcut...');
+    if (createShortcut) {
+      const desktop = app.getPath('desktop');
+      const shortcutPath = path.join(desktop, 'Chiikawa Royale.lnk');
+      const iconPath = path.join(destResources, 'game', 'gamelogo.ico');
+      
+      shell.writeShortcutLink(shortcutPath, 'create', {
+        target: destExe,
+        args: '--skip-loading',
+        workingDirectory: targetPath,
+        icon: iconPath,
+        iconIndex: 0,
+        description: 'Chiikawa Royale – Bomb Battle Royale Game',
+        appUserModelId: 'com.chiikawaroyale.launcher',
+      });
+    }
+
+    sendProgress(90, 'Finalizing installation...');
+    fs.writeFileSync(path.join(targetPath, '.installed'), JSON.stringify({
+      installedAt: new Date().toISOString(),
+      version: app.getVersion()
+    }), 'utf8');
+
+    sendProgress(100, 'Installation complete! Launching game...');
+
+    // Launch installed app
+    const { spawn } = require('child_process');
+    spawn(destExe, [], { detached: true, stdio: 'ignore' }).unref();
+
+    setTimeout(() => {
+      app.quit();
+    }, 1000);
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 // ── IPC: create desktop shortcut ─────────────────────────────────────────────

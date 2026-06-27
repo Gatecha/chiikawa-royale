@@ -10,6 +10,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut'),
   checkForUpdate:        () => ipcRenderer.invoke('check-for-update'),
   shouldSkipLoading:     () => ipcRenderer.sendSync('should-skip-loading'),
+  isInstalled:           () => ipcRenderer.sendSync('is-installed'),
+  selectFolder:          () => ipcRenderer.invoke('select-folder'),
+  installGame:           (targetPath, createShortcut) => {
+    ipcRenderer.on('install-progress', (_e, data) => {
+      if (window.onInstallProgress) window.onInstallProgress(data);
+    });
+    return ipcRenderer.invoke('install-game', targetPath, createShortcut);
+  },
   downloadUpdate: (onProgress) => {
     ipcRenderer.on('update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-update');
