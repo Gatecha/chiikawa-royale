@@ -966,6 +966,16 @@ function syncSquadLobbyVideo(kind) {
 }
 
 function confirmCharacterSelection() {
+  const mode = selectCardGrid ? selectCardGrid.dataset.mode : "characters";
+  if (mode === "bombs") {
+    const equippedBomb = previewBombColor || "default";
+    localStorage.setItem("equipped_bomb", equippedBomb);
+    syncBombWardrobe();
+    syncBombSelectPreview(equippedBomb);
+    showToastMsg(`Equipped ${equippedBomb.toUpperCase()} bomb skin!`);
+    return;
+  }
+
   selectedCharacter = previewCharacter;
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
@@ -1005,7 +1015,11 @@ wardrobeTabs.forEach((tab) => {
       selectCardGrid.dataset.mode = mode;
     }
     if (mode === "bombs") {
+      previewBombColor = localStorage.getItem("equipped_bomb") || "default";
       if (typeof syncBombWardrobe === "function") syncBombWardrobe();
+      if (typeof syncBombSelectPreview === "function") syncBombSelectPreview(previewBombColor);
+    } else if (mode === "characters") {
+      if (typeof syncCharacterSelectPreview === "function") syncCharacterSelectPreview(previewCharacter);
     }
   });
 });
@@ -12108,6 +12122,27 @@ const gachaPool = [
 ];
 
 let gachaDrawing = false;
+let previewBombColor = localStorage.getItem("equipped_bomb") || "default";
+
+function syncBombSelectPreview(color) {
+  const bombNameMap = {
+    default: "Default Bomb",
+    pink: "Pink Bomb",
+    blue: "Blue Bomb",
+    green: "Green Bomb",
+    gold: "Gold Bomb",
+    purple: "Purple Bomb",
+  };
+  
+  if (characterSelectName) {
+    characterSelectName.textContent = bombNameMap[color] || (color.toUpperCase() + " Bomb");
+  }
+  
+  if (characterSelectState) {
+    const equipped = localStorage.getItem("equipped_bomb") || "default";
+    characterSelectState.textContent = color === equipped ? "Selected" : "Select";
+  }
+}
 
 function syncBombWardrobe() {
   const ownedBombs = {
@@ -12118,8 +12153,6 @@ function syncBombWardrobe() {
     purple: localStorage.getItem("owned_bomb_purple") === "true",
   };
   
-  const equippedBomb = localStorage.getItem("equipped_bomb") || "default";
-  
   const bombCards = document.querySelectorAll(".bomb-card");
   bombCards.forEach((card) => {
     const color = card.getAttribute("data-bomb-color");
@@ -12129,7 +12162,7 @@ function syncBombWardrobe() {
       card.classList.add("locked");
     }
     
-    if (color === equippedBomb) {
+    if (color === previewBombColor) {
       card.classList.add("active");
     } else {
       card.classList.remove("active");
@@ -12364,11 +12397,15 @@ document.addEventListener("DOMContentLoaded", () => {
         showToastMsg("Unlock this bomb skin in the Gacha Shop first!");
         return;
       }
+      const bombColor = card.getAttribute("data-bomb-color");
+      previewBombColor = bombColor;
+      
+      // Update card active states
       bombCards.forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
-      const bombColor = card.getAttribute("data-bomb-color");
-      localStorage.setItem("equipped_bomb", bombColor);
-      showToastMsg(`Equipped ${bombColor.toUpperCase()} bomb skin!`);
+      
+      // Update nameplate preview
+      syncBombSelectPreview(previewBombColor);
     });
   });
   
