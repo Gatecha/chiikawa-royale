@@ -51,10 +51,11 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 10px 0 12px;
       flex-shrink: 0;
-      -webkit-app-region: drag; /* native drag for Electron */
+      -webkit-app-region: drag;
     }
     .titlebar-left {
       display: flex; align-items: center; gap: 8px;
+      -webkit-app-region: no-drag;
     }
     .titlebar-icon {
       width: 20px; height: 20px;
@@ -87,7 +88,7 @@
     .titlebar-btn.close:hover { background: #e03a3a; color: #fff; }
 
     /* ══════════════════════════════════════════════════
-       INSTALLER SCREEN
+       INSTALLER / LOADING SCREEN
     ══════════════════════════════════════════════════ */
     #installerScreen {
       background:
@@ -104,7 +105,6 @@
       position: relative;
     }
 
-    /* Character images spread */
     .installer-chars {
       display: flex; align-items: flex-end; justify-content: center;
       gap: 0; margin-bottom: -8px;
@@ -122,7 +122,6 @@
     .installer-chars img:nth-child(3) { transform: rotate(2deg) scale(1.08); z-index:1; }
     .installer-chars img:nth-child(4) { transform: rotate(6deg); }
 
-    /* Logo */
     .installer-logo {
       width: 200px;
       object-fit: contain;
@@ -144,7 +143,7 @@
       text-transform: uppercase;
     }
 
-    /* Install button */
+    /* PLAY / INSTALL button on loading screen */
     .btn-install {
       font-family: var(--font-chunky);
       font-size: 18px;
@@ -157,6 +156,7 @@
       box-shadow: 0 4px 24px rgba(255,79,115,0.4), 0 0 0 2px rgba(255,79,115,0.2);
       transition: transform 0.15s, box-shadow 0.15s;
       position: relative; overflow: hidden;
+      display: none;
     }
     .btn-install::after {
       content: '';
@@ -170,9 +170,9 @@
     }
     .btn-install:active { transform: translateY(0); }
 
-    /* Progress bar */
+    /* Progress bar (loading screen) */
     .progress-wrapper {
-      display: none;
+      display: flex;
       flex-direction: column;
       align-items: center;
       gap: 10px;
@@ -207,14 +207,13 @@
       font-size: 12px;
       color: rgba(255,255,255,0.5);
       letter-spacing: 0.05em;
+      text-align: center;
     }
 
     /* ══════════════════════════════════════════════════
        LAUNCHER SCREEN
     ══════════════════════════════════════════════════ */
-    #launcherScreen {
-      background: var(--dark);
-    }
+    #launcherScreen { background: var(--dark); }
 
     .launcher-body {
       flex: 1;
@@ -236,27 +235,6 @@
       padding: 16px 16px 12px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-    }
-    .launcher-logo-wrap {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .launcher-logo-wrap svg {
-      flex-shrink: 0;
-    }
-    .launcher-logo-text {
-      display: flex; flex-direction: column; line-height: 1;
-    }
-    .logo-main {
-      font-family: var(--font-chunky);
-      font-size: 16px; font-weight: 700;
-      color: #fff;
-      letter-spacing: 0.05em;
-    }
-    .logo-sub {
-      font-family: var(--font-chunky);
-      font-size: 11px;
-      color: var(--pink);
-      letter-spacing: 0.12em;
     }
 
     /* Tabs */
@@ -374,7 +352,6 @@
       object-fit: cover;
       display: block;
     }
-    /* Gradient overlay on bottom of banner */
     .banner-area::after {
       content: '';
       position: absolute; bottom: 0; left: 0; right: 0;
@@ -385,14 +362,19 @@
 
     /* Bottom bar */
     .launcher-bottom-bar {
-      height: 64px;
       background: var(--panel);
       border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 16px;
+      display: flex; flex-direction: column;
+      padding: 10px 16px 12px;
       flex-shrink: 0;
+      gap: 8px;
+    }
+
+    .launcher-bottom-row {
+      display: flex; align-items: center; justify-content: space-between;
       gap: 12px;
     }
+
     .launcher-bottom-left {
       display: flex; align-items: center; gap: 14px;
     }
@@ -409,6 +391,7 @@
       white-space: nowrap;
     }
     .btn-repair:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
     .version-info {
       display: flex; flex-direction: column; gap: 1px;
     }
@@ -416,8 +399,12 @@
       font-size: 10px;
       color: rgba(255,255,255,0.3);
     }
+    .version-info .has-update {
+      color: #ffd86f;
+      font-weight: 700;
+    }
 
-    /* PLAY button */
+    /* PLAY / UPDATE button */
     .btn-play {
       font-family: var(--font-chunky);
       font-size: 17px;
@@ -427,9 +414,10 @@
       border: none; border-radius: 10px;
       padding: 0 40px;
       height: 44px;
+      min-width: 140px;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(255,79,115,0.35);
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.3s;
       position: relative; overflow: hidden;
       white-space: nowrap;
     }
@@ -444,6 +432,49 @@
       box-shadow: 0 8px 28px rgba(255,79,115,0.5);
     }
     .btn-play:active { transform: translateY(0); }
+    .btn-play:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* UPDATE state — gold gradient */
+    .btn-play.update-mode {
+      background: linear-gradient(135deg, #f5a623 0%, #c8720a 100%);
+      box-shadow: 0 4px 20px rgba(245,166,35,0.4);
+    }
+    .btn-play.update-mode:hover {
+      box-shadow: 0 8px 28px rgba(245,166,35,0.6);
+    }
+
+    /* Update progress bar (bottom of launcher) */
+    .update-progress-wrapper {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      width: 100%;
+    }
+    .update-progress-wrapper.visible { display: flex; }
+
+    .update-progress-track {
+      width: 100%; height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 100px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .update-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f5a623, #ffd86f);
+      border-radius: 100px;
+      transition: width 0.3s ease;
+    }
+    .update-progress-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.45);
+      text-align: right;
+    }
 
     /* ── LAUNCH OVERLAY ──────────────────────────────── */
     .launch-overlay {
@@ -516,12 +547,28 @@
       transition: opacity 0.15s;
     }
     .alert-btn:hover { opacity: 0.85; }
+
+    /* ── UPDATE BADGE on play button ─────────────────── */
+    .update-badge {
+      display: none;
+      position: absolute;
+      top: -6px; right: -6px;
+      width: 14px; height: 14px;
+      background: #ffd86f;
+      border-radius: 50%;
+      border: 2px solid var(--panel);
+      animation: badgePulse 1.5s ease-in-out infinite;
+    }
+    @keyframes badgePulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.3); }
+    }
   </style>
 </head>
 <body>
 
   <!-- ════════════════════════════════════════
-       LOADING & START SCREEN
+       LOADING / INSTALL SCREEN
   ════════════════════════════════════════ -->
   <div id="installerScreen" class="screen visible">
     <div class="app-titlebar" id="installerTitlebar">
@@ -537,19 +584,21 @@
 
     <div class="installer-body">
       <div class="installer-chars">
-        <img src="assets/cards/chiikawa.png" alt="Chiikawa">
+        <img src="assets/cards/chiikawa.png"  alt="Chiikawa">
         <img src="assets/cards/hachiware.png" alt="Hachiware">
-        <img src="assets/cards/usagi.png" alt="Usagi">
-        <img src="assets/cards/momonga.png" alt="Momonga">
+        <img src="assets/cards/usagi.png"     alt="Usagi">
+        <img src="assets/cards/momonga.png"   alt="Momonga">
       </div>
 
       <img src="chiikawa-royale-logo.png" class="installer-logo" alt="Chiikawa Royale">
 
-      <div class="installer-stage-label">PC LOADING STAGE</div>
+      <div class="installer-stage-label" id="installerStageLabel">PC CLIENT — STARTING UP</div>
 
-      <button class="btn-install" id="installBtn" style="display: none; padding: 14px 80px;">PLAY</button>
+      <!-- Shown after loading bar completes -->
+      <button class="btn-install" id="installBtn">PLAY</button>
 
-      <div class="progress-wrapper" id="progressWrapper" style="display: flex;">
+      <!-- Loading progress bar -->
+      <div class="progress-wrapper" id="progressWrapper">
         <div class="progress-track">
           <div class="progress-fill" id="progressFill"></div>
         </div>
@@ -578,7 +627,8 @@
       <div class="launcher-left">
         <div class="launcher-header">
           <div class="launcher-logo-wrap">
-            <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale" style="width:100%; max-width:220px; object-fit:contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));">
+            <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale"
+              style="width:100%; max-width:220px; object-fit:contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));">
           </div>
         </div>
 
@@ -604,16 +654,29 @@
             <source src="assets/banners/magical chiikawa banner animation.mp4" type="video/mp4">
           </video>
         </div>
+
         <div class="launcher-bottom-bar">
-          <div class="launcher-bottom-left">
-            <button class="btn-repair" id="repairBtn">&#128296; Repair Files</button>
-            <div class="version-info">
-              <span>Current version: 1.1.13</span>
-              <span>Latest version: 1.1.13</span>
+          <!-- Update progress bar (hidden by default) -->
+          <div class="update-progress-wrapper" id="updateProgressWrapper">
+            <div class="update-progress-track">
+              <div class="update-progress-fill" id="updateProgressFill"></div>
             </div>
+            <div class="update-progress-label" id="updateProgressLabel">Checking for updates...</div>
           </div>
-          <div>
-            <button class="btn-play" id="playBtn">PLAY</button>
+
+          <!-- Bottom row: repair / version / play -->
+          <div class="launcher-bottom-row">
+            <div class="launcher-bottom-left">
+              <button class="btn-repair" id="repairBtn">&#128296; Repair Files</button>
+              <div class="version-info" id="versionInfo">
+                <span id="currentVersionLabel">Version: checking...</span>
+                <span id="latestVersionLabel">Latest: checking...</span>
+              </div>
+            </div>
+            <div style="position: relative;">
+              <button class="btn-play" id="playBtn">PLAY</button>
+              <div class="update-badge" id="updateBadge"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -623,66 +686,80 @@
   <!-- ── LAUNCH OVERLAY ────────────────────────────────── -->
   <div id="launchOverlay" class="launch-overlay">
     <div class="launch-spinner"></div>
-    <div class="launch-text">STARTING CHIIKAWA ROYALE...</div>
+    <div class="launch-text" id="launchText">STARTING CHIIKAWA ROYALE...</div>
   </div>
 
   <!-- ── CUSTOM ALERT ──────────────────────────────────── -->
   <div id="customAlert" class="alert-overlay hidden">
     <div class="alert-card">
       <div class="alert-title" id="customAlertTitle">ALERT</div>
-      <div class="alert-body" id="customAlertBody"></div>
+      <div class="alert-body"  id="customAlertBody"></div>
       <button class="alert-btn" id="customAlertCloseBtn">OK</button>
     </div>
   </div>
 
   <script>
-    const installerScreen = document.getElementById('installerScreen');
-    const launcherScreen  = document.getElementById('launcherScreen');
-    const launchOverlay   = document.getElementById('launchOverlay');
-    const installBtn      = document.getElementById('installBtn');
-    const progressWrapper = document.getElementById('progressWrapper');
-    const progressFill    = document.getElementById('progressFill');
-    const progressStatus  = document.getElementById('progressStatus');
+    /* ── Element references ───────────────────────────── */
+    const installerScreen  = document.getElementById('installerScreen');
+    const launcherScreen   = document.getElementById('launcherScreen');
+    const launchOverlay    = document.getElementById('launchOverlay');
+    const installBtn       = document.getElementById('installBtn');
+    const progressWrapper  = document.getElementById('progressWrapper');
+    const progressFill     = document.getElementById('progressFill');
+    const progressStatus   = document.getElementById('progressStatus');
+    const playBtn          = document.getElementById('playBtn');
+    const updateBadge      = document.getElementById('updateBadge');
+    const updatePW         = document.getElementById('updateProgressWrapper');
+    const updatePFill      = document.getElementById('updateProgressFill');
+    const updatePLabel     = document.getElementById('updateProgressLabel');
+    const currentVerLabel  = document.getElementById('currentVersionLabel');
+    const latestVerLabel   = document.getElementById('latestVersionLabel');
+    const stageLabel       = document.getElementById('installerStageLabel');
 
-    // ── Electron API detection ────────────────────────
-    const isElectron = typeof window.electronAPI !== 'undefined' && window.electronAPI.isElectron;
+    /* ── Electron API detection ───────────────────────── */
+    const api = (typeof window.electronAPI !== 'undefined') ? window.electronAPI : null;
+    const isElectron = !!(api && api.isElectron);
 
-    // Load news immediately
-    loadNewsList('news');
+    /* ── State ────────────────────────────────────────── */
+    let updateAvailable  = false;
+    let isUpdating       = false;
 
-    // ── Window controls ───────────────────────────────
-    document.getElementById('minimizeInstallerBtn').addEventListener('click', () => {
-      if (isElectron) window.electronAPI.minimize();
-    });
-    document.getElementById('closeInstallerBtn').addEventListener('click', () => {
-      if (isElectron) window.electronAPI.close();
-    });
-    document.getElementById('minimizeLauncherBtn').addEventListener('click', () => {
-      if (isElectron) window.electronAPI.minimize();
-    });
-    document.getElementById('closeLauncherBtn').addEventListener('click', () => {
-      if (isElectron) window.electronAPI.close();
-    });
+    /* ══════════════════════════════════════════════════
+       WINDOW CONTROLS  (X and minimise)
+    ══════════════════════════════════════════════════ */
+    function bindWinBtn(id, fn) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      // Use both click and mousedown so the frameless drag region never swallows the event
+      el.addEventListener('mousedown', (e) => { e.stopPropagation(); });
+      el.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+    }
 
-    // ── 3-second fake loading bar ──────────────────
+    bindWinBtn('minimizeInstallerBtn', () => { if (isElectron) api.minimize(); });
+    bindWinBtn('closeInstallerBtn',    () => { if (isElectron) api.close();    else window.close(); });
+    bindWinBtn('minimizeLauncherBtn',  () => { if (isElectron) api.minimize(); });
+    bindWinBtn('closeLauncherBtn',     () => { if (isElectron) api.close();    else window.close(); });
+
+    /* ══════════════════════════════════════════════════
+       LOADING BAR (3-second fake loader on startup)
+    ══════════════════════════════════════════════════ */
     (function startLoader() {
-      const DURATION   = 3000; // 3 seconds total
-      const INTERVAL   = 40;   // update every 40ms
+      const DURATION = 3000;
+      const INTERVAL = 40;
       const steps = [
-        { at: 0,   text: 'Checking local files...' },
-        { at: 25,  text: 'Verifying game assets...' },
-        { at: 55,  text: 'Connecting to servers...' },
-        { at: 80,  text: 'Syncing player data...' },
-        { at: 95,  text: 'Ready to play!' },
+        { at: 0,  text: 'Checking local files...' },
+        { at: 25, text: 'Verifying game assets...' },
+        { at: 55, text: 'Connecting to servers...' },
+        { at: 80, text: 'Syncing player data...' },
+        { at: 95, text: 'Ready to play!' },
       ];
 
       let elapsed = 0;
-      const ticker = setInterval(function() {
+      const ticker = setInterval(function () {
         elapsed += INTERVAL;
         const pct = Math.min(100, Math.round((elapsed / DURATION) * 100));
         progressFill.style.width = pct + '%';
 
-        // Pick status text
         let label = 'Loading game components...';
         for (let i = steps.length - 1; i >= 0; i--) {
           if (pct >= steps[i].at) { label = steps[i].text; break; }
@@ -692,15 +769,17 @@
         if (pct >= 100) {
           clearInterval(ticker);
           progressStatus.textContent = 'Verification complete!';
-          setTimeout(function() {
+          setTimeout(function () {
             progressWrapper.style.display = 'none';
-            installBtn.style.display      = 'block';
+            installBtn.style.display = 'block';
           }, 400);
         }
       }, INTERVAL);
     })();
 
-    // ── Transition to launcher ────────────────────────
+    /* ══════════════════════════════════════════════════
+       TRANSITION: Loading screen → Launcher
+    ══════════════════════════════════════════════════ */
     installBtn.addEventListener('click', () => {
       showLauncher();
     });
@@ -710,25 +789,131 @@
       setTimeout(() => {
         launcherScreen.classList.add('visible');
         loadNewsList('news');
+        checkForUpdates(); // kick off update check once launcher is visible
       }, 400);
     }
 
-    // ── News data ─────────────────────────────────────
+    /* ══════════════════════════════════════════════════
+       UPDATE CHECK
+    ══════════════════════════════════════════════════ */
+    async function checkForUpdates() {
+      currentVerLabel.textContent = 'Version: checking...';
+      latestVerLabel.textContent  = 'Latest:  checking...';
+
+      if (!isElectron || !api.checkForUpdate) {
+        currentVerLabel.textContent = 'Version: (web mode)';
+        latestVerLabel.textContent  = 'Latest:  N/A';
+        return;
+      }
+
+      try {
+        const result = await api.checkForUpdate();
+        const cur = result.currentVersion || 'unknown';
+        const sha = result.currentCommit ? result.currentCommit.substring(0, 7) : '?';
+        currentVerLabel.textContent = `Version: ${cur} (${sha})`;
+
+        if (result.error) {
+          latestVerLabel.textContent = 'Latest: (offline)';
+          return;
+        }
+
+        const latestSha = result.latestCommit ? result.latestCommit.substring(0, 7) : '?';
+
+        if (result.hasUpdate) {
+          updateAvailable = true;
+          latestVerLabel.textContent = `Latest: ${latestSha} ⬆ UPDATE AVAILABLE`;
+          latestVerLabel.classList.add('has-update');
+          // Switch Play button to UPDATE mode
+          playBtn.textContent = 'UPDATE';
+          playBtn.classList.add('update-mode');
+          updateBadge.style.display = 'block';
+        } else {
+          latestVerLabel.textContent = `Latest: ${latestSha} ✓ Up to date`;
+        }
+      } catch (err) {
+        latestVerLabel.textContent = 'Latest: (check failed)';
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       PLAY / UPDATE BUTTON
+    ══════════════════════════════════════════════════ */
+    playBtn.addEventListener('click', async () => {
+      if (isUpdating) return;
+
+      if (updateAvailable) {
+        // ── UPDATE MODE ─────────────────────────────
+        isUpdating = true;
+        playBtn.disabled = true;
+        updateBadge.style.display = 'none';
+        updatePW.classList.add('visible');
+        updatePFill.style.width = '0%';
+        updatePLabel.textContent = 'Starting update...';
+
+        if (isElectron && api.downloadUpdate) {
+          const result = await api.downloadUpdate((progress) => {
+            updatePFill.style.width = progress.pct + '%';
+            updatePLabel.textContent = progress.label || '';
+            if (progress.stage === 'done') {
+              playBtn.textContent = 'RESTARTING...';
+            } else if (progress.stage === 'error') {
+              isUpdating = false;
+              playBtn.disabled = false;
+              updatePW.classList.remove('visible');
+              showAlert('UPDATE FAILED', progress.label || 'Something went wrong. Please try again.');
+              // Reset state
+              playBtn.textContent = 'UPDATE';
+              updateAvailable = true;
+            }
+          });
+
+          if (!result.success) {
+            isUpdating = false;
+            playBtn.disabled = false;
+            updatePW.classList.remove('visible');
+            showAlert('UPDATE FAILED', result.error || 'Download failed. Check your internet connection.');
+            playBtn.textContent = 'UPDATE';
+          }
+        } else {
+          // Fallback: open GitHub in browser
+          updatePW.classList.remove('visible');
+          isUpdating = false;
+          playBtn.disabled = false;
+          window.open('https://github.com/Gatecha/chiikawa-royale', '_blank');
+        }
+
+      } else {
+        // ── PLAY MODE ───────────────────────────────
+        launchOverlay.classList.add('active');
+        document.getElementById('launchText').textContent = 'STARTING CHIIKAWA ROYALE...';
+
+        if (isElectron && api.startGame) {
+          api.startGame(); // main.js will call loadFile(index.html) and go fullscreen
+        } else {
+          // Browser / dev fallback
+          setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+        }
+      }
+    });
+
+    /* ══════════════════════════════════════════════════
+       NEWS DATA & TABS
+    ══════════════════════════════════════════════════ */
     const newsData = {
       news: [
-        { title: 'Battle Royale Update', date: '06/27', tag: 'update' },
-        { title: 'New Magical Chiikawa Limited Draw Event Live',        date: '06/25', tag: 'event'  },
-        { title: 'Alpha server stability survey details',               date: '06/23', tag: 'notice' },
+        { title: 'Battle Royale Update — Fullscreen Countdown & Logo Fix', date: '06/27', tag: 'update' },
+        { title: 'New Magical Chiikawa Limited Draw Event Live',           date: '06/25', tag: 'event'  },
+        { title: 'Alpha server stability survey details',                  date: '06/23', tag: 'notice' },
       ],
       notices: [
-        { title: 'System Maintenance & Optimization Schedule',          date: '06/26', tag: 'notice' },
-        { title: 'Third-party cheat tools warning and bans',            date: '06/15', tag: 'notice' },
-        { title: 'Community guidelines alignment updates',              date: '04/10', tag: 'notice' },
+        { title: 'System Maintenance & Optimization Schedule',            date: '06/26', tag: 'notice' },
+        { title: 'Third-party cheat tools warning and bans',              date: '06/15', tag: 'notice' },
+        { title: 'Community guidelines alignment updates',                date: '04/10', tag: 'notice' },
       ],
       events: [
-        { title: 'Discord Alpha Test — Get Exclusive Bomb Skin!',       date: '06/25', tag: 'event' },
-        { title: 'Weekly Gacha Spins Leaderboard Event',                date: '06/18', tag: 'event' },
-        { title: 'Double XP & Coin Drops Weekend',                      date: '05/12', tag: 'event' },
+        { title: 'Discord Alpha Test — Get Exclusive Bomb Skin!',         date: '06/25', tag: 'event' },
+        { title: 'Weekly Gacha Spins Leaderboard Event',                  date: '06/18', tag: 'event' },
+        { title: 'Double XP & Coin Drops Weekend',                        date: '05/12', tag: 'event' },
       ],
     };
 
@@ -741,15 +926,15 @@
         div.innerHTML =
           '<span class="news-tag ' + item.tag + '">' + item.tag + '</span>' +
           '<span class="news-title">' + item.title + '</span>' +
-          '<span class="news-date">' + item.date + '</span>';
-        div.addEventListener('click', () => showAlert(item.title,
+          '<span class="news-date">'  + item.date  + '</span>';
+        div.addEventListener('click', () => showAlert(
+          item.title,
           'Category: ' + item.tag.toUpperCase() + '<br>Date: ' + item.date + '/2026<br><br>' +
           'Check our Discord for the latest details on this update.'));
         list.appendChild(div);
       });
     }
 
-    // ── Tab switching ─────────────────────────────────
     document.querySelectorAll('.launcher-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.launcher-tab-btn').forEach(b => b.classList.remove('active'));
@@ -758,31 +943,28 @@
       });
     });
 
-    // ── Play button ───────────────────────────────────
-    document.getElementById('playBtn').addEventListener('click', () => {
-      launchOverlay.classList.add('active');
-      if (isElectron && window.electronAPI.startGame) {
-        window.electronAPI.startGame();
-      }
-      setTimeout(() => { window.location.href = 'index.html'; }, 2000);
-    });
-
-    // ── Repair button ─────────────────────────────────
+    /* ══════════════════════════════════════════════════
+       REPAIR BUTTON
+    ══════════════════════════════════════════════════ */
     document.getElementById('repairBtn').addEventListener('click', () => {
       showAlert('FILE REPAIR', 'All game assets verified and fully optimized (100%). No issues found.');
     });
 
-    // ── Custom alert ──────────────────────────────────
+    /* ══════════════════════════════════════════════════
+       CUSTOM ALERT
+    ══════════════════════════════════════════════════ */
     function showAlert(title, message) {
       document.getElementById('customAlertTitle').textContent = title;
-      document.getElementById('customAlertBody').innerHTML = message;
+      document.getElementById('customAlertBody').innerHTML   = message;
       document.getElementById('customAlert').classList.remove('hidden');
     }
     document.getElementById('customAlertCloseBtn').addEventListener('click', () => {
       document.getElementById('customAlert').classList.add('hidden');
     });
 
-    // ── Social links ──────────────────────────────────
+    /* ══════════════════════════════════════════════════
+       SOCIAL LINKS
+    ══════════════════════════════════════════════════ */
     function openSocial(platform) {
       if (platform === 'discord') {
         window.open('https://discord.gg/qpJRXkKzZ3', '_blank');
