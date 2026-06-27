@@ -520,13 +520,13 @@
 <body>
 
   <!-- ════════════════════════════════════════
-       INSTALLER SCREEN (Bypassed — now in Setup)
+       LOADING & START SCREEN
   ════════════════════════════════════════ -->
-  <div id="installerScreen" class="screen">
+  <div id="installerScreen" class="screen visible">
     <div class="app-titlebar" id="installerTitlebar">
       <div class="titlebar-left">
         <img src="chiikawa-royale-logo.png" class="titlebar-icon" alt="">
-        <span class="titlebar-title">CHIIKAWA ROYALE — PC INSTALLER</span>
+        <span class="titlebar-title">CHIIKAWA ROYALE — PC CLIENT</span>
       </div>
       <div class="titlebar-controls">
         <button class="titlebar-btn" id="minimizeInstallerBtn">&#8722;</button>
@@ -544,15 +544,15 @@
 
       <img src="chiikawa-royale-logo.png" class="installer-logo" alt="Chiikawa Royale">
 
-      <div class="installer-stage-label">PC INSTALLATION STAGE</div>
+      <div class="installer-stage-label">PC LOADING STAGE</div>
 
-      <button class="btn-install" id="installBtn">INSTALL</button>
+      <button class="btn-install" id="installBtn" style="display: none; padding: 14px 80px;">PLAY</button>
 
-      <div class="progress-wrapper" id="progressWrapper">
+      <div class="progress-wrapper" id="progressWrapper" style="display: flex;">
         <div class="progress-track">
           <div class="progress-fill" id="progressFill"></div>
         </div>
-        <div class="progress-status" id="progressStatus">Preparing installation...</div>
+        <div class="progress-status" id="progressStatus">Loading game components...</div>
       </div>
     </div>
   </div>
@@ -560,7 +560,7 @@
   <!-- ════════════════════════════════════════
        LAUNCHER SCREEN
   ════════════════════════════════════════ -->
-  <div id="launcherScreen" class="screen visible">
+  <div id="launcherScreen" class="screen">
     <div class="app-titlebar" id="launcherTitlebar">
       <div class="titlebar-left">
         <img src="chiikawa-royale-logo.png" class="titlebar-icon" alt="">
@@ -646,7 +646,7 @@
     // ── Electron API detection ────────────────────────
     const isElectron = typeof window.electronAPI !== 'undefined' && window.electronAPI.isElectron;
 
-    // Load news immediately since launcher is active by default
+    // Load news immediately
     loadNewsList('news');
 
     // ── Window controls ───────────────────────────────
@@ -663,34 +663,39 @@
       if (isElectron) window.electronAPI.close();
     });
 
-    // ── Installer logic ───────────────────────────────
-    installBtn.addEventListener('click', () => {
-      installBtn.style.display = 'none';
-      progressWrapper.style.display = 'flex';
-
+    // ── Auto Loader logic on startup ──────────────────
+    window.addEventListener('DOMContentLoaded', () => {
       let progress = 0;
       const steps = [
-        { limit: 20,  text: 'Extracting game files...' },
-        { limit: 45,  text: 'Optimizing texture maps...' },
-        { limit: 70,  text: 'Configuring local environment...' },
-        { limit: 90,  text: 'Creating shortcuts...' },
-        { limit: 100, text: 'Completing installation...' },
+        { limit: 20,  text: 'Checking local files...' },
+        { limit: 45,  text: 'Verifying game assets...' },
+        { limit: 70,  text: 'Connecting to servers...' },
+        { limit: 90,  text: 'Syncing player data...' },
+        { limit: 100, text: 'Ready to play!' },
       ];
 
       const ticker = setInterval(() => {
-        progress += Math.floor(Math.random() * 5) + 1;
+        progress += Math.floor(Math.random() * 6) + 1;
         if (progress >= 100) {
           progress = 100;
           clearInterval(ticker);
           progressFill.style.width = '100%';
-          progressStatus.textContent = 'Installation complete!';
-          setTimeout(showLauncher, 900);
+          progressStatus.textContent = 'Verification complete!';
+          setTimeout(() => {
+            progressWrapper.style.display = 'none';
+            installBtn.style.display = 'block';
+          }, 500);
         } else {
           progressFill.style.width = progress + '%';
           const step = steps.find(s => progress < s.limit);
           progressStatus.textContent = (step ? step.text : 'Finishing...') + ' (' + progress + '%)';
         }
-      }, 120);
+      }, 70);
+    });
+
+    // ── Transition to launcher ────────────────────────
+    installBtn.addEventListener('click', () => {
+      showLauncher();
     });
 
     function showLauncher() {
