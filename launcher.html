@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -461,13 +461,10 @@
     }
 
     .launcher-logo-section img {
-      height: 38px;
-      filter: drop-shadow(2px 2px 0px #000000);
-    }
-
     .launcher-logo-section h1 {
-      font-family: var(--font-chunky);
-      font-size: 20px;
+      font-family: var(--font-clean);
+      font-size: 18px;
+      font-weight: 900;
       color: #ffffff;
       text-shadow: 2px 2px 0px #000000;
       line-height: 1;
@@ -596,9 +593,15 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: url('assets/banners/launcher_banner.png') no-repeat center center;
-      background-size: cover;
       z-index: 1;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .launcher-banner-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     /* Subtle overlay gradient to read text/UI elements */
@@ -903,8 +906,8 @@
           Chiikawa Royale - PC Installer
         </div>
         <div class="win-controls">
-          <button class="win-btn win-minimize">－</button>
-          <button class="win-btn win-close" id="closeInstallerBtn">✕</button>
+          <button class="win-btn win-minimize">ï¼</button>
+          <button class="win-btn win-close" id="closeInstallerBtn">âœ•</button>
         </div>
       </header>
       <div class="installer-body">
@@ -940,16 +943,30 @@
           Chiikawa Royale - Game Launcher
         </div>
         <div class="win-controls">
-          <button class="win-btn win-minimize" id="minimizeLauncherBtn">－</button>
-          <button class="win-btn win-close" id="closeLauncherBtn">✕</button>
+          <button class="win-btn win-minimize" id="minimizeLauncherBtn">ï¼</button>
+          <button class="win-btn win-close" id="closeLauncherBtn">âœ•</button>
         </div>
       </header>
       <div class="launcher-body">
         <!-- Left panel lists updates -->
         <div class="launcher-left-panel">
-          <div class="launcher-logo-section">
-            <img src="chiikawa-royale-logo.png" alt="Logo">
-            <h1>CHIIKAWA<br><span style="color: var(--color-primary); font-size: 14px;">ROYALE</span></h1>
+          <div class="launcher-logo-section" style="padding: 20px 24px; border-bottom: 2.5px solid #000000; display: flex; align-items: center; gap: 12px; background: #111215;">
+            <!-- Outlined cat head logo -->
+            <svg viewBox="0 0 120 120" style="width: 42px; height: 42px; filter: drop-shadow(2px 2px 0px #000000); flex-shrink: 0;" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M60 20C38 20 22 36 22 58C22 80 38 96 60 96C82 96 98 80 98 58C98 36 82 20 60 20Z" stroke="white" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M32 25C26 12 18 18 25 32" stroke="white" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M88 25C94 12 102 18 95 32" stroke="white" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="48" cy="54" r="5" fill="white"/>
+              <circle cx="72" cy="54" r="5" fill="white"/>
+              <circle cx="36" cy="62" r="3" fill="white" opacity="0.75"/>
+              <circle cx="84" cy="62" r="3" fill="white" opacity="0.75"/>
+              <path d="M56 62C58 64 60 65 62 62" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M62 62C64 65 66 64 68 62" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-family: var(--font-chunky); font-size: 19px; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1; text-shadow: 2px 2px 0px #000000;">CHIIKAWA</span>
+              <span style="font-family: var(--font-chunky); font-size: 13px; color: var(--color-primary); text-transform: uppercase; letter-spacing: 1px; line-height: 1.1; text-shadow: 1.5px 1.5px 0px #000000;">ROYALE</span>
+            </div>
           </div>
           
           <div class="launcher-tabs">
@@ -965,7 +982,9 @@
 
         <!-- Main panel: Banner key art and Controls -->
         <div class="launcher-main-panel">
-          <div class="launcher-banner-bg"></div>
+          <div class="launcher-banner-bg">
+            <video class="launcher-banner-video" src="assets/chiikawa-banner-animation.mp4" loop muted autoplay playsinline></video>
+          </div>
           <div class="launcher-banner-overlay"></div>
           
           <!-- Social floats -->
@@ -984,11 +1003,8 @@
           <!-- Bottom Control Bar -->
           <div class="launcher-bottom-bar">
             <div class="launcher-bottom-left">
-              <button class="launcher-btn-utility" id="topupBtn">
-                💳 Top-up Center
-              </button>
               <button class="launcher-btn-utility" id="repairBtn">
-                🛠️ Repair Files
+                ðŸ› ï¸ Repair Files
               </button>
               <div class="launcher-version-info">
                 <span>Current version: 1.1.13</span>
@@ -1013,7 +1029,7 @@
         </button>
         <div style="width: 140px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 6px; border: 1.5px solid rgba(255,255,255,0.1); display: flex; align-items: center; padding-left: 8px; font-size: 10px; color: rgba(255,255,255,0.6);">Search...</div>
       </div>
-      
+
       <div class="taskbar-center">
         <button class="taskbar-btn" id="taskbarRoblox"><svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><rect x="5" y="5" width="14" height="14" rx="2" transform="rotate(15 12 12)"></rect><rect x="10" y="10" width="4" height="4" rx="0.5" fill="#111" stroke="none" transform="rotate(15 12 12)"></rect></svg></button>
         <button class="taskbar-btn" id="taskbarChrome"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="8"></line></svg></button>
@@ -1056,9 +1072,8 @@
       let hours = now.getHours();
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
+      hours = hours ? hours : 12;
       const minutes = now.getMinutes().toString().padStart(2, '0');
-      
       const timeStr = `${hours}:${minutes} ${ampm}`;
       const dateStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
       clockEl.innerHTML = `${timeStr}<br>${dateStr}`;
@@ -1073,10 +1088,8 @@
 
       function dragMouseDown(e) {
         e = e || window.event;
-        // Skip drag if clicking control buttons
         if (e.target.closest('.win-controls') || e.target.closest('.win-btn')) return;
         e.preventDefault();
-        // Get start mouse positions
         pos3 = e.clientX;
         pos4 = e.clientY;
         document.onmouseup = closeDragElement;
@@ -1086,26 +1099,19 @@
       function elementDrag(e) {
         e = e || window.event;
         e.preventDefault();
-        // Calculate offset
         pos1 = pos3 - e.clientX;
         pos2 = pos4 - e.clientY;
         pos3 = e.clientX;
         pos4 = e.clientY;
-        
         let newTop = winEl.offsetTop - pos2;
         let newLeft = winEl.offsetLeft - pos1;
-        
-        // Boundaries checks
         const taskbarHeight = 48;
         if (newTop < 0) newTop = 0;
-        if (newTop > window.innerHeight - winEl.offsetHeight - taskbarHeight) {
+        if (newTop > window.innerHeight - winEl.offsetHeight - taskbarHeight)
           newTop = window.innerHeight - winEl.offsetHeight - taskbarHeight;
-        }
         if (newLeft < 0) newLeft = 0;
-        if (newLeft > window.innerWidth - winEl.offsetWidth) {
+        if (newLeft > window.innerWidth - winEl.offsetWidth)
           newLeft = window.innerWidth - winEl.offsetWidth;
-        }
-
         winEl.style.top = newTop + "px";
         winEl.style.left = newLeft + "px";
       }
@@ -1127,9 +1133,9 @@
     // Dynamic news feed data
     const newsData = {
       news: [
-        { title: "NTE x Porsche Collaboration Event Details", date: "06/03", tag: "event" },
-        { title: "Strinova-style Alpha Build Update Patch Notes v1.1.13", date: "06/27", tag: "update" },
-        { title: "Beta Test Round result details and survey", date: "05/28", tag: "notice" }
+        { title: "Strinova-style 20-Player Battle Royale Mode Added!", date: "06/27", tag: "update" },
+        { title: "New Magical Chiikawa Limited Draw Event Live", date: "06/25", tag: "event" },
+        { title: "Alpha progression server stability survey details", date: "06/23", tag: "notice" }
       ],
       notices: [
         { title: "System Maintenance & Optimization Schedule", date: "06/26", tag: "notice" },
@@ -1147,7 +1153,6 @@
       const list = document.getElementById("launcherNewsList");
       if (!list) return;
       list.innerHTML = "";
-      
       const items = newsData[category] || [];
       items.forEach(item => {
         const div = document.createElement("div");
@@ -1166,7 +1171,7 @@
       });
     }
 
-    // Tab buttons event listeners
+    // Tab buttons
     const tabButtons = document.querySelectorAll(".launcher-tab-btn");
     tabButtons.forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1176,14 +1181,14 @@
       });
     });
 
-    // Custom alerts logic
+    // Custom alerts
     function showCustomAlert(title, message) {
       const alertOverlay = document.getElementById("customAlert");
       document.getElementById("customAlertTitle").innerHTML = title;
       document.getElementById("customAlertBody").innerHTML = message;
       alertOverlay.classList.remove("hidden");
     }
-    
+
     document.getElementById("customAlertCloseBtn").addEventListener("click", () => {
       document.getElementById("customAlert").classList.add("hidden");
     });
@@ -1198,7 +1203,6 @@
     installBtn.addEventListener("click", () => {
       installBtn.style.display = "none";
       progressWrapper.style.display = "flex";
-      
       let progress = 0;
       const statusSteps = [
         { limit: 20, text: "Extracting game files..." },
@@ -1207,30 +1211,20 @@
         { limit: 90, text: "Creating desktop shortcuts..." },
         { limit: 100, text: "Completing installation stage..." }
       ];
-
       const interval = setInterval(() => {
         progress += Math.floor(Math.random() * 6) + 1;
         if (progress >= 100) {
           progress = 100;
           clearInterval(interval);
-          
           progressFill.style.width = "100%";
           progressStatus.textContent = "Installation Finished!";
-          
-          // Smooth transition to Launcher Window
           setTimeout(() => {
             installerWin.classList.remove("visible");
-            
-            // Show shortcut on taskbar
             taskbarAppLauncher.classList.remove("hidden");
-            
-            // Launch Launcher
             launcherWin.classList.add("visible");
           }, 800);
         } else {
           progressFill.style.width = progress + "%";
-          
-          // Match status text
           const currentStep = statusSteps.find(step => progress < step.limit);
           const stepText = currentStep ? currentStep.text : "Finishing install...";
           progressStatus.textContent = `${stepText} (${progress}%)`;
@@ -1238,23 +1232,23 @@
       }, 150);
     });
 
-    // Short-cuts clicking logic
+    // Shortcut double-click logic
     document.getElementById("shortcutLauncher").addEventListener("dblclick", () => {
-      if (localStorage.getItem("pc_game_installed") === "true" || !installerWin.classList.contains("visible")) {
+      if (!installerWin.classList.contains("visible")) {
         launcherWin.classList.add("visible");
         taskbarAppLauncher.classList.remove("hidden");
       } else {
         installerWin.classList.add("visible");
       }
     });
-    
-    // Mobile double click support (fallback)
+
+    // Mobile double tap fallback
     let lastTap = 0;
     document.getElementById("shortcutLauncher").addEventListener("click", (e) => {
       const currentTime = new Date().getTime();
       const tapLength = currentTime - lastTap;
       if (tapLength < 300 && tapLength > 0) {
-        if (localStorage.getItem("pc_game_installed") === "true" || !installerWin.classList.contains("visible")) {
+        if (!installerWin.classList.contains("visible")) {
           launcherWin.classList.add("visible");
           taskbarAppLauncher.classList.remove("hidden");
         } else {
@@ -1264,7 +1258,7 @@
       lastTap = currentTime;
     });
 
-    // Window controls listeners
+    // Window controls
     document.getElementById("closeInstallerBtn").addEventListener("click", () => {
       installerWin.classList.remove("visible");
     });
@@ -1277,37 +1271,28 @@
     document.getElementById("minimizeLauncherBtn").addEventListener("click", () => {
       launcherWin.classList.remove("visible");
     });
-    
+
     taskbarAppLauncher.addEventListener("click", () => {
       launcherWin.classList.toggle("visible");
-    });
-
-    // Bottom utilities listeners
-    document.getElementById("topupBtn").addEventListener("click", () => {
-      showCustomAlert("TOP-UP CENTER", "The Top-up platform is currently locked for alpha testing. Premium points will be provided for free inside your Daily Mail system!");
     });
 
     document.getElementById("repairBtn").addEventListener("click", () => {
       showCustomAlert("FILE REPAIR SYSTEM", "Repairing game assets and verifying server connectivity. All files are fully optimized (100% correct).");
     });
 
-    // Launch Game Play button
     const playBtn = document.getElementById("playBtn");
     const launchOverlay = document.getElementById("launchOverlay");
-    
+
     playBtn.addEventListener("click", () => {
       launchOverlay.classList.add("active");
-      
       setTimeout(() => {
-        // Redirect to the web game
         window.location.href = "index.html";
       }, 2000);
     });
 
     // Load initial news feed
     loadNewsList("news");
-    
-    // Dummy social link handler
+
     function openSocial(platform) {
       if (platform === "discord") {
         window.open("https://discord.gg/qpJRXkKzZ3", "_blank");
