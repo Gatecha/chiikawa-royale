@@ -1004,6 +1004,9 @@ wardrobeTabs.forEach((tab) => {
     if (selectCardGrid) {
       selectCardGrid.dataset.mode = mode;
     }
+    if (mode === "bombs") {
+      if (typeof syncBombWardrobe === "function") syncBombWardrobe();
+    }
   });
 });
 
@@ -1594,6 +1597,9 @@ function handleServerMessage(msg) {
       break;
 
     case "bomb_placed":
+      const placedColor = (data.bomb.ownerId === localPlayerId)
+        ? (localStorage.getItem("equipped_bomb") || "default")
+        : (data.bomb.color || "default");
       bombs.push({
         id: data.bomb.id,
         x: data.bomb.x,
@@ -1603,15 +1609,19 @@ function handleServerMessage(msg) {
         timer: data.bomb.timer,
         pulse: 0,
         passableFor: new Set(players.map((p) => p.id)),
+        color: placedColor,
       });
       break;
 
     case "bomb_exploded":
+      const explBomb = bombs.find((b) => b.id === data.bombId);
+      const explColor = explBomb ? explBomb.color : "default";
       bombs = bombs.filter((b) => b.id !== data.bombId);
       blasts.push({
         cells: data.cells,
         timer: 0.48,
         age: 0,
+        color: explColor,
       });
 
       data.destroyedCrates.forEach((crate) => {
@@ -2848,6 +2858,9 @@ function localPlaceBomb(player) {
   const tileHasBomb = bombs.some((b) => b.x === tile.x && b.y === tile.y);
   if (activeBombsCount >= player.bombs || tileHasBomb) return;
 
+  // Read equipped bomb skin (only local player gets customization, bots default)
+  const color = (player.id === localPlayerId) ? (localStorage.getItem("equipped_bomb") || "default") : "default";
+
   bombs.push({
     id: `local_bomb_${++localBombId}`,
     x: tile.x,
@@ -2857,6 +2870,7 @@ function localPlaceBomb(player) {
     timer: 2.25,
     pulse: 0,
     passableFor: new Set([player.id]),
+    color: color
   });
   player.cooldown = 0.05;
 }
@@ -2904,7 +2918,7 @@ function localTriggerExplosion(bomb) {
     }
   });
 
-  blasts.push({ cells, timer: 0.48, age: 0 });
+  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.color });
   // In BR mode only shake for MY own bomb; in classic mode always shake
   if (!isBattleRoyale(currentRoomMode) || bomb.ownerId === localPlayerId) {
     shakeTimer = 0.35;
@@ -3172,6 +3186,9 @@ async function loadProgression() {
 }
 
 async function saveProgression() {
+  if (typeof updateShopWalletDisplay === "function") {
+    updateShopWalletDisplay();
+  }
   // If Supabase is not active, fallback to localStorage
   if (!supabaseClient) {
     localStorage.setItem(
@@ -5192,14 +5209,35 @@ function drawBomb(bomb) {
   ctx.save();
   ctx.translate(c.x, c.y);
   ctx.scale(scale, scale);
-  ctx.fillStyle = "#25212a";
+  
+  // Custom bomb skin colors
+  let bombColor = "#25212a";
+  let fuseColor = "#f9d86a";
+  if (bomb.color === "pink") {
+    bombColor = "#ff2f73";
+    fuseColor = "#ffd86f";
+  } else if (bomb.color === "blue") {
+    bombColor = "#18baff";
+    fuseColor = "#ffffff";
+  } else if (bomb.color === "green") {
+    bombColor = "#39d98a";
+    fuseColor = "#ffffff";
+  } else if (bomb.color === "gold") {
+    bombColor = "#ffd86f";
+    fuseColor = "#ffffff";
+  } else if (bomb.color === "purple") {
+    bombColor = "#b94cff";
+    fuseColor = "#ffd86f";
+  }
+
+  ctx.fillStyle = bombColor;
   ctx.strokeStyle = "#111";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(0, 3, 16, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = "#f9d86a";
+  ctx.strokeStyle = fuseColor;
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(8, -12);
@@ -5214,13 +5252,34 @@ function drawBomb(bomb) {
 
 function drawBlast(blast) {
   const alpha = Math.max(0, blast.timer / 0.48);
+  
+  // Custom blast skin colors
+  let innerColor = "#fff06d";
+  let outerColor = "#ff6f4f";
+  if (blast.color === "pink") {
+    outerColor = "#ff2f73";
+    innerColor = "#ff9ebb";
+  } else if (blast.color === "blue") {
+    outerColor = "#1852e0";
+    innerColor = "#18baff";
+  } else if (blast.color === "green") {
+    outerColor = "#1b854f";
+    innerColor = "#39d98a";
+  } else if (blast.color === "gold") {
+    outerColor = "#d35400";
+    innerColor = "#ffd86f";
+  } else if (blast.color === "purple") {
+    outerColor = "#5e1b85";
+    innerColor = "#b94cff";
+  }
+
   blast.cells.forEach((cell) => {
     if (!isTileVisible(cell.x, cell.y)) return;
     const c = centerOf(cell.x, cell.y);
     ctx.save();
     ctx.globalAlpha = 0.9 * alpha + 0.1;
-    ctx.fillStyle = "#fff06d";
-    ctx.strokeStyle = "#ff6f4f";
+    ctx.fillStyle = innerColor;
+    ctx.strokeStyle = outerColor;
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(c.x, c.y, 23 + Math.sin(blast.age * 38) * 3, 0, Math.PI * 2);
@@ -12029,3 +12088,285 @@ if (document.readyState === "complete" || document.readyState === "interactive")
 } else {
   document.addEventListener("DOMContentLoaded", bindIngameChatToggleListeners);
 }
+
+// =================================================================
+// GACHA SHOP & BOMB WARDROBE SYSTEM LOGIC
+// =================================================================
+
+const gachaPool = [
+  { id: "pink-bomb", name: "Pink Bomb", color: "pink", file: "assets/shop/pink-bomb.svg", chance: "20% Chance" },
+  { id: "blue-bomb", name: "Blue Bomb", color: "blue", file: "assets/shop/blue-bomb.svg", chance: "20% Chance" },
+  { id: "green-bomb", name: "Green Bomb", color: "green", file: "assets/shop/green-bomb.svg", chance: "20% Chance" },
+  { id: "gold-bomb", name: "Gold Bomb", color: "gold", file: "assets/shop/gold-bomb.svg", chance: "20% Chance" },
+  { id: "purple-bomb", name: "Purple Bomb", color: "purple", file: "assets/shop/purple-bomb.svg", chance: "20% Chance" }
+];
+
+let gachaDrawing = false;
+
+function syncBombWardrobe() {
+  const ownedBombs = {
+    pink: localStorage.getItem("owned_bomb_pink") === "true",
+    blue: localStorage.getItem("owned_bomb_blue") === "true",
+    green: localStorage.getItem("owned_bomb_green") === "true",
+    gold: localStorage.getItem("owned_bomb_gold") === "true",
+    purple: localStorage.getItem("owned_bomb_purple") === "true",
+  };
+  
+  const equippedBomb = localStorage.getItem("equipped_bomb") || "default";
+  
+  const bombCards = document.querySelectorAll(".bomb-card");
+  bombCards.forEach((card) => {
+    const color = card.getAttribute("data-bomb-color");
+    if (color === "default" || ownedBombs[color]) {
+      card.classList.remove("locked");
+    } else {
+      card.classList.add("locked");
+    }
+    
+    if (color === equippedBomb) {
+      card.classList.add("active");
+    } else {
+      card.classList.remove("active");
+    }
+  });
+}
+
+function updateShopWalletDisplay() {
+  const shopWallet = document.getElementById("shopGemsDisplay");
+  if (shopWallet) shopWallet.textContent = gemsCount.toLocaleString();
+  const gachaWallet = document.getElementById("gachaWalletGems");
+  if (gachaWallet) gachaWallet.textContent = gemsCount.toLocaleString();
+}
+
+function initGachaShop() {
+  const shopBtn = document.getElementById("magicalChiikawaBannerBtn");
+  if (shopBtn) {
+    shopBtn.addEventListener("click", () => {
+      openGachaModal();
+    });
+  }
+  
+  // Set wallet display initially
+  updateShopWalletDisplay();
+
+  // Close gacha modal
+  document.getElementById("closeGachaModalBtn")?.addEventListener("click", closeGachaModal);
+  
+  // Draw button
+  document.getElementById("gachaDrawBtn")?.addEventListener("click", handleGachaDraw);
+
+  // Claim button
+  document.getElementById("gachaWinClaimBtn")?.addEventListener("click", () => {
+    const winIndicator = document.getElementById("gachaWinIndicator");
+    if (winIndicator) {
+      winIndicator.style.opacity = "0";
+      setTimeout(() => winIndicator.classList.add("hidden"), 300);
+    }
+  });
+
+  // Tab click wallet updates
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tabName = btn.getAttribute("data-tab");
+      if (tabName === "shop") {
+        updateShopWalletDisplay();
+      }
+    });
+  });
+}
+
+function openGachaModal() {
+  const modal = document.getElementById("gachaModalOverlay");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  
+  updateShopWalletDisplay();
+  renderGachaPool();
+  resetGachaReel();
+}
+
+function closeGachaModal() {
+  if (gachaDrawing) return; // Prevent closing while drawing!
+  const modal = document.getElementById("gachaModalOverlay");
+  if (modal) modal.classList.add("hidden");
+}
+
+function renderGachaPool() {
+  const grid = document.getElementById("gachaPoolGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  
+  let unownedCount = 0;
+  
+  gachaPool.forEach(item => {
+    const owned = localStorage.getItem(`owned_bomb_${item.color}`) === "true";
+    if (!owned) unownedCount++;
+    
+    const div = document.createElement("div");
+    div.className = `gacha-pool-item ${owned ? "owned" : ""}`;
+    div.innerHTML = `
+      <img src="${item.file}" style="width: 44px; height: 44px; transform: scale(1.1); filter: drop-shadow(0 2px 0 #000);" alt="${item.name}">
+      <span>BOMB</span>
+      <strong>${item.name}</strong>
+      <small>${owned ? "OWNED" : item.chance}</small>
+    `;
+    grid.appendChild(div);
+  });
+  
+  const leftText = document.getElementById("gachaRewardsLeftText");
+  if (leftText) leftText.textContent = `${unownedCount} rewards left`;
+  
+  const drawBtn = document.getElementById("gachaDrawBtn");
+  if (drawBtn) {
+    if (unownedCount === 0) {
+      drawBtn.textContent = "COMPLETE";
+      drawBtn.disabled = true;
+    } else {
+      drawBtn.innerHTML = `Draw <svg viewBox="0 0 24 24" width="14" height="14" fill="#000" style="display: inline-block; vertical-align: middle; margin-left: 2px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> 300`;
+      drawBtn.disabled = false;
+    }
+  }
+}
+
+function resetGachaReel() {
+  const reel = document.getElementById("gachaReel");
+  if (!reel) return;
+  
+  reel.style.transition = "none";
+  reel.style.transform = "translateX(0)";
+  
+  // Fill the reel with random items initially
+  reel.innerHTML = "";
+  for (let i = 0; i < 15; i++) {
+    const item = gachaPool[Math.floor(Math.random() * gachaPool.length)];
+    const tile = document.createElement("div");
+    tile.className = "gacha-reel-tile";
+    tile.innerHTML = `<img src="${item.file}" style="width: 44px; height: 44px;" alt="">`;
+    reel.appendChild(tile);
+  }
+}
+
+function handleGachaDraw() {
+  if (gachaDrawing) return;
+  
+  // Check gem count
+  if (gemsCount < 300) {
+    showToastMsg("Not enough Gems!");
+    return;
+  }
+  
+  // Find unowned pool items
+  const unowned = gachaPool.filter(item => localStorage.getItem(`owned_bomb_${item.color}`) !== "true");
+  if (unowned.length === 0) {
+    showToastMsg("You own all bomb skins!");
+    return;
+  }
+  
+  // Deduct gems
+  gemsCount -= 300;
+  const gemsEl = document.getElementById("gemsCount");
+  if (gemsEl) gemsEl.textContent = gemsCount;
+  updateShopWalletDisplay();
+  saveProgression();
+  
+  gachaDrawing = true;
+  document.getElementById("gachaDrawBtn").disabled = true;
+  document.getElementById("closeGachaModalBtn").disabled = true;
+  
+  // Select a random unowned item as the winner
+  const winner = unowned[Math.floor(Math.random() * unowned.length)];
+  
+  // Construct the gacha reel items list:
+  // We want to generate around 40 items. The winner goes at index 32.
+  const totalReelLength = 40;
+  const winnerIndex = 32;
+  
+  const reel = document.getElementById("gachaReel");
+  reel.style.transition = "none";
+  reel.style.transform = "translateX(0)";
+  reel.innerHTML = "";
+  
+  const generatedReelItems = [];
+  for (let i = 0; i < totalReelLength; i++) {
+    let item;
+    if (i === winnerIndex) {
+      item = winner;
+    } else {
+      // Pick random item
+      item = gachaPool[Math.floor(Math.random() * gachaPool.length)];
+    }
+    generatedReelItems.push(item);
+    
+    const tile = document.createElement("div");
+    tile.className = `gacha-reel-tile ${i === winnerIndex ? "is-result" : ""}`;
+    tile.innerHTML = `<img src="${item.file}" style="width: 44px; height: 44px;" alt="">`;
+    reel.appendChild(tile);
+  }
+  
+  // Force reflow
+  void reel.offsetWidth;
+  
+  // Calculate stop offset
+  const stageWidth = document.getElementById("gachaStage").getBoundingClientRect().width;
+  const tileWidth = 96;
+  const gap = 14;
+  const pad = 24; // padding left of the reel
+  
+  // Center of winning tile relative to start of reel
+  const tileCenter = pad + winnerIndex * (tileWidth + gap) + tileWidth / 2;
+  const stopOffset = stageWidth / 2 - tileCenter;
+  
+  // Start animation
+  reel.style.transition = "transform 5s cubic-bezier(0.1, 0.8, 0.1, 1)";
+  reel.style.transform = `translateX(${stopOffset}px)`;
+  
+  setTimeout(() => {
+    // Reveal winner
+    gachaDrawing = false;
+    document.getElementById("closeGachaModalBtn").disabled = false;
+    
+    // Save to owned
+    localStorage.setItem(`owned_bomb_${winner.color}`, "true");
+    
+    // Sync pool and wardrobe
+    renderGachaPool();
+    syncBombWardrobe();
+    
+    // Show win indicator
+    const winItemAvatar = document.getElementById("gachaWinItemAvatar");
+    winItemAvatar.innerHTML = `<img src="${winner.file}" style="width: 52px; height: 52px;" alt="">`;
+    
+    document.getElementById("gachaWinItemName").textContent = winner.name;
+    const winIndicator = document.getElementById("gachaWinIndicator");
+    if (winIndicator) {
+      winIndicator.classList.remove("hidden");
+      // Trigger smooth fade in
+      winIndicator.style.opacity = "0";
+      setTimeout(() => winIndicator.style.opacity = "1", 50);
+    }
+    
+    showToastMsg(`You unlocked the ${winner.name}!`);
+  }, 5200);
+}
+
+// Bind bomb skin wardrobe clicks and gacha init on page load
+document.addEventListener("DOMContentLoaded", () => {
+  const bombCards = document.querySelectorAll(".bomb-card");
+  bombCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      if (card.classList.contains("locked")) {
+        showToastMsg("Unlock this bomb skin in the Gacha Shop first!");
+        return;
+      }
+      bombCards.forEach((c) => c.classList.remove("active"));
+      card.classList.add("active");
+      const bombColor = card.getAttribute("data-bomb-color");
+      localStorage.setItem("equipped_bomb", bombColor);
+      showToastMsg(`Equipped ${bombColor.toUpperCase()} bomb skin!`);
+    });
+  });
+  
+  // Initial syncs
+  syncBombWardrobe();
+  initGachaShop();
+});

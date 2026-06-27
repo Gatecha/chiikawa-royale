@@ -10196,3 +10196,191 @@ body.is-iphone {
 .ingame-chat-form input:focus {
   border-color: #ffd86f !important;
 }
+
+/* =================================================================
+   GACHA SHOP & WARDROBE BOMB SKINS
+   ================================================================= */
+
+/* Wardrobe Bomb Card */
+#tabContent_look .bomb-card {
+  position: relative;
+  min-width: 0;
+  border-radius: 20px;
+  border: 4.5px solid #000;
+  box-shadow: 4px 4px 0px #000;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #141416;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.1s, background-color 0.2s, box-shadow 0.1s;
+  overflow: hidden;
+  height: 100%;
+  transform: skewX(-12deg);
+  width: auto;
+  flex: none;
+  padding: 0;
+}
+
+#tabContent_look .bomb-card:hover:not(.locked) {
+  background: #36363b;
+  transform: skewX(-12deg) translateY(-3px);
+  box-shadow: 6px 6px 0px #000;
+}
+
+#tabContent_look .bomb-card.active {
+  border-color: #83cf00;
+  background: #181a1d;
+}
+
+#tabContent_look .bomb-card .card-video-crop {
+  transform: skewX(12deg) scale(1.15);
+  transform-origin: center;
+}
+
+#tabContent_look .bomb-card .card-character-name {
+  transform: skewX(12deg);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+#tabContent_look .bomb-card .select-icon-badge {
+  transform: skewX(12deg);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffd84a;
+  border: 2px solid #000;
+  box-shadow: 1px 1px 0 #000;
+  display: none;
+  place-items: center;
+  z-index: 10;
+}
+
+.bomb-card.active .select-icon-badge {
+  display: grid;
+}
+
+#tabContent_look .bomb-card.locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#tabContent_look .bomb-card.locked:hover {
+  transform: skewX(-12deg);
+  box-shadow: 4px 4px 0px #000;
+}
+
+/* Visibility based on wardrobe tab mode */
+.select-card-grid[data-mode="bombs"] .bomb-card {
+  display: flex;
+}
+
+.select-card-grid[data-mode="bombs"] .character-card,
+.select-card-grid[data-mode="bombs"] .empty-character-slot {
+  display: none !important;
+}
+
+/* Gacha Stage Styles */
+.gacha-stage {
+  perspective: 1000px;
+}
+
+.gacha-reel-tile {
+  width: 96px;
+  height: 96px;
+  background: #1c1c1f;
+  border: 3.5px solid #000;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 4px 4px 0 #000;
+  box-sizing: border-box;
+}
+
+.gacha-reel-tile img {
+  width: 52px;
+  height: 52px;
+  display: block;
+}
+
+.gacha-reel-tile.is-result {
+  border-color: #ffd86f;
+  background: #2b2b30;
+}
+
+/* Gacha Pool Grid Item styles */
+.gacha-pool-item {
+  background: #1c1c1f;
+  border: 3.5px solid #000;
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: #fff;
+  box-shadow: 3px 3px 0 #000;
+  box-sizing: border-box;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+.gacha-pool-item.owned {
+  opacity: 0.45;
+}
+
+.gacha-pool-item span {
+  font-family: var(--font-clean);
+  font-size: 9px;
+  color: #ffd86f;
+  text-transform: uppercase;
+  font-weight: 900;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+.gacha-pool-item strong {
+  font-family: var(--font);
+  font-size: 11px;
+  margin-top: 2px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.gacha-pool-item small {
+  font-family: var(--font-clean);
+  font-size: 9px;
+  color: #888;
+  margin-top: 2px;
+  font-weight: bold;
+}
+
+/* Modal and layout fixes */
+.gacha-win-indicator.is-visible {
+  display: flex;
+}
+
+.shop-gacha-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 10px 10px 0 #000;
+}
+
+.shop-gacha-banner:active {
+  transform: translateY(2px) translateX(2px);
+  box-shadow: 6px 6px 0 #000;
+}
+
+.shop-gacha-banner-cta:hover {
+  background: #ffe395;
+}

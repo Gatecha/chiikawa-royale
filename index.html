@@ -582,6 +582,67 @@
                     <span class="empty-character-slot"></span>
                     <span class="empty-character-slot"></span>
 
+                    <!-- Bomb Skins (Wardrobe) -->
+                    <button class="bomb-card active" data-bomb-color="default" type="button" aria-label="Select Default Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/gold-bomb.svg" alt="Default Bomb" style="filter: brightness(0.25); transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Default</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="pink" type="button" aria-label="Select Pink Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/pink-bomb.svg" alt="Pink Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Pink</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="blue" type="button" aria-label="Select Blue Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/blue-bomb.svg" alt="Blue Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Blue</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="green" type="button" aria-label="Select Green Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/green-bomb.svg" alt="Green Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Green</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="gold" type="button" aria-label="Select Gold Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/gold-bomb.svg" alt="Gold Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Gold</span>
+                    </button>
+
+                    <button class="bomb-card locked" data-bomb-color="purple" type="button" aria-label="Select Purple Bomb">
+                      <span class="select-icon-badge" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 7.5c0-1.3 1.1-2.4 2.4-2.4 1.4 0 2.5 1.1 2.5 2.4 0 .9-.5 1.7-1.4 2.2L12 12 5 16h14l-7-4" /></svg>
+                      </span>
+                      <span class="card-video-crop">
+                        <img class="card-character-image" src="assets/shop/purple-bomb.svg" alt="Purple Bomb" style="transform: scale(1.15);" />
+                      </span>
+                      <span class="card-character-name">Purple</span>
+                    </button>
+
                     <span class="item-empty-slot"><strong>Empty</strong></span>
                     <span class="item-empty-slot"><strong>Empty</strong></span>
                     <span class="item-empty-slot"><strong>Empty</strong></span>
@@ -718,14 +779,36 @@
                </div>
             </div>
 
-            <!-- SHOP TAB CONTENT (Alpha stage warning) -->
+            <!-- SHOP TAB CONTENT -->
             <div class="tab-content" id="tabContent_shop">
-              <div class="tab-panel-inner card-inner shop-panel" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; height:100%; gap:16px;">
-                <div class="alpha-warning-icon" style="font-size: 48px; filter: drop-shadow(0 4px 0 #000); margin-bottom: 8px;">🚧</div>
-                <h3 style="font-family: var(--font); font-size: 24px; color: #ffd84a; margin: 0; text-transform: uppercase;">Alpha Stage Notice</h3>
-                <p class="tab-description" style="font-family: var(--font-clean); font-size: 16px; color: #000000 !important; max-width: 460px; line-height: 1.5; margin: 0;">
-                  This game is under alpha stage, shop features won't be available.
-                </p>
+              <div class="tab-panel-inner card-inner shop-panel" style="display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; height: 100%; overflow-y: auto;">
+                
+                <!-- Shop Header -->
+                <div class="shop-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 4px solid #000; padding-bottom: 12px; flex-shrink: 0;">
+                  <h3 style="font-family: var(--font); font-size: 24px; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Magical Gacha Shop</h3>
+                  <div class="shop-wallet-display" style="display: flex; align-items: center; gap: 8px; background: #000; padding: 6px 14px; border-radius: 20px; border: 2.5px solid #333;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="#ffd86f" style="display: inline-block; vertical-align: middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    <strong style="color: #ffd86f; font-family: var(--font-clean); font-size: 15px; margin-left: 2px;"><span id="shopGemsDisplay">0</span> Gems</strong>
+                  </div>
+                </div>
+
+                <!-- Magical Chiikawa Banner Card -->
+                <div class="shop-gacha-banner" id="magicalChiikawaBannerBtn" style="position: relative; border-radius: 20px; border: 4.5px solid #000; box-shadow: 8px 8px 0 #000; overflow: hidden; background: #000; cursor: pointer; display: flex; flex-direction: column; min-height: 240px; aspect-ratio: 16/9; max-width: 640px; margin: 10px auto 20px; flex-shrink: 0;">
+                  <!-- Video playing banner animation -->
+                  <video class="shop-gacha-banner-media" src="assets/banners/magical chiikawa banner animation.mp4" loop muted autoplay playsinline style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;"></video>
+                  <div class="shop-gacha-banner-shade" style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%);"></div>
+                  
+                  <div class="shop-gacha-banner-copy" style="position: absolute; left: 24px; bottom: 24px; right: 24px; z-index: 2; color: #fff; text-align: left; max-width: 70%;">
+                    <small style="color: #ffd86f; font-family: var(--font-clean); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Featured Gacha</small>
+                    <strong style="font-family: var(--font); font-size: 26px; text-transform: uppercase; color: #fff; display: block; margin-bottom: 6px; text-shadow: 2px 2px 0 #000;">magical chiikawa</strong>
+                    <p style="font-family: var(--font-clean); font-size: 13px; color: #bbb; margin: 0; line-height: 1.4; text-shadow: 1px 1px 0 #000;">Draw once for 300 gems to win one unowned custom colored bomb skin! Won items leave the pool.</p>
+                  </div>
+
+                  <div class="shop-gacha-banner-cta" style="position: absolute; right: 24px; top: 24px; z-index: 2; background: #ffd86f; color: #000; border: 3px solid #000; border-radius: 20px; font-family: var(--font-clean); font-size: 12px; font-weight: 900; padding: 6px 14px; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">
+                    Draw 300 Gems
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -1819,6 +1902,63 @@
         </div>
 
         <button id="brReturnLobbyBtn" class="btn btn-primary" type="button" style="width: 100%; padding: 12px; background: #2ecc71; border-color: #ffd84a; border-radius: 8px; font-family: var(--font); font-size: 16px; color: #fff; cursor: pointer; text-transform: uppercase; font-weight: 900;">Return to Lobby</button>
+      </div>
+    </div>
+
+    <!-- Gacha Modal Overlay -->
+    <div id="gachaModalOverlay" class="dialog-overlay hidden" style="display: flex; align-items: center; justify-content: center; z-index: 9999;">
+      <div class="social-modal-card card" style="width: 700px; max-width: 95vw; background: #141416; border: 4.5px solid #000; border-radius: 24px; box-shadow: 10px 10px 0px #000; font-family: 'Outfit', 'Inter', sans-serif; overflow: hidden; position: relative; display: flex; flex-direction: column;">
+        
+        <!-- Modal Header -->
+        <div class="knock-chat-header" style="border-bottom: 4.5px solid #000; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #0d0d0e; flex-shrink: 0;">
+          <div class="knock-header-left">
+            <span class="knock-header-title" style="font-family: var(--font); color: #fff; font-size: 20px; text-transform: uppercase;">magical chiikawa</span>
+          </div>
+          <button id="closeGachaModalBtn" class="knock-close-btn" type="button" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #000; background: #ff3366; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 2px 2px 0 #000; display: flex; align-items: center; justify-content: center; line-height: 1;">&times;</button>
+        </div>
+
+        <!-- Help Panel (Description) -->
+        <div class="gacha-help-panel" style="background: rgba(255, 216, 111, 0.06); padding: 12px 20px; border-bottom: 3.5px solid #000; flex-shrink: 0;">
+          <strong style="color: #ffd86f; font-size: 11px; text-transform: uppercase; font-family: var(--font-clean); display: block; margin-bottom: 3px; letter-spacing: 0.5px;">draw strategy</strong>
+          <p style="margin: 0; font-size: 12px; color: #aaa; font-family: var(--font-clean); line-height: 1.4;">Each draw costs 300 gems. You will get a randomly colored bomb skin that you don't already own. Once obtained, it is removed from the draw pool!</p>
+        </div>
+
+        <!-- Gacha Stage -->
+        <div class="gacha-stage" id="gachaStage" style="position: relative; height: 160px; background: #000; overflow: hidden; border-bottom: 3.5px solid #000; display: flex; align-items: center; justify-content: flex-start; flex-shrink: 0;">
+          <!-- Spinning Reel Container -->
+          <div id="gachaReel" class="gacha-reel" style="display: flex; gap: 14px; padding: 0 24px; transform: translateX(0); width: max-content; align-items: center;">
+            <!-- Will be dynamically populated with tiles -->
+          </div>
+          <!-- Pointer / Focus indicator -->
+          <div class="gacha-pointer" style="position: absolute; top: 0; bottom: 0; width: 4px; background: #ff3333; left: 50%; transform: translateX(-50%); z-index: 10; box-shadow: 0 0 8px #ff3333; pointer-events: none;"></div>
+          <div class="gacha-focus-ring" style="position: absolute; top: 18px; bottom: 18px; width: 104px; border: 4.5px solid #ffd86f; left: 50%; transform: translateX(-50%); z-index: 9; border-radius: 16px; pointer-events: none; box-shadow: 0 0 10px rgba(255,216,111,0.4);"></div>
+        </div>
+
+        <!-- Pool Grid -->
+        <div class="gacha-pool-grid" id="gachaPoolGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; padding: 20px; background: #0d0d0e; border-bottom: 4.5px solid #000; overflow-y: auto; max-height: 220px; flex-grow: 1;">
+          <!-- Will be dynamically populated with items -->
+        </div>
+
+        <!-- Win Result Overlay (indicator when finished) -->
+        <div id="gachaWinIndicator" class="gacha-win-indicator hidden" style="background: rgba(0, 0, 0, 0.9); position: absolute; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; opacity: 0; transition: opacity 0.3s;">
+          <div id="gachaWinItemAvatar" class="gacha-win-avatar" style="width: 80px; height: 80px; border-radius: 20px; border: 4px solid #000; box-shadow: 4px 4px 0 #000; background: #1c1c1f; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; transform: scale(1.15);"></div>
+          <span style="font-family: var(--font-clean); font-size: 13px; text-transform: uppercase; color: #ffd86f; font-weight: 800; letter-spacing: 0.5px;">Congratulations!</span>
+          <strong id="gachaWinItemName" style="font-family: var(--font); font-size: 26px; text-transform: uppercase; margin-top: 6px; letter-spacing: 0.5px; color: #fff;">Pink Bomb</strong>
+          <button id="gachaWinClaimBtn" class="knock-send-btn" type="button" style="margin-top: 24px; height: 42px; padding: 0 24px; background: #83cf00; color: #000; font-family: var(--font); font-weight: 900; border: 3px solid #000; border-radius: 12px; box-shadow: 3px 3px 0 #000; cursor: pointer; text-transform: uppercase;">Claim Skin</button>
+        </div>
+
+        <!-- Gacha Footer -->
+        <div class="gacha-modal-footer" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #141416; flex-shrink: 0;">
+          <div class="gacha-draw-info" style="display: flex; flex-direction: column; text-align: left;">
+            <span id="gachaRewardsLeftText" style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">5 rewards left</span>
+            <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="#ffd86f"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+              <span id="gachaWalletGems" style="font-family: var(--font-clean); font-size: 14px; font-weight: 900; color: #ffd86f;">2,830</span>
+            </div>
+          </div>
+          <button id="gachaDrawBtn" class="knock-send-btn" type="button" style="height: 44px; padding: 0 30px; font-size: 13px; background: #ffd86f; color: #000; font-family: var(--font); font-weight: 900; border: 3.5px solid #000; border-radius: 12px; box-shadow: 3px 3px 0 #000; cursor: pointer; text-transform: uppercase; display: flex; align-items: center; gap: 6px;"></button>
+        </div>
+
       </div>
     </div>
 
