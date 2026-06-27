@@ -154,7 +154,14 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
         }
       }
     }
-    copyDirRecursive(srcResources, destResources);
+    
+    // Disable ASAR interception during file copying to copy app.asar as a normal file
+    process.noAsar = true;
+    try {
+      copyDirRecursive(srcResources, destResources);
+    } finally {
+      process.noAsar = false;
+    }
 
     sendProgress(80, 'Creating desktop shortcut...');
     if (createShortcut) {
