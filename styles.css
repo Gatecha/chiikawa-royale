@@ -4882,11 +4882,10 @@ body.local-four-lobby-active .lobby-card {
    VS LOADING SCREEN STYLES
    ========================== */
 .vs-screen-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
   background: repeating-radial-gradient(circle at 50% 55%,
     #ffd338 var(--grad-offset, 0px),
     #ffd338 calc(var(--grad-offset, 0px) + 12px),
@@ -4905,7 +4904,7 @@ body.local-four-lobby-active .lobby-card {
     #fec61a calc(var(--grad-offset, 0px) + 176px),
     #fec61a calc(var(--grad-offset, 0px) + 240px)
   );
-  z-index: 160;
+  z-index: 10000;
   display: none;
   flex-direction: column;
   justify-content: space-between;
@@ -5674,13 +5673,12 @@ body.is-mobile .arcade-controller {
 }
 
 .auth-console {
-  --auth-accent: #ff2f73;
+  --auth-accent: #ff3b8d;
   --auth-cyan: #20d6ff;
-  --auth-lime: #a9ff35;
+  --auth-lime: #89f43d;
   isolation: isolate;
   background:
-    linear-gradient(115deg, rgba(7, 7, 10, 0.94) 0%, rgba(13, 13, 18, 0.86) 45%, rgba(255, 207, 35, 0.2) 100%),
-    repeating-radial-gradient(circle at 58% 52%,
+    repeating-radial-gradient(circle at 50% 52%,
       #ffd338 var(--grad-offset, 0px),
       #ffd338 calc(var(--grad-offset, 0px) + 12px),
       #fec61a calc(var(--grad-offset, 0px) + 12px),
@@ -5692,87 +5690,16 @@ body.is-mobile .arcade-controller {
     );
 }
 
-.auth-console::before,
-.auth-console::after {
+.auth-console::before {
   content: "";
   position: absolute;
   pointer-events: none;
   z-index: 0;
-}
-
-.auth-console::before {
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-}
-
-.auth-console::after {
-  width: 62vw;
-  height: 150vh;
-  right: -18vw;
-  top: -25vh;
-  background: linear-gradient(135deg, transparent 0 32%, rgba(255, 47, 115, 0.92) 32% 42%, #111116 42% 64%, rgba(32, 214, 255, 0.82) 64% 70%, transparent 70%);
-  transform: skewX(-14deg);
-  filter: drop-shadow(-18px 0 0 rgba(0, 0, 0, 0.55));
-  opacity: 0.9;
-}
-
-.auth-orbit {
-  position: absolute;
-  border: 3px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.auth-orbit-one {
-  width: min(62vw, 760px);
-  aspect-ratio: 1;
-  left: -14vw;
-  top: 9vh;
-  border-color: rgba(32, 214, 255, 0.32);
-  box-shadow: inset 0 0 0 16px rgba(32, 214, 255, 0.04), 0 0 35px rgba(32, 214, 255, 0.2);
-  animation: authOrbitFloat 7s ease-in-out infinite;
-}
-
-.auth-orbit-two {
-  width: min(44vw, 540px);
-  aspect-ratio: 1;
-  right: 10vw;
-  bottom: -20vh;
-  border-color: rgba(255, 216, 111, 0.4);
-  box-shadow: inset 0 0 0 12px rgba(255, 216, 111, 0.05), 0 0 30px rgba(255, 216, 111, 0.18);
-  animation: authOrbitFloat 8s ease-in-out infinite reverse;
-}
-
-@keyframes authOrbitFloat {
-  0%, 100% { transform: translateY(0) rotate(-8deg); }
-  50% { transform: translateY(-16px) rotate(4deg); }
-}
-
-.auth-bg-character {
-  position: absolute;
-  z-index: 2;
-  width: clamp(160px, 16vw, 270px);
-  height: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 18px 0 rgba(0, 0, 0, 0.26)) saturate(1.1);
-  pointer-events: none;
-}
-
-.auth-bg-character-left {
-  left: clamp(18px, 8vw, 160px);
-  bottom: clamp(56px, 11vh, 130px);
-  transform: rotate(-8deg);
-}
-
-.auth-bg-character-right {
-  right: clamp(18px, 10vw, 190px);
-  top: clamp(74px, 14vh, 160px);
-  transform: rotate(8deg) scaleX(-1);
+    radial-gradient(rgba(34, 31, 37, 0.14) 1.5px, transparent 1.5px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 34%, rgba(0, 0, 0, 0.06));
+  background-size: 18px 18px, 100% 100%;
 }
 
 .auth-card, .intro-card {
@@ -5789,58 +5716,87 @@ body.is-mobile .arcade-controller {
 .auth-card {
   position: relative;
   z-index: 4;
-  max-width: 500px;
-  padding: 16px 30px 20px;
+  max-width: 470px;
+  padding: 24px 30px 26px;
   color: #fff;
   background:
-    linear-gradient(180deg, rgba(36, 37, 43, 0.96), rgba(12, 12, 16, 0.98)),
-    radial-gradient(circle at 20% 10%, rgba(32, 214, 255, 0.24), transparent 42%);
+    linear-gradient(180deg, rgba(34, 32, 38, 0.94), rgba(13, 13, 17, 0.96));
   border: 4px solid #050507;
-  border-radius: 18px;
-  box-shadow: 12px 12px 0 #000, 0 28px 65px rgba(0, 0, 0, 0.42);
+  border-radius: 16px;
+  box-shadow: 10px 10px 0 #000, 0 24px 48px rgba(0, 0, 0, 0.34);
   overflow: hidden;
 }
 
 .auth-card::before {
   content: "";
   position: absolute;
-  inset: 8px;
+  inset: 9px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  border-radius: 10px;
   pointer-events: none;
 }
 
-.auth-card::after {
-  content: "";
+.auth-loading-logo {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin: 0 auto 12px;
+  color: #fff;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.45));
+}
+
+.auth-logo-cat {
+  position: relative;
+  width: 116px;
+  height: 58px;
+  border: 6px solid #fff;
+  border-bottom: 0;
+  border-radius: 54px 54px 18px 18px;
+}
+
+.auth-cat-ear {
   position: absolute;
-  top: -70px;
-  right: -60px;
-  width: 190px;
-  height: 210px;
-  background: linear-gradient(135deg, var(--auth-accent), #ffd84a);
-  transform: rotate(18deg);
-  opacity: 0.95;
-  clip-path: polygon(24% 0, 100% 0, 78% 100%, 0 100%);
-  z-index: -1;
+  top: -24px;
+  width: 42px;
+  height: 42px;
+  border-top: 6px solid #fff;
+  border-left: 6px solid #fff;
+  border-radius: 9px 0 0 0;
+  background: transparent;
 }
 
-.auth-card-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+.auth-cat-ear-left {
+  left: 10px;
+  transform: rotate(28deg) skew(8deg);
+}
+
+.auth-cat-ear-right {
+  right: 10px;
+  transform: rotate(62deg) skew(8deg);
+}
+
+.auth-cat-face {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
   font-family: var(--font-clean);
-  font-size: 10px;
+  font-size: 18px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 1.2px;
+  text-align: center;
 }
 
-.auth-logo-mark {
-  display: block;
-  width: min(66%, 225px);
-  margin: 0 auto 4px;
-  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.55));
+.auth-logo-wordmark {
+  display: grid;
+  justify-items: center;
+  margin-top: -4px;
+  font-family: 'DynaPuff', 'Fredoka', cursive;
+  font-size: clamp(36px, 5.2vw, 58px);
+  font-weight: 900;
+  line-height: 0.82;
+  letter-spacing: 0;
+  -webkit-text-stroke: 0;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
 }
 
 @keyframes slideFadeIn {

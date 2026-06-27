@@ -7445,6 +7445,14 @@ function showVsLoadingScreen(combatants, onComplete, durationMs = 5000) {
   }
 
   const lineup = normalizeVsCombatants(combatants);
+  if (vsLoadingScreen.parentElement !== document.body) {
+    document.body.appendChild(vsLoadingScreen);
+  }
+  const mapVoteOverlay = document.getElementById("mapVoteOverlay");
+  if (mapVoteOverlay) {
+    mapVoteOverlay.classList.remove("active");
+    mapVoteOverlay.classList.add("hidden");
+  }
 
   vsLoadingScreen.classList.remove("hidden");
   vsLoadingScreen.classList.add("active");
