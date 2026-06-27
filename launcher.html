@@ -927,63 +927,6 @@ playBtn.addEventListener('click', async () => {
     }
   }
 });
-  events: [
-    { title: 'Discord Alpha Test — Get Exclusive Bomb Skin!',         date: '06/25', tag: 'event' },
-    { title: 'Weekly Gacha Spins Leaderboard Event',                  date: '06/18', tag: 'event' },
-    { title: 'Double XP & Coin Drops Weekend',                        date: '05/12', tag: 'event' },
-  ],
-};
-
-function loadNews(cat) {
-  const col = $id('newsCol');
-  col.innerHTML = '';
-  (newsData[cat] || []).forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'news-row';
-    div.innerHTML =
-      `<span class="ntag ${item.tag}">${item.tag}</span>` +
-      `<span class="ntitle">${item.title}</span>` +
-      `<span class="ndate">${item.date}</span>`;
-    div.addEventListener('click', () => showAlert(item.title,
-      `Category: ${item.tag.toUpperCase()}<br>Date: ${item.date}/2026<br><br>Check our Discord for the latest details.`));
-    col.appendChild(div);
-  });
-}
-
-document.querySelectorAll('.dtab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    loadNews(btn.dataset.tab);
-  });
-});
-
-/* ══════════════════════════════════════════════
-   REPAIR BUTTON
-══════════════════════════════════════════════ */
-$id('repairBtn').addEventListener('click', () => {
-  showAlert('FILE REPAIR', 'All game assets verified and fully optimized (100%). No issues found.');
-});
-
-/* ══════════════════════════════════════════════
-   CUSTOM ALERT
-══════════════════════════════════════════════ */
-function showAlert(title, msg) {
-  $id('alertTitle').textContent = title;
-  $id('alertBody').innerHTML    = msg;
-  $id('alertOv').classList.remove('hidden');
-}
-$id('alertOk').addEventListener('click', () => {
-  $id('alertOv').classList.add('hidden');
-});
-
-/* ══════════════════════════════════════════════
-   SOCIAL LINKS
-══════════════════════════════════════════════ */
-function openSocial(p) {
-  if (p === 'discord') { window.open('https://discord.gg/qpJRXkKzZ3', '_blank'); }
-  else showAlert('SOCIAL', `Launching ${p.toUpperCase()}... (Locked in Alpha)`);
-}
 </script>
 </body>
 </html>

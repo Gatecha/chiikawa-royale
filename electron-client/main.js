@@ -85,9 +85,12 @@ ipcMain.on('start-game', () => {
   mainWindow.loadFile(getGameIndexPath());
 });
 
+let returningFromGame = false;
+
 // ── IPC: exit to launcher ─────────────────────────────────────────────────────
 ipcMain.on('exit-to-launcher', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
+  returningFromGame = true;
   mainWindow.setFullScreen(false);
   mainWindow.setResizable(false);
   mainWindow.setSize(960, 600);
@@ -102,13 +105,15 @@ ipcMain.on('get-game-path', (event) => {
 
 // ── IPC: should skip loading (sync) ───────────────────────────────────────────
 ipcMain.on('should-skip-loading', (event) => {
-  event.returnValue = process.argv.includes('--skip-loading');
+  event.returnValue = process.argv.includes('--skip-loading') || returningFromGame;
+  returningFromGame = false;
 });
 
 // ── Installer helper functions ────────────────────────────────────────────────
 function isInstalled() {
   if (!app.isPackaged) return true;
-  return fs.existsSync(path.join(path.dirname(process.execPath), '.installed'));
+  const launchDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
+  return fs.existsSync(path.join(launchDir, '.installed'));
 }
 
 // ── IPC: is installed (sync) ──────────────────────────────────────────────────
@@ -233,27 +238,20 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
 
 // ── IPC: launch installed game & quit ─────────────────────────────────────────
 ipcMain.on('launch-installed-game', (event, destExe, targetPath) => {
-  shell.openPath(destExe).then((errMsg) => {
-    if (errMsg) {
-      console.error('Failed to launch game via shell.openPath, trying spawn fallback:', errMsg);
-      try {
-        const { spawn } = require('child_process');
-        const child = spawn(destExe, [], { 
-          detached: true, 
-          stdio: 'ignore',
-          cwd: targetPath
-        });
-        child.on('error', (err) => {
-          console.error('Fallback spawn failed:', err);
-        });
-        child.unref();
-      } catch (e) {
-        console.error('Spawn fallback error:', e);
-      }
-    }
-  }).catch((err) => {
-    console.error('shell.openPath error:', err);
-  });
+  try {
+    const { spawn } = require('child_process');
+    const child = spawn(destExe, ['--skip-loading'], { 
+      detached: true, 
+      stdio: 'ignore',
+      cwd: targetPath
+    });
+    child.on('error', (err) => {
+      console.error('Launch installed game spawn failed:', err);
+    });
+    child.unref();
+  } catch (e) {
+    console.error('Launch installed game error:', e);
+  }
 
   setTimeout(() => {
     app.quit();
@@ -271,7 +269,7 @@ ipcMain.handle('create-desktop-shortcut', async () => {
   try {
     const desktop      = app.getPath('desktop');
     const shortcutPath = path.join(desktop, 'Chiikawa Royale.lnk');
-    const target       = process.execPath;
+    const target       = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
 
     const created = shell.writeShortcutLink(shortcutPath, 'create', {
       target,
