@@ -2586,19 +2586,18 @@ function updateCouchControlPicker() {
   humans.forEach((player) => {
     const slotNumber = (player.couchSlotIndex ?? humans.indexOf(player)) + 1;
     const panel = document.createElement("div");
-    const sideClass = (slotNumber === 1 || slotNumber === 4) ? "left-side" : "right-side";
-    panel.className = `couch-control-panel slot-${slotNumber} ${sideClass}`;
+    panel.className = `couch-control-panel slot-${slotNumber}`;
     panel.innerHTML = `
       <div class="couch-player-label" data-kind="${player.kind}">
         <img src="assets/cards/${player.kind}.png" alt="${escapeHTML(player.name)}" />
         <span>${player.trophies || 0}</span>
       </div>
-      <div class="couch-joystick-wrapper">
-        <div class="couch-joystick" aria-label="P${slotNumber} movement joystick">
-          <div class="couch-joystick-knob"></div>
-        </div>
-        <button class="couch-mini-action bomb" type="button" data-action="bomb" aria-label="P${slotNumber} bomb">BOMB</button>
+      <div class="couch-joystick" aria-label="P${slotNumber} movement joystick">
+        <div class="couch-joystick-knob"></div>
+      </div>
+      <div class="couch-mini-actions">
         <button class="couch-mini-action punch" type="button" data-action="punch" aria-label="P${slotNumber} punch">PUNCH</button>
+        <button class="couch-mini-action bomb" type="button" data-action="bomb" aria-label="P${slotNumber} bomb">BOMB</button>
       </div>
     `;
     bindCouchControlPanel(panel, player);
