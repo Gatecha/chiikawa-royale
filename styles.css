@@ -4656,6 +4656,8 @@ body.local-four-lobby-active .lobby-card {
   justify-content: space-between;
   padding: 12px 6px;
   box-sizing: border-box;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 /* Badges */
