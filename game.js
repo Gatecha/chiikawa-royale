@@ -12778,7 +12778,7 @@ function syncLevelTabUI() {
   if (!list) return;
   list.innerHTML = "";
   
-  const maxLevelToShow = Math.max(15, seasonLevel + 3);
+  const maxLevelToShow = 100;
   for (let lvl = 2; lvl <= maxLevelToShow; lvl++) {
     const reached = seasonLevel >= lvl;
     const claimed = localStorage.getItem(`level_reward_claimed_${lvl}`) === "true";

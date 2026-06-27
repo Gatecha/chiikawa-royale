@@ -10790,3 +10790,23 @@ body.is-iphone {
     #4a0080 calc(var(--grad-offset, 0px) + 240px)
   ) !important;
 }
+
+/* Minimalistic gold scrollbar for level rewards list */
+.level-rewards-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.level-rewards-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.level-rewards-list::-webkit-scrollbar-thumb {
+  background: #ffd86f;
+  border-radius: 3px;
+  border: 1px solid #000;
+}
+
+.level-rewards-list::-webkit-scrollbar-thumb:hover {
+  background: #ffe28c;
+}
