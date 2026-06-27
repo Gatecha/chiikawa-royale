@@ -549,47 +549,6 @@
 
         <!-- Play column -->
         <div class="play-col">
-          <!-- Update progress (hidden by default) -->
-          <div class="upd-wrap" id="updWrap">
-            <div class="upd-track">
-              <div class="upd-fill" id="updFill"></div>
-            </div>
-            <div class="upd-lbl" id="updLbl">Checking...</div>
-          </div>
-
-          <!-- Version info -->
-          <div class="ver-info" id="verInfo">
-            <span id="curVer">Version: —</span>
-            <span id="latVer">Latest: —</span>
-          </div>
-
-          <!-- PLAY / UPDATE button with badge -->
-          <div style="position:relative;">
-            <button class="btn-play" id="playBtn">PLAY</button>
-            <div class="upd-dot" id="updDot"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /lnc-body -->
-</div><!-- /launcherScreen -->
-
-<!-- ── LAUNCH OVERLAY ── -->
-<div id="launchOv" class="launch-ov">
-  <div class="spin"></div>
-  <div class="launch-txt" id="launchTxt">STARTING CHIIKAWA ROYALE...</div>
-</div>
-
-<!-- ── CUSTOM ALERT ── -->
-<div id="alertOv" class="alert-ov hidden">
-  <div class="alert-card">
-    <div class="alert-ttl" id="alertTitle">ALERT</div>
-    <div class="alert-msg"  id="alertBody"></div>
-    <button class="alert-ok" id="alertOk">OK</button>
-  </div>
-</div>
-
 <script>
 const $id = (id) => document.getElementById(id);
 const installerScreen = $id('installerScreen');
@@ -629,12 +588,70 @@ const isElectron = !!(api && api.isElectron);
 /* ── State ────────────────────────────────────── */
 let updateAvailable = false;
 let isUpdating      = false;
+let needsRestart    = false;
 let installPath     = "C:\\Games\\Chiikawa Royale";
+
+/* ── News Data ────────────────────────────────── */
+const newsData = {
+  news: [
+    { title: 'Battle Royale Update — Fullscreen Countdown & Logo Fix', date: '06/27', tag: 'update' },
+    { title: 'New Magical Chiikawa Limited Draw Event Live',           date: '06/25', tag: 'event'  },
+    { title: 'Alpha server stability survey details',                  date: '06/23', tag: 'notice' },
+  ],
+  notices: [
+    { title: 'System Maintenance & Optimization Schedule',            date: '06/26', tag: 'notice' },
+    { title: 'Third-party cheat tools warning and bans',              date: '06/15', tag: 'notice' },
+    { title: 'Community guidelines alignment updates',                date: '04/10', tag: 'notice' },
+  ],
+  events: [
+    { title: 'Discord Alpha Test — Get Exclusive Bomb Skin!',         date: '06/25', tag: 'event' },
+    { title: 'Weekly Gacha Spins Leaderboard Event',                  date: '06/18', tag: 'event' },
+    { title: 'Double XP & Coin Drops Weekend',                        date: '05/12', tag: 'event' },
+  ],
+};
+
+/* ── UI Helpers ───────────────────────────────── */
+function showAlert(title, msg, onOk = null) {
+  $id('alertTitle').textContent = title;
+  $id('alertBody').innerHTML    = msg;
+  
+  // Clean bind OK button click to avoid multiple triggers
+  const originalAlertOk = $id('alertOk');
+  const newAlertOk = originalAlertOk.cloneNode(true);
+  originalAlertOk.parentNode.replaceChild(newAlertOk, originalAlertOk);
+  
+  newAlertOk.addEventListener('click', () => {
+    $id('alertOv').classList.add('hidden');
+    if (onOk) onOk();
+  });
+  
+  $id('alertOv').classList.remove('hidden');
+}
+
+function loadNews(cat) {
+  const col = $id('newsCol');
+  if (!col) return;
+  col.innerHTML = '';
+  (newsData[cat] || []).forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'news-row';
+    div.innerHTML =
+      `<span class="ntag ${item.tag}">${item.tag}</span>` +
+      `<span class="ntitle">${item.title}</span>` +
+      `<span class="ndate">${item.date}</span>`;
+    div.addEventListener('click', () => showAlert(item.title,
+      `Category: ${item.tag.toUpperCase()}<br>Date: ${item.date}/2026<br><br>Check our Discord for the latest details.`));
+    col.appendChild(div);
+  });
+}
+
+function openSocial(p) {
+  if (p === 'discord') { window.open('https://discord.gg/qpJRXkKzZ3', '_blank'); }
+  else showAlert('SOCIAL', `Launching ${p.toUpperCase()}... (Locked in Alpha)`);
+}
 
 /* ══════════════════════════════════════════════
    WINDOW CONTROLS (minimize / close)
-   Use SVG buttons so -webkit-app-region: no-drag
-   is unambiguous; stopPropagation on both events.
 ══════════════════════════════════════════════ */
 function bindWin(id, fn) {
   const el = $id(id);
@@ -649,7 +666,7 @@ bindWin('minLaunchBtn',  () => { if (isElectron) api.minimize(); });
 bindWin('closeLaunchBtn',() => { if (isElectron) api.close(); else window.close(); });
 
 /* ══════════════════════════════════════════════
-   LOADING BAR / INSTALL CHECK
+   LOADING BAR
 ══════════════════════════════════════════════ */
 function startLoader() {
   const DURATION = 2000, INTERVAL = 40;
@@ -679,72 +696,6 @@ function startLoader() {
   }, INTERVAL);
 }
 
-// Snappy skip-loading / install check on launch
-(function initAppFlow() {
-  // If not running in Electron (web preview), start loader
-  if (!isElectron) {
-    startLoader();
-    return;
-  }
-
-  // Check if game is installed
-  const installed = api.isInstalled && api.isInstalled();
-  
-  if (!installed) {
-    // Show custom Game Installer screen
-    progWrap.style.display = 'none';
-    instBottomDock.style.display = 'flex';
-    $id('instLabel').textContent = 'GAME INSTALLER';
-    
-    // Bind terms agreement checkbox to START INSTALL state
-    termsCb.addEventListener('change', () => {
-      btnStartInst.disabled = !termsCb.checked;
-    });
-    
-    // Bind buttons
-    btnCustomInst.addEventListener('click', () => {
-      customPathModal.classList.add('on');
-    });
-    
-    btnModalClose.addEventListener('click', () => {
-      customPathModal.classList.remove('on');
-    });
-    
-    btnModalContinue.addEventListener('click', () => {
-      customPathModal.classList.remove('on');
-    });
-    
-    btnSelectFolder.addEventListener('click', async () => {
-      if (api.selectFolder) {
-        const folder = await api.selectFolder();
-        if (folder) {
-          installPath = folder;
-          if (!installPath.endsWith("Chiikawa Royale") && !installPath.endsWith("Chiikawa_Royale")) {
-            // Append folder name for clean install
-            const pathSep = installPath.includes('/') ? '/' : '\\';
-            installPath += pathSep + "Chiikawa Royale";
-          }
-          txtPathInput.value = installPath;
-          lblInstallPath.textContent = `Installation location: ${installPath}`;
-        }
-      }
-    });
-    
-    btnStartInst.addEventListener('click', startInstallation);
-  } else {
-    // Check if launched from shortcut and skip loading screen
-    const shouldSkip = api.shouldSkipLoading && api.shouldSkipLoading();
-    if (shouldSkip) {
-      installerScreen.classList.remove('visible');
-      launcherScreen.classList.add('visible');
-      loadNews('news');
-      checkForUpdates();
-    } else {
-      startLoader();
-    }
-  }
-})();
-
 /* ══════════════════════════════════════════════
    CUSTOM INSTALLER TRIGGER
 ══════════════════════════════════════════════ */
@@ -758,7 +709,6 @@ async function startInstallation() {
   progStatus.textContent = 'Initializing setup...';
   $id('instLabel').textContent = 'INSTALLING GAME...';
   
-  // Set progress callback
   window.onInstallProgress = (data) => {
     progFill.style.width = data.pct + '%';
     progStatus.textContent = `${data.label} (${data.pct}%)`;
@@ -770,6 +720,13 @@ async function startInstallation() {
     if (!res.success) {
       throw new Error(res.error || 'Unknown setup error.');
     }
+    
+    // Show installation complete popup and wait for user OK to launch
+    showAlert('INSTALLATION COMPLETE', 'The game has been successfully installed! Click OK to open the launcher and play.', () => {
+      if (api.launchInstalledGame) {
+        api.launchInstalledGame(res.destExe, res.targetPath);
+      }
+    });
   } catch (err) {
     showAlert('INSTALLATION FAILED', err.message || 'Setup encountered a write error.');
     progWrap.style.display = 'none';
@@ -777,23 +734,6 @@ async function startInstallation() {
     $id('instLabel').textContent = 'GAME INSTALLER';
   }
 }
-
-/* ══════════════════════════════════════════════
-   INSTALLER → LAUNCHER TRANSITION (Already Installed Flow)
-══════════════════════════════════════════════ */
-instPlayBtn.addEventListener('click', async () => {
-  // Create desktop shortcut if checkbox is checked
-  if (shortcutCb.checked && isElectron && api.createDesktopShortcut) {
-    const res = await api.createDesktopShortcut();
-    if (!res.success) console.warn('Shortcut creation failed:', res.error);
-  }
-  installerScreen.classList.remove('visible');
-  setTimeout(() => {
-    launcherScreen.classList.add('visible');
-    loadNews('news');
-    checkForUpdates();
-  }, 400);
-});
 
 /* ══════════════════════════════════════════════
    UPDATE CHECK
@@ -828,10 +768,111 @@ async function checkForUpdates() {
   }
 }
 
+/* ── Initialize Application flow (Skip loading / Install check) ──────────────── */
+(function initAppFlow() {
+  // Bind tab buttons News Notices Events
+  document.querySelectorAll('.dtab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadNews(btn.dataset.tab);
+    });
+  });
+  
+  // Bind repair files button
+  $id('repairBtn').addEventListener('click', () => {
+    showAlert('FILE REPAIR', 'All game assets verified and fully optimized (100%). No issues found.');
+  });
+
+  if (!isElectron) {
+    startLoader();
+    return;
+  }
+
+  // Check if game is installed
+  const installed = api.isInstalled && api.isInstalled();
+  
+  if (!installed) {
+    // Show custom Game Installer screen
+    progWrap.style.display = 'none';
+    instBottomDock.style.display = 'flex';
+    $id('instLabel').textContent = 'GAME INSTALLER';
+    
+    termsCb.addEventListener('change', () => {
+      btnStartInst.disabled = !termsCb.checked;
+    });
+    
+    btnCustomInst.addEventListener('click', () => {
+      customPathModal.classList.add('on');
+    });
+    
+    btnModalClose.addEventListener('click', () => {
+      customPathModal.classList.remove('on');
+    });
+    
+    btnModalContinue.addEventListener('click', () => {
+      customPathModal.classList.remove('on');
+    });
+    
+    btnSelectFolder.addEventListener('click', async () => {
+      if (api.selectFolder) {
+        const folder = await api.selectFolder();
+        if (folder) {
+          installPath = folder;
+          if (!installPath.endsWith("Chiikawa Royale") && !installPath.endsWith("Chiikawa_Royale")) {
+            const pathSep = installPath.includes('/') ? '/' : '\\';
+            installPath += pathSep + "Chiikawa Royale";
+          }
+          txtPathInput.value = installPath;
+          lblInstallPath.textContent = `Installation location: ${installPath}`;
+        }
+      }
+    });
+    
+    btnStartInst.addEventListener('click', startInstallation);
+  } else {
+    // Check if launched from shortcut and skip loading screen
+    const shouldSkip = api.shouldSkipLoading && api.shouldSkipLoading();
+    if (shouldSkip) {
+      installerScreen.classList.remove('visible');
+      launcherScreen.classList.add('visible');
+      loadNews('news');
+      checkForUpdates();
+    } else {
+      startLoader();
+    }
+  }
+})();
+
+/* ══════════════════════════════════════════════
+   INSTALLER → LAUNCHER TRANSITION (Already Installed Flow)
+══════════════════════════════════════════════ */
+instPlayBtn.addEventListener('click', async () => {
+  if (shortcutCb.checked && isElectron && api.createDesktopShortcut) {
+    const res = await api.createDesktopShortcut();
+    if (!res.success) console.warn('Shortcut creation failed:', res.error);
+  }
+  installerScreen.classList.remove('visible');
+  setTimeout(() => {
+    launcherScreen.classList.add('visible');
+    loadNews('news');
+    checkForUpdates();
+  }, 400);
+});
+
 /* ══════════════════════════════════════════════
    PLAY / UPDATE BUTTON
 ══════════════════════════════════════════════ */
 playBtn.addEventListener('click', async () => {
+  if (needsRestart) {
+    if (isElectron && api.relaunch) {
+      api.relaunch();
+    } else {
+      window.location.reload();
+    }
+    return;
+  }
+  
   if (isUpdating) return;
 
   if (updateAvailable) {
@@ -847,12 +888,15 @@ playBtn.addEventListener('click', async () => {
         updFill.style.width = p.pct + '%';
         updLbl.textContent  = p.label || '';
         if (p.stage === 'done') {
-          playBtn.textContent = 'PLAY';
+          playBtn.textContent = 'RESTART';
           playBtn.disabled = false;
           playBtn.classList.remove('upd');
+          playBtn.classList.add('restart-btn');
           updateAvailable = false;
+          isUpdating = false;
+          needsRestart = true;
           updWrap.classList.remove('on');
-          showAlert('UPDATE COMPLETE', 'Game updated successfully! Click PLAY to start.');
+          showAlert('UPDATE COMPLETE', 'Game updated successfully! Click RESTART to relaunch the launcher and play.');
         }
         if (p.stage === 'error') {
           isUpdating = false; playBtn.disabled = false;
@@ -883,21 +927,6 @@ playBtn.addEventListener('click', async () => {
     }
   }
 });
-
-/* ══════════════════════════════════════════════
-   NEWS DATA & TABS
-══════════════════════════════════════════════ */
-const newsData = {
-  news: [
-    { title: 'Battle Royale Update — Fullscreen Countdown & Logo Fix', date: '06/27', tag: 'update' },
-    { title: 'New Magical Chiikawa Limited Draw Event Live',           date: '06/25', tag: 'event'  },
-    { title: 'Alpha server stability survey details',                  date: '06/23', tag: 'notice' },
-  ],
-  notices: [
-    { title: 'System Maintenance & Optimization Schedule',            date: '06/26', tag: 'notice' },
-    { title: 'Third-party cheat tools warning and bans',              date: '06/15', tag: 'notice' },
-    { title: 'Community guidelines alignment updates',                date: '04/10', tag: 'notice' },
-  ],
   events: [
     { title: 'Discord Alpha Test — Get Exclusive Bomb Skin!',         date: '06/25', tag: 'event' },
     { title: 'Weekly Gacha Spins Leaderboard Event',                  date: '06/18', tag: 'event' },

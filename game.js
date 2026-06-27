@@ -9309,6 +9309,21 @@ if (usernameForm) {
   });
 }
 
+// Hook up Exit Game button in Settings (PC only)
+const btnExitGame = document.getElementById("btnExitGame");
+if (btnExitGame) {
+  const isPC = typeof window.electronAPI !== 'undefined';
+  if (isPC) {
+    // Show the exit game button container row
+    const pcExitRow = document.getElementById("pcExitRow");
+    if (pcExitRow) pcExitRow.style.display = "flex";
+    
+    btnExitGame.addEventListener("click", () => {
+      window.electronAPI.exitToLauncher();
+    });
+  }
+}
+
 // Hook up Log Out button in Settings
 const btnLogoutAccount = document.getElementById("btnLogoutAccount");
 if (btnLogoutAccount) {

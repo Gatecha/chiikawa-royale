@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   close:                 () => ipcRenderer.send('window-close'),
   maximize:              () => ipcRenderer.send('window-maximize'),
   startGame:             () => ipcRenderer.send('start-game'),
+  exitToLauncher:        () => ipcRenderer.send('exit-to-launcher'),
   getGamePath:           () => ipcRenderer.sendSync('get-game-path'),
   createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut'),
   checkForUpdate:        () => ipcRenderer.invoke('check-for-update'),
@@ -18,6 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     });
     return ipcRenderer.invoke('install-game', targetPath, createShortcut);
   },
+  relaunch:               () => ipcRenderer.send('app-relaunch'),
+  launchInstalledGame:    (destExe, targetPath) => ipcRenderer.send('launch-installed-game', destExe, targetPath),
   downloadUpdate: (onProgress) => {
     ipcRenderer.on('update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-update');

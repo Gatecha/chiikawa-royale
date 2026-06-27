@@ -85,6 +85,16 @@ ipcMain.on('start-game', () => {
   mainWindow.loadFile(getGameIndexPath());
 });
 
+// ── IPC: exit to launcher ─────────────────────────────────────────────────────
+ipcMain.on('exit-to-launcher', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.setFullScreen(false);
+  mainWindow.setResizable(false);
+  mainWindow.setSize(960, 600);
+  mainWindow.center();
+  mainWindow.loadFile(getLauncherPath());
+});
+
 // ── IPC: get game path (sync) ─────────────────────────────────────────────────
 ipcMain.on('get-game-path', (event) => {
   event.returnValue = getGameIndexPath();
@@ -175,13 +185,12 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
     if (createShortcut) {
       const desktop = app.getPath('desktop');
       const shortcutPath = path.join(desktop, 'Chiikawa Royale.lnk');
-      const iconPath = path.join(destResources, 'game', 'gamelogo.ico');
       
       shell.writeShortcutLink(shortcutPath, 'create', {
         target: destExe,
         args: '--skip-loading',
         workingDirectory: targetPath,
-        icon: iconPath,
+        icon: destExe, // Extract icon natively from the copied executable
         iconIndex: 0,
         description: 'Chiikawa Royale – Bomb Battle Royale Game',
         appUserModelId: 'com.chiikawaroyale.launcher',
@@ -189,45 +198,72 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
     }
 
     sendProgress(90, 'Finalizing installation...');
+    
+    // Fetch latest GitHub commit SHA to write to the installed .version file
+    let latestCommit = null;
+    try {
+      const resp = await httpsGet(GITHUB_API);
+      if (resp.statusCode === 200) {
+        const data = JSON.parse(resp.body);
+        latestCommit = data.sha;
+      }
+    } catch (e) {
+      console.error('Failed to fetch latest commit SHA during installation:', e.message);
+    }
+
+    // Write .installed verification file
     fs.writeFileSync(path.join(targetPath, '.installed'), JSON.stringify({
       installedAt: new Date().toISOString(),
       version: app.getVersion()
     }), 'utf8');
 
-    sendProgress(100, 'Installation complete! Launching game...');
+    // Write .version inside game directory so it starts as "Up to date"
+    fs.writeFileSync(path.join(destResources, 'game', '.version'), JSON.stringify({
+      commit: latestCommit,
+      version: app.getVersion()
+    }), 'utf8');
 
-    // Launch installed app via shell.openPath (clean, handles spaces/renaming)
-    // with a child_process spawn fallback containing error listener to avoid uncaught crashes.
-    shell.openPath(destExe).then((errMsg) => {
-      if (errMsg) {
-        console.error('Failed to launch game via shell.openPath, trying spawn fallback:', errMsg);
-        try {
-          const { spawn } = require('child_process');
-          const child = spawn(destExe, [], { 
-            detached: true, 
-            stdio: 'ignore',
-            cwd: targetPath
-          });
-          child.on('error', (err) => {
-            console.error('Fallback spawn failed:', err);
-          });
-          child.unref();
-        } catch (e) {
-          console.error('Spawn fallback error:', e);
-        }
-      }
-    }).catch((err) => {
-      console.error('shell.openPath error:', err);
-    });
+    sendProgress(100, 'Installation complete!');
 
-    setTimeout(() => {
-      app.quit();
-    }, 1200);
-
-    return { success: true };
+    return { success: true, destExe, targetPath };
   } catch (err) {
     return { success: false, error: err.message };
   }
+});
+
+// ── IPC: launch installed game & quit ─────────────────────────────────────────
+ipcMain.on('launch-installed-game', (event, destExe, targetPath) => {
+  shell.openPath(destExe).then((errMsg) => {
+    if (errMsg) {
+      console.error('Failed to launch game via shell.openPath, trying spawn fallback:', errMsg);
+      try {
+        const { spawn } = require('child_process');
+        const child = spawn(destExe, [], { 
+          detached: true, 
+          stdio: 'ignore',
+          cwd: targetPath
+        });
+        child.on('error', (err) => {
+          console.error('Fallback spawn failed:', err);
+        });
+        child.unref();
+      } catch (e) {
+        console.error('Spawn fallback error:', e);
+      }
+    }
+  }).catch((err) => {
+    console.error('shell.openPath error:', err);
+  });
+
+  setTimeout(() => {
+    app.quit();
+  }, 1000);
+});
+
+// ── IPC: app relaunch ────────────────────────────────────────────────────────
+ipcMain.on('app-relaunch', (event) => {
+  app.relaunch();
+  app.exit();
 });
 
 // ── IPC: create desktop shortcut ─────────────────────────────────────────────
@@ -236,16 +272,12 @@ ipcMain.handle('create-desktop-shortcut', async () => {
     const desktop      = app.getPath('desktop');
     const shortcutPath = path.join(desktop, 'Chiikawa Royale.lnk');
     const target       = process.execPath;
-    const gameDir      = getGameDir();
-
-    // Copy icon from game resources path if packaged, or use local
-    const iconPath = path.join(gameDir, 'gamelogo.ico');
 
     const created = shell.writeShortcutLink(shortcutPath, 'create', {
       target,
       args: '--skip-loading',
       workingDirectory: path.dirname(target),
-      icon: iconPath,
+      icon: target, // Extract icon natively from the running executable
       iconIndex: 0,
       description: 'Chiikawa Royale – Bomb Battle Royale Game',
       appUserModelId: 'com.chiikawaroyale.launcher',
