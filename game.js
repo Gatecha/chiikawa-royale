@@ -5621,12 +5621,38 @@ function drawMessage(message) {
 }
 
 function drawStartCountdown(state) {
-  if (!state) return;
+  if (!state) {
+    // Hide the fullscreen overlay when there's no state
+    const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+    if (fsOverlay) fsOverlay.classList.add('hidden');
+    return;
+  }
   ctx.save();
   
   // Draw a semi-transparent dark backdrop overlay across the entire canvas to focus attention
   ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  
+  // ── Fullscreen HTML overlay (covers areas outside the canvas too) ──
+  const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+  const fsNum = document.getElementById('fullscreenCountdownNum');
+  if (fsOverlay && fsNum) {
+    fsOverlay.classList.remove('hidden');
+    const displayText = state;
+    // Only re-trigger animation if the number changed
+    if (fsNum.dataset.lastState !== state) {
+      fsNum.dataset.lastState = state;
+      // Set text and color class
+      fsNum.className = 'fullscreen-countdown-num';
+      if (state === '3') fsNum.classList.add('color-3');
+      else if (state === '2') fsNum.classList.add('color-2');
+      else if (state === '1') fsNum.classList.add('color-1');
+      else if (state === 'START') fsNum.classList.add('color-start');
+      fsNum.textContent = displayText;
+      // Re-trigger CSS animation by forcing reflow
+      void fsNum.offsetWidth;
+    }
+  }
   
   // Animate size of text based on the remainder of the fractional second
   const fraction = startCountdownTimer % 1.0;
@@ -6273,6 +6299,12 @@ function render(dt) {
 
   if (running && startCountdownTimer > 0) {
     drawStartCountdown(startCountdownState);
+  } else {
+    // Ensure fullscreen overlay is hidden when countdown is not active
+    const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+    if (fsOverlay && !fsOverlay.classList.contains('hidden')) {
+      fsOverlay.classList.add('hidden');
+    }
   }
 
   if (!running && gameMessage) {

@@ -124,15 +124,7 @@
         <div class="yellow-console auth-console">
           <div class="auth-card glass">
             <div class="auth-loading-logo" aria-label="Chiikawa Royale">
-              <div class="auth-logo-cat" aria-hidden="true">
-                <span class="auth-cat-ear auth-cat-ear-left"></span>
-                <span class="auth-cat-ear auth-cat-ear-right"></span>
-                <span class="auth-cat-face">• ᴗ •</span>
-              </div>
-              <div class="auth-logo-wordmark">
-                <span>CHIIKAWA</span>
-                <span>ROYALE</span>
-              </div>
+              <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale" class="auth-logo-characters-img" />
             </div>
             <p class="auth-subtitle">Login or Create Account to Join the Battle!</p>
 
@@ -2525,5 +2517,11 @@
       // Disable right-click context menu on the entire game page
       document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
     </script>
+
+    <!-- Fullscreen Countdown Overlay -->
+    <div id="fullscreenCountdownOverlay" class="fullscreen-countdown-overlay hidden">
+      <div id="fullscreenCountdownNum" class="fullscreen-countdown-num">3</div>
+    </div>
+
   </body>
 </html>

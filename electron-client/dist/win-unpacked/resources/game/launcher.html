@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chiikawa Royale</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@500;600;700&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pink:   #ff4f73;
+      --pink2:  #ff7192;
+      --gold:   #ffd86f;
+      --dark:   #0d0e10;
+      --panel:  #13141a;
+      --card:   #1a1b22;
+      --border: rgba(255,255,255,0.06);
+      --font-chunky: 'DynaPuff', cursive;
+      --font-clean:  'Fredoka', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: var(--font-clean);
+      background: var(--dark);
+      color: #fff;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── SCREENS ─────────────────────────────────────── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .screen.visible {
+      opacity: 1; pointer-events: all;
+    }
+
+    /* ── TITLE BAR ───────────────────────────────────── */
+    .app-titlebar {
+      height: 36px;
+      background: #0a0b0d;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 10px 0 12px;
+      flex-shrink: 0;
+      -webkit-app-region: drag; /* native drag for Electron */
+    }
+    .titlebar-left {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .titlebar-icon {
+      width: 20px; height: 20px;
+      object-fit: contain;
+      -webkit-app-region: no-drag;
+    }
+    .titlebar-title {
+      font-family: var(--font-chunky);
+      font-size: 11px;
+      color: var(--gold);
+      letter-spacing: 0.06em;
+      -webkit-app-region: no-drag;
+    }
+    .titlebar-controls {
+      display: flex; gap: 4px;
+      -webkit-app-region: no-drag;
+    }
+    .titlebar-btn {
+      -webkit-app-region: no-drag;
+      width: 28px; height: 22px;
+      border: none; border-radius: 4px;
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.6);
+      font-size: 13px; line-height: 1;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .titlebar-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+    .titlebar-btn.close:hover { background: #e03a3a; color: #fff; }
+
+    /* ══════════════════════════════════════════════════
+       INSTALLER SCREEN
+    ══════════════════════════════════════════════════ */
+    #installerScreen {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,79,115,0.12) 0%, transparent 70%),
+        var(--dark);
+    }
+
+    .installer-body {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0;
+      padding: 20px 40px 30px;
+      position: relative;
+    }
+
+    /* Character images spread */
+    .installer-chars {
+      display: flex; align-items: flex-end; justify-content: center;
+      gap: 0; margin-bottom: -8px;
+      width: 100%; max-width: 600px;
+    }
+    .installer-chars img {
+      width: 100px; height: 100px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+      transition: transform 0.3s ease;
+    }
+    .installer-chars img:hover { transform: translateY(-6px) scale(1.05); }
+    .installer-chars img:nth-child(1) { transform: rotate(-6deg); }
+    .installer-chars img:nth-child(2) { transform: rotate(-2deg) scale(1.08); z-index:1; }
+    .installer-chars img:nth-child(3) { transform: rotate(2deg) scale(1.08); z-index:1; }
+    .installer-chars img:nth-child(4) { transform: rotate(6deg); }
+
+    /* Logo */
+    .installer-logo {
+      width: 200px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 24px rgba(255,79,115,0.4));
+      margin-bottom: 10px;
+      animation: logoFloat 3s ease-in-out infinite;
+    }
+    @keyframes logoFloat {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+
+    .installer-stage-label {
+      font-family: var(--font-chunky);
+      font-size: 13px;
+      letter-spacing: 0.15em;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    /* Install button */
+    .btn-install {
+      font-family: var(--font-chunky);
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      color: #fff;
+      background: linear-gradient(135deg, var(--pink), #c8375a);
+      border: none; border-radius: 12px;
+      padding: 14px 60px;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(255,79,115,0.4), 0 0 0 2px rgba(255,79,115,0.2);
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative; overflow: hidden;
+    }
+    .btn-install::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .btn-install:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(255,79,115,0.5), 0 0 0 2px rgba(255,79,115,0.3);
+    }
+    .btn-install:active { transform: translateY(0); }
+
+    /* Progress bar */
+    .progress-wrapper {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%; max-width: 480px;
+    }
+    .progress-track {
+      width: 100%; height: 12px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 100px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--pink), #ff8fab);
+      border-radius: 100px;
+      transition: width 0.3s ease;
+      position: relative;
+    }
+    .progress-fill::after {
+      content: '';
+      position: absolute; top: 0; right: 0;
+      width: 40px; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5));
+      border-radius: 100px;
+      animation: shimmer 1.2s linear infinite;
+    }
+    @keyframes shimmer { from { opacity:1; } to { opacity:0; } }
+    .progress-status {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.05em;
+    }
+
+    /* ══════════════════════════════════════════════════
+       LAUNCHER SCREEN
+    ══════════════════════════════════════════════════ */
+    #launcherScreen {
+      background: var(--dark);
+    }
+
+    .launcher-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL */
+    .launcher-left {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .launcher-header {
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .launcher-logo-wrap {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .launcher-logo-wrap svg {
+      flex-shrink: 0;
+    }
+    .launcher-logo-text {
+      display: flex; flex-direction: column; line-height: 1;
+    }
+    .logo-main {
+      font-family: var(--font-chunky);
+      font-size: 16px; font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.05em;
+    }
+    .logo-sub {
+      font-family: var(--font-chunky);
+      font-size: 11px;
+      color: var(--pink);
+      letter-spacing: 0.12em;
+    }
+
+    /* Tabs */
+    .launcher-tabs {
+      display: flex;
+      padding: 8px 10px 0;
+      gap: 2px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .launcher-tab-btn {
+      flex: 1;
+      padding: 7px 4px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: rgba(255,255,255,0.4);
+      font-family: var(--font-clean);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: -1px;
+    }
+    .launcher-tab-btn.active {
+      color: #fff;
+      border-bottom-color: var(--pink);
+    }
+    .launcher-tab-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+
+    /* News list */
+    .launcher-news-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    .launcher-news-list::-webkit-scrollbar { width: 3px; }
+    .launcher-news-list::-webkit-scrollbar-track { background: transparent; }
+    .launcher-news-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+    .news-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .news-item:hover { background: rgba(255,255,255,0.04); }
+
+    .news-tag {
+      flex-shrink: 0;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .news-tag.update  { background: rgba(59,130,246,0.2); color: #7ab3ff; }
+    .news-tag.event   { background: rgba(168,85,247,0.2); color: #c084fc; }
+    .news-tag.notice  { background: rgba(245,158,11,0.2); color: #fcd34d; }
+
+    .news-title {
+      flex: 1;
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.8);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .news-date {
+      flex-shrink: 0;
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* Socials */
+    .launcher-socials {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 6px;
+      flex-shrink: 0;
+    }
+    .social-btn {
+      flex: 1;
+      padding: 6px 4px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: rgba(255,255,255,0.5);
+      font-family: var(--font-clean);
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .social-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    /* RIGHT PANEL */
+    .launcher-right {
+      flex: 1;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .banner-area {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+    }
+    .banner-video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    /* Gradient overlay on bottom of banner */
+    .banner-area::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(to bottom, transparent, var(--dark));
+      pointer-events: none;
+    }
+
+    /* Bottom bar */
+    .launcher-bottom-bar {
+      height: 64px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      gap: 12px;
+    }
+    .launcher-bottom-left {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .btn-repair {
+      padding: 7px 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: rgba(255,255,255,0.6);
+      font-family: var(--font-clean);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-repair:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .version-info {
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .version-info span {
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* PLAY button */
+    .btn-play {
+      font-family: var(--font-chunky);
+      font-size: 17px;
+      letter-spacing: 0.12em;
+      color: #fff;
+      background: linear-gradient(135deg, var(--pink) 0%, #c8375a 100%);
+      border: none; border-radius: 10px;
+      padding: 0 40px;
+      height: 44px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(255,79,115,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative; overflow: hidden;
+      white-space: nowrap;
+    }
+    .btn-play::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .btn-play:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(255,79,115,0.5);
+    }
+    .btn-play:active { transform: translateY(0); }
+
+    /* ── LAUNCH OVERLAY ──────────────────────────────── */
+    .launch-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--dark);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .launch-overlay.active { opacity: 1; pointer-events: all; }
+
+    .launch-spinner {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(255,79,115,0.2);
+      border-top-color: var(--pink);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .launch-text {
+      font-family: var(--font-chunky);
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.1em;
+    }
+
+    /* ── CUSTOM ALERT ────────────────────────────────── */
+    .alert-overlay {
+      position: fixed; inset: 0; z-index: 9998;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .alert-overlay.hidden { display: none; }
+
+    .alert-card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 28px 32px;
+      width: 380px;
+      max-width: 90vw;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      text-align: center;
+    }
+    .alert-title {
+      font-family: var(--font-chunky);
+      font-size: 14px;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    .alert-body {
+      font-size: 13px;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .alert-btn {
+      padding: 9px 36px;
+      background: linear-gradient(135deg, var(--pink), #c8375a);
+      border: none; border-radius: 8px;
+      color: #fff;
+      font-family: var(--font-chunky);
+      font-size: 13px; letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .alert-btn:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════
+       LOADING & START SCREEN
+  ════════════════════════════════════════ -->
+  <div id="installerScreen" class="screen visible">
+    <div class="app-titlebar" id="installerTitlebar">
+      <div class="titlebar-left">
+        <img src="chiikawa-royale-logo.png" class="titlebar-icon" alt="">
+        <span class="titlebar-title">CHIIKAWA ROYALE — PC CLIENT</span>
+      </div>
+      <div class="titlebar-controls">
+        <button class="titlebar-btn" id="minimizeInstallerBtn">&#8722;</button>
+        <button class="titlebar-btn close" id="closeInstallerBtn">&#10005;</button>
+      </div>
+    </div>
+
+    <div class="installer-body">
+      <div class="installer-chars">
+        <img src="assets/cards/chiikawa.png" alt="Chiikawa">
+        <img src="assets/cards/hachiware.png" alt="Hachiware">
+        <img src="assets/cards/usagi.png" alt="Usagi">
+        <img src="assets/cards/momonga.png" alt="Momonga">
+      </div>
+
+      <img src="chiikawa-royale-logo.png" class="installer-logo" alt="Chiikawa Royale">
+
+      <div class="installer-stage-label">PC LOADING STAGE</div>
+
+      <button class="btn-install" id="installBtn" style="display: none; padding: 14px 80px;">PLAY</button>
+
+      <div class="progress-wrapper" id="progressWrapper" style="display: flex;">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-status" id="progressStatus">Loading game components...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       LAUNCHER SCREEN
+  ════════════════════════════════════════ -->
+  <div id="launcherScreen" class="screen">
+    <div class="app-titlebar" id="launcherTitlebar">
+      <div class="titlebar-left">
+        <img src="chiikawa-royale-logo.png" class="titlebar-icon" alt="">
+        <span class="titlebar-title">CHIIKAWA ROYALE — GAME LAUNCHER</span>
+      </div>
+      <div class="titlebar-controls">
+        <button class="titlebar-btn" id="minimizeLauncherBtn">&#8722;</button>
+        <button class="titlebar-btn close" id="closeLauncherBtn">&#10005;</button>
+      </div>
+    </div>
+
+    <div class="launcher-body">
+      <!-- LEFT PANEL -->
+      <div class="launcher-left">
+        <div class="launcher-header">
+          <div class="launcher-logo-wrap">
+            <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale" style="width:100%; max-width:220px; object-fit:contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));">
+          </div>
+        </div>
+
+        <div class="launcher-tabs">
+          <button class="launcher-tab-btn active" data-tab="news">News</button>
+          <button class="launcher-tab-btn" data-tab="notices">Notices</button>
+          <button class="launcher-tab-btn" data-tab="events">Events</button>
+        </div>
+
+        <div class="launcher-news-list" id="launcherNewsList"></div>
+
+        <div class="launcher-socials">
+          <button class="social-btn" onclick="openSocial('discord')">Discord</button>
+          <button class="social-btn" onclick="openSocial('twitter')">Twitter</button>
+          <button class="social-btn" onclick="openSocial('youtube')">YouTube</button>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="launcher-right">
+        <div class="banner-area">
+          <video class="banner-video" autoplay loop muted playsinline>
+            <source src="assets/banners/magical chiikawa banner animation.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="launcher-bottom-bar">
+          <div class="launcher-bottom-left">
+            <button class="btn-repair" id="repairBtn">&#128296; Repair Files</button>
+            <div class="version-info">
+              <span>Current version: 1.1.13</span>
+              <span>Latest version: 1.1.13</span>
+            </div>
+          </div>
+          <div>
+            <button class="btn-play" id="playBtn">PLAY</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LAUNCH OVERLAY ────────────────────────────────── -->
+  <div id="launchOverlay" class="launch-overlay">
+    <div class="launch-spinner"></div>
+    <div class="launch-text">STARTING CHIIKAWA ROYALE...</div>
+  </div>
+
+  <!-- ── CUSTOM ALERT ──────────────────────────────────── -->
+  <div id="customAlert" class="alert-overlay hidden">
+    <div class="alert-card">
+      <div class="alert-title" id="customAlertTitle">ALERT</div>
+      <div class="alert-body" id="customAlertBody"></div>
+      <button class="alert-btn" id="customAlertCloseBtn">OK</button>
+    </div>
+  </div>
+
+  <script>
+    const installerScreen = document.getElementById('installerScreen');
+    const launcherScreen  = document.getElementById('launcherScreen');
+    const launchOverlay   = document.getElementById('launchOverlay');
+    const installBtn      = document.getElementById('installBtn');
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressFill    = document.getElementById('progressFill');
+    const progressStatus  = document.getElementById('progressStatus');
+
+    // ── Electron API detection ────────────────────────
+    const isElectron = typeof window.electronAPI !== 'undefined' && window.electronAPI.isElectron;
+
+    // Load news immediately
+    loadNewsList('news');
+
+    // ── Window controls ───────────────────────────────
+    document.getElementById('minimizeInstallerBtn').addEventListener('click', () => {
+      if (isElectron) window.electronAPI.minimize();
+    });
+    document.getElementById('closeInstallerBtn').addEventListener('click', () => {
+      if (isElectron) window.electronAPI.close();
+    });
+    document.getElementById('minimizeLauncherBtn').addEventListener('click', () => {
+      if (isElectron) window.electronAPI.minimize();
+    });
+    document.getElementById('closeLauncherBtn').addEventListener('click', () => {
+      if (isElectron) window.electronAPI.close();
+    });
+
+    // ── 3-second fake loading bar ──────────────────
+    (function startLoader() {
+      const DURATION   = 3000; // 3 seconds total
+      const INTERVAL   = 40;   // update every 40ms
+      const steps = [
+        { at: 0,   text: 'Checking local files...' },
+        { at: 25,  text: 'Verifying game assets...' },
+        { at: 55,  text: 'Connecting to servers...' },
+        { at: 80,  text: 'Syncing player data...' },
+        { at: 95,  text: 'Ready to play!' },
+      ];
+
+      let elapsed = 0;
+      const ticker = setInterval(function() {
+        elapsed += INTERVAL;
+        const pct = Math.min(100, Math.round((elapsed / DURATION) * 100));
+        progressFill.style.width = pct + '%';
+
+        // Pick status text
+        let label = 'Loading game components...';
+        for (let i = steps.length - 1; i >= 0; i--) {
+          if (pct >= steps[i].at) { label = steps[i].text; break; }
+        }
+        progressStatus.textContent = label + ' (' + pct + '%)';
+
+        if (pct >= 100) {
+          clearInterval(ticker);
+          progressStatus.textContent = 'Verification complete!';
+          setTimeout(function() {
+            progressWrapper.style.display = 'none';
+            installBtn.style.display      = 'block';
+          }, 400);
+        }
+      }, INTERVAL);
+    })();
+
+    // ── Transition to launcher ────────────────────────
+    installBtn.addEventListener('click', () => {
+      showLauncher();
+    });
+
+    function showLauncher() {
+      installerScreen.classList.remove('visible');
+      setTimeout(() => {
+        launcherScreen.classList.add('visible');
+        loadNewsList('news');
+      }, 400);
+    }
+
+    // ── News data ─────────────────────────────────────
+    const newsData = {
+      news: [
+        { title: 'Battle Royale Update', date: '06/27', tag: 'update' },
+        { title: 'New Magical Chiikawa Limited Draw Event Live',        date: '06/25', tag: 'event'  },
+        { title: 'Alpha server stability survey details',               date: '06/23', tag: 'notice' },
+      ],
+      notices: [
+        { title: 'System Maintenance & Optimization Schedule',          date: '06/26', tag: 'notice' },
+        { title: 'Third-party cheat tools warning and bans',            date: '06/15', tag: 'notice' },
+        { title: 'Community guidelines alignment updates',              date: '04/10', tag: 'notice' },
+      ],
+      events: [
+        { title: 'Discord Alpha Test — Get Exclusive Bomb Skin!',       date: '06/25', tag: 'event' },
+        { title: 'Weekly Gacha Spins Leaderboard Event',                date: '06/18', tag: 'event' },
+        { title: 'Double XP & Coin Drops Weekend',                      date: '05/12', tag: 'event' },
+      ],
+    };
+
+    function loadNewsList(category) {
+      const list = document.getElementById('launcherNewsList');
+      list.innerHTML = '';
+      (newsData[category] || []).forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'news-item';
+        div.innerHTML =
+          '<span class="news-tag ' + item.tag + '">' + item.tag + '</span>' +
+          '<span class="news-title">' + item.title + '</span>' +
+          '<span class="news-date">' + item.date + '</span>';
+        div.addEventListener('click', () => showAlert(item.title,
+          'Category: ' + item.tag.toUpperCase() + '<br>Date: ' + item.date + '/2026<br><br>' +
+          'Check our Discord for the latest details on this update.'));
+        list.appendChild(div);
+      });
+    }
+
+    // ── Tab switching ─────────────────────────────────
+    document.querySelectorAll('.launcher-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.launcher-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadNewsList(btn.dataset.tab);
+      });
+    });
+
+    // ── Play button ───────────────────────────────────
+    document.getElementById('playBtn').addEventListener('click', () => {
+      launchOverlay.classList.add('active');
+      if (isElectron && window.electronAPI.startGame) {
+        window.electronAPI.startGame();
+      }
+      setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+    });
+
+    // ── Repair button ─────────────────────────────────
+    document.getElementById('repairBtn').addEventListener('click', () => {
+      showAlert('FILE REPAIR', 'All game assets verified and fully optimized (100%). No issues found.');
+    });
+
+    // ── Custom alert ──────────────────────────────────
+    function showAlert(title, message) {
+      document.getElementById('customAlertTitle').textContent = title;
+      document.getElementById('customAlertBody').innerHTML = message;
+      document.getElementById('customAlert').classList.remove('hidden');
+    }
+    document.getElementById('customAlertCloseBtn').addEventListener('click', () => {
+      document.getElementById('customAlert').classList.add('hidden');
+    });
+
+    // ── Social links ──────────────────────────────────
+    function openSocial(platform) {
+      if (platform === 'discord') {
+        window.open('https://discord.gg/qpJRXkKzZ3', '_blank');
+      } else {
+        showAlert('SOCIAL', 'Launching ' + platform.toUpperCase() + '... (Locked in Alpha)');
+      }
+    }
+  </script>
+</body>
+</html>
