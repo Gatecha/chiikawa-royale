@@ -664,41 +664,41 @@
       if (isElectron) window.electronAPI.close();
     });
 
-    // ── Auto Loader logic on startup ──────────────────
-    function startAutoLoader() {
-      let progress = 0;
+    // ── 3-second fake loading bar ──────────────────
+    (function startLoader() {
+      const DURATION   = 3000; // 3 seconds total
+      const INTERVAL   = 40;   // update every 40ms
       const steps = [
-        { limit: 20,  text: 'Checking local files...' },
-        { limit: 45,  text: 'Verifying game assets...' },
-        { limit: 70,  text: 'Connecting to servers...' },
-        { limit: 90,  text: 'Syncing player data...' },
-        { limit: 100, text: 'Ready to play!' },
+        { at: 0,   text: 'Checking local files...' },
+        { at: 25,  text: 'Verifying game assets...' },
+        { at: 55,  text: 'Connecting to servers...' },
+        { at: 80,  text: 'Syncing player data...' },
+        { at: 95,  text: 'Ready to play!' },
       ];
 
-      const ticker = setInterval(() => {
-        progress += Math.floor(Math.random() * 6) + 1;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(ticker);
-          progressFill.style.width = '100%';
-          progressStatus.textContent = 'Verification complete!';
-          setTimeout(() => {
-            progressWrapper.style.display = 'none';
-            installBtn.style.display = 'block';
-          }, 500);
-        } else {
-          progressFill.style.width = progress + '%';
-          const step = steps.find(s => progress < s.limit);
-          progressStatus.textContent = (step ? step.text : 'Finishing...') + ' (' + progress + '%)';
-        }
-      }, 70);
-    }
+      let elapsed = 0;
+      const ticker = setInterval(function() {
+        elapsed += INTERVAL;
+        const pct = Math.min(100, Math.round((elapsed / DURATION) * 100));
+        progressFill.style.width = pct + '%';
 
-    if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', startAutoLoader);
-    } else {
-      startAutoLoader();
-    }
+        // Pick status text
+        let label = 'Loading game components...';
+        for (let i = steps.length - 1; i >= 0; i--) {
+          if (pct >= steps[i].at) { label = steps[i].text; break; }
+        }
+        progressStatus.textContent = label + ' (' + pct + '%)';
+
+        if (pct >= 100) {
+          clearInterval(ticker);
+          progressStatus.textContent = 'Verification complete!';
+          setTimeout(function() {
+            progressWrapper.style.display = 'none';
+            installBtn.style.display      = 'block';
+          }, 400);
+        }
+      }, INTERVAL);
+    })();
 
     // ── Transition to launcher ────────────────────────
     installBtn.addEventListener('click', () => {

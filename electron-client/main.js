@@ -20,7 +20,7 @@ function createWindow() {
     resizable: false,
     transparent: false,
     backgroundColor: '#0f1012',
-    icon: path.join(__dirname, 'chiikawa-royale-logo.ico'),
+    icon: path.join(__dirname, 'gamelogo.ico'),
     title: 'Chiikawa Royale',
     webPreferences: {
       nodeIntegration: false,
