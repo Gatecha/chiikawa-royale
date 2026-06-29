@@ -134,40 +134,26 @@ html, body {
 /* Logo Box styling */
 .logo-box {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 70px; /* Put distance between logo and buttons */
   position: relative;
-  height: 50px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: margin-bottom 0.3s;
 }
 
-.logo-full {
-  max-width: 100%;
+.nav-logo {
+  max-width: 48px; /* small version in minimized state */
   height: auto;
-  opacity: 0;
-  display: none;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
-  transition: opacity 0.3s;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+  transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
 }
 
-.logo-mini {
-  max-width: 38px;
-  height: auto;
-  opacity: 0.8;
-  display: block;
-  filter: brightness(0) invert(1) drop-shadow(0 0 4px rgba(255,255,255,0.4)); /* Makes outline white plain logo! */
-  transition: opacity 0.3s;
-}
-
-.sidebar-nav:hover .logo-full {
-  display: block;
+.sidebar-nav:hover .nav-logo {
+  max-width: 160px; /* expands to larger logo when hovered */
   opacity: 1;
-}
-
-.sidebar-nav:hover .logo-mini {
-  display: none;
-  opacity: 0;
 }
 
 /* Navigation Links Container */

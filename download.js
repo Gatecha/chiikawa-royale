@@ -981,36 +981,39 @@
   });
 
   /* ==========================================================================
-     PARALLAX TILT EFFECT (3D CURSOR INTERACTIVITY)
+     PARALLAX TILT EFFECT (PREMIUM LOCAL 3D CURSOR INTERACTIVITY IN ALL SECTIONS)
      ========================================================================== */
   const tiltElements = document.querySelectorAll(".tilt-element");
 
-  window.addEventListener("pointermove", (e) => {
-    // Only tilt cards inside the active snap-scroll section to keep frame rates high
-    const activeSection = document.querySelector(".section.active");
-    if (!activeSection) return;
-
-    const activeTilts = activeSection.querySelectorAll(".tilt-element");
-    if (activeTilts.length === 0) return;
-
-    const clientX = e.clientX;
-    const clientY = e.clientY;
-    
-    // Relative coordinates (-0.5 to 0.5) from center
-    const rX = (clientX / window.innerWidth - 0.5);
-    const rY = (clientY / window.innerHeight - 0.5);
-
-    activeTilts.forEach((el) => {
-      // Rotation limits (up to 12 degrees tilt)
-      const rotY = rX * 24;
-      const rotX = -rY * 24;
-      el.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(10px)`;
+  tiltElements.forEach((el) => {
+    // Add smooth transition on enter
+    el.addEventListener("pointerenter", () => {
+      el.style.transition = "transform 0.1s ease-out, box-shadow 0.15s ease-out";
     });
-  }, { passive: true });
 
-  window.addEventListener("pointerleave", () => {
-    tiltElements.forEach((el) => {
-      el.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)`;
+    el.addEventListener("pointermove", (e) => {
+      const rect = el.getBoundingClientRect();
+      
+      // Calculate cursor position relative to the element
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Normalized offset (-0.5 to 0.5) from the card center
+      const relX = (x / rect.width) - 0.5;
+      const relY = (y / rect.height) - 0.5;
+      
+      // Rotation degrees (up to 15 degrees tilt in any direction)
+      const rotateY = relX * 24; 
+      const rotateX = -relY * 24;
+      
+      // Set 3D rotation, slight scale, and translate depth
+      el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02) translateZ(15px)`;
+    });
+
+    el.addEventListener("pointerleave", () => {
+      // Eases smoothly back to flat state on mouse leave
+      el.style.transition = "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s";
+      el.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1) translateZ(0px)";
     });
   });
 
