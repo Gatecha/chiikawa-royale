@@ -9404,6 +9404,10 @@ if (usernameForm) {
       if (introVideo) {
         introVideo.pause();
       }
+      if (introAnimationFrameId) {
+        cancelAnimationFrame(introAnimationFrameId);
+        introAnimationFrameId = null;
+      }
     };
 
     if (serverMode === "local" || !supabaseClient || isGuestMode) {
@@ -13671,8 +13675,8 @@ window.tutorialGuideActive = false;
 window.tutorialGuidePaused = false;
 window.tutorialGuideStep = 0;
 
-let cutsceneTimeListener = null;
-let introVideoTimeListener = null;
+let cutsceneAnimationFrameId = null;
+let introAnimationFrameId = null;
 
 function startInteractiveCutscene() {
   const cutsceneScreen = document.getElementById("tutorialCutsceneScreen");
@@ -13720,40 +13724,67 @@ function startInteractiveCutscene() {
     }
   }
 
+  // Cancel any existing loops
+  if (cutsceneAnimationFrameId) {
+    cancelAnimationFrame(cutsceneAnimationFrameId);
+    cutsceneAnimationFrameId = null;
+  }
+
+  // Yoyo/Ping-pong loop state
+  let isReversing = false;
+  let lastTime = performance.now();
+  
+  function loopTicker() {
+    let minTime = 0.9;
+    let maxTime = 1.9;
+    if (tutorialState === 1) {
+      minTime = 2.2;
+      maxTime = 2.6;
+    } else if (tutorialState === 2) {
+      minTime = 2.8;
+      maxTime = 4.5;
+    }
+    
+    const now = performance.now();
+    const delta = (now - lastTime) / 1000;
+    lastTime = now;
+    
+    if (isReversing) {
+      video.pause();
+      let newTime = video.currentTime - delta;
+      if (newTime <= minTime) {
+        newTime = minTime;
+        isReversing = false;
+        video.play().catch(e => console.warn(e));
+      }
+      video.currentTime = newTime;
+    } else {
+      if (video.currentTime >= maxTime) {
+        isReversing = true;
+        video.pause();
+      } else if (video.currentTime < minTime) {
+        video.currentTime = minTime;
+      }
+    }
+    
+    showCutsceneUI();
+    cutsceneAnimationFrameId = requestAnimationFrame(loopTicker);
+  }
+
   // Reset and play at Usagi start frame (0.9s)
   video.currentTime = 0.9;
   video.play()
     .then(() => {
       console.log("Cutscene video playing successfully.");
+      lastTime = performance.now();
+      loopTicker();
     })
     .catch(e => {
       console.warn("Video play blocked, showing UI fallback:", e);
       video.currentTime = 0.9;
-      showCutsceneUI();
+      lastTime = performance.now();
+      loopTicker();
     });
-  
-  if (cutsceneTimeListener) {
-    video.removeEventListener("timeupdate", cutsceneTimeListener);
-  }
-  
-  cutsceneTimeListener = () => {
-    let minTime = 0.9;
-    let maxTime = 2.1;
-    if (tutorialState === 1) {
-      minTime = 2.2;
-      maxTime = 2.7;
-    } else if (tutorialState === 2) {
-      minTime = 2.8;
-      maxTime = 4.9;
-    }
-    
-    if (video.currentTime >= maxTime || video.currentTime < minTime) {
-      video.currentTime = minTime;
-    }
-    
-    showCutsceneUI();
-  };
-  video.addEventListener("timeupdate", cutsceneTimeListener);
   
   if (prevBtn && nextBtn && chooseBtn) {
     const newPrev = prevBtn.cloneNode(true);
@@ -13771,7 +13802,9 @@ function startInteractiveCutscene() {
     newPrev.addEventListener("click", () => {
       if (tutorialState > 0) {
         tutorialState--;
+        isReversing = false;
         video.currentTime = tutorialState === 0 ? 0.9 : 2.2;
+        video.play().catch(e => console.warn(e));
         updateNavButtons();
       }
     });
@@ -13779,7 +13812,9 @@ function startInteractiveCutscene() {
     newNext.addEventListener("click", () => {
       if (tutorialState < 2) {
         tutorialState++;
+        isReversing = false;
         video.currentTime = tutorialState === 1 ? 2.2 : 2.8;
+        video.play().catch(e => console.warn(e));
         updateNavButtons();
       }
     });
@@ -13797,9 +13832,9 @@ function startInteractiveCutscene() {
       localStorage.setItem("tutorial_status", "vs_screen");
       
       video.pause();
-      if (cutsceneTimeListener) {
-        video.removeEventListener("timeupdate", cutsceneTimeListener);
-        cutsceneTimeListener = null;
+      if (cutsceneAnimationFrameId) {
+        cancelAnimationFrame(cutsceneAnimationFrameId);
+        cutsceneAnimationFrameId = null;
       }
       
       startUsernameIntroFlowAfterCutscene();
@@ -13811,20 +13846,50 @@ function startUsernameIntroFlowAfterCutscene() {
   switchScreen(introScreen);
   if (usernameForm) usernameForm.classList.add("hidden");
 
+  // Cancel any existing intro loop
+  if (introAnimationFrameId) {
+    cancelAnimationFrame(introAnimationFrameId);
+    introAnimationFrameId = null;
+  }
+
   const introVideo = document.getElementById("introCutsceneVideo");
   if (introVideo) {
     introVideo.currentTime = 5.0;
     introVideo.play().catch(e => console.warn("Intro video play error:", e));
     
-    if (introVideoTimeListener) {
-      introVideo.removeEventListener("timeupdate", introVideoTimeListener);
-    }
-    introVideoTimeListener = () => {
-      if (introVideo.currentTime >= 8.5 || introVideo.currentTime < 5.0) {
-        introVideo.currentTime = 5.0;
+    let isIntroReversing = false;
+    let lastIntroTime = performance.now();
+    
+    function introLoopTicker() {
+      const minTime = 5.0;
+      const maxTime = 8.0;
+      
+      const now = performance.now();
+      const delta = (now - lastIntroTime) / 1000;
+      lastIntroTime = now;
+      
+      if (isIntroReversing) {
+        introVideo.pause();
+        let newTime = introVideo.currentTime - delta;
+        if (newTime <= minTime) {
+          newTime = minTime;
+          isIntroReversing = false;
+          introVideo.play().catch(e => console.warn(e));
+        }
+        introVideo.currentTime = newTime;
+      } else {
+        if (introVideo.currentTime >= maxTime) {
+          isIntroReversing = true;
+          introVideo.pause();
+        } else if (introVideo.currentTime < minTime) {
+          introVideo.currentTime = minTime;
+        }
       }
-    };
-    introVideo.addEventListener("timeupdate", introVideoTimeListener);
+      introAnimationFrameId = requestAnimationFrame(introLoopTicker);
+    }
+    
+    lastIntroTime = performance.now();
+    introLoopTicker();
   }
 
   const chosenGuide = selectedCharacter || "chiikawa";
