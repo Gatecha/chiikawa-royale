@@ -22,7 +22,17 @@
     <aside class="sidebar-nav" aria-label="Sidebar Navigation">
       <div class="logo-box">
         <a href="#home">
-          <img src="chiikawa-royale-logo.png" alt="Chiikawa Royale Logo" class="nav-logo">
+          <img src="assets/chiikawa-royale-characters.png" alt="Full Logo" class="logo-full">
+          <svg viewBox="0 0 100 100" width="38" height="38" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" class="logo-mini">
+            <path d="M 20,50 A 30,30 0 1,0 80,50 A 30,30 0 1,0 20,50" />
+            <path d="M 25,25 C 22,12 38,12 40,22" />
+            <path d="M 75,25 C 78,12 62,12 60,22" />
+            <circle cx="42" cy="45" r="3.5" fill="currentColor" stroke="none" />
+            <circle cx="58" cy="45" r="3.5" fill="currentColor" stroke="none" />
+            <ellipse cx="33" cy="52" rx="4.5" ry="2" fill="rgba(255,255,255,0.4)" stroke="none" />
+            <ellipse cx="67" cy="52" rx="4.5" ry="2" fill="rgba(255,255,255,0.4)" stroke="none" />
+            <path d="M 46,52 Q 50,56 54,52" />
+          </svg>
         </a>
       </div>
       <nav class="nav-links">
@@ -91,6 +101,14 @@
             <p class="desc">
               Dash through colorful grid arenas, trap your opponents with bombs, collect powerful zone upgrades, and survive chaotic rounds in the ultimate 20-player Battle Royale!
             </p>
+            <button class="watch-trailer-btn" id="watch-trailer-btn">
+              <span class="play-icon-svg">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </span>
+              WATCH TRAILER
+            </button>
           </div>
           
           <div class="download-panel anim-element slide-left tilt-element">
@@ -361,6 +379,21 @@
       <div class="transition-shutter" id="transition-shutter">
         <div class="shutter-panel left-panel"></div>
         <div class="shutter-panel right-panel"></div>
+      </div>
+
+      <!-- Video Modal Overlay -->
+      <div class="video-modal" id="video-modal">
+        <div class="modal-backdrop" id="modal-backdrop"></div>
+        <div class="modal-content">
+          <button class="modal-close-btn" id="modal-close-btn" aria-label="Close modal">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+          <div class="video-wrapper">
+            <iframe id="trailer-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </div>
+        </div>
       </div>
 
       <!-- Interactive Logic Script -->

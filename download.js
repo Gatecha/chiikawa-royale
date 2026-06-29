@@ -1045,4 +1045,48 @@
     });
   });
 
+  /* ==========================================================================
+     TRAILER VIDEO MODAL OVERLAY LOGIC
+     ========================================================================== */
+  const watchTrailerBtn = document.getElementById("watch-trailer-btn");
+  const videoModal = document.getElementById("video-modal");
+  const modalBackdrop = document.getElementById("modal-backdrop");
+  const modalCloseBtn = document.getElementById("modal-close-btn");
+  const trailerIframe = document.getElementById("trailer-iframe");
+
+  if (watchTrailerBtn && videoModal && trailerIframe) {
+    watchTrailerBtn.addEventListener("click", () => {
+      initAudio();
+      
+      // Play a cute synthesized play click note
+      playSynthNotes([{ freq: 523.25, duration: 0.15, type: 'sine', volume: 0.08 }]);
+      
+      // Load YouTube embed URL with autoplay
+      trailerIframe.src = "https://www.youtube.com/embed/kVs2Ts0N3_8?autoplay=1&enablejsapi=1";
+      
+      // Open modal
+      videoModal.classList.add("modal-open");
+    });
+
+    const closeModal = () => {
+      // Close modal
+      videoModal.classList.remove("modal-open");
+      
+      // Clear iframe source to immediately stop playback
+      trailerIframe.src = "";
+      
+      playSynthNotes([{ freq: 330, duration: 0.12, type: 'sine', volume: 0.06 }]);
+    };
+
+    if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
+    if (modalBackdrop) modalBackdrop.addEventListener("click", closeModal);
+
+    // Escape key closes modal
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && videoModal.classList.contains("modal-open")) {
+        closeModal();
+      }
+    });
+  }
+
 }());
