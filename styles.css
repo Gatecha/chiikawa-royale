@@ -11326,10 +11326,13 @@ body.is-iphone {
   height: 100vh;
   background: #000;
   z-index: 9999;
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+}
+#tutorialCutsceneScreen.active {
+  display: flex;
 }
 .tutorial-cutscene-container {
   position: relative;
