@@ -957,7 +957,7 @@ body.android-apk .badge-text {
 .select-paw-badge span:nth-child(1) {
   width: 32px;
   height: 24px;
-  left: 22px;
+  left: 17px;
   top: 38px;
   border-radius: 50% 50% 45% 45%;
 }
@@ -965,7 +965,7 @@ body.android-apk .badge-text {
 .select-paw-badge span:nth-child(2) {
   width: 14px;
   height: 18px;
-  left: 14px;
+  left: 9px;
   top: 18px;
   border-radius: 50%;
 }
@@ -973,7 +973,7 @@ body.android-apk .badge-text {
 .select-paw-badge span:nth-child(3) {
   width: 16px;
   height: 20px;
-  left: 30px;
+  left: 25px;
   top: 10px;
   border-radius: 50%;
 }
@@ -981,7 +981,7 @@ body.android-apk .badge-text {
 .select-paw-badge span:nth-child(4) {
   width: 14px;
   height: 18px;
-  left: 48px;
+  left: 43px;
   top: 18px;
   border-radius: 50%;
 }
@@ -1276,7 +1276,7 @@ body.android-apk .badge-text {
   transition: transform 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.wardrobe-tab::before {
+.wardrobe-tab.has-new::before {
   content: "";
   position: absolute;
   left: 24px;

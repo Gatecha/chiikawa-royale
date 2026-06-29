@@ -2317,6 +2317,7 @@ function openLocalFourPlayerLobby() {
     null,
     null,
   ];
+  currentRoomIsChallenge = true;
   switchScreen(menuScreen);
   document.body.classList.add("local-four-lobby-active");
   document.querySelector('.tab-btn[data-tab="squad"]')?.click();
@@ -2443,6 +2444,7 @@ function closeLocalFourPlayerLobby() {
   roomCode = null;
   hostId = null;
   localPlayerId = null;
+  currentRoomIsChallenge = false;
   document.body.classList.remove("local-four-lobby-active");
   syncSquadLobbyInterface();
 }
@@ -12441,6 +12443,32 @@ function syncBombSelectPreview(color) {
   }
 }
 
+function updateWardrobeTabBadges() {
+  const bombColors = ["pink", "blue", "green", "gold", "purple"];
+  const hasNewBomb = bombColors.some(color => localStorage.getItem("new_bomb_" + color) === "true");
+  
+  const effectColors = ["pink", "blue", "green", "gold", "purple"];
+  const hasNewEffect = effectColors.some(color => localStorage.getItem("new_effect_" + color) === "true");
+
+  const bombsTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="bombs"]');
+  if (bombsTab) {
+    bombsTab.classList.toggle("has-new", hasNewBomb);
+  }
+  const effectsTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="effects"]');
+  if (effectsTab) {
+    effectsTab.classList.toggle("has-new", hasNewEffect);
+  }
+  
+  const charactersTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="characters"]');
+  if (charactersTab) {
+    charactersTab.classList.remove("has-new");
+  }
+  const clothesTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="clothes"]');
+  if (clothesTab) {
+    clothesTab.classList.remove("has-new");
+  }
+}
+
 function syncBombWardrobe() {
   const ownedBombs = {
     pink: localStorage.getItem("owned_bomb_pink") === "true",
@@ -12784,6 +12812,11 @@ function handleGachaDraw() {
     const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
     localStorage.setItem(ownedKey, "true");
     
+    // Mark as new / untried
+    const newKey = winner.type === "effect" ? `new_effect_${winner.color}` : `new_bomb_${winner.color}`;
+    localStorage.setItem(newKey, "true");
+    updateWardrobeTabBadges();
+    
     // Sync pool and wardrobe
     renderGachaPool();
     syncBombWardrobe();
@@ -12822,6 +12855,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const bombColor = card.getAttribute("data-bomb-color");
       previewBombColor = bombColor;
       
+      // Clear new status
+      localStorage.removeItem(`new_bomb_${bombColor}`);
+      updateWardrobeTabBadges();
+      
       // Update card active states
       bombCards.forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
@@ -12841,6 +12878,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const effectColor = card.getAttribute("data-effect-color");
       previewEffectColor = effectColor;
       
+      // Clear new status
+      localStorage.removeItem(`new_effect_${effectColor}`);
+      updateWardrobeTabBadges();
+      
       // Update card active states
       effectCards.forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
@@ -12853,6 +12894,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initial syncs
   syncBombWardrobe();
   syncEffectWardrobe();
+  updateWardrobeTabBadges();
   initGachaShop();
   initQuestsSystem();
   if (typeof updateFooterColor === "function") updateFooterColor("play");
