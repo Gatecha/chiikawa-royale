@@ -9,6 +9,12 @@ const isGameOnly = process.argv.includes('--game-only');
 app.setAppUserModelId('com.chiikawaroyale.launcher');
 app.setName('Chiikawa Royale');
 
+if (isGameOnly) {
+  // Use a separate user data directory for the game process to avoid lock conflicts with the launcher
+  const originalUserData = app.getPath('userData');
+  app.setPath('userData', originalUserData + '_game');
+}
+
 // ── Single-instance lock ──────────────────────────────────────────────────────
 if (!isGameOnly) {
   const gotLock = app.requestSingleInstanceLock();
