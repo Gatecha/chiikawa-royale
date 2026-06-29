@@ -1783,6 +1783,9 @@ function handleServerMessage(msg) {
         if (data.playerId === localPlayerId) {
           let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
           localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+          
+          let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
+          localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
         }
 
         burstSparkles(collector.x, collector.y);
@@ -1823,21 +1826,20 @@ function handleServerMessage(msg) {
         // Progress weekly win quest
         let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
         localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+        totalWins += 1; // Increment totalWins for online victory
 
         if (data.tournamentFinished) {
-          crownCount += 2; gemsCount += 300;
-          addChatMessage("System", "TOURNAMENT VICTORY! You earned 300 gems and 2 crowns! 👑🏆", true);
+          crownCount += 2; gemsCount += 5;
+          addChatMessage("System", "TOURNAMENT VICTORY! You earned 5 gems and 2 crowns! 👑🏆", true);
         } else {
-          crownCount += 1; gemsCount += 100;
-          addChatMessage("System", "ROUND VICTORY! You earned 100 gems and 1 crown! 👑", true);
+          crownCount += 1; gemsCount += 5;
+          addChatMessage("System", "ROUND VICTORY! You earned 5 gems and 1 crown! 👑", true);
         }
       } else {
         if (data.tournamentFinished) {
-          gemsCount += 50;
-          addChatMessage("System", "Tournament Finished. You earned 50 gems! 💎", true);
+          addChatMessage("System", "Tournament Finished! 🏆", true);
         } else {
-          gemsCount += 20;
-          addChatMessage("System", "Round Finished. You earned 20 gems! 💎", true);
+          addChatMessage("System", "Round Finished! 🏁", true);
         }
       }
       document.getElementById("crownCount").textContent = crownCount;
@@ -3021,6 +3023,9 @@ function localPlaceBomb(player) {
   if (player.id === localPlayerId) {
     let bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
     localStorage.setItem("quest_bombs_progress", Math.min(10, bombsPlaced + 1).toString());
+    
+    let lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
+    localStorage.setItem("lifetime_bombs_placed", (lifetimeBombs + 1).toString());
   }
 
   bombs.push({
@@ -3097,6 +3102,9 @@ function localTriggerExplosion(bomb) {
           if (p.hp <= 0 && hpBefore > 0 && p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
             let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
             localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            
+            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
+            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
           }
         } else {
           p.alive = false;
@@ -3106,6 +3114,9 @@ function localTriggerExplosion(bomb) {
           if (p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
             let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
             localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            
+            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
+            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
           }
         }
       }
@@ -3137,6 +3148,9 @@ function localCheckPickup(player) {
   if (player.id === localPlayerId) {
     let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
     localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+    
+    let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
+    localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
   }
 
   burstSparkles(player.x, player.y);
@@ -3190,7 +3204,7 @@ function awardLocalMatchProgress(playerWon) {
   }
 
   const gainedXp = playerWon ? 120 : 45;
-  const gainedGems = playerWon ? 85 : 25;
+  const gainedGems = playerWon ? 5 : 0;
   seasonXp += gainedXp;
   gemsCount += gainedGems;
   if (playerWon) crownCount += 1;
@@ -12966,6 +12980,20 @@ function initQuestsSystem() {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
   });
 
+  // Bind gameplay milestone quests (awarding direct gems)
+  bindGameplayQuestClaimButton("qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", 15, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindGameplayQuestClaimButton("qbtn_win5", "quest_win5_completed", "quest_win5_claimed", 10, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindGameplayQuestClaimButton("qbtn_total_pickups", "quest_total_pickups_completed", "quest_total_pickups_claimed", 5, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindGameplayQuestClaimButton("qbtn_total_kills", "quest_total_kills_completed", "quest_total_kills_claimed", 20, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+
   // Bind engagement progress milestones
   bindMilestoneNode("chk_100", 100);
   bindMilestoneNode("chk_200", 200);
@@ -12993,6 +13021,32 @@ function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
       localStorage.setItem("daily_engagement", engagement.toString());
       
       showToastMsg(`Claimed ${pointsVal} Engagement Points!`);
+      syncQuestsUI();
+    } else if (!completed && !claimed && typeof goAction === "function") {
+      goAction();
+    }
+  });
+}
+
+function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goAction) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  
+  btn.addEventListener("click", () => {
+    const completed = localStorage.getItem(compKey) === "true";
+    const claimed = localStorage.getItem(claimKey) === "true";
+    
+    if (completed && !claimed) {
+      localStorage.setItem(claimKey, "true");
+      
+      // Add gems directly
+      gemsCount += gemsVal;
+      const gemsEl = document.getElementById("gemsCount");
+      if (gemsEl) gemsEl.textContent = gemsCount;
+      updateShopWalletDisplay();
+      saveProgression();
+      
+      showToastMsg(`Claimed Quest Reward: +${gemsVal} Gems!`);
       syncQuestsUI();
     } else if (!completed && !claimed && typeof goAction === "function") {
       goAction();
@@ -13079,6 +13133,26 @@ function syncQuestsUI() {
   const spend = parseInt(localStorage.getItem("quest_spend1000_progress") || "0");
   if (spend >= 1000) localStorage.setItem("quest_spend1000_completed", "true");
   updateQuestCardUI("qprog_spend1000", "qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", spend, 1000);
+
+  // Sync Gameplay Quests
+  // 1. Place 100 Bombs
+  const lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
+  if (lifetimeBombs >= 100) localStorage.setItem("quest_total_bombs_completed", "true");
+  updateQuestCardUI("qprog_total_bombs", "qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", lifetimeBombs, 100);
+
+  // 2. Win 5 Matches
+  if (totalWins >= 5) localStorage.setItem("quest_win5_completed", "true");
+  updateQuestCardUI("qprog_win5", "qbtn_win5", "quest_win5_completed", "quest_win5_claimed", totalWins, 5);
+
+  // 3. Collect 15 Power-ups
+  const lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
+  if (lifetimePickups >= 15) localStorage.setItem("quest_total_pickups_completed", "true");
+  updateQuestCardUI("qprog_total_pickups", "qbtn_total_pickups", "quest_total_pickups_completed", "quest_total_pickups_claimed", lifetimePickups, 15);
+
+  // 4. Defeat 15 Enemies
+  const lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
+  if (lifetimeKills >= 15) localStorage.setItem("quest_total_kills_completed", "true");
+  updateQuestCardUI("qprog_total_kills", "qbtn_total_kills", "quest_total_kills_completed", "quest_total_kills_claimed", lifetimeKills, 15);
 }
 
 function updateMilestoneNode(nodeId, milestoneVal, currentEngagement) {

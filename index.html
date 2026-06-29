@@ -1307,12 +1307,106 @@
 
                   </div>
 
-                  <!-- QUESTS TAB PAGE (Empty State) -->
-                  <div id="questsTabContent_quests" class="quests-page" style="display: none; height: 100%; width: 100%;">
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
-                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">📜</div>
-                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Quests Available</span>
-                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Main story missions and side errands are currently empty.</small>
+                  <!-- QUESTS TAB PAGE (Gameplay Quests) -->
+                  <div id="questsTabContent_quests" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Top Quests Info Area -->
+                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); flex-shrink: 0;">
+                      <div style="display: flex; flex-direction: column;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase;">Gameplay Milestones</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; margin-top: 2px;">Combat Challenges</strong>
+                      </div>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: bold;">Earn direct Gems by completing these combat achievements!</span>
+                    </div>
+
+                    <!-- Quests Grid -->
+                    <div class="quests-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; flex-grow: 1;">
+                      
+                      <!-- Gameplay Quest Card 1: Place 100 Bombs -->
+                      <div class="quest-card" id="qcard_total_bombs">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_total_bombs">0/100</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Place 100 bombs in matches</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 15</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_total_bombs" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Gameplay Quest Card 2: Win 5 Matches -->
+                      <div class="quest-card" id="qcard_win5">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_win5">0/5</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Win 5 matches in total</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 10</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_win5" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Gameplay Quest Card 3: Collect 15 Power-ups -->
+                      <div class="quest-card" id="qcard_total_pickups">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_total_pickups">0/15</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Collect 15 power-ups in matches</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 5</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_total_pickups" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Gameplay Quest Card 4: Defeat 15 Enemies -->
+                      <div class="quest-card" id="qcard_total_kills">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_total_kills">0/15</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Defeat 15 players or bots</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 20</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_total_kills" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">These global quests track your overall lifetime stats in matches.</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: 900;">★ No expiration</span>
                     </div>
                   </div>
 
