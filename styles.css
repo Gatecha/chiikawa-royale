@@ -5946,6 +5946,35 @@ body.is-mobile .arcade-controller {
   color: #fff;
 }
 
+.btn-guest {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  min-height: 46px;
+  border-radius: 10px;
+  border: var(--border);
+  box-shadow: 5px 5px 0 var(--ink);
+  background: linear-gradient(135deg, #a88beb, #f8ceec);
+  color: var(--ink);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  user-select: none;
+}
+
+.btn-guest:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--ink);
+}
+
+.btn-guest:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
 .social-login-separator {
   display: flex;
   align-items: center;
