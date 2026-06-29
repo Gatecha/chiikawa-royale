@@ -254,6 +254,7 @@ let brmActive = false;
 // Settings Indicators
 const connectionStatusIndicator = document.getElementById("connectionStatusIndicator");
 const playerUuidLabel = document.getElementById("playerUuidLabel");
+const accountTypeLabel = document.getElementById("accountTypeLabel");
 
 // Game settings
 const CANVAS_WIDTH = 960;
@@ -624,6 +625,7 @@ let localMode = false;
 let startCountdownTimer = 0;
 let startCountdownState = "";
 let serverMode = "online"; // "online" or "local"
+let isGuestMode = localStorage.getItem("is_guest_mode") === "true";
 let pendingLocalConnect = false;
 
 // Social globals moved to top to prevent temporal dead zone ReferenceErrors
@@ -716,6 +718,19 @@ function finishStartup() {
     studioSplashScreen.style.display = "none";
   }
   restoreConnectionPreference();
+  updateAccountTypeUI();
+}
+
+function updateAccountTypeUI() {
+  if (accountTypeLabel) {
+    if (serverMode === "local") {
+      accountTypeLabel.textContent = "Local / LAN";
+      accountTypeLabel.style.color = "#a8a2b4";
+    } else {
+      accountTypeLabel.textContent = isGuestMode ? "Guest (Online)" : "Member (Online)";
+      accountTypeLabel.style.color = isGuestMode ? "#ff922b" : "#51cf66";
+    }
+  }
 }
 
 // Custom Map & Voting States
@@ -3402,7 +3417,7 @@ function updateProgressionUI() {
 
 async function loadProgression() {
   // If Supabase is not active, fallback to localStorage
-  if (!supabaseClient) {
+  if (!supabaseClient || isGuestMode) {
     try {
       const saved = JSON.parse(localStorage.getItem("chiikawaProgress") || "{}");
       crownCount = Number.isFinite(saved.crownCount) ? saved.crownCount : crownCount;
@@ -3450,7 +3465,7 @@ async function saveProgression() {
     updateShopWalletDisplay();
   }
   // If Supabase is not active, fallback to localStorage
-  if (!supabaseClient) {
+  if (!supabaseClient || isGuestMode) {
     localStorage.setItem(
       "chiikawaProgress",
       JSON.stringify({ crownCount, gemsCount, seasonLevel, seasonXp, seasonXpToNext, rankRp, totalWins, totalMatches })
@@ -7198,6 +7213,10 @@ if (usernameInput && squadLobbyUserNameEl) {
     const val = usernameInput.value.trim();
     squadLobbyUserNameEl.textContent = val || "Friend";
     localStorage.setItem("local_username", val);
+    if (isGuestMode) {
+      localStorage.setItem("guest_username", val);
+      currentSocialUsername = val;
+    }
     updateProgressionUI();
   });
 }
@@ -9023,6 +9042,19 @@ window.addEventListener("resize", resizeConfettiCanvas);
 // ----------------------------------------------------------------
 
 async function checkAuthSession() {
+  if (isGuestMode) {
+    let guestName = localStorage.getItem("guest_username") || "Guest_" + Math.floor(1000 + Math.random() * 9000);
+    localStorage.setItem("guest_username", guestName);
+    currentSocialUsername = guestName;
+    if (usernameInput) usernameInput.value = guestName;
+    localStorage.setItem("local_username", guestName);
+    updateProgressionUI();
+    finishStartup();
+    switchScreen(menuScreen);
+    tryPlayMusic();
+    return;
+  }
+
   if (!supabaseClient) {
     // If Supabase is not configured, skip to main menu
     switchScreen(menuScreen);
@@ -9255,6 +9287,34 @@ if (btnSignup) {
   });
 }
 
+// Hook up Guest Login
+const btnGuestLogin = document.getElementById("btnGuestLogin");
+if (btnGuestLogin) {
+  btnGuestLogin.addEventListener("click", () => {
+    isGuestMode = true;
+    localStorage.setItem("is_guest_mode", "true");
+    serverMode = "online";
+    
+    let guestName = localStorage.getItem("guest_username");
+    if (!guestName) {
+      guestName = "Guest_" + Math.floor(1000 + Math.random() * 9000);
+      localStorage.setItem("guest_username", guestName);
+    }
+    
+    currentSocialUsername = guestName;
+    if (usernameInput) usernameInput.value = guestName;
+    localStorage.setItem("local_username", guestName);
+    
+    loadProgression();
+    updateProgressionUI();
+    connectWebSocket(true);
+    
+    finishStartup();
+    switchScreen(menuScreen);
+    tryPlayMusic();
+  });
+}
+
 // Hook up Google & Discord OAuth logins
 const btnGoogleLogin = document.getElementById("btnGoogleLogin");
 if (btnGoogleLogin) {
@@ -9459,26 +9519,32 @@ if (btnExitGame) {
 const btnLogoutAccount = document.getElementById("btnLogoutAccount");
 if (btnLogoutAccount) {
   btnLogoutAccount.addEventListener("click", async () => {
-    if (!supabaseClient) return;
-    try {
-      await supabaseClient.auth.signOut();
-      
-      // Reset progression locally
-      crownCount = 0;
-      gemsCount = 100;
-      seasonLevel = 1;
-      seasonXp = 0;
-      currentSocialUsername = "";
-      localStorage.removeItem("local_username");
-      if (usernameInput) usernameInput.value = "Friend";
-      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = "Friend";
-      updateProgressionUI();
+    isGuestMode = false;
+    localStorage.removeItem("is_guest_mode");
+    localStorage.removeItem("guest_username");
+    updateAccountTypeUI();
 
-      // Go back to login screen
-      switchScreen(loginScreen);
-    } catch (err) {
-      console.error("Logout error:", err);
+    if (supabaseClient) {
+      try {
+        await supabaseClient.auth.signOut();
+      } catch (err) {
+        console.error("Logout error:", err);
+      }
     }
+    
+    // Reset progression locally
+    crownCount = 0;
+    gemsCount = 100;
+    seasonLevel = 1;
+    seasonXp = 0;
+    currentSocialUsername = "";
+    localStorage.removeItem("local_username");
+    if (usernameInput) usernameInput.value = "Friend";
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = "Friend";
+    updateProgressionUI();
+
+    // Go back to login screen
+    switchScreen(loginScreen);
   });
 }
 
@@ -9530,6 +9596,19 @@ function initIntroSequence() {
   // Hook up the Play Button click handler
   if (titlePlayBtn) {
     titlePlayBtn.addEventListener("click", async () => {
+      if (isGuestMode) {
+        let guestName = localStorage.getItem("guest_username") || "Guest_" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem("guest_username", guestName);
+        currentSocialUsername = guestName;
+        if (usernameInput) usernameInput.value = guestName;
+        localStorage.setItem("local_username", guestName);
+        updateProgressionUI();
+        finishStartup();
+        switchScreen(menuScreen);
+        tryPlayMusic();
+        return;
+      }
+
       if (supabaseClient) {
         try {
           const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 4000, "Play button session check");
