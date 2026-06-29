@@ -13666,9 +13666,9 @@ function startInteractiveCutscene() {
   const cutsceneScreen = document.getElementById("tutorialCutsceneScreen");
   const video = document.getElementById("tutorialCutsceneVideo");
   const title = document.getElementById("tutorialCutsceneTitle");
-  const chooseBtn = document.getElementById("tutorialChooseBtn");
-  const prevBtn = document.getElementById("tutorialPrevBtn");
-  const nextBtn = document.getElementById("tutorialNextBtn");
+  let chooseBtn = document.getElementById("tutorialChooseBtn");
+  let prevBtn = document.getElementById("tutorialPrevBtn");
+  let nextBtn = document.getElementById("tutorialNextBtn");
   
   if (!cutsceneScreen || !video) {
     localStorage.setItem("tutorial_status", "vs_screen");
@@ -13733,6 +13733,10 @@ function startInteractiveCutscene() {
     prevBtn.parentNode.replaceChild(newPrev, prevBtn);
     nextBtn.parentNode.replaceChild(newNext, nextBtn);
     chooseBtn.parentNode.replaceChild(newChoose, chooseBtn);
+    
+    prevBtn = newPrev;
+    nextBtn = newNext;
+    chooseBtn = newChoose;
     
     newPrev.addEventListener("click", () => {
       if (tutorialState > 0) {
