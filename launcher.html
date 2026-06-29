@@ -340,6 +340,8 @@
     .btn-play:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
     .btn-play.upd     { background: linear-gradient(135deg,#f5a623,#c8720a); box-shadow: 0 4px 22px rgba(245,166,35,0.42); }
     .btn-play.upd:hover { box-shadow: 0 8px 30px rgba(245,166,35,0.58); }
+    .btn-play.restart-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 22px rgba(16, 185, 129, 0.42); }
+    .btn-play.restart-btn:hover { box-shadow: 0 8px 30px rgba(16, 185, 129, 0.58); }
 
     /* Version info */
     .ver-info { text-align: right; }
@@ -991,6 +993,12 @@ playBtn.addEventListener('click', async () => {
   }
 });
 </script>
+
+<!-- ── LAUNCH OVERLAY ── -->
+<div id="launchOv" class="launch-ov">
+  <div class="spin"></div>
+  <div id="launchTxt" class="launch-txt">STARTING CHIIKAWA ROYALE...</div>
+</div>
 
 <!-- ── CUSTOM ALERT ── -->
 <div id="alertOv" class="alert-ov hidden">

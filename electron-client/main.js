@@ -288,10 +288,15 @@ ipcMain.on('launch-installed-game', (event, destExe, targetPath, createShortcut)
 
   try {
     const { spawn } = require('child_process');
+    const env = { ...process.env };
+    delete env.PORTABLE_EXECUTABLE_DIR;
+    delete env.PORTABLE_EXECUTABLE_FILE;
+
     const child = spawn(destExe, ['--skip-loading'], { 
       detached: true, 
       stdio: 'ignore',
-      cwd: targetPath
+      cwd: targetPath,
+      env: env
     });
     child.on('error', (err) => {
       console.error('Launch installed game spawn failed:', err);
