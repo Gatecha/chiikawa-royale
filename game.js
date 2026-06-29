@@ -10180,6 +10180,33 @@ function showToastMsg(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
+function showGemClaimRewardModal(amount, description) {
+  const modal = document.getElementById("gemRewardModal");
+  if (!modal) return;
+  
+  const subEl = document.getElementById("gemRewardSub");
+  if (subEl) {
+    if (description) {
+      subEl.innerHTML = `${description}<br><span style="font-size: 22px; color: #ffd86f; display: block; margin-top: 8px;">💎 +${amount} Gems</span>`;
+    } else {
+      subEl.textContent = `💎 +${amount} Gems`;
+    }
+  }
+  
+  modal.style.display = "flex";
+  modal.classList.remove("hidden");
+  
+  const confirmBtn = document.getElementById("gemRewardConfirmBtn");
+  if (confirmBtn) {
+    const handleClose = () => {
+      modal.style.display = "none";
+      modal.classList.add("hidden");
+      confirmBtn.removeEventListener("click", handleClose);
+    };
+    confirmBtn.addEventListener("click", handleClose);
+  }
+}
+
 // ----------------------------------------------------------------
 // Update presence status on screen changes
 // ----------------------------------------------------------------
@@ -13052,7 +13079,7 @@ function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goActio
       updateShopWalletDisplay();
       saveProgression();
       
-      showToastMsg(`Claimed Quest Reward: +${gemsVal} Gems!`);
+      showGemClaimRewardModal(gemsVal, "Quest Reward Claimed!");
       syncQuestsUI();
     } else if (!completed && !claimed && typeof goAction === "function") {
       goAction();
@@ -13102,7 +13129,7 @@ function bindWeeklyMilestoneNode(nodeId, milestoneVal) {
       updateShopWalletDisplay();
       saveProgression();
       
-      showToastMsg(`Claimed Weekly Milestone Reward: +20 Gems!`);
+      showGemClaimRewardModal(20, "Weekly Milestone Claimed!");
       syncQuestsUI();
     }
   });
@@ -13126,7 +13153,7 @@ function bindMilestoneNode(nodeId, milestoneVal) {
       updateShopWalletDisplay();
       saveProgression();
       
-      showToastMsg(`Claimed Milestone Reward: +10 Gems!`);
+      showGemClaimRewardModal(10, "Milestone Reward Claimed!");
       syncQuestsUI();
     }
   });
@@ -13362,7 +13389,7 @@ function syncLevelTabUI() {
         updateShopWalletDisplay();
         saveProgression();
         
-        showToastMsg(`Claimed Level ${lvl} reward: +5 Gems!`);
+        showGemClaimRewardModal(5, `Level ${lvl} Reward Claimed!`);
         syncLevelTabUI();
       });
     } else {
