@@ -203,7 +203,7 @@ const characterSelectVideos = {
   usagi: "assets/usagi/usagi_character_animation.mp4",
   momonga: "assets/momonga/momonga_character_animation.mp4",
 };
-let selectedCharacter = "chiikawa";
+let selectedCharacter = localStorage.getItem("equipped_character") || "chiikawa";
 let previewCharacter = selectedCharacter;
 let brmVideoEl = null;
 let brmActive = false;
@@ -2159,12 +2159,28 @@ function handleServerMessage(msg) {
 let alphaWelcomeDialogShown = false;
 
 function switchScreen(targetScreen) {
-  const previousActiveScreen = [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].find((s) => s && s.classList.contains("active"));
+  const tutorialCutsceneScreen = document.getElementById("tutorialCutsceneScreen");
+  const screens = [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen, tutorialCutsceneScreen];
+  const previousActiveScreen = screens.find((s) => s && s.classList.contains("active"));
 
-  [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].forEach((s) => {
+  screens.forEach((s) => {
     if (s) s.classList.remove("active");
   });
   if (targetScreen) targetScreen.classList.add("active");
+
+  if (previousActiveScreen === gameScreen && targetScreen === menuScreen) {
+    if (window.tutorialGuideActive) {
+      window.tutorialGuideActive = false;
+      window.tutorialGuidePaused = false;
+      localStorage.setItem("tutorial_status", "tutorial_match_completed");
+    }
+  }
+
+  if (targetScreen === menuScreen) {
+    if (typeof checkMenuTutorialGuide === "function") {
+      checkMenuTutorialGuide();
+    }
+  }
   if (targetScreen !== gameScreen) {
     document.getElementById("couchControlPicker")?.classList.add("hidden");
     document.body.classList.remove("local-couch-active");
@@ -5952,6 +5968,10 @@ function updateControlledPlayer(player, dx, dy, dt) {
 }
 
 function update(dt) {
+  if (window.tutorialGuideActive && window.tutorialGuidePaused) {
+    return;
+  }
+
   if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
 
   if (running && startCountdownTimer > 0) {
@@ -5959,6 +5979,9 @@ function update(dt) {
     if (startCountdownTimer <= 0) {
       startCountdownTimer = 0;
       startCountdownState = "";
+      if (window.tutorialGuideActive && window.tutorialGuideStep === 0) {
+        showTutorialGuideStep(0);
+      }
     } else if (startCountdownTimer > 2.5) {
       startCountdownState = "3";
     } else if (startCountdownTimer > 1.5) {
@@ -9006,6 +9029,12 @@ async function handleAuthenticatedUser(user) {
       if (usernameInput) usernameInput.value = data.username;
       localStorage.setItem("local_username", data.username);
       updateProgressionUI();
+      
+      const status = localStorage.getItem("tutorial_status") || "not_started";
+      if (status === "not_started" || status === "vs_screen" || status === "tutorial_match") {
+        localStorage.setItem("tutorial_status", "tutorial_match_completed");
+      }
+
       // User has a username, proceed to main menu
       finishStartup();
       switchScreen(menuScreen);
@@ -9040,11 +9069,19 @@ async function handleAuthenticatedUser(user) {
 // Bouncing character introduction dialogue typewriter effect
 let introTypewriterInterval = null;
 function startUsernameIntroFlow() {
+  const tutorialStatus = localStorage.getItem("tutorial_status") || "not_started";
+  const savedLocalName = localStorage.getItem("local_username");
+
+  if (tutorialStatus === "not_started" && !savedLocalName) {
+    startInteractiveCutscene();
+    return;
+  }
+
   if (!navigator.onLine) {
     serverMode = "local";
-    const savedLocalName = localStorage.getItem("local_username") || "Friend";
-    if (usernameInput) usernameInput.value = savedLocalName;
-    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+    const fallbackName = savedLocalName || "Friend";
+    if (usernameInput) usernameInput.value = fallbackName;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = fallbackName;
     switchScreen(menuScreen);
     tryPlayMusic();
     return;
@@ -9253,6 +9290,14 @@ if (usernameForm) {
       updateProgressionUI();
 
       if (usernameMessage) usernameMessage.classList.add("hidden");
+      
+      const tutorialStatus = localStorage.getItem("tutorial_status");
+      if (tutorialStatus === "vs_screen") {
+        localStorage.setItem("tutorial_status", "tutorial_match");
+        startTutorialLocalMatch();
+        return;
+      }
+
       switchScreen(menuScreen);
       tryPlayMusic();
 
@@ -9318,6 +9363,13 @@ if (usernameForm) {
       updateProgressionUI();
 
       // Go to main menu
+      const tutorialStatus = localStorage.getItem("tutorial_status");
+      if (tutorialStatus === "vs_screen") {
+        localStorage.setItem("tutorial_status", "tutorial_match");
+        startTutorialLocalMatch();
+        return;
+      }
+
       switchScreen(menuScreen);
       tryPlayMusic();
     } catch (err) {
@@ -13440,3 +13492,305 @@ function updateFooterColor(tabName) {
     if (badgeText) badgeText.style.color = "#000000";
   }
 }
+
+// =================================================================
+// INTERACTIVE TUTORIAL GUIDE SYSTEM
+// =================================================================
+
+window.tutorialGuideActive = false;
+window.tutorialGuidePaused = false;
+window.tutorialGuideStep = 0;
+
+let cutsceneTimeListener = null;
+
+function startInteractiveCutscene() {
+  const cutsceneScreen = document.getElementById("tutorialCutsceneScreen");
+  const video = document.getElementById("tutorialCutsceneVideo");
+  const title = document.getElementById("tutorialCutsceneTitle");
+  const chooseBtn = document.getElementById("tutorialChooseBtn");
+  const prevBtn = document.getElementById("tutorialPrevBtn");
+  const nextBtn = document.getElementById("tutorialNextBtn");
+  
+  if (!cutsceneScreen || !video) {
+    localStorage.setItem("tutorial_status", "vs_screen");
+    startUsernameIntroFlow();
+    return;
+  }
+  
+  switchScreen(cutsceneScreen);
+  
+  // Reset and play
+  video.currentTime = 0;
+  video.play().catch(e => console.warn("Video play blocked:", e));
+  
+  let tutorialState = 0; // 0: Usagi, 1: Chiikawa, 2: Hachiware
+  const characterKeys = ["usagi", "chiikawa", "hachiware"];
+  
+  if (cutsceneTimeListener) {
+    video.removeEventListener("timeupdate", cutsceneTimeListener);
+  }
+  
+  cutsceneTimeListener = () => {
+    if (video.currentTime >= 1.0 && video.paused === false && tutorialState === 0) {
+      video.pause();
+      video.currentTime = 1.0;
+      showCutsceneUI();
+    }
+  };
+  video.addEventListener("timeupdate", cutsceneTimeListener);
+  
+  function showCutsceneUI() {
+    if (title) title.classList.add("visible");
+    if (chooseBtn) chooseBtn.classList.add("visible");
+    updateNavButtons();
+  }
+  
+  function updateNavButtons() {
+    if (tutorialState === 0) {
+      if (prevBtn) { prevBtn.classList.remove("visible"); prevBtn.disabled = true; }
+      if (nextBtn) { nextBtn.classList.add("visible"); nextBtn.disabled = false; }
+    } else if (tutorialState === 1) {
+      if (prevBtn) { prevBtn.classList.add("visible"); prevBtn.disabled = false; }
+      if (nextBtn) { nextBtn.classList.add("visible"); nextBtn.disabled = false; }
+    } else if (tutorialState === 2) {
+      if (prevBtn) { prevBtn.classList.add("visible"); prevBtn.disabled = false; }
+      if (nextBtn) { nextBtn.classList.remove("visible"); nextBtn.disabled = true; }
+    }
+  }
+  
+  if (prevBtn && nextBtn && chooseBtn) {
+    const newPrev = prevBtn.cloneNode(true);
+    const newNext = nextBtn.cloneNode(true);
+    const newChoose = chooseBtn.cloneNode(true);
+    
+    prevBtn.parentNode.replaceChild(newPrev, prevBtn);
+    nextBtn.parentNode.replaceChild(newNext, nextBtn);
+    chooseBtn.parentNode.replaceChild(newChoose, chooseBtn);
+    
+    newPrev.addEventListener("click", () => {
+      if (tutorialState > 0) {
+        tutorialState--;
+        video.currentTime = tutorialState === 0 ? 1.0 : 2.0;
+        updateNavButtons();
+      }
+    });
+    
+    newNext.addEventListener("click", () => {
+      if (tutorialState < 2) {
+        tutorialState++;
+        video.currentTime = tutorialState === 1 ? 2.0 : 3.0;
+        updateNavButtons();
+      }
+    });
+    
+    newChoose.addEventListener("click", () => {
+      selectedCharacter = characterKeys[tutorialState];
+      previewCharacter = selectedCharacter;
+      localStorage.setItem("equipped_character", selectedCharacter);
+      
+      syncCharacterSelectPreview(selectedCharacter);
+      syncLobbySpotlightVideo(selectedCharacter);
+      syncSquadLobbyVideo(selectedCharacter);
+      syncSquadLobbyInterface();
+      
+      localStorage.setItem("tutorial_status", "vs_screen");
+      
+      video.pause();
+      if (cutsceneTimeListener) {
+        video.removeEventListener("timeupdate", cutsceneTimeListener);
+        cutsceneTimeListener = null;
+      }
+      
+      startUsernameIntroFlowAfterCutscene();
+    });
+  }
+}
+
+function startUsernameIntroFlowAfterCutscene() {
+  switchScreen(introScreen);
+  if (usernameForm) usernameForm.classList.add("hidden");
+
+  const chosenGuide = selectedCharacter || "chiikawa";
+  const guideImg = document.querySelector(".intro-guide-character");
+  if (guideImg) {
+    guideImg.src = `assets/cards/${chosenGuide.toLowerCase()}.png`;
+  }
+
+  const welcomeMessage = `Hello there! I am ${characterStyle[chosenGuide]?.label || chosenGuide}, your starter character. Welcome to Chiikawa Royale! Let's choose a cool username for you so we can start matching with friends online!`;
+  
+  if (introSpeechBubble) {
+    introSpeechBubble.textContent = "";
+    let i = 0;
+    clearInterval(introTypewriterInterval);
+    introTypewriterInterval = setInterval(() => {
+      if (i < welcomeMessage.length) {
+        introSpeechBubble.textContent += welcomeMessage.charAt(i);
+        i++;
+      } else {
+        clearInterval(introTypewriterInterval);
+        if (usernameForm) {
+          usernameForm.classList.remove("hidden");
+          usernameForm.style.opacity = "0";
+          setTimeout(() => {
+            usernameForm.style.transition = "opacity 0.5s ease";
+            usernameForm.style.opacity = "1";
+          }, 50);
+        }
+      }
+    }, 35);
+  }
+}
+
+function startTutorialLocalMatch() {
+  const playerName = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
+  showVsLoadingScreen([
+    { id: "local_player", name: playerName, kind: selectedCharacter },
+    { id: "cpu_1", name: "Usagi CPU", kind: "usagi" },
+    { id: "cpu_2", name: "Momonga CPU", kind: "momonga" },
+    { id: "cpu_3", name: "Chiikawa CPU", kind: "chiikawa" },
+  ], () => {
+    window.tutorialGuideActive = true;
+    window.tutorialGuidePaused = false;
+    window.tutorialGuideStep = 0;
+    startLocalGame();
+  }, 4000);
+}
+
+function showTutorialGuideStep(step) {
+  window.tutorialGuideStep = step;
+  window.tutorialGuidePaused = true;
+  
+  const overlay = document.getElementById("tutorialGuideOverlay");
+  const textEl = document.getElementById("tutorialGuideText");
+  const avatarEl = document.getElementById("tutorialGuideAvatar");
+  
+  if (!overlay || !textEl) return;
+  
+  if (avatarEl) {
+    avatarEl.src = `assets/cards/${selectedCharacter}.png`;
+  }
+  
+  if (step === 0) {
+    textEl.innerHTML = "Welcome to the battlefield! Use <strong>WASD</strong> or <strong>ARROW KEYS</strong> to move your character. Avoid standing near explosive bombs! Click OKAY to begin.";
+  } else if (step === 1) {
+    textEl.innerHTML = "Press <strong>SPACEBAR</strong> to place a bomb! You can use bombs to destroy wooden crates and find power-up items. Be sure to run away to safety before the bomb explodes!";
+  } else if (step === 2) {
+    textEl.innerHTML = "Awesome! Items like speed boots, extra bombs, and fire potions will make you stronger. Defeat all CPU players to win the match!";
+  }
+  
+  overlay.classList.add("active");
+  overlay.classList.remove("hidden");
+}
+
+document.getElementById("tutorialGuideOkBtn")?.addEventListener("click", () => {
+  const overlay = document.getElementById("tutorialGuideOverlay");
+  if (overlay) {
+    overlay.classList.remove("active");
+    overlay.classList.add("hidden");
+  }
+  
+  window.tutorialGuidePaused = false;
+  keys.clear(); // Clear any pressed key queues
+  
+  if (window.tutorialGuideStep === 0) {
+    setTimeout(() => {
+      if (window.tutorialGuideActive && running) {
+        showTutorialGuideStep(1);
+      }
+    }, 3000);
+  } else if (window.tutorialGuideStep === 1) {
+    setTimeout(() => {
+      if (window.tutorialGuideActive && running) {
+        showTutorialGuideStep(2);
+      }
+    }, 7000);
+  } else if (window.tutorialGuideStep === 2) {
+    window.tutorialGuideStep = 3;
+  }
+});
+
+function addLobbyPulseOverlay(element) {
+  removeLobbyPulseOverlay();
+  const pulse = document.createElement("div");
+  pulse.className = "menu-guide-pulse-overlay";
+  element.style.position = "relative";
+  element.appendChild(pulse);
+}
+
+function removeLobbyPulseOverlay() {
+  const existing = document.querySelectorAll(".menu-guide-pulse-overlay");
+  existing.forEach(el => el.remove());
+}
+
+function checkMenuTutorialGuide() {
+  const status = localStorage.getItem("tutorial_status");
+  if (status !== "tutorial_match_completed") {
+    const guideEl = document.getElementById("menuTutorialGuide");
+    if (guideEl) guideEl.classList.remove("active");
+    removeLobbyPulseOverlay();
+    return;
+  }
+  
+  const guideEl = document.getElementById("menuTutorialGuide");
+  const textEl = document.getElementById("menuTutorialGuideText");
+  const avatarEl = document.getElementById("menuTutorialGuideAvatar");
+  
+  if (guideEl && textEl) {
+    if (avatarEl) {
+      avatarEl.src = `assets/cards/${selectedCharacter}.png`;
+    }
+    textEl.innerHTML = "Great job completing your training match! Now let's try an <strong>Online Multiplayer Match</strong> to battle against other players!";
+    guideEl.classList.add("active");
+  }
+  
+  const selectBtn = document.getElementById("btnOpenGamemodesPopup");
+  if (selectBtn) {
+    addLobbyPulseOverlay(selectBtn);
+  }
+}
+
+// Hook gamemodes popup listeners for tutorial flow
+const _origOpenGamemodesPopup = openGamemodesPopup;
+openGamemodesPopup = function() {
+  _origOpenGamemodesPopup();
+  const status = localStorage.getItem("tutorial_status");
+  if (status === "tutorial_match_completed") {
+    const textEl = document.getElementById("menuTutorialGuideText");
+    if (textEl) {
+      textEl.innerHTML = "Great! Now select <strong>Multiplayer Match</strong> to find other players online!";
+    }
+    removeLobbyPulseOverlay();
+    const multiBtn = document.getElementById("btnPlayOnlineMultiplayer");
+    if (multiBtn) {
+      addLobbyPulseOverlay(multiBtn);
+    }
+  }
+};
+
+const _origCloseGamemodesPopup = closeGamemodesPopup;
+closeGamemodesPopup = function() {
+  _origCloseGamemodesPopup();
+  const status = localStorage.getItem("tutorial_status");
+  if (status === "tutorial_match_completed") {
+    const textEl = document.getElementById("menuTutorialGuideText");
+    if (textEl) {
+      textEl.innerHTML = "Great job completing your training match! Now let's try an <strong>Online Multiplayer Match</strong> to battle against other players!";
+    }
+    removeLobbyPulseOverlay();
+    const selectBtn = document.getElementById("btnOpenGamemodesPopup");
+    if (selectBtn) {
+      addLobbyPulseOverlay(selectBtn);
+    }
+  }
+};
+
+// Hook Multiplayer Match selection to complete the tutorial
+document.getElementById("btnPlayOnlineMultiplayer")?.addEventListener("click", () => {
+  const status = localStorage.getItem("tutorial_status");
+  if (status === "tutorial_match_completed") {
+    localStorage.setItem("tutorial_status", "online_match_guided");
+    const guideEl = document.getElementById("menuTutorialGuide");
+    if (guideEl) guideEl.classList.remove("active");
+    removeLobbyPulseOverlay();
+  }
+});

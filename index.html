@@ -207,6 +207,17 @@
         </div>
       </section>
 
+      <!-- 00. TUTORIAL INTERACTIVE CUTSCENE SCREEN -->
+      <section id="tutorialCutsceneScreen" class="screen">
+        <div class="tutorial-cutscene-container">
+          <video id="tutorialCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline></video>
+          <div id="tutorialCutsceneTitle" class="tutorial-cutscene-title">choose your starter character</div>
+          <button id="tutorialChooseBtn" class="tutorial-choose-btn">CHOOSE</button>
+          <button id="tutorialPrevBtn" class="tutorial-nav-btn prev-btn">◀</button>
+          <button id="tutorialNextBtn" class="tutorial-nav-btn next-btn">▶</button>
+        </div>
+      </section>
+
       <!-- 0. TITLE SCREEN -->
       <section id="titleScreen" class="screen active">
         <div class="yellow-console title-console">
@@ -2700,6 +2711,27 @@
       // Disable right-click context menu on the entire game page
       document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
     </script>
+
+    <!-- Tutorial Guide Overlay -->
+    <div id="tutorialGuideOverlay" class="dialog-overlay hidden">
+      <div class="tutorial-guide-card glass" style="width: 90%; max-width: 450px; background: #fff; border: 4.5px solid #000; border-radius: 24px; box-shadow: 8px 8px 0px #000; padding: 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; position: relative;">
+        <div class="tutorial-guide-avatar-wrap" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #000; overflow: hidden; background: #ffeaa7;">
+          <img id="tutorialGuideAvatar" src="assets/cards/chiikawa.png" alt="Guide Character" style="width: 100%; height: 100%; object-fit: contain;" class="bouncing" />
+        </div>
+        <div style="font-family: 'DynaPuff', 'Fredoka', sans-serif; font-size: 20px; font-weight: 700; color: #ff2fa7;">BATTLE GUIDE!</div>
+        <p id="tutorialGuideText" style="font-family: 'Fredoka', sans-serif; font-size: 15px; font-weight: 600; color: #221f25; margin: 0; line-height: 1.4;"></p>
+        <button id="tutorialGuideOkBtn" class="btn btn-primary" style="font-family: 'DynaPuff', 'Fredoka', sans-serif; font-size: 18px; padding: 10px 32px; border-radius: 16px; cursor: pointer; border: 3.5px solid #000; box-shadow: 4px 4px 0px #000; background: #2ed573; color: #fff;">OKAY</button>
+      </div>
+    </div>
+
+    <!-- Lobby Menu Tutorial Guide Overlay -->
+    <div id="menuTutorialGuide">
+      <div style="width: 48px; height: 48px; border-radius: 50%; border: 2.5px solid #000; overflow: hidden; background: #ffebf2; flex-shrink: 0;">
+        <img id="menuTutorialGuideAvatar" src="assets/cards/chiikawa.png" alt="Guide Avatar" style="width: 100%; height: 100%; object-fit: contain;" class="bouncing" />
+      </div>
+      <p id="menuTutorialGuideText" class="menu-guide-text"></p>
+      <button id="menuTutorialGuideOkBtn" class="menu-guide-btn" style="display: none;">OKAY</button>
+    </div>
 
     <!-- Fullscreen Countdown Overlay -->
     <div id="fullscreenCountdownOverlay" class="fullscreen-countdown-overlay hidden">
