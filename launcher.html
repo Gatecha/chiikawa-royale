@@ -582,7 +582,7 @@
 const $id = (id) => document.getElementById(id);
 const installerScreen = $id('installerScreen');
 const launcherScreen  = $id('launcherScreen');
-const launchOv        = $id('launchOv');
+let launchOv          = null;
 const instPlayBtn     = $id('instPlayBtn');
 const shortcutRow     = $id('shortcutRow');
 const shortcutCb      = $id('shortcutCb');
@@ -820,6 +820,7 @@ async function checkForUpdates() {
 
 /* ── Initialize Application flow (Skip loading / Install check) ──────────────── */
 (function initAppFlow() {
+  launchOv = $id('launchOv');
   // Bind tab buttons News Notices Events
   document.querySelectorAll('.dtab').forEach(btn => {
     btn.addEventListener('click', () => {
