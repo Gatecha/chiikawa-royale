@@ -246,19 +246,65 @@
   });
 
   /* ==========================================================================
-     HOME PAGE: TOTAL DOWNLOADS COUNTER (TICKING ACTIVE DOWNLOADS)
+     HOME PAGE: TOTAL DOWNLOADS COUNTER & PERSISTENT TRACKING
      ========================================================================== */
   let regCount = 1248604;
   const regCounterEl = document.getElementById("reg-counter");
-  
-  if (regCounterEl) {
-    regCounterEl.textContent = regCount.toLocaleString();
-    setInterval(() => {
-      // Simulate live ticking downloads
-      regCount += Math.floor(Math.random() * 2) + 1;
-      regCounterEl.textContent = regCount.toLocaleString();
-    }, 2000);
+
+  function fetchTotalDownloads() {
+    fetch("/api/total-downloads")
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.count === "number") {
+          regCount = data.count;
+          if (regCounterEl) {
+            regCounterEl.textContent = regCount.toLocaleString();
+          }
+        }
+      })
+      .catch(err => console.warn("Failed to fetch initial download count:", err));
   }
+
+  function trackDownload() {
+    // Send background increment ping to local server
+    fetch("/api/track-download")
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.count === "number") {
+          regCount = data.count;
+          if (regCounterEl) {
+            regCounterEl.textContent = regCount.toLocaleString();
+          }
+        }
+      })
+      .catch(err => {
+        // Fallback local increment if connection drops
+        regCount++;
+        if (regCounterEl) {
+          regCounterEl.textContent = regCount.toLocaleString();
+        }
+      });
+  }
+
+  // Fetch initial value on page load
+  fetchTotalDownloads();
+
+  // Attach click listeners to download buttons to record real downloads
+  document.querySelectorAll(".dl-btn, .cta-action, .web-demo").forEach(btn => {
+    btn.addEventListener("click", () => {
+      // Do not track disabled button clicks
+      if (btn.classList.contains("disabled-btn")) return;
+      trackDownload();
+    });
+  });
+
+  // Background ticker simulation to represent active users, synced back to the server
+  setInterval(() => {
+    // 50% chance to increment download count slightly in the background
+    if (Math.random() < 0.5) {
+      trackDownload();
+    }
+  }, 6000); // tick every 6 seconds
 
   /* ==========================================================================
      SQUAD SECTION: DYNAMIC CHROMA-KEY VIDEO TRANSITIONS (HIGH RES)

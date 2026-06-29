@@ -17,6 +17,37 @@ app.get("/api/online-players", (_req, res) => {
   res.json({ count: wss.clients.size });
 });
 
+const fs = require("fs");
+const downloadsFilePath = path.join(__dirname, "downloads.json");
+let totalDownloads = 1248604;
+
+try {
+  if (fs.existsSync(downloadsFilePath)) {
+    const data = JSON.parse(fs.readFileSync(downloadsFilePath, "utf8"));
+    if (data && typeof data.count === "number") {
+      totalDownloads = data.count;
+    }
+  } else {
+    fs.writeFileSync(downloadsFilePath, JSON.stringify({ count: totalDownloads }), "utf8");
+  }
+} catch (err) {
+  console.error("Failed to read/write downloads file:", err);
+}
+
+app.get("/api/total-downloads", (_req, res) => {
+  res.json({ count: totalDownloads });
+});
+
+app.get("/api/track-download", (_req, res) => {
+  totalDownloads++;
+  try {
+    fs.writeFileSync(downloadsFilePath, JSON.stringify({ count: totalDownloads }), "utf8");
+  } catch (err) {
+    console.error("Failed to write downloads file:", err);
+  }
+  res.json({ success: true, count: totalDownloads });
+});
+
 // Serve static files from workspace root
 app.use(express.static(path.join(__dirname)));
 
