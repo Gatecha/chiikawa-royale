@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize:              () => ipcRenderer.send('window-minimize'),
   close:                 () => ipcRenderer.send('window-close'),
   maximize:              () => ipcRenderer.send('window-maximize'),
-  startGame:             () => ipcRenderer.send('start-game'),
+  startGame:             () => ipcRenderer.invoke('start-game'),
   exitToLauncher:        () => ipcRenderer.send('exit-to-launcher'),
   getGamePath:           () => ipcRenderer.sendSync('get-game-path'),
   createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut'),

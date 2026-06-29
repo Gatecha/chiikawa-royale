@@ -662,6 +662,35 @@ function showAlert(title, msg, onOk = null) {
   $id('alertOv').classList.remove('hidden');
 }
 
+function escapeDebugText(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showDebugError(title, err, details = '') {
+  const message = err && err.message ? err.message : err;
+  const stack = err && err.stack ? String(err.stack).split('\n').slice(0, 7).join('\n') : '';
+  const body = [
+    details ? `<div style="margin-bottom:8px;color:#ffd86f;">${escapeDebugText(details)}</div>` : '',
+    `<div style="margin-bottom:8px;">${escapeDebugText(message || 'Unknown error')}</div>`,
+    stack ? `<pre style="white-space:pre-wrap;text-align:left;font-size:10px;line-height:1.35;background:rgba(0,0,0,.35);padding:10px;border-radius:6px;max-height:180px;overflow:auto;">${escapeDebugText(stack)}</pre>` : ''
+  ].join('');
+  showAlert(title, body || 'Unknown error');
+}
+
+window.addEventListener('error', (event) => {
+  const loc = event.filename ? `${event.filename}:${event.lineno || '?'}:${event.colno || '?'}` : 'Launcher script';
+  showDebugError('LAUNCHER ERROR', event.error || event.message, loc);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  showDebugError('LAUNCHER PROMISE ERROR', event.reason || 'Unhandled promise rejection', 'A background launcher action failed.');
+});
+
 function loadNews(cat) {
   const col = $id('newsCol');
   if (!col) return;
@@ -789,6 +818,12 @@ async function startInstallation() {
    UPDATE CHECK
 ══════════════════════════════════════════════ */
 async function checkForUpdates() {
+  updateAvailable = false;
+  needsRestart = false;
+  playBtn.textContent = 'PLAY';
+  playBtn.classList.remove('upd', 'restart-btn');
+  playBtn.disabled = false;
+  updDot.style.display = 'none';
   curVer.textContent = 'Version: checking...';
   latVer.textContent = 'Latest:  checking...';
   if (!isElectron || !api.checkForUpdate) {
@@ -961,15 +996,16 @@ playBtn.addEventListener('click', async () => {
         updFill.style.width = p.pct + '%';
         updLbl.textContent  = p.label || '';
         if (p.stage === 'done') {
-          playBtn.textContent = 'RESTART';
+          playBtn.textContent = 'PLAY';
           playBtn.disabled = false;
           playBtn.classList.remove('upd');
-          playBtn.classList.add('restart-btn');
+          playBtn.classList.remove('restart-btn');
           updateAvailable = false;
           isUpdating = false;
-          needsRestart = true;
+          needsRestart = false;
           updWrap.classList.remove('on');
-          showAlert('UPDATE COMPLETE', 'Game updated successfully! Click RESTART to relaunch the launcher and play.');
+          checkForUpdates();
+          showAlert('UPDATE COMPLETE', 'Game updated successfully. You can click PLAY now.');
         }
         if (p.stage === 'error') {
           isUpdating = false; playBtn.disabled = false;
@@ -994,7 +1030,11 @@ playBtn.addEventListener('click', async () => {
     launchOv.classList.add('on');
     $id('launchTxt').textContent = 'STARTING CHIIKAWA ROYALE...';
     if (isElectron && api.startGame) {
-      api.startGame();
+      const result = await api.startGame();
+      if (!result || !result.success) {
+        launchOv.classList.remove('on');
+        showDebugError('PLAY LAUNCH FAILED', result && result.error ? result.error : 'The launcher did not return a success response.', 'The Play button reached Electron, but the game window did not load.');
+      }
     } else {
       try {
         if (document.documentElement.requestFullscreen) {

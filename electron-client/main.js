@@ -113,13 +113,22 @@ ipcMain.on('window-maximize', () => {
 });
 
 // ── IPC: start game ───────────────────────────────────────────────────────────
-ipcMain.on('start-game', () => {
-  if (isGameOnly) return;
-  if (!mainWindow || mainWindow.isDestroyed()) return;
+ipcMain.handle('start-game', async () => {
+  if (isGameOnly) return { success: false, error: 'Already in game mode.' };
+  if (!mainWindow || mainWindow.isDestroyed()) return { success: false, error: 'Launcher window is not available.' };
 
-  mainWindow.setResizable(true);
-  mainWindow.setFullScreen(true);
-  mainWindow.loadFile(getGameIndexPath());
+  const gameIndex = getGameIndexPath();
+  if (!fs.existsSync(gameIndex)) return { success: false, error: `Missing game file: ${gameIndex}` };
+
+  try {
+    mainWindow.setResizable(true);
+    mainWindow.setFullScreen(true);
+    await mainWindow.loadFile(gameIndex);
+    mainWindow.focus();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 let returningFromGame = false;
@@ -216,7 +225,42 @@ function pruneGameDirectory(gameDir) {
 }
 
 function pruneInstalledGameFolder(targetPath) {
-  pruneGameDirectory(path.join(targetPath, 'resources', 'game'));
+  const nestedGameDir = path.join(targetPath, 'Launcher', 'resources', 'game');
+  const flatGameDir = path.join(targetPath, 'resources', 'game');
+  pruneGameDirectory(fs.existsSync(nestedGameDir) ? nestedGameDir : flatGameDir);
+}
+
+function pruneRuntimeLicenses(runtimeDir) {
+  [
+    'LICENSE.electron.txt',
+    'LICENSES.chromium.html'
+  ].forEach((name) => removeIfInside(runtimeDir, path.join(runtimeDir, name)));
+}
+
+function pruneOldRootRuntimeFiles(targetPath) {
+  [
+    'LICENSE.electron.txt',
+    'LICENSES.chromium.html',
+    'chrome_100_percent.pak',
+    'chrome_200_percent.pak',
+    'd3dcompiler_47.dll',
+    'ffmpeg.dll',
+    'icudtl.dat',
+    'libEGL.dll',
+    'libGLESv2.dll',
+    'resources.pak',
+    'snapshot_blob.bin',
+    'v8_context_snapshot.bin',
+    'vk_swiftshader.dll',
+    'vk_swiftshader_icd.json',
+    'vulkan-1.dll',
+    'uninstall.exe'
+  ].forEach((name) => removeIfInside(targetPath, path.join(targetPath, name)));
+
+  [
+    path.join(targetPath, 'locales'),
+    path.join(targetPath, 'resources')
+  ].forEach((target) => removeIfInside(targetPath, target));
 }
 
 // ── IPC: is installed (sync) ──────────────────────────────────────────────────
@@ -226,6 +270,11 @@ ipcMain.on('is-installed', (event) => {
 
 ipcMain.handle('repair-game-files', async () => {
   try {
+    const runtimeDir = path.dirname(process.execPath);
+    pruneRuntimeLicenses(runtimeDir);
+    if (path.basename(runtimeDir).toLowerCase() === 'launcher') {
+      pruneOldRootRuntimeFiles(path.dirname(runtimeDir));
+    }
     pruneGameDirectory(getGameDir());
     return { success: true };
   } catch (err) {
@@ -259,6 +308,10 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
     }
 
     const srcDir = path.dirname(process.execPath);
+    const appDir = path.join(targetPath, 'Launcher');
+    if (!fs.existsSync(appDir)) {
+      fs.mkdirSync(appDir, { recursive: true });
+    }
 
     // Collect all files to copy recursively
     const fileList = [];
@@ -269,6 +322,7 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
         const s = path.join(src, entry.name);
         if (s === dest) continue;
         if (entry.name === '.installed') continue;
+        if (entry.name === 'LICENSE.electron.txt' || entry.name === 'LICENSES.chromium.html') continue;
         
         let destName = entry.name;
         if (s === process.execPath) {
@@ -283,7 +337,7 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
       }
     }
 
-    collectFiles(srcDir, targetPath);
+    collectFiles(srcDir, appDir);
 
     sendProgress(30, 'Copying program files and dependencies...');
     
@@ -319,16 +373,22 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
       process.noAsar = false;
     }
 
+    pruneRuntimeLicenses(appDir);
+    pruneOldRootRuntimeFiles(targetPath);
     pruneInstalledGameFolder(targetPath);
 
-    const destExe = path.join(targetPath, 'Chiikawa_Royale.exe');
-    const destResources = path.join(targetPath, 'resources');
+    const destExe = path.join(appDir, 'Chiikawa_Royale.exe');
+    const destResources = path.join(appDir, 'resources');
+    const launcherUninstall = path.join(appDir, 'uninstall.exe');
+    const rootUninstall = path.join(targetPath, 'Uninstall Chiikawa Royale.exe');
+    if (fs.existsSync(launcherUninstall)) {
+      await fs.promises.copyFile(launcherUninstall, rootUninstall);
+    }
 
     sendProgress(85, 'Configuring uninstaller...');
     // uninstall.exe was copied automatically if it is in the packaged folder.
     // Make sure we log that it exists.
-    const destUninstall = path.join(targetPath, 'uninstall.exe');
-    if (!fs.existsSync(destUninstall)) {
+    if (!fs.existsSync(rootUninstall)) {
       console.warn('uninstall.exe was not found in destination directory.');
     }
 
@@ -351,6 +411,11 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
       installedAt: new Date().toISOString(),
       version: app.getVersion()
     }), 'utf8');
+    fs.writeFileSync(path.join(appDir, '.installed'), JSON.stringify({
+      installedAt: new Date().toISOString(),
+      version: app.getVersion(),
+      installRoot: targetPath
+    }), 'utf8');
 
     // Write .version inside game directory so it starts as "Up to date"
     fs.writeFileSync(path.join(destResources, 'game', '.version'), JSON.stringify({
@@ -358,9 +423,23 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
       version: app.getVersion()
     }), 'utf8');
 
+    try {
+      shell.writeShortcutLink(path.join(targetPath, 'Chiikawa Royale.lnk'), 'create', {
+        target: destExe,
+        args: '--skip-loading',
+        workingDirectory: appDir,
+        icon: destExe,
+        iconIndex: 0,
+        description: 'Chiikawa Royale - Bomb Battle Royale Game',
+        appUserModelId: 'com.chiikawaroyale.launcher',
+      });
+    } catch (err) {
+      console.error('Failed to create install folder shortcut:', err.message);
+    }
+
     sendProgress(100, 'Installation complete!');
 
-    return { success: true, destExe, targetPath };
+    return { success: true, destExe, targetPath, appDir };
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -376,7 +455,7 @@ ipcMain.on('launch-installed-game', (event, destExe, targetPath, createShortcut)
       shell.writeShortcutLink(shortcutPath, 'create', {
         target: destExe,
         args: '--skip-loading',
-        workingDirectory: targetPath,
+        workingDirectory: path.dirname(destExe),
         icon: destExe, // Extract icon natively from the copied executable
         iconIndex: 0,
         description: 'Chiikawa Royale – Bomb Battle Royale Game',
@@ -403,7 +482,7 @@ ipcMain.on('launch-installed-game', (event, destExe, targetPath, createShortcut)
     const child = spawn(destExe, ['--skip-loading'], { 
       detached: true, 
       stdio: 'ignore',
-      cwd: targetPath,
+      cwd: path.dirname(destExe),
       env: env
     });
     child.on('error', (err) => {
