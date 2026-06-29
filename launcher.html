@@ -561,6 +561,14 @@
 
         <!-- Play column -->
         <div class="play-col" style="position: relative;">
+          <!-- Launcher Update progress wrapper -->
+          <div class="upd-wrap" id="launcherUpdWrap">
+            <div class="upd-track" style="background: rgba(233, 64, 87, 0.22);">
+              <div class="upd-fill" id="launcherUpdFill" style="background: linear-gradient(90deg, #ff2f73, #ff7bc1);"></div>
+            </div>
+            <div class="upd-lbl" id="launcherUpdLbl" style="color: #ff7bc1;">Connecting to launcher update server...</div>
+          </div>
+
           <!-- Update progress wrapper -->
           <div class="upd-wrap" id="updWrap">
             <div class="upd-track">
@@ -599,6 +607,9 @@ const updFill         = $id('updFill');
 const updLbl          = $id('updLbl');
 const curVer          = $id('curVer');
 const latVer          = $id('latVer');
+const launcherUpdWrap = $id('launcherUpdWrap');
+const launcherUpdFill = $id('launcherUpdFill');
+const launcherUpdLbl  = $id('launcherUpdLbl');
 
 /* ── Custom Installer Refs ────────────────────── */
 const instBottomDock  = $id('instBottomDock');
@@ -661,6 +672,8 @@ function showAlert(title, msg, onOk = null) {
     copyBtn.classList.add('hidden');
     copyBtn.onclick = null;
   }
+  const cancelBtn = $id('alertCancel');
+  if (cancelBtn) cancelBtn.classList.add('hidden');
   
   // Clean bind OK button click to avoid multiple triggers
   const originalAlertOk = $id('alertOk');
@@ -670,6 +683,39 @@ function showAlert(title, msg, onOk = null) {
   newAlertOk.addEventListener('click', () => {
     $id('alertOv').classList.add('hidden');
     if (onOk) onOk();
+  });
+  
+  $id('alertOv').classList.remove('hidden');
+}
+
+function showConfirm(title, msg, onConfirm, onCancel = null) {
+  $id('alertTitle').textContent = title;
+  $id('alertBody').innerHTML    = msg;
+  const copyBtn = $id('alertCopy');
+  if (copyBtn) {
+    copyBtn.classList.add('hidden');
+    copyBtn.onclick = null;
+  }
+  
+  const cancelBtn = $id('alertCancel');
+  if (cancelBtn) {
+    cancelBtn.classList.remove('hidden');
+    cancelBtn.onclick = () => {
+      $id('alertOv').classList.add('hidden');
+      cancelBtn.classList.add('hidden');
+      if (onCancel) onCancel();
+    };
+  }
+  
+  // Clean bind OK button click to avoid multiple triggers
+  const originalAlertOk = $id('alertOk');
+  const newAlertOk = originalAlertOk.cloneNode(true);
+  originalAlertOk.parentNode.replaceChild(newAlertOk, originalAlertOk);
+  
+  newAlertOk.addEventListener('click', () => {
+    $id('alertOv').classList.add('hidden');
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    if (onConfirm) onConfirm();
   });
   
   $id('alertOv').classList.remove('hidden');
@@ -895,6 +941,68 @@ async function checkForUpdates() {
   }
 }
 
+function isVersionGreater(v1, v2) {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    if (p1 > p2) return true;
+    if (p1 < p2) return false;
+  }
+  return false;
+}
+
+async function checkLauncherUpdate() {
+  if (!isElectron || !api.checkLauncherUpdate) return;
+  try {
+    const res = await api.checkLauncherUpdate();
+    if (res && res.hasUpdate) {
+      showConfirm(
+        'LAUNCHER UPDATE AVAILABLE',
+        `There is a new update for the PC launcher (v${res.latestVersion}).<br>Your current version: v${res.currentVersion}.<br><br>Would you like to update the launcher to the latest version now?`,
+        async () => {
+          startLauncherUpdate();
+        }
+      );
+    }
+  } catch (err) {
+    console.warn('Error checking launcher update:', err);
+  }
+}
+
+async function startLauncherUpdate() {
+  if (launcherUpdWrap) {
+    launcherUpdWrap.classList.add('on');
+    launcherUpdFill.style.width = '0%';
+    launcherUpdLbl.textContent = 'Connecting...';
+  }
+  
+  playBtn.disabled = true;
+  
+  try {
+    const res = await api.downloadLauncherUpdate((p) => {
+      if (launcherUpdFill) launcherUpdFill.style.width = p.pct + '%';
+      if (launcherUpdLbl) launcherUpdLbl.textContent = p.label || '';
+      
+      if (p.stage === 'done') {
+        showAlert('LAUNCHER UPDATED', 'The launcher has been updated and will now restart.', () => {
+          if (api.relaunch) api.relaunch();
+        });
+      }
+      if (p.stage === 'error') {
+        playBtn.disabled = false;
+        if (launcherUpdWrap) launcherUpdWrap.classList.remove('on');
+        showAlert('LAUNCHER UPDATE FAILED', p.label || 'Unable to update launcher.');
+      }
+    });
+  } catch (err) {
+    playBtn.disabled = false;
+    if (launcherUpdWrap) launcherUpdWrap.classList.remove('on');
+    showAlert('LAUNCHER UPDATE FAILED', err.message || 'Unable to update launcher.');
+  }
+}
+
 /* ── Initialize Application flow (Skip loading / Install check) ──────────────── */
 (function initAppFlow() {
   launchOv = $id('launchOv');
@@ -980,6 +1088,7 @@ async function checkForUpdates() {
       launcherScreen.classList.add('visible');
       loadNews('news');
       checkForUpdates();
+      checkLauncherUpdate();
     } else {
       startLoader();
     }
@@ -999,6 +1108,7 @@ instPlayBtn.addEventListener('click', async () => {
     launcherScreen.classList.add('visible');
     loadNews('news');
     checkForUpdates();
+    checkLauncherUpdate();
   }, 400);
 });
 
@@ -1111,6 +1221,7 @@ playBtn.addEventListener('click', async () => {
     <div id="alertBody" class="alert-msg"></div>
     <div class="alert-actions">
       <button id="alertCopy" class="alert-copy hidden">COPY ERROR</button>
+      <button id="alertCancel" class="alert-cancel hidden" style="background: rgba(255,255,255,0.08); color: #fff; border: 1.5px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: bold; cursor: pointer;">CANCEL</button>
       <button id="alertOk" class="alert-ok">OK</button>
     </div>
   </div>

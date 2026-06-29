@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-update');
   },
+  checkLauncherUpdate:    () => ipcRenderer.invoke('check-launcher-update'),
+  downloadLauncherUpdate: (onProgress) => {
+    ipcRenderer.on('launcher-update-progress', (_e, data) => onProgress(data));
+    return ipcRenderer.invoke('download-launcher-update');
+  },
   onOAuthLoginSuccess: (callback) => {
     ipcRenderer.removeAllListeners('oauth-login-success');
     ipcRenderer.on('oauth-login-success', (_event, data) => callback(data));

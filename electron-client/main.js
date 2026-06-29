@@ -27,10 +27,32 @@ if (!isGameOnly) {
 let mainWindow;
 
 // ── Path helpers ──────────────────────────────────────────────────────────────
+function copyDirSync(src, dest) {
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const sp = path.join(src, entry.name), dp = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyDirSync(sp, dp);
+    else fs.copyFileSync(sp, dp);
+  }
+}
+
 function getGameDir() {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, 'game')
-    : path.join(__dirname, '..');
+  if (!app.isPackaged) {
+    return path.join(__dirname, '..');
+  }
+  const persistentDir = path.join(app.getPath('userData'), 'game');
+  if (!fs.existsSync(persistentDir)) {
+    try {
+      const bundleDir = path.join(process.resourcesPath, 'game');
+      if (fs.existsSync(bundleDir)) {
+        fs.mkdirSync(persistentDir, { recursive: true });
+        copyDirSync(bundleDir, persistentDir);
+      }
+    } catch (err) {
+      console.error('Failed to copy bundled game files to persistent directory:', err);
+    }
+  }
+  return persistentDir;
 }
 function getGameIndexPath()   { return path.join(getGameDir(), 'index.html');   }
 function getLauncherPath()    { return path.join(getGameDir(), 'launcher.html'); }
@@ -645,6 +667,108 @@ function writeLocalVersion(info) {
   try { fs.writeFileSync(VERSION_FILE, JSON.stringify(info), 'utf8'); } catch (_) {}
 }
 
+function isVersionGreater(remote, local) {
+  const rParts = remote.split('.').map(Number);
+  const lParts = local.split('.').map(Number);
+  for (let i = 0; i < Math.max(rParts.length, lParts.length); i++) {
+    const rp = rParts[i] || 0;
+    const lp = lParts[i] || 0;
+    if (rp > lp) return true;
+    if (rp < lp) return false;
+  }
+  return false;
+}
+
+function getUrlSize(url) {
+  return new Promise((resolve, reject) => {
+    const parsed = require('url').parse(url);
+    const opts = {
+      method: 'HEAD',
+      hostname: parsed.hostname,
+      path: parsed.path,
+      port: parsed.port,
+      headers: { 'User-Agent': 'ChiikawaRoyale-Launcher/1.0' }
+    };
+    https.request(opts, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        resolve(getUrlSize(res.headers.location));
+      } else {
+        resolve(parseInt(res.headers['content-length'] || '0', 10));
+      }
+    }).on('error', reject).end();
+  });
+}
+
+async function getFilesTotalSize(files) {
+  let total = 0;
+  await Promise.all(files.map(async (file) => {
+    try {
+      const size = await getUrlSize(file.raw_url);
+      total += size;
+    } catch (e) {
+      total += 500 * 1024; // 500KB default estimate
+    }
+  }));
+  return total;
+}
+
+async function getCompareFiles(currentCommit, latestCommit) {
+  const url = `https://api.github.com/repos/Gatecha/chiikawa-royale/compare/${currentCommit}...${latestCommit}`;
+  const resp = await httpsGet(url);
+  if (resp.statusCode !== 200) throw new Error(`Compare API returned HTTP ${resp.statusCode}`);
+  const data = JSON.parse(resp.body);
+  return data.files || [];
+}
+
+function downloadFile(url, destPath, onProgress) {
+  return new Promise((resolve, reject) => {
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    
+    function doGet(currentUrl) {
+      const parsed = require('url').parse(currentUrl);
+      const opts = {
+        hostname: parsed.hostname,
+        path: parsed.path,
+        port: parsed.port,
+        headers: { 'User-Agent': 'ChiikawaRoyale-Launcher/1.0' }
+      };
+      
+      https.get(opts, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          doGet(res.headers.location);
+          return;
+        }
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode} for ${currentUrl}`));
+          return;
+        }
+        
+        const fileStream = fs.createWriteStream(destPath);
+        fileStream.on('error', (err) => {
+          fileStream.close();
+          reject(err);
+        });
+        
+        res.on('data', (chunk) => {
+          fileStream.write(chunk);
+          onProgress(chunk.length);
+        });
+        
+        res.on('end', () => {
+          fileStream.end();
+          resolve();
+        });
+        
+        res.on('error', (err) => {
+          fileStream.close();
+          reject(err);
+        });
+      }).on('error', reject);
+    }
+    doGet(url);
+  });
+}
+
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
     const opts = Object.assign(require('url').parse(url), {
@@ -677,15 +801,31 @@ ipcMain.handle('check-for-update', async () => {
   }
 });
 
-ipcMain.handle('download-update', async () => {
+ipcMain.handle('check-launcher-update', async () => {
+  try {
+    const resp = await httpsGet('https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/electron-client/package.json');
+    if (resp.statusCode !== 200) throw new Error(`HTTP ${resp.statusCode}`);
+    const remotePkg = JSON.parse(resp.body);
+    const remoteVersion = remotePkg.version;
+    const localVersion = app.getVersion();
+    
+    const hasLauncherUpdate = isVersionGreater(remoteVersion, localVersion);
+    return { hasUpdate: hasLauncherUpdate, latestVersion: remoteVersion, currentVersion: localVersion };
+  } catch (err) {
+    console.error('Error checking launcher update:', err);
+    return { hasUpdate: false, error: err.message };
+  }
+});
+
+ipcMain.handle('download-launcher-update', async () => {
   const send = (data) => {
     if (mainWindow && !mainWindow.isDestroyed())
-      mainWindow.webContents.send('update-progress', data);
+      mainWindow.webContents.send('launcher-update-progress', data);
   };
   send({ stage: 'downloading', pct: 0, label: 'Connecting to update server...' });
 
-  const tmpZip     = path.join(app.getPath('temp'), 'chiikawa_update.zip');
-  const tmpExtract = path.join(app.getPath('temp'), 'chiikawa_extract');
+  const tempExePath = path.join(app.getPath('temp'), 'Chiikawa_Royale.new.exe');
+  const launcherUrl = 'https://media.githubusercontent.com/media/Gatecha/chiikawa-royale/main/Chiikawa_Royale.exe';
 
   try {
     await new Promise((resolve, reject) => {
@@ -709,7 +849,7 @@ ipcMain.handle('download-update', async () => {
 
           const total = parseInt(res.headers['content-length'] || '0', 10);
           let received = 0;
-          const file = fs.createWriteStream(tmpZip);
+          const file = fs.createWriteStream(tempExePath);
 
           file.on('error', (err) => {
             file.close();
@@ -720,12 +860,10 @@ ipcMain.handle('download-update', async () => {
             received += chunk.length;
             file.write(chunk);
 
-            // GitHub archives usually lack content-length. Estimate pct based on ~30MB size
-            const pct = total 
-              ? Math.round((received / total) * 70) 
-              : Math.min(68, Math.round((received / (45 * 1024 * 1024)) * 70));
-            const mb = (received / (1024 * 1024)).toFixed(1);
-            send({ stage: 'downloading', pct, label: `Downloading update... ${mb} MB` });
+            const pct = total ? Math.round((received / total) * 100) : 0;
+            const mbReceived = (received / (1024 * 1024)).toFixed(1);
+            const mbTotal = total ? (total / (1024 * 1024)).toFixed(1) : '107.0';
+            send({ stage: 'downloading', pct, label: `Downloading launcher... ${mbReceived} / ${mbTotal} MB` });
           });
 
           res.on('end', () => {
@@ -739,53 +877,236 @@ ipcMain.handle('download-update', async () => {
           });
         }).on('error', reject);
       }
-      doGet(GITHUB_ZIP);
+      doGet(launcherUrl);
     });
 
-    send({ stage: 'extracting', pct: 72, label: 'Extracting update files...' });
-    const { execFileSync } = require('child_process');
-    if (fs.existsSync(tmpExtract)) fs.rmSync(tmpExtract, { recursive: true, force: true });
-    fs.mkdirSync(tmpExtract, { recursive: true });
-    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `Expand-Archive -Path "${tmpZip}" -DestinationPath "${tmpExtract}" -Force`], { timeout: 120000 });
+    send({ stage: 'installing', pct: 95, label: 'Installing launcher update...' });
 
-    send({ stage: 'extracting', pct: 85, label: 'Copying new files...' });
-    const gameDir = getGameDir();
-    const subDirs = fs.readdirSync(tmpExtract);
-    const srcDir  = subDirs.length === 1 ? path.join(tmpExtract, subDirs[0]) : tmpExtract;
-    const COPY_EXTS  = ['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.mp4', '.mp3', '.svg', '.ico', '.json'];
-    const SKIP_FILES = ['package.json', 'package-lock.json', 'server.js'];
+    const { spawn } = require('child_process');
+    const batPath = path.join(app.getPath('temp'), 'update_launcher.bat');
+    const currentExe = process.execPath;
+    const currentExeName = path.basename(currentExe);
+    
+    fs.writeFileSync(batPath, `
+      @echo off
+      timeout /t 2 /nobreak > nul
+      taskkill /f /im "${currentExeName}"
+      del /f /q "${currentExe}"
+      move /y "${tempExePath}" "${currentExe}"
+      start "" "${currentExe}"
+      del "%~f0"
+    `, 'utf8');
 
-    function copyDir(src, dest) {
-      if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-      for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-        if (['.', 'node_modules', 'android-app', 'electron-client', '.git'].includes(entry.name) || entry.name.startsWith('.')) continue;
-        const sp = path.join(src, entry.name), dp = path.join(dest, entry.name);
-        if (entry.isDirectory()) copyDir(sp, dp);
-        else if (COPY_EXTS.includes(path.extname(entry.name).toLowerCase()) && !SKIP_FILES.includes(entry.name))
-          fs.copyFileSync(sp, dp);
-      }
-    }
-    copyDir(srcDir, gameDir);
-    pruneGameDirectory(gameDir);
-    hideInstalledGameAssets(gameDir);
+    spawn('cmd.exe', ['/c', batPath], {
+      detached: true,
+      stdio: 'ignore'
+    }).unref();
 
-    send({ stage: 'extracting', pct: 95, label: 'Finishing up...' });
-    try {
-      const resp = await httpsGet(GITHUB_API);
-      if (resp.statusCode === 200) {
-        const data = JSON.parse(resp.body);
-        writeLocalVersion({ commit: data.sha, version: require('./package.json').version });
-      }
-    } catch (_) {}
+    setTimeout(() => {
+      app.quit();
+    }, 500);
 
-    try { fs.rmSync(tmpZip,     { force: true }); }            catch (_) {}
-    try { fs.rmSync(tmpExtract, { recursive: true, force: true }); } catch (_) {}
-
-    send({ stage: 'done', pct: 100, label: 'Update complete!' });
+    send({ stage: 'done', pct: 100, label: 'Restarting...' });
     return { success: true };
   } catch (err) {
-    send({ stage: 'error', pct: 0, label: `Update failed: ${err.message}` });
+    send({ stage: 'error', pct: 0, label: `Launcher update failed: ${err.message}` });
     return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('download-update', async () => {
+  const send = (data) => {
+    if (mainWindow && !mainWindow.isDestroyed())
+      mainWindow.webContents.send('update-progress', data);
+  };
+  send({ stage: 'downloading', pct: 0, label: 'Connecting to update server...' });
+
+  const gameDir = getGameDir();
+  const local = readLocalVersion();
+  let latestCommit = null;
+
+  try {
+    const resp = await httpsGet(GITHUB_API);
+    if (resp.statusCode !== 200) throw new Error(`HTTP ${resp.statusCode}`);
+    const data = JSON.parse(resp.body);
+    latestCommit = data.sha;
+  } catch (err) {
+    send({ stage: 'error', pct: 0, label: `Failed to fetch update metadata: ${err.message}` });
+    return { success: false, error: err.message };
+  }
+
+  const COPY_EXTS  = ['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.mp4', '.mp3', '.svg', '.ico', '.json'];
+  const SKIP_FILES = ['package.json', 'package-lock.json', 'server.js'];
+
+  let compareFiles = [];
+  let isIncremental = false;
+  let totalBytes = 0;
+
+  if (local.commit) {
+    try {
+      send({ stage: 'downloading', pct: 5, label: 'Fetching list of changed files...' });
+      compareFiles = await getCompareFiles(local.commit, latestCommit);
+      
+      compareFiles = compareFiles.filter(f => {
+        const ext = path.extname(f.filename).toLowerCase();
+        const name = path.basename(f.filename);
+        if (['.', 'node_modules', 'android-app', 'electron-client', '.git'].some(dir => f.filename.startsWith(dir + '/') || f.filename === dir)) return false;
+        if (f.status === 'removed') return true;
+        return COPY_EXTS.includes(ext) && !SKIP_FILES.includes(name);
+      });
+
+      if (compareFiles.length > 0 && compareFiles.length < 100) {
+        isIncremental = true;
+      }
+    } catch (err) {
+      console.warn('Failed to get file comparison list, falling back to full download:', err);
+    }
+  }
+
+  if (isIncremental) {
+    const filesToDownload = compareFiles.filter(f => f.status !== 'removed');
+    send({ stage: 'downloading', pct: 10, label: `Calculating download size for ${filesToDownload.length} files...` });
+    
+    try {
+      totalBytes = await getFilesTotalSize(filesToDownload);
+    } catch (err) {
+      console.warn('Failed to get files total size, progress will use fallback estimates:', err);
+    }
+
+    try {
+      let receivedBytes = 0;
+      let fileIndex = 0;
+
+      for (const file of compareFiles) {
+        const destPath = path.join(gameDir, file.filename);
+
+        if (file.status === 'removed') {
+          try {
+            if (fs.existsSync(destPath)) fs.rmSync(destPath, { force: true });
+          } catch (_) {}
+          continue;
+        }
+
+        fileIndex++;
+        await downloadFile(file.raw_url, destPath, (chunkLength) => {
+          receivedBytes += chunkLength;
+          const pct = totalBytes ? Math.min(95, Math.round((receivedBytes / totalBytes) * 95)) : 50;
+          const mbReceived = (receivedBytes / (1024 * 1024)).toFixed(1);
+          const mbTotal = totalBytes ? (totalBytes / (1024 * 1024)).toFixed(1) : 'unknown';
+          send({
+            stage: 'downloading',
+            pct,
+            label: `Downloading update... ${mbReceived} / ${mbTotal} MB (File ${fileIndex}/${filesToDownload.length})`
+          });
+        });
+      }
+
+      send({ stage: 'extracting', pct: 95, label: 'Finishing up...' });
+      pruneGameDirectory(gameDir);
+      hideInstalledGameAssets(gameDir);
+
+      writeLocalVersion({ commit: latestCommit, version: require('./package.json').version });
+      send({ stage: 'done', pct: 100, label: 'Update complete!' });
+      return { success: true };
+    } catch (err) {
+      send({ stage: 'error', pct: 0, label: `Incremental update failed: ${err.message}` });
+      return { success: false, error: err.message };
+    }
+  } else {
+    const tmpZip     = path.join(app.getPath('temp'), 'chiikawa_update.zip');
+    const tmpExtract = path.join(app.getPath('temp'), 'chiikawa_extract');
+
+    try {
+      await new Promise((resolve, reject) => {
+        function doGet(url) {
+          const parsed = require('url').parse(url);
+          const opts = {
+            hostname: parsed.hostname,
+            path: parsed.path,
+            port: parsed.port,
+            headers: { 'User-Agent': 'ChiikawaRoyale-Launcher/1.0' }
+          };
+          https.get(opts, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              doGet(res.headers.location);
+              return;
+            }
+            if (res.statusCode !== 200) {
+              reject(new Error(`HTTP status ${res.statusCode}`));
+              return;
+            }
+
+            const total = parseInt(res.headers['content-length'] || '0', 10);
+            let received = 0;
+            const file = fs.createWriteStream(tmpZip);
+
+            file.on('error', (err) => {
+              file.close();
+              reject(err);
+            });
+
+            res.on('data', (chunk) => {
+              received += chunk.length;
+              file.write(chunk);
+
+              const pct = total 
+                ? Math.round((received / total) * 70) 
+                : Math.min(68, Math.round((received / (45 * 1024 * 1024)) * 70));
+              const mbReceived = (received / (1024 * 1024)).toFixed(1);
+              const mbTotal = total ? (total / (1024 * 1024)).toFixed(1) : '45.0';
+              send({ stage: 'downloading', pct, label: `Downloading update... ${mbReceived} / ${mbTotal} MB` });
+            });
+
+            res.on('end', () => {
+              file.end();
+              resolve();
+            });
+
+            res.on('error', (err) => {
+              file.close();
+              reject(err);
+            });
+          }).on('error', reject);
+        }
+        doGet(GITHUB_ZIP);
+      });
+
+      send({ stage: 'extracting', pct: 72, label: 'Extracting update files...' });
+      const { execFileSync } = require('child_process');
+      if (fs.existsSync(tmpExtract)) fs.rmSync(tmpExtract, { recursive: true, force: true });
+      fs.mkdirSync(tmpExtract, { recursive: true });
+      execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `Expand-Archive -Path "${tmpZip}" -DestinationPath "${tmpExtract}" -Force`], { timeout: 120000 });
+
+      send({ stage: 'extracting', pct: 85, label: 'Copying new files...' });
+      const subDirs = fs.readdirSync(tmpExtract);
+      const srcDir  = subDirs.length === 1 ? path.join(tmpExtract, subDirs[0]) : tmpExtract;
+
+      function copyDir(src, dest) {
+        if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+          if (['.', 'node_modules', 'android-app', 'electron-client', '.git'].includes(entry.name) || entry.name.startsWith('.')) continue;
+          const sp = path.join(src, entry.name), dp = path.join(dest, entry.name);
+          if (entry.isDirectory()) copyDir(sp, dp);
+          else if (COPY_EXTS.includes(path.extname(entry.name).toLowerCase()) && !SKIP_FILES.includes(entry.name))
+            fs.copyFileSync(sp, dp);
+        }
+      }
+      copyDir(srcDir, gameDir);
+      pruneGameDirectory(gameDir);
+      hideInstalledGameAssets(gameDir);
+
+      send({ stage: 'extracting', pct: 95, label: 'Finishing up...' });
+      writeLocalVersion({ commit: latestCommit, version: require('./package.json').version });
+
+      try { fs.rmSync(tmpZip,     { force: true }); }            catch (_) {}
+      try { fs.rmSync(tmpExtract, { recursive: true, force: true }); } catch (_) {}
+
+      send({ stage: 'done', pct: 100, label: 'Update complete!' });
+      return { success: true };
+    } catch (err) {
+      send({ stage: 'error', pct: 0, label: `Update failed: ${err.message}` });
+      return { success: false, error: err.message };
+    }
   }
 });
 
