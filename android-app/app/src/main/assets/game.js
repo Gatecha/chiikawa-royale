@@ -13664,25 +13664,8 @@ function startInteractiveCutscene() {
   
   switchScreen(cutsceneScreen);
   
-  // Reset and play
-  video.currentTime = 0;
-  video.play().catch(e => console.warn("Video play blocked:", e));
-  
   let tutorialState = 0; // 0: Usagi, 1: Chiikawa, 2: Hachiware
   const characterKeys = ["usagi", "chiikawa", "hachiware"];
-  
-  if (cutsceneTimeListener) {
-    video.removeEventListener("timeupdate", cutsceneTimeListener);
-  }
-  
-  cutsceneTimeListener = () => {
-    if (video.currentTime >= 1.0 && video.paused === false && tutorialState === 0) {
-      video.pause();
-      video.currentTime = 1.0;
-      showCutsceneUI();
-    }
-  };
-  video.addEventListener("timeupdate", cutsceneTimeListener);
   
   function showCutsceneUI() {
     if (title) title.classList.add("visible");
@@ -13702,6 +13685,31 @@ function startInteractiveCutscene() {
       if (nextBtn) { nextBtn.classList.remove("visible"); nextBtn.disabled = true; }
     }
   }
+
+  // Reset and play
+  video.currentTime = 0;
+  video.play()
+    .then(() => {
+      console.log("Cutscene video playing successfully.");
+    })
+    .catch(e => {
+      console.warn("Video play blocked, showing UI fallback:", e);
+      video.currentTime = 1.0;
+      showCutsceneUI();
+    });
+  
+  if (cutsceneTimeListener) {
+    video.removeEventListener("timeupdate", cutsceneTimeListener);
+  }
+  
+  cutsceneTimeListener = () => {
+    if (video.currentTime >= 1.0 && video.paused === false && tutorialState === 0) {
+      video.pause();
+      video.currentTime = 1.0;
+      showCutsceneUI();
+    }
+  };
+  video.addEventListener("timeupdate", cutsceneTimeListener);
   
   if (prevBtn && nextBtn && chooseBtn) {
     const newPrev = prevBtn.cloneNode(true);
