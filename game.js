@@ -12966,13 +12966,7 @@ function initQuestsSystem() {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
 
-  // Weekly quests Claim buttons
-  bindQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
-    document.querySelector('.tab-btn[data-tab="play"]')?.click();
-  });
-  bindQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
-    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
-  // Weekly quests Claim buttons
+
   bindWeeklyQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
