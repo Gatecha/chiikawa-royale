@@ -575,7 +575,7 @@ html, body {
   transition: var(--transition-bounce);
 }
 
-.char-portrait {
+.char-portrait, .char-canvas {
   max-height: 100%;
   width: auto;
   position: relative;
@@ -586,7 +586,7 @@ html, body {
   transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-.char-portrait.active {
+.char-portrait.active, .char-canvas.active {
   transform: translateY(0);
   opacity: 1;
 }

@@ -13,6 +13,10 @@ app.get(["/downloads", "/downloads/"], (_req, res) => {
   res.sendFile(path.join(__dirname, "download.html"));
 });
 
+app.get("/api/online-players", (_req, res) => {
+  res.json({ count: wss.clients.size });
+});
+
 // Serve static files from workspace root
 app.use(express.static(path.join(__dirname)));
 

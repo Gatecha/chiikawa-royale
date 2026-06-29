@@ -22,25 +22,25 @@
     <aside class="sidebar-nav" aria-label="Sidebar Navigation">
       <div class="logo-box">
         <a href="#home">
-          <img src="chiikawa-royale-logo.png" alt="Chiikawa Royale Logo">
+          <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale Logo">
         </a>
       </div>
       <nav class="nav-links">
         <a href="#home" class="nav-link active" data-sec="home" id="nav-btn-home">
           <span class="nav-indicator"></span>
-          <span class="nav-text">主页 <small>HOME</small></span>
+          <span class="nav-text">HOME</span>
         </a>
         <a href="#squad" class="nav-link" data-sec="squad" id="nav-btn-squad">
           <span class="nav-indicator"></span>
-          <span class="nav-text">角色 <small>SQUAD</small></span>
+          <span class="nav-text">SQUAD</span>
         </a>
         <a href="#arena" class="nav-link" data-sec="arena" id="nav-btn-arena">
           <span class="nav-indicator"></span>
-          <span class="nav-text">场景 <small>ARENA</small></span>
+          <span class="nav-text">ARENA</span>
         </a>
         <a href="#download" class="nav-link" data-sec="download" id="nav-btn-download">
           <span class="nav-indicator"></span>
-          <span class="nav-text">下载 <small>DOWNLOAD</small></span>
+          <span class="nav-text">DOWNLOAD</span>
         </a>
       </nav>
       <div class="sidebar-footer">
@@ -175,7 +175,8 @@
           <!-- Character Graphic Stage (Center) -->
           <div class="char-art-stage anim-element scale-up">
             <div class="char-bg-block" id="char-bg-block"></div>
-            <img class="char-portrait active" id="char-portrait" src="assets/cards/chiikawa.png" alt="Chiikawa">
+            <canvas class="char-canvas active" id="char-canvas" width="450" height="450"></canvas>
+            <video class="char-video" id="char-video" style="display: none;" loop muted playsinline></video>
           </div>
           
           <!-- Selector Column (Right) -->
@@ -294,7 +295,7 @@
           <div class="footer-card anim-element slide-up">
             <div class="footer-badge-side">
               <div class="badge-logo-container">
-                <img src="chiikawa-royale-logo.png" alt="Chiikawa Royale Badge" class="badge-logo">
+                <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale Badge" class="badge-logo">
               </div>
             </div>
             

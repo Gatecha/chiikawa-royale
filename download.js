@@ -6,7 +6,7 @@
   // Active Character State for Squad Section
   let activeChar = "chiikawa";
   
-  // Database of Squad Characters
+  // Database of Squad Characters with Wardrobe Animation Videos (Green Screen)
   const charactersData = {
     chiikawa: {
       role: "Starter",
@@ -18,7 +18,7 @@
         { icon: "🛡️", name: "Dash Shield", desc: "Creates a brief bubble to block bomb explosions." },
         { icon: "🍬", name: "Sweet Candy", desc: "Gains speed buffs from picking up candies." }
       ],
-      img: "assets/cards/chiikawa.png"
+      video: "assets/chiikawa/chiikawa_character_animation.mp4"
     },
     hachiware: {
       role: "Balanced",
@@ -30,7 +30,7 @@
         { icon: "👟", name: "Bomb Kick", desc: "Kicks placed bombs away in a straight line." },
         { icon: "🍀", name: "Lucky Charm", desc: "Has a small chance to survive a blast with 1 HP." }
       ],
-      img: "assets/cards/hachiware.png"
+      video: "hachiware-lobby.mp4"
     },
     usagi: {
       role: "Speedster",
@@ -42,7 +42,7 @@
         { icon: "🐰", name: "Super Jump", desc: "Jumps over a crate or single-tile wall block." },
         { icon: "💥", name: "Mad Laugh", desc: "Instantly increases placed bomb range for 3 seconds." }
       ],
-      img: "assets/cards/usagi.png"
+      video: "assets/usagi/usagi_character_animation.mp4"
     },
     momonga: {
       role: "Trickster",
@@ -54,7 +54,7 @@
         { icon: "🌀", name: "Teleport Swap", desc: "Swaps positions with your last active bomb." },
         { icon: "🎀", name: "Cute Charm", desc: "Briefly slows down nearby rivals on activation." }
       ],
-      img: "assets/cards/momonga.png"
+      video: "assets/momonga/momonga_character_animation.mp4"
     }
   };
 
@@ -116,8 +116,8 @@
     ]);
   }
 
+  // Chime arpeggio for item collection
   function soundGrabItem() {
-    // Cute 8-bit chime arpeggio
     playSynthNotes([
       { freq: 523.25, duration: 0.1, type: 'sine', volume: 0.07 },
       { freq: 659.25, duration: 0.08, type: 'sine', volume: 0.07, delay: 0.05 },
@@ -139,25 +139,21 @@
 
   function playCharSound(char) {
     if (char === "chiikawa") {
-      // High cute chirpy melody
       playSynthNotes([
         { freq: 659.25, duration: 0.08, type: 'sine', volume: 0.06 },
         { freq: 783.99, duration: 0.12, type: 'sine', volume: 0.06, delay: 0.04 }
       ]);
     } else if (char === "hachiware") {
-      // Warm major chime
       playSynthNotes([
         { freq: 523.25, duration: 0.1, type: 'sine', volume: 0.06 },
         { freq: 659.25, duration: 0.15, type: 'sine', volume: 0.06, delay: 0.06 }
       ]);
     } else if (char === "usagi") {
-      // Fast pitch bounce
       playSynthNotes([
         { freq: 783.99, duration: 0.06, type: 'sine', volume: 0.06 },
         { freq: 1046.50, duration: 0.15, type: 'sine', volume: 0.06, delay: 0.03 }
       ]);
     } else if (char === "momonga") {
-      // Mystic scale arpeggio
       playSynthNotes([
         { freq: 440.00, duration: 0.08, type: 'sine', volume: 0.06 },
         { freq: 554.37, duration: 0.08, type: 'sine', volume: 0.06, delay: 0.04 },
@@ -173,7 +169,6 @@
   const navLinks = document.querySelectorAll(".nav-link");
   const snapContainer = document.querySelector(".snap-container");
 
-  // Track scrolling snapping points to update state
   const obsOptions = {
     root: snapContainer,
     threshold: 0.45
@@ -182,10 +177,8 @@
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
-        // Toggle entry animations
         entry.target.classList.add("active");
         
-        // Update nav links highlights
         const activeId = entry.target.getAttribute("id");
         navLinks.forEach((link) => {
           if (link.getAttribute("data-sec") === activeId) {
@@ -200,11 +193,10 @@
 
   sections.forEach((sec) => observer.observe(sec));
 
-  // Click handler for smooth navigation
   navLinks.forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
-      initAudio(); // Warm up audio context on click
+      initAudio();
       
       const targetId = link.getAttribute("href");
       const targetSec = document.querySelector(targetId);
@@ -215,57 +207,156 @@
   });
 
   /* ==========================================================================
-     HOME PAGE: REGISTRATION LIVE COUNTER
+     HOME PAGE: ACCURATE ONLINE PLAYERS COUNTER
      ========================================================================== */
-  let regCount = 1248506;
   const regCounterEl = document.getElementById("reg-counter");
-  
+
+  function updateOnlinePlayers() {
+    if (!regCounterEl) return;
+    
+    // Fetch live connections from server endpoint
+    fetch("/api/online-players")
+      .then(res => res.json())
+      .then(data => {
+        let count = data.count || 0;
+        // Make sure it displays at least 1 (the visitor themselves)
+        regCounterEl.textContent = Math.max(1, count).toLocaleString();
+      })
+      .catch(err => {
+        // Fallback placeholder counter increment
+        console.warn("Could not retrieve live player counts, showing fallback", err);
+        let fallbackVal = 1248506 + Math.floor(Math.random() * 10);
+        regCounterEl.textContent = fallbackVal.toLocaleString();
+      });
+  }
+
   if (regCounterEl) {
-    setInterval(() => {
-      regCount += Math.floor(Math.random() * 3) + 1;
-      regCounterEl.textContent = regCount.toLocaleString();
-    }, 2500);
+    updateOnlinePlayers();
+    setInterval(updateOnlinePlayers, 3000); // refresh every 3s
   }
 
   /* ==========================================================================
-     SQUAD SECTION: DYNAMIC CHARACTER SELECTOR & TRANSITIONS
+     SQUAD SECTION: DYNAMIC CHROMA-KEY VIDEO TRANSITIONS (WARDROBE STYLE)
      ========================================================================== */
   const selectorTabs = document.querySelectorAll(".selector-tab");
-  const charPortrait = document.getElementById("char-portrait");
+  const charCanvas = document.getElementById("char-canvas");
+  const charVideo = document.getElementById("char-video");
   const charCard = document.querySelector(".char-details-card");
   const charBgBlock = document.getElementById("char-bg-block");
+  let ctx = charCanvas ? charCanvas.getContext("2d", { willReadFrequently: true }) : null;
+  let chromaLoopId = null;
+
+  // Greenscreen Keying Formula
+  function keyGreenPixels(imageData) {
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const red = data[i];
+      const green = data[i + 1];
+      const blue = data[i + 2];
+      
+      const greenDominance = green - Math.max(red, blue);
+      // Key green screen pixels
+      const isGreenScreen = green > 70 && greenDominance > 22 && green > red * 1.15 && green > blue * 1.1;
+
+      if (isGreenScreen) {
+        // Smooth margins
+        const softness = Math.min(255, Math.max(0, (greenDominance - 15) * 8));
+        data[i + 3] = 255 - softness;
+      } else if (greenDominance > 8 && green > 65) {
+        // Remove green fringes
+        data[i + 1] = Math.max(0, green - greenDominance * 0.5);
+      }
+    }
+    return imageData;
+  }
+
+  // Chroma Canvas Render loop
+  function startChromaVideo(videoUrl) {
+    if (!charCanvas || !charVideo || !ctx) return;
+
+    if (chromaLoopId) {
+      cancelAnimationFrame(chromaLoopId);
+      chromaLoopId = null;
+    }
+
+    charVideo.src = videoUrl;
+    charVideo.load();
+    
+    // Play video
+    charVideo.play().catch(err => {
+      console.warn("Autoplay blocked or load error on video:", err);
+    });
+
+    function drawChromaFrame() {
+      if (charVideo.paused || charVideo.ended) {
+        chromaLoopId = requestAnimationFrame(drawChromaFrame);
+        return;
+      }
+
+      const w = charCanvas.width;
+      const h = charCanvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Cover drawing calculations
+      const sW = charVideo.videoWidth || w;
+      const sH = charVideo.videoHeight || h;
+      const scale = Math.max(w / sW, h / sH);
+      const dW = sW * scale;
+      const dH = sH * scale;
+      const dx = (w - dW) / 2;
+      const dy = (h - dH) / 2;
+
+      ctx.drawImage(charVideo, dx, dy, dW, dH);
+
+      try {
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const keyed = keyGreenPixels(imgData);
+        ctx.putImageData(keyed, 0, 0);
+      } catch (err) {
+        // Ignore cross-origin error in file:// schemes
+      }
+
+      chromaLoopId = requestAnimationFrame(drawChromaFrame);
+    }
+
+    charVideo.onloadeddata = () => {
+      drawChromaFrame();
+    };
+
+    if (charVideo.readyState >= 2) {
+      drawChromaFrame();
+    }
+  }
 
   selectorTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       const charName = tab.getAttribute("data-char");
       if (charName === activeChar) return;
 
-      // Update selector tabs active class
       selectorTabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
 
       // Trigger exit animations
-      charPortrait.classList.remove("active");
+      charCanvas.classList.remove("active");
       charCard.style.opacity = "0";
       charCard.style.transform = "translateX(-20px)";
       charBgBlock.style.transform = "scale(0.8) rotate(0deg)";
 
       setTimeout(() => {
-        // Fetch new data
         const data = charactersData[charName];
         activeChar = charName;
 
-        // Populate card details
+        // Swapping details
         document.getElementById("char-role").textContent = data.role;
         document.getElementById("char-name").textContent = data.name;
         document.getElementById("char-quote").textContent = data.quote;
         document.getElementById("char-bio").textContent = data.bio;
 
-        // Custom style role pill
         const rolePill = document.getElementById("char-role");
         rolePill.style.background = data.themeColor;
 
-        // Populate Skills
+        // Swapping Skills
         document.getElementById("skill-icon-1").textContent = data.skills[0].icon;
         document.getElementById("skill-name-1").textContent = data.skills[0].name;
         document.getElementById("skill-desc-1").textContent = data.skills[0].desc;
@@ -274,37 +365,35 @@
         document.getElementById("skill-name-2").textContent = data.skills[1].name;
         document.getElementById("skill-desc-2").textContent = data.skills[1].desc;
 
-        // Swap portrait src & background colors
-        charPortrait.src = data.img;
+        // Load new character video and update background block
+        startChromaVideo(data.video);
         charBgBlock.style.backgroundColor = data.themeColor;
 
         // Trigger entry animations
         setTimeout(() => {
-          charPortrait.classList.add("active");
+          charCanvas.classList.add("active");
           charCard.style.opacity = "1";
           charCard.style.transform = "translateX(0)";
           charBgBlock.style.transform = "scale(1) rotate(-15deg)";
         }, 50);
 
-        // Play character chime sound
         playCharSound(charName);
 
       }, 250);
     });
   });
 
+  // Mount First character video on startup
+  startChromaVideo(charactersData.chiikawa.video);
+
   /* ==========================================================================
      ARENA SECTION: INTERACTIVE GAME ENGINE
      ========================================================================== */
   
-  // Game Map Matrix
-  // 0: Floor, 1: Wall (Indestructible), 2: Crate (Destructible), 
-  // 6: Fire Up Item, 7: Bomb Up Item, 8: Speed Up Item
   let mapData = [];
   const mapRows = 6;
   const mapCols = 9;
 
-  // Player Game States (Hachiware is the playable hero)
   let playerRow = 3;
   let playerCol = 4;
   let playerMaxBombs = 2;
@@ -314,9 +403,7 @@
   let isMoving = false;
   let playerHP = 1;
 
-  // Active Bombs list
   let activeBombs = [];
-  // Active blast zones
   let blastZones = new Set();
 
   function initMap() {
@@ -324,7 +411,7 @@
       [1, 0, 2, 2, 1, 2, 2, 0, 1],
       [0, 2, 0, 0, 2, 0, 0, 2, 0],
       [2, 0, 1, 2, 0, 2, 1, 0, 2],
-      [2, 0, 1, 0, 0, 0, 1, 0, 2], // row 3, col 4 is player starting area
+      [2, 0, 1, 0, 0, 0, 1, 0, 2],
       [0, 2, 0, 0, 2, 0, 0, 2, 0],
       [1, 0, 2, 2, 1, 2, 2, 0, 1]
     ];
@@ -340,7 +427,6 @@
     isMoving = false;
   }
 
-  // Draw board grid
   const boardEl = document.getElementById("interactive-board");
 
   function renderBoard() {
@@ -355,7 +441,6 @@
         cell.dataset.row = r;
         cell.dataset.col = c;
 
-        // Apply grid classes
         if (cellType === 1) {
           cell.classList.add("cell-wall");
           cell.textContent = "🧱";
@@ -366,14 +451,12 @@
           cell.classList.add("cell-floor");
         }
 
-        // Apply fire blast styling
         const key = `${r},${c}`;
         if (blastZones.has(key)) {
           cell.classList.add("cell-fire");
           cell.textContent = "🔥";
         }
 
-        // Render placed bomb
         const activeBomb = activeBombs.find((b) => b.row === r && b.col === c);
         if (activeBomb && !blastZones.has(key)) {
           const bombToken = document.createElement("div");
@@ -382,7 +465,6 @@
           cell.appendChild(bombToken);
         }
 
-        // Render player (Hachiware) if coords match
         if (r === playerRow && c === playerCol && playerHP > 0) {
           const playerToken = document.createElement("div");
           playerToken.classList.add("player-token");
@@ -390,7 +472,7 @@
           cell.appendChild(playerToken);
         }
 
-        // Render floating powerup items
+        // Floating powerup items
         if (cellType === 6 && !blastZones.has(key)) {
           const item = document.createElement("div");
           item.classList.add("item-token");
@@ -408,7 +490,6 @@
           cell.appendChild(item);
         }
 
-        // Add Click interactions to cells
         cell.addEventListener("click", () => handleCellClick(r, c));
         boardEl.appendChild(cell);
       }
@@ -417,7 +498,6 @@
     updateDashboard();
   }
 
-  // Update game statistics panel
   function updateDashboard() {
     const hpEl = document.getElementById("game-hp");
     const bombsEl = document.getElementById("game-bombs");
@@ -446,7 +526,6 @@
         const nc = c + dc;
 
         if (nr >= 0 && nr < mapRows && nc >= 0 && nc < mapCols) {
-          // Walkable if it's floor (0) or items (6, 7, 8). Avoid walls (1), crates (2) & active bombs
           const cellType = mapData[nr][nc];
           const hasBomb = activeBombs.some((b) => b.row === nr && b.col === nc);
           const isWalkable = (cellType === 0 || cellType >= 6) && !hasBomb;
@@ -464,12 +543,10 @@
     return null;
   }
 
-  // Handle cell movements or bomb drop on player click
   function handleCellClick(targetR, targetC) {
     if (playerHP <= 0 || isMoving) return;
-    initAudio(); // Initialize audio context on click
+    initAudio();
 
-    // If player clicked on their own space, place a bomb!
     if (targetR === playerRow && targetC === playerCol) {
       placeBomb();
       return;
@@ -481,7 +558,6 @@
       return;
     }
 
-    // Execute walk action step-by-step
     isMoving = true;
     let stepIndex = 0;
     const stepInterval = playerSpeed === "BOOSTED" ? 130 : 200;
@@ -497,7 +573,6 @@
       playerCol = nextC;
       stepIndex++;
 
-      // Check for item collisions
       const tileType = mapData[playerRow][playerCol];
       if (tileType >= 6) {
         soundGrabItem();
@@ -508,12 +583,11 @@
         } else if (tileType === 8) {
           playerSpeed = "BOOSTED";
         }
-        mapData[playerRow][playerCol] = 0; // Clear item from map
+        mapData[playerRow][playerCol] = 0;
       } else {
         soundWalk();
       }
 
-      // Check if player walked into an active blast zone
       const key = `${playerRow},${playerCol}`;
       if (blastZones.has(key)) {
         eliminatePlayer();
@@ -526,14 +600,12 @@
     walkStep();
   }
 
-  // Drop Bomb Function
   function placeBomb() {
     if (playerHP <= 0 || playerBombsPlaced >= playerMaxBombs) {
       soundError();
       return;
     }
 
-    // Prevent placing bomb on top of another bomb
     const alreadyHasBomb = activeBombs.some((b) => b.row === playerRow && b.col === playerCol);
     if (alreadyHasBomb) return;
 
@@ -550,20 +622,17 @@
     playerBombsPlaced++;
     renderBoard();
 
-    // Trigger fuse timer (1.5 seconds)
     bomb.fuseTimer = setTimeout(() => {
       explodeBomb(bomb);
     }, 1500);
   }
 
-  // Explode Bomb Function
   function explodeBomb(bomb) {
-    // Remove bomb from active list
     activeBombs = activeBombs.filter((b) => b !== bomb);
     playerBombsPlaced = Math.max(0, playerBombsPlaced - 1);
     soundExplode();
 
-    const affectedCells = [[bomb.row, bomb.col]]; // Bomb center
+    const affectedCells = [[bomb.row, bomb.col]];
     const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
     directions.forEach(([dr, dc]) => {
@@ -571,48 +640,38 @@
         const checkR = bomb.row + dr * i;
         const checkC = bomb.col + dc * i;
 
-        // Check grid boundary limits
         if (checkR < 0 || checkR >= mapRows || checkC < 0 || checkC >= mapCols) break;
 
         const tile = mapData[checkR][checkC];
-        if (tile === 1) break; // Walls stop blasts completely
+        if (tile === 1) break; // walls stop blasts
 
         affectedCells.push([checkR, checkC]);
-
-        if (tile === 2) {
-          // Destructible crates stop the blast from moving further
-          break;
-        }
+        if (tile === 2) break; // crates absorb blast
       }
     });
 
-    // Populate active blast zones
     affectedCells.forEach(([r, c]) => {
       const key = `${r},${c}`;
       blastZones.add(key);
 
-      // Handle item pickups and crate destruction
       const tile = mapData[r][c];
       if (tile === 2) {
-        // Crate is destroyed. Spawn random item with 40% probability
         if (Math.random() < 0.45) {
           const rand = Math.random();
           if (rand < 0.33) {
-            mapData[r][c] = 6; // Fire Up
+            mapData[r][c] = 6;
           } else if (rand < 0.66) {
-            mapData[r][c] = 7; // Bomb Up
+            mapData[r][c] = 7;
           } else {
-            mapData[r][c] = 8; // Speed Up
+            mapData[r][c] = 8;
           }
         } else {
-          mapData[r][c] = 0; // Empty floor
+          mapData[r][c] = 0;
         }
       } else if (tile >= 6) {
-        // Items in blast zones are destroyed
         mapData[r][c] = 0;
       }
 
-      // Check if Player is hit by the explosion blast
       if (r === playerRow && c === playerCol) {
         eliminatePlayer();
       }
@@ -620,7 +679,6 @@
 
     renderBoard();
 
-    // Clear blast flame effects after 500ms
     setTimeout(() => {
       affectedCells.forEach(([r, c]) => {
         const key = `${r},${c}`;
@@ -635,7 +693,6 @@
     soundGameOver();
     updateDashboard();
     
-    // Auto-restart game after 1.8 seconds
     setTimeout(() => {
       resetGame();
     }, 1800);
@@ -647,10 +704,87 @@
   }
 
   /* ==========================================================================
+     ARENA KEYBOARD INTERACTIVE CONTROLS (SAME GAMEPLAY CONTROLS AS ACTUAL GAME)
+     ========================================================================== */
+  window.addEventListener("keydown", (e) => {
+    // Only capture keyboard inputs when the Arena section is active
+    const arenaSection = document.getElementById("arena");
+    if (!arenaSection || !arenaSection.classList.contains("active")) return;
+    
+    if (playerHP <= 0 || isMoving) return;
+    initAudio();
+
+    let targetR = playerRow;
+    let targetC = playerCol;
+    let isMoveKey = false;
+
+    // Movement: WASD or Arrow Keys
+    if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+      targetR = playerRow - 1;
+      isMoveKey = true;
+    } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+      targetR = playerRow + 1;
+      isMoveKey = true;
+    } else if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+      targetC = playerCol - 1;
+      isMoveKey = true;
+    } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+      targetC = playerCol + 1;
+      isMoveKey = true;
+    } else if (e.key === " ") {
+      // Space bar: Place bomb
+      e.preventDefault();
+      placeBomb();
+      return;
+    }
+
+    if (isMoveKey) {
+      e.preventDefault(); // Stop window from scrolling while playing
+      
+      // Coordinate validity check
+      if (targetR >= 0 && targetR < mapRows && targetC >= 0 && targetC < mapCols) {
+        const cellType = mapData[targetR][targetC];
+        const hasBomb = activeBombs.some((b) => b.row === targetR && b.col === targetC);
+        const isWalkable = (cellType === 0 || cellType >= 6) && !hasBomb;
+
+        if (isWalkable) {
+          playerRow = targetR;
+          playerCol = targetC;
+
+          // Check item pickups
+          const tileType = mapData[playerRow][playerCol];
+          if (tileType >= 6) {
+            soundGrabItem();
+            if (tileType === 6) {
+              playerFireRange++;
+            } else if (tileType === 7) {
+              playerMaxBombs++;
+            } else if (tileType === 8) {
+              playerSpeed = "BOOSTED";
+            }
+            mapData[playerRow][playerCol] = 0;
+          } else {
+            soundWalk();
+          }
+
+          // Check fire damage
+          const key = `${playerRow},${playerCol}`;
+          if (blastZones.has(key)) {
+            eliminatePlayer();
+          }
+
+          renderBoard();
+        } else {
+          soundError();
+        }
+      }
+    }
+  });
+
+  /* ==========================================================================
      PAGE MOUNT INITIALIZATION
      ========================================================================== */
   
-  // Attach DOM Listeners on Load
   const placeBombBtn = document.getElementById("place-bomb-btn");
   const resetGameBtn = document.getElementById("reset-game-btn");
 
@@ -668,10 +802,8 @@
     });
   }
 
-  // Initialize Game Map
   resetGame();
 
-  // Pulse animation and micro-interactions on cta buttons
   document.querySelectorAll(".cta-action, .dl-btn").forEach((btn) => {
     btn.addEventListener("mousedown", () => {
       initAudio();
