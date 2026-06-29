@@ -230,6 +230,49 @@ function pruneInstalledGameFolder(targetPath) {
   pruneGameDirectory(fs.existsSync(nestedGameDir) ? nestedGameDir : flatGameDir);
 }
 
+function getInstalledGameDir(targetPath) {
+  const nestedGameDir = path.join(targetPath, 'Launcher', 'resources', 'game');
+  const flatGameDir = path.join(targetPath, 'resources', 'game');
+  return fs.existsSync(nestedGameDir) ? nestedGameDir : flatGameDir;
+}
+
+function setWindowsHidden(targetPath) {
+  if (process.platform !== 'win32' || !fs.existsSync(targetPath)) return;
+  try {
+    require('child_process').execFileSync('attrib.exe', ['+h', targetPath], {
+      windowsHide: true,
+      stdio: 'ignore'
+    });
+  } catch (_) {}
+}
+
+function hideInstalledGameAssets(gameDir) {
+  if (!fs.existsSync(gameDir)) return;
+
+  [
+    path.join(gameDir, 'assets'),
+    path.join(gameDir, 'hachiware-lobby.mp4'),
+    path.join(gameDir, 'uwauwa.mp3'),
+    path.join(gameDir, 'chiikawa-royale-logo.png')
+  ].forEach(setWindowsHidden);
+
+  function hideMediaFiles(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        hideMediaFiles(fullPath);
+        continue;
+      }
+      if (/\.(png|jpe?g|mp4|mp3|svg|ico)$/i.test(entry.name)) {
+        setWindowsHidden(fullPath);
+      }
+    }
+  }
+
+  hideMediaFiles(path.join(gameDir, 'assets'));
+}
+
 function pruneRuntimeLicenses(runtimeDir) {
   [
     'LICENSE.electron.txt',
@@ -276,6 +319,7 @@ ipcMain.handle('repair-game-files', async () => {
       pruneOldRootRuntimeFiles(path.dirname(runtimeDir));
     }
     pruneGameDirectory(getGameDir());
+    hideInstalledGameAssets(getGameDir());
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
@@ -376,6 +420,7 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
     pruneRuntimeLicenses(appDir);
     pruneOldRootRuntimeFiles(targetPath);
     pruneInstalledGameFolder(targetPath);
+    hideInstalledGameAssets(getInstalledGameDir(targetPath));
 
     const destExe = path.join(appDir, 'Chiikawa_Royale.exe');
     const destResources = path.join(appDir, 'resources');
@@ -661,6 +706,7 @@ ipcMain.handle('download-update', async () => {
     }
     copyDir(srcDir, gameDir);
     pruneGameDirectory(gameDir);
+    hideInstalledGameAssets(gameDir);
 
     send({ stage: 'extracting', pct: 95, label: 'Finishing up...' });
     try {

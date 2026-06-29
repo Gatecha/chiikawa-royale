@@ -373,8 +373,11 @@
     .alert-card { background: #111116; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 26px 30px; width: 360px; max-width: 90vw; box-shadow: 0 24px 64px rgba(0,0,0,0.8); text-align: center; }
     .alert-ttl { font-family: var(--fh); font-size: 13px; color: var(--gold); letter-spacing: 0.1em; margin-bottom: 10px; }
     .alert-msg { font-size: 12.5px; color: var(--muted); line-height: 1.65; margin-bottom: 18px; }
-    .alert-ok  { padding: 8px 32px; background: linear-gradient(135deg,var(--pink),#c8375a); border: none; border-radius: 7px; color: #fff; font-family: var(--fh); font-size: 12px; letter-spacing: 0.08em; cursor: pointer; transition: opacity 0.14s; }
-    .alert-ok:hover { opacity: 0.85; }
+    .alert-actions { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; }
+    .alert-ok, .alert-copy  { padding: 8px 22px; background: linear-gradient(135deg,var(--pink),#c8375a); border: none; border-radius: 7px; color: #fff; font-family: var(--fh); font-size: 12px; letter-spacing: 0.08em; cursor: pointer; transition: opacity 0.14s; }
+    .alert-copy { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.14); }
+    .alert-copy.hidden { display: none; }
+    .alert-ok:hover, .alert-copy:hover { opacity: 0.85; }
   </style>
 </head>
 <body>
@@ -625,6 +628,11 @@ let installPath     = (api && api.getDefaultInstallPath) ? api.getDefaultInstall
 let installedExe    = '';
 let installedTargetDir = '';
 
+function getLaunchOverlay() {
+  if (!launchOv) launchOv = $id('launchOv');
+  return launchOv;
+}
+
 /* ── News Data ────────────────────────────────── */
 const newsData = {
   news: [
@@ -648,6 +656,11 @@ const newsData = {
 function showAlert(title, msg, onOk = null) {
   $id('alertTitle').textContent = title;
   $id('alertBody').innerHTML    = msg;
+  const copyBtn = $id('alertCopy');
+  if (copyBtn) {
+    copyBtn.classList.add('hidden');
+    copyBtn.onclick = null;
+  }
   
   // Clean bind OK button click to avoid multiple triggers
   const originalAlertOk = $id('alertOk');
@@ -674,12 +687,41 @@ function escapeDebugText(value) {
 function showDebugError(title, err, details = '') {
   const message = err && err.message ? err.message : err;
   const stack = err && err.stack ? String(err.stack).split('\n').slice(0, 7).join('\n') : '';
+  const copyText = [
+    title,
+    details || '',
+    message || 'Unknown error',
+    stack || ''
+  ].filter(Boolean).join('\n\n');
   const body = [
     details ? `<div style="margin-bottom:8px;color:#ffd86f;">${escapeDebugText(details)}</div>` : '',
     `<div style="margin-bottom:8px;">${escapeDebugText(message || 'Unknown error')}</div>`,
     stack ? `<pre style="white-space:pre-wrap;text-align:left;font-size:10px;line-height:1.35;background:rgba(0,0,0,.35);padding:10px;border-radius:6px;max-height:180px;overflow:auto;">${escapeDebugText(stack)}</pre>` : ''
   ].join('');
   showAlert(title, body || 'Unknown error');
+
+  const copyBtn = $id('alertCopy');
+  if (copyBtn) {
+    copyBtn.classList.remove('hidden');
+    copyBtn.textContent = 'COPY ERROR';
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(copyText);
+        copyBtn.textContent = 'COPIED';
+      } catch (_) {
+        const temp = document.createElement('textarea');
+        temp.value = copyText;
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        temp.remove();
+        copyBtn.textContent = 'COPIED';
+      }
+      setTimeout(() => { copyBtn.textContent = 'COPY ERROR'; }, 1400);
+    };
+  }
 }
 
 window.addEventListener('error', (event) => {
@@ -1027,12 +1069,13 @@ playBtn.addEventListener('click', async () => {
     }
   } else {
     // PLAY
-    launchOv.classList.add('on');
+    const overlay = getLaunchOverlay();
+    if (overlay) overlay.classList.add('on');
     $id('launchTxt').textContent = 'STARTING CHIIKAWA ROYALE...';
     if (isElectron && api.startGame) {
       const result = await api.startGame();
       if (!result || !result.success) {
-        launchOv.classList.remove('on');
+        if (overlay) overlay.classList.remove('on');
         showDebugError('PLAY LAUNCH FAILED', result && result.error ? result.error : 'The launcher did not return a success response.', 'The Play button reached Electron, but the game window did not load.');
       }
     } else {
@@ -1066,7 +1109,10 @@ playBtn.addEventListener('click', async () => {
   <div class="alert-card">
     <div id="alertTitle" class="alert-ttl"></div>
     <div id="alertBody" class="alert-msg"></div>
-    <button id="alertOk" class="alert-ok">OK</button>
+    <div class="alert-actions">
+      <button id="alertCopy" class="alert-copy hidden">COPY ERROR</button>
+      <button id="alertOk" class="alert-ok">OK</button>
+    </div>
   </div>
 </div>
 
