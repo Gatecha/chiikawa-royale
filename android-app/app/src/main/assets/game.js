@@ -9117,7 +9117,7 @@ async function handleAuthenticatedUser(user) {
     } else {
       // No username, show intro registration screen
       finishStartup();
-      startUsernameIntroFlow();
+      startUsernameIntroFlow(true);
     }
   } catch (err) {
     console.error("Error handling authenticated user:", err);
@@ -9143,11 +9143,11 @@ async function handleAuthenticatedUser(user) {
 
 // Bouncing character introduction dialogue typewriter effect
 let introTypewriterInterval = null;
-function startUsernameIntroFlow() {
+function startUsernameIntroFlow(isNewOnlineUser = false) {
   const tutorialStatus = localStorage.getItem("tutorial_status") || "not_started";
   const savedLocalName = localStorage.getItem("local_username");
 
-  if (tutorialStatus === "not_started" && !savedLocalName) {
+  if (isNewOnlineUser) {
     startInteractiveCutscene();
     return;
   }
