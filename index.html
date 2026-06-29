@@ -1169,13 +1169,58 @@
                   <!-- WEEKLY TAB PAGE -->
                   <div id="questsTabContent_weekly" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
                     
-                    <!-- Top Weekly Info Area -->
-                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);">
-                      <div style="display: flex; flex-direction: column;">
-                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase;">Weekly Targets</span>
-                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; margin-top: 2px;">Season Errands</strong>
+                    <!-- Top Weekly Engagement Progress Area -->
+                    <div class="engagement-tracker" style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); gap: 20px;">
+                      
+                      <!-- Left Engagement Label -->
+                      <div style="display: flex; flex-direction: column; flex-shrink: 0;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Weekly Targets</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; text-shadow: 1px 1px 0 #000; display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                          <span style="font-size: 14px;">🔥</span> <span id="currentWeeklyEngagementVal">0</span> / 400
+                        </strong>
                       </div>
-                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: bold;">Unlock larger reward checkpoints below!</span>
+
+                      <!-- Progress Checkpoints Track -->
+                      <div class="engagement-track-container" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; position: relative;">
+                        <!-- The Track Line -->
+                        <div class="engagement-track-bar">
+                          <div id="weeklyEngagementProgressBar"></div>
+                        </div>
+
+                        <!-- Checkpoints circles -->
+                        <div style="display: flex; justify-content: space-between; position: relative; z-index: 2; width: 100%;">
+                          
+                          <!-- Checkpoint 100 -->
+                          <button class="checkpoint-node" id="weekly_chk_100" data-milestone="100" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">100</span>
+                          </button>
+
+                          <!-- Checkpoint 200 -->
+                          <button class="checkpoint-node" id="weekly_chk_200" data-milestone="200" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">200</span>
+                          </button>
+
+                          <!-- Checkpoint 300 -->
+                          <button class="checkpoint-node" id="weekly_chk_300" data-milestone="300" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">300</span>
+                          </button>
+
+                          <!-- Checkpoint 400 -->
+                          <button class="checkpoint-node" id="weekly_chk_400" data-milestone="400" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">400</span>
+                          </button>
+
+                        </div>
+                      </div>
+
                     </div>
 
                     <!-- Weekly Quests Grid -->

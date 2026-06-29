@@ -12972,13 +12972,25 @@ function initQuestsSystem() {
   });
   bindQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
-  });
-  bindQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
+  // Weekly quests Claim buttons
+  bindWeeklyQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
   });
+  bindWeeklyQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindWeeklyQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
+    document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  });
+
+  // Bind Weekly progress milestones
+  bindWeeklyMilestoneNode("weekly_chk_100", 100);
+  bindWeeklyMilestoneNode("weekly_chk_200", 200);
+  bindWeeklyMilestoneNode("weekly_chk_300", 300);
+  bindWeeklyMilestoneNode("weekly_chk_400", 400);
 
   // Bind gameplay milestone quests (awarding direct gems)
   bindGameplayQuestClaimButton("qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", 15, () => {
@@ -13054,6 +13066,54 @@ function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goActio
   });
 }
 
+function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  
+  btn.addEventListener("click", () => {
+    const completed = localStorage.getItem(compKey) === "true";
+    const claimed = localStorage.getItem(claimKey) === "true";
+    
+    if (completed && !claimed) {
+      localStorage.setItem(claimKey, "true");
+      
+      // Add weekly engagement points
+      let engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+      engagement = Math.min(400, engagement + pointsVal);
+      localStorage.setItem("weekly_engagement", engagement.toString());
+      
+      showToastMsg(`Claimed ${pointsVal} Weekly Engagement Points!`);
+      syncQuestsUI();
+    } else if (!completed && !claimed && typeof goAction === "function") {
+      goAction();
+    }
+  });
+}
+
+function bindWeeklyMilestoneNode(nodeId, milestoneVal) {
+  const node = document.getElementById(nodeId);
+  if (!node) return;
+  
+  node.addEventListener("click", () => {
+    const engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+    const claimed = localStorage.getItem(`claimed_weekly_milestone_${milestoneVal}`) === "true";
+    
+    if (engagement >= milestoneVal && !claimed) {
+      localStorage.setItem(`claimed_weekly_milestone_${milestoneVal}`, "true");
+      
+      // Grant reward of 20 gems
+      gemsCount += 20;
+      const gemsEl = document.getElementById("gemsCount");
+      if (gemsEl) gemsEl.textContent = gemsCount;
+      updateShopWalletDisplay();
+      saveProgression();
+      
+      showToastMsg(`Claimed Weekly Milestone Reward: +20 Gems!`);
+      syncQuestsUI();
+    }
+  });
+}
+
 function bindMilestoneNode(nodeId, milestoneVal) {
   const node = document.getElementById(nodeId);
   if (!node) return;
@@ -13095,6 +13155,23 @@ function syncQuestsUI() {
   updateMilestoneNode("chk_200", 200, engagement);
   updateMilestoneNode("chk_300", 300, engagement);
   updateMilestoneNode("chk_400", 400, engagement);
+
+  // Sync weekly engagement
+  const weeklyEngagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+  const weeklyValEl = document.getElementById("currentWeeklyEngagementVal");
+  if (weeklyValEl) weeklyValEl.textContent = weeklyEngagement;
+  
+  const weeklyProgressBar = document.getElementById("weeklyEngagementProgressBar");
+  if (weeklyProgressBar) {
+    const pct = (weeklyEngagement / 400) * 100;
+    weeklyProgressBar.style.width = `${pct}%`;
+  }
+  
+  // Weekly Milestone node updates
+  updateMilestoneNode("weekly_chk_100", 100, weeklyEngagement);
+  updateMilestoneNode("weekly_chk_200", 200, weeklyEngagement);
+  updateMilestoneNode("weekly_chk_300", 300, weeklyEngagement);
+  updateMilestoneNode("weekly_chk_400", 400, weeklyEngagement);
 
   // Sync Card 1: Login
   updateQuestCardUI("qprog_login", "qbtn_login", "quest_login_completed", "quest_login_claimed", 1, 1);
@@ -13159,7 +13236,9 @@ function updateMilestoneNode(nodeId, milestoneVal, currentEngagement) {
   const node = document.getElementById(nodeId);
   if (!node) return;
   
-  const claimed = localStorage.getItem(`claimed_milestone_${milestoneVal}`) === "true";
+  const isWeekly = nodeId.startsWith("weekly_");
+  const key = isWeekly ? `claimed_weekly_milestone_${milestoneVal}` : `claimed_milestone_${milestoneVal}`;
+  const claimed = localStorage.getItem(key) === "true";
   
   node.className = "checkpoint-node";
   if (claimed) {
