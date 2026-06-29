@@ -1,8 +1,14 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": ".",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "redirects": [
+    { "source": "/downloads", "destination": "/", "permanent": true },
+    { "source": "/downloads/", "destination": "/", "permanent": true },
+    { "source": "/index.html", "destination": "/emulator", "permanent": true }
+  ],
   "rewrites": [
-    { "source": "/downloads", "destination": "/download.html" },
-    { "source": "/downloads/", "destination": "/download.html" }
+    { "source": "/emulator", "destination": "/emulator.html" },
+    { "source": "/emulator/", "destination": "/emulator.html" }
   ]
 }

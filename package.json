@@ -4,7 +4,7 @@
   "description": "Chiikawa Park Bomb Battle with online multiplayer and PWA installable capability",
   "main": "server.js",
   "scripts": {
-    "build": "node --check server.js && node --check game.js",
+    "build": "node --check server.js && node --check game.js && node build.js",
     "start": "node server.js"
   },
   "dependencies": {

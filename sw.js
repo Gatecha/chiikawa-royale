@@ -1,7 +1,8 @@
 const CACHE_NAME = "bomb-battle-v2";
 const ASSETS = [
   "/",
-  "/index.html",
+  "/emulator",
+  "/emulator.html",
   "/styles.css",
   "/game.js",
   "/manifest.json",

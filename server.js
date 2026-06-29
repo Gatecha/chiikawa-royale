@@ -9,8 +9,24 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 
-app.get(["/downloads", "/downloads/"], (_req, res) => {
+// Serve downloads page at root /
+app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "download.html"));
+});
+
+// Redirect old /downloads to /
+app.get(["/downloads", "/downloads/"], (_req, res) => {
+  res.redirect(301, "/");
+});
+
+// Serve emulator game client at /emulator
+app.get(["/emulator", "/emulator/"], (_req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Redirect direct index.html requests to /emulator
+app.get("/index.html", (_req, res) => {
+  res.redirect(301, "/emulator");
 });
 
 app.get("/api/online-players", (_req, res) => {
