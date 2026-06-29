@@ -38,15 +38,21 @@
         "from": "../",
         "to": "game",
         "filter": [
-          "*.html",
-          "*.css",
-          "*.js",
-          "*.png",
-          "*.jpg",
-          "*.mp4",
-          "*.mp3",
-          "*.ico",
-          "assets/**"
+          "index.html",
+          "launcher.html",
+          "styles.css",
+          "game.js",
+          "manifest.json",
+          "chiikawa-royale-logo.png",
+          "hachiware-lobby.mp4",
+          "uwauwa.mp3",
+          "assets/**",
+          "!assets/**/*.bak.*",
+          "!assets/**/*_high.mp4",
+          "!assets/app logo/**",
+          "!assets/chiikawa-banner-animation.mp4",
+          "!assets/chiikawa-banner-bg.png",
+          "!assets/launcher background/agwat teaser.mp4"
         ]
       }
     ]

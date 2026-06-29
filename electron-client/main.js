@@ -117,26 +117,9 @@ ipcMain.on('start-game', () => {
   if (isGameOnly) return;
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
-  mainWindow.minimize();
-
-  const { spawn } = require('child_process');
-  const args = app.isPackaged ? ['--game-only'] : ['.', '--game-only'];
-  
-  const env = { ...process.env };
-  delete env.PORTABLE_EXECUTABLE_DIR;
-  delete env.PORTABLE_EXECUTABLE_FILE;
-
-  const child = spawn(process.execPath, args, {
-    cwd: getGameDir(),
-    env: env
-  });
-
-  child.on('exit', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+  mainWindow.setResizable(true);
+  mainWindow.setFullScreen(true);
+  mainWindow.loadFile(getGameIndexPath());
 });
 
 let returningFromGame = false;
@@ -180,9 +163,74 @@ function isInstalled() {
   return fs.existsSync(path.join(launchDir, '.installed'));
 }
 
+function removeIfInside(baseDir, targetPath) {
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedTarget = path.resolve(targetPath);
+  if (!resolvedTarget.startsWith(resolvedBase + path.sep)) return;
+  if (fs.existsSync(resolvedTarget)) {
+    fs.rmSync(resolvedTarget, { recursive: true, force: true });
+  }
+}
+
+function pruneGameDirectory(gameDir) {
+  if (!fs.existsSync(gameDir)) return;
+
+  [
+    'download.html',
+    'download.css',
+    'download.js',
+    'server.js',
+    'server.err.log',
+    'server.out.log',
+    'Super Bomberman (USA).sfc',
+    'Chiikawa_Royale.apk',
+    'Chiikawa_Royale.bak.apk',
+    'Chiikawa_Royale.exe',
+    'Chiikawa_Royale.cs',
+    'Dockerfile',
+    'supabase-schema.sql'
+  ].forEach((name) => removeIfInside(gameDir, path.join(gameDir, name)));
+
+  [
+    path.join(gameDir, 'assets', 'launcher background', 'agwat teaser.mp4'),
+    path.join(gameDir, 'assets', 'chiikawa-banner-animation.mp4'),
+    path.join(gameDir, 'assets', 'chiikawa-banner-bg.png'),
+    path.join(gameDir, 'assets', 'app logo')
+  ].forEach((target) => removeIfInside(gameDir, target));
+
+  function pruneGeneratedAssets(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        pruneGeneratedAssets(fullPath);
+        continue;
+      }
+      if (/\.bak\./i.test(entry.name) || /_high\.mp4$/i.test(entry.name)) {
+        removeIfInside(gameDir, fullPath);
+      }
+    }
+  }
+
+  pruneGeneratedAssets(path.join(gameDir, 'assets'));
+}
+
+function pruneInstalledGameFolder(targetPath) {
+  pruneGameDirectory(path.join(targetPath, 'resources', 'game'));
+}
+
 // ── IPC: is installed (sync) ──────────────────────────────────────────────────
 ipcMain.on('is-installed', (event) => {
   event.returnValue = isInstalled();
+});
+
+ipcMain.handle('repair-game-files', async () => {
+  try {
+    pruneGameDirectory(getGameDir());
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 // ── IPC: select folder dialog ─────────────────────────────────────────────────
@@ -270,6 +318,8 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
     } finally {
       process.noAsar = false;
     }
+
+    pruneInstalledGameFolder(targetPath);
 
     const destExe = path.join(targetPath, 'Chiikawa_Royale.exe');
     const destResources = path.join(targetPath, 'resources');
@@ -531,6 +581,7 @@ ipcMain.handle('download-update', async () => {
       }
     }
     copyDir(srcDir, gameDir);
+    pruneGameDirectory(gameDir);
 
     send({ stage: 'extracting', pct: 95, label: 'Finishing up...' });
     try {

@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdate:        () => ipcRenderer.invoke('check-for-update'),
   shouldSkipLoading:     () => ipcRenderer.sendSync('should-skip-loading'),
   isInstalled:           () => ipcRenderer.sendSync('is-installed'),
+  repairGameFiles:       () => ipcRenderer.invoke('repair-game-files'),
   getDefaultInstallPath: () => ipcRenderer.sendSync('get-default-install-path'),
   selectFolder:          () => ipcRenderer.invoke('select-folder'),
   installGame:           (targetPath, createShortcut) => {
@@ -27,4 +28,3 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('download-update');
   },
 });
-

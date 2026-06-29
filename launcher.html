@@ -831,8 +831,15 @@ async function checkForUpdates() {
   });
   
   // Bind repair files button
-  $id('repairBtn').addEventListener('click', () => {
-    showAlert('FILE REPAIR', 'All game assets verified and fully optimized (100%). No issues found.');
+  $id('repairBtn').addEventListener('click', async () => {
+    if (isElectron && api.repairGameFiles) {
+      const result = await api.repairGameFiles();
+      if (!result.success) {
+        showAlert('FILE REPAIR', result.error || 'Could not repair local files.');
+        return;
+      }
+    }
+    showAlert('FILE REPAIR', 'Local game files cleaned and verified (100%). No issues found.');
   });
 
   if (!isElectron) {
