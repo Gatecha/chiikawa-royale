@@ -28,6 +28,32 @@
   --font-clean: "Comfortaa", "Fredoka", "Segoe UI", sans-serif;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3f4450 #0d0d0e;
+}
+
+/* Global Modern Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d0d0e;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f4450;
+  border-radius: 10px;
+  border: 2px solid #0d0d0e;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #575e6e;
+}
+
 .hidden {
   display: none !important;
 }

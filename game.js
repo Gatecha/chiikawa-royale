@@ -285,9 +285,9 @@ let activeGraphics = graphicsProfiles[graphicsQuality] || graphicsProfiles.high;
 let lastFrameTime = 0;
 let lastMenuDrawTime = 0;
 
-function getVideoSrc(baseSrc) {
+function getVideoSrc(baseSrc, forceHighQuality = false) {
   if (!baseSrc) return "";
-  if (graphicsQuality === "high") {
+  if (graphicsQuality === "high" || forceHighQuality) {
     return baseSrc.replace(".mp4", "_high.mp4");
   }
   return baseSrc;
@@ -298,7 +298,7 @@ function reloadActiveVideosSettings() {
   if (characterSelectVideo) {
     const baseSrc = characterSelectVideos[previewCharacter || selectedCharacter];
     if (baseSrc) {
-      const targetSrc = getVideoSrc(baseSrc);
+      const targetSrc = getVideoSrc(baseSrc, true); // Force high quality for wardrobe
       if (!characterSelectVideo.src.endsWith(targetSrc)) {
         characterSelectVideo.src = targetSrc;
         characterSelectVideo.load();
@@ -964,7 +964,7 @@ function syncCharacterSelectPreview(kind) {
   }
 
   if (characterSelectVideo && characterSelectVideos[kind]) {
-    const targetSrc = getVideoSrc(characterSelectVideos[kind]);
+    const targetSrc = getVideoSrc(characterSelectVideos[kind], true); // Force high quality for wardrobe
     if (!characterSelectVideo.src.endsWith(targetSrc)) {
       characterSelectVideo.src = targetSrc;
       characterSelectVideo.load();
