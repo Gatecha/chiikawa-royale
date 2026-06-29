@@ -154,39 +154,61 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
 
     const srcDir = path.dirname(process.execPath);
 
-    // Copy directory recursively
-    function copyDirRecursive(src, dest) {
+    // Collect all files to copy recursively
+    const fileList = [];
+    function collectFiles(src, dest) {
       if (src === dest) return;
-      if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+      if (!fs.existsSync(src)) return;
       for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
         const s = path.join(src, entry.name);
         if (s === dest) continue;
+        if (entry.name === '.installed') continue;
         
-        // Force the copied executable name to always be Chiikawa_Royale.exe
         let destName = entry.name;
         if (s === process.execPath) {
           destName = 'Chiikawa_Royale.exe';
         }
-        
         const d = path.join(dest, destName);
         
-        // Skip installer lock files if any
-        if (entry.name === '.installed') continue;
-        
+        fileList.push({ src: s, dest: d, isDir: entry.isDirectory() });
         if (entry.isDirectory()) {
-          copyDirRecursive(s, d);
-        } else {
-          fs.copyFileSync(s, d);
+          collectFiles(s, d);
         }
       }
     }
+
+    collectFiles(srcDir, targetPath);
 
     sendProgress(30, 'Copying program files and dependencies...');
     
     // Disable ASAR interception during file copying to copy app.asar as a normal file
     process.noAsar = true;
     try {
-      copyDirRecursive(srcDir, targetPath);
+      const total = fileList.length;
+      for (let i = 0; i < total; i++) {
+        const item = fileList[i];
+        if (item.isDir) {
+          if (!fs.existsSync(item.dest)) {
+            await fs.promises.mkdir(item.dest, { recursive: true });
+          }
+        } else {
+          const parent = path.dirname(item.dest);
+          if (!fs.existsSync(parent)) {
+            await fs.promises.mkdir(parent, { recursive: true });
+          }
+          await fs.promises.copyFile(item.src, item.dest);
+        }
+        
+        // Progress ranges from 30% to 80%
+        const pct = Math.round(30 + ((i + 1) / total) * 50);
+        const fileName = path.basename(item.dest);
+        sendProgress(pct, `Copying ${fileName}...`);
+        
+        // Yield to event loop every 5 files to prevent UI freeze
+        if (i % 5 === 0) {
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      }
     } finally {
       process.noAsar = false;
     }
@@ -194,20 +216,12 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
     const destExe = path.join(targetPath, 'Chiikawa_Royale.exe');
     const destResources = path.join(targetPath, 'resources');
 
-    sendProgress(80, 'Creating desktop shortcut...');
-    if (createShortcut) {
-      const desktop = app.getPath('desktop');
-      const shortcutPath = path.join(desktop, 'Chiikawa Royale.lnk');
-      
-      shell.writeShortcutLink(shortcutPath, 'create', {
-        target: destExe,
-        args: '--skip-loading',
-        workingDirectory: targetPath,
-        icon: destExe, // Extract icon natively from the copied executable
-        iconIndex: 0,
-        description: 'Chiikawa Royale – Bomb Battle Royale Game',
-        appUserModelId: 'com.chiikawaroyale.launcher',
-      });
+    sendProgress(85, 'Configuring uninstaller...');
+    // uninstall.exe was copied automatically if it is in the packaged folder.
+    // Make sure we log that it exists.
+    const destUninstall = path.join(targetPath, 'uninstall.exe');
+    if (!fs.existsSync(destUninstall)) {
+      console.warn('uninstall.exe was not found in destination directory.');
     }
 
     sendProgress(90, 'Finalizing installation...');
@@ -245,7 +259,26 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
 });
 
 // ── IPC: launch installed game & quit ─────────────────────────────────────────
-ipcMain.on('launch-installed-game', (event, destExe, targetPath) => {
+ipcMain.on('launch-installed-game', (event, destExe, targetPath, createShortcut) => {
+  if (createShortcut) {
+    try {
+      const desktop = app.getPath('desktop');
+      const shortcutPath = path.join(desktop, 'Chiikawa Royale.lnk');
+      
+      shell.writeShortcutLink(shortcutPath, 'create', {
+        target: destExe,
+        args: '--skip-loading',
+        workingDirectory: targetPath,
+        icon: destExe, // Extract icon natively from the copied executable
+        iconIndex: 0,
+        description: 'Chiikawa Royale – Bomb Battle Royale Game',
+        appUserModelId: 'com.chiikawaroyale.launcher',
+      });
+    } catch (err) {
+      console.error('Failed to create desktop shortcut on launch:', err.message);
+    }
+  }
+
   try {
     const { spawn } = require('child_process');
     const child = spawn(destExe, ['--skip-loading'], { 

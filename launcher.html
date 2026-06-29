@@ -412,6 +412,13 @@
       <span>Add to Desktop shortcut</span>
     </label>
 
+    <!-- Post-installation Launch controls -->
+    <button class="btn-iplay" id="btnLaunchApp" style="display: none;">LAUNCH APP</button>
+    <label class="shortcut-row" id="postShortcutRow" style="display: none;" for="postShortcutCb">
+      <input type="checkbox" id="postShortcutCb" checked>
+      <span>Add shortcut to desktop</span>
+    </label>
+
     <!-- Loading progress wrapper -->
     <div class="prog-wrap" id="progWrap">
       <div class="prog-track">
@@ -580,6 +587,9 @@ const txtPathInput    = $id('txtPathInput');
 const btnSelectFolder = $id('btnSelectFolder');
 const modalShortcutCb = $id('modalShortcutCb');
 const btnModalContinue = $id('btnModalContinue');
+const btnLaunchApp    = $id('btnLaunchApp');
+const postShortcutRow = $id('postShortcutRow');
+const postShortcutCb  = $id('postShortcutCb');
 
 /* ── Electron API ─────────────────────────────── */
 const api        = (typeof window.electronAPI !== 'undefined') ? window.electronAPI : null;
@@ -590,6 +600,8 @@ let updateAvailable = false;
 let isUpdating      = false;
 let needsRestart    = false;
 let installPath     = (api && api.getDefaultInstallPath) ? api.getDefaultInstallPath() : "C:\\Games\\Chiikawa Royale";
+let installedExe    = '';
+let installedTargetDir = '';
 
 /* ── News Data ────────────────────────────────── */
 const newsData = {
@@ -716,17 +728,33 @@ async function startInstallation() {
   
   try {
     const createShortcut = modalShortcutCb.checked;
-    const res = await api.installGame(installPath, createShortcut);
+    // Pass false to installGame because we defer shortcut creation to "Launch App" button click
+    const res = await api.installGame(installPath, false);
     if (!res.success) {
       throw new Error(res.error || 'Unknown setup error.');
     }
     
-    // Show installation complete popup and wait for user OK to launch
-    showAlert('INSTALLATION COMPLETE', 'The game has been successfully installed! Click OK to open the launcher and play.', () => {
-      if (api.launchInstalledGame) {
-        api.launchInstalledGame(res.destExe, res.targetPath);
-      }
-    });
+    // Save results for post-install launching
+    installedExe = res.destExe;
+    installedTargetDir = res.targetPath;
+
+    // Set progress to 100%
+    progFill.style.width = '100%';
+    progStatus.textContent = 'Installation complete! (100%)';
+    
+    setTimeout(() => {
+      // Hide progress bar
+      progWrap.style.display = 'none';
+      
+      // Update label to "installed"
+      $id('instLabel').textContent = 'installed';
+      
+      // Show Launch App button and shortcut checkbox
+      btnLaunchApp.style.display = 'block';
+      postShortcutRow.style.display = 'flex';
+      postShortcutCb.checked = createShortcut;
+    }, 600);
+
   } catch (err) {
     showAlert('INSTALLATION FAILED', err.message || 'Setup encountered a write error.');
     progWrap.style.display = 'none';
@@ -865,6 +893,14 @@ instPlayBtn.addEventListener('click', async () => {
     loadNews('news');
     checkForUpdates();
   }, 400);
+});
+
+// Click handler for "Launch App" button after new installation
+btnLaunchApp.addEventListener('click', () => {
+  const addShortcut = postShortcutCb.checked;
+  if (isElectron && api.launchInstalledGame) {
+    api.launchInstalledGame(installedExe, installedTargetDir, addShortcut);
+  }
 });
 
 /* ══════════════════════════════════════════════

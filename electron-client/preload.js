@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('install-game', targetPath, createShortcut);
   },
   relaunch:               () => ipcRenderer.send('app-relaunch'),
-  launchInstalledGame:    (destExe, targetPath) => ipcRenderer.send('launch-installed-game', destExe, targetPath),
+  launchInstalledGame:    (destExe, targetPath, createShortcut) => ipcRenderer.send('launch-installed-game', destExe, targetPath, createShortcut),
   downloadUpdate: (onProgress) => {
     ipcRenderer.on('update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-update');

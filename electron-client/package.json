@@ -30,7 +30,8 @@
       "preload.js",
       "package.json",
       "gamelogo.ico",
-      "chiikawa-royale-logo.ico"
+      "chiikawa-royale-logo.ico",
+      "uninstall.exe"
     ],
     "extraResources": [
       {
