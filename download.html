@@ -18,37 +18,54 @@
     <link rel="stylesheet" href="download.css">
   </head>
   <body>
-    <!-- Fixed Sidebar Navigation -->
+    <!-- Minimizable Sidebar Navigation -->
     <aside class="sidebar-nav" aria-label="Sidebar Navigation">
       <div class="logo-box">
         <a href="#home">
-          <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale Logo">
+          <img src="assets/chiikawa-royale-characters.png" alt="Full Logo" class="logo-full">
+          <img src="chiikawa-royale-logo.png" alt="Mini Logo" class="logo-mini">
         </a>
       </div>
       <nav class="nav-links">
         <a href="#home" class="nav-link active" data-sec="home" id="nav-btn-home">
-          <span class="nav-indicator"></span>
+          <span class="nav-icon-svg">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+          </span>
           <span class="nav-text">HOME</span>
         </a>
         <a href="#squad" class="nav-link" data-sec="squad" id="nav-btn-squad">
-          <span class="nav-indicator"></span>
+          <span class="nav-icon-svg">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </span>
           <span class="nav-text">SQUAD</span>
         </a>
         <a href="#arena" class="nav-link" data-sec="arena" id="nav-btn-arena">
-          <span class="nav-indicator"></span>
+          <span class="nav-icon-svg">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
+            </svg>
+          </span>
           <span class="nav-text">ARENA</span>
         </a>
         <a href="#download" class="nav-link" data-sec="download" id="nav-btn-download">
-          <span class="nav-indicator"></span>
+          <span class="nav-icon-svg">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+            </svg>
+          </span>
           <span class="nav-text">DOWNLOAD</span>
         </a>
       </nav>
       <div class="sidebar-footer">
         <a class="discord-chip" href="https://discord.gg/qpJRXkKzZ3" target="_blank" aria-label="Join our Discord">
-          <svg viewBox="0 0 127.14 96.36" width="16" height="16" style="fill: currentColor; vertical-align: middle;">
+          <svg viewBox="0 0 127.14 96.36" width="18" height="18" style="fill: currentColor; vertical-align: middle;">
             <path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,53.22,6.83,77.19,77.19,0,0,0,49.88,0,105.15,105.15,0,0,0,19.44,8.07C3.66,31.58-1.86,54.65,1,77.53A105.73,105.73,0,0,0,32,96.36a77.7,77.7,0,0,0,7.06-11.59,68.45,68.45,0,0,1-11.14-5.32c.94-.69,1.84-1.39,2.69-2.1a75.11,75.11,0,0,0,73,0c.85.71,1.75,1.41,2.69,2.1a68.45,68.45,0,0,1-11.14,5.32,77.7,77.7,0,0,0,7.06,11.59,105.73,105.73,0,0,0,31-18.83C129,54.65,123.5,31.58,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.41,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z" />
           </svg>
-          Discord
+          <span class="discord-text">Discord</span>
         </a>
       </div>
     </aside>
@@ -65,18 +82,23 @@
         
         <div class="section-content home-layout">
           <div class="home-info anim-element slide-right">
-            <span class="badge">🎮 BOMB BATTLE PARTY GAME</span>
+            <span class="badge">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="vertical-align: middle; margin-right: 4px; position: relative; top: -1px;">
+                <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 10 18.5 10s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+              </svg>
+              BOMB BATTLE PARTY GAME
+            </span>
             <h1 class="logo-text">CHIIKAWA ROYALE</h1>
             <p class="desc">
               Dash through colorful grid arenas, trap your opponents with bombs, collect powerful zone upgrades, and survive chaotic rounds in the ultimate 20-player Battle Royale!
             </p>
           </div>
           
-          <div class="download-panel anim-element slide-left">
+          <div class="download-panel anim-element slide-left tilt-element">
             <div class="preregister-header">
-              <span class="prereg-title">LIVE PLAYERS ONLINE</span>
+              <span class="prereg-title">TOTAL DOWNLOADS</span>
               <div class="counter-box">
-                <span class="counter-val" id="reg-counter">1,248,506</span>
+                <span class="counter-val" id="reg-counter">1,248,604</span>
               </div>
             </div>
             
@@ -138,7 +160,7 @@
         <div class="section-content squad-layout">
           
           <!-- Character Description Card (Left) -->
-          <div class="char-details-card anim-element slide-right">
+          <div class="char-details-card anim-element slide-right tilt-element">
             <div class="char-header">
               <span class="char-role-pill" id="char-role">Starter</span>
               <h2 class="char-name" id="char-name">Chiikawa</h2>
@@ -173,14 +195,14 @@
           </div>
           
           <!-- Character Graphic Stage (Center) -->
-          <div class="char-art-stage anim-element scale-up">
+          <div class="char-art-stage anim-element scale-up tilt-element">
             <div class="char-bg-block" id="char-bg-block"></div>
             <canvas class="char-canvas active" id="char-canvas" width="450" height="450"></canvas>
             <video class="char-video" id="char-video" style="display: none;" loop muted playsinline></video>
           </div>
           
           <!-- Selector Column (Right) -->
-          <div class="char-selector anim-element slide-left">
+          <div class="char-selector anim-element slide-left tilt-element">
             <button class="selector-tab active" data-char="chiikawa" aria-label="Select Chiikawa">
               <div class="avatar-wrap">
                 <img src="assets/cards/chiikawa.png" alt="Chiikawa Avatar">
@@ -218,7 +240,7 @@
         <div class="section-content arena-layout">
           
           <!-- Arena Info Panel (Left) -->
-          <div class="arena-info-panel anim-element slide-right">
+          <div class="arena-info-panel anim-element slide-right tilt-element">
             <span class="badge">⚔️ INTERACTIVE PLAYGROUND</span>
             <h2>Outsmart, outrun, and dominate.</h2>
             <p class="desc">
@@ -269,7 +291,7 @@
           </div>
           
           <!-- Arena Grid Frame (Right) -->
-          <div class="arena-grid-frame anim-element scale-up">
+          <div class="arena-grid-frame anim-element scale-up tilt-element">
             <div class="arena-board-header">
               <span class="board-title">BOMB ARENA PREVIEW v1.2</span>
               <div class="status-indicator">
@@ -292,7 +314,7 @@
       <section id="download" class="section sec-download">
         <div class="section-content download-layout">
           
-          <div class="footer-card anim-element slide-up">
+          <div class="footer-card anim-element slide-up tilt-element">
             <div class="footer-badge-side">
               <div class="badge-logo-container">
                 <img src="assets/chiikawa-royale-characters.png" alt="Chiikawa Royale Badge" class="badge-logo">
@@ -336,11 +358,17 @@
       
     </main>
 
-    <!-- Interactive Logic Script -->
-    <script src="download.js"></script>
-    <script>
-      // Disable right-click context menu on the entire downloads page to match premium feel
-      document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
-    </script>
-  </body>
+      <!-- Lobby Style Shutter Transition -->
+      <div class="transition-shutter" id="transition-shutter">
+        <div class="shutter-panel left-panel"></div>
+        <div class="shutter-panel right-panel"></div>
+      </div>
+
+      <!-- Interactive Logic Script -->
+      <script src="download.js"></script>
+      <script>
+        // Disable right-click context menu on the entire downloads page to match premium feel
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+      </script>
+    </body>
 </html>
