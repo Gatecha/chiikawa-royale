@@ -11601,3 +11601,134 @@ body.is-iphone {
   cursor: pointer;
 }
 
+/* =================================================================
+   ZENLESS ZONE ZERO STYLE SELECTION AND USERNAME UI
+   ================================================================= */
+.tutorial-cutscene-charname {
+  position: absolute;
+  top: 115px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Fredoka', 'Outfit', sans-serif;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+}
+.tutorial-cutscene-charname.visible {
+  opacity: 1;
+}
+.tutorial-cutscene-charname.char-usagi {
+  color: #ffdb4a;
+  text-shadow: 0 0 15px rgba(255, 219, 74, 0.8), 2px 2px 0px #000;
+}
+.tutorial-cutscene-charname.char-chiikawa {
+  color: #ff8787;
+  text-shadow: 0 0 15px rgba(255, 135, 135, 0.8), 2px 2px 0px #000;
+}
+.tutorial-cutscene-charname.char-hachiware {
+  color: #4dabf7;
+  text-shadow: 0 0 15px rgba(77, 171, 247, 0.8), 2px 2px 0px #000;
+}
+
+/* ZZZ style for intro / username registration screen */
+.intro-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 30px 40px;
+  background: rgba(17, 17, 17, 0.88) !important;
+  border: 3px solid #2ed573 !important;
+  border-radius: 24px !important;
+  box-shadow: 0px 0px 30px rgba(46, 213, 115, 0.4), 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+  color: #fff !important;
+  z-index: 10;
+}
+
+.intro-card .intro-bubble {
+  background: rgba(34, 34, 34, 0.9) !important;
+  border: 3px solid #ffdb4a !important;
+  box-shadow: 0px 0px 15px rgba(255, 219, 74, 0.3) !important;
+}
+
+.intro-card .intro-bubble::after {
+  border-color: transparent transparent rgba(34, 34, 34, 0.9) transparent !important;
+}
+
+.intro-card .intro-bubble::before {
+  border-color: transparent transparent #ffdb4a transparent !important;
+}
+
+.intro-card .intro-speech-bubble-text {
+  color: #fff !important;
+  font-family: 'Fredoka', 'Outfit', sans-serif !important;
+}
+
+.intro-card label {
+  color: #ffdb4a !important;
+  font-family: 'Fredoka', 'Outfit', sans-serif !important;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.intro-card input[type="text"] {
+  background: #222 !important;
+  border: 2px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  padding: 12px 16px !important;
+  font-family: 'Fredoka', 'Outfit', sans-serif !important;
+  font-size: 16px;
+  font-weight: 700;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.intro-card input[type="text"]:focus {
+  border-color: #2ed573 !important;
+  box-shadow: 0 0 10px rgba(46, 213, 115, 0.5) !important;
+  outline: none !important;
+}
+
+.intro-card .btn-giant-play {
+  background: #111 !important;
+  border: 3px solid #ff2f73 !important;
+  border-radius: 50px !important;
+  box-shadow: 0 0 15px rgba(255, 47, 115, 0.5) !important;
+  color: #fff !important;
+  font-family: 'Fredoka', 'Outfit', sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  letter-spacing: 2px !important;
+  padding: 14px 0 !important;
+  width: 100% !important;
+  cursor: pointer !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+
+.intro-card .btn-giant-play:hover {
+  border-color: #ff528c !important;
+  transform: scale(1.03) !important;
+  box-shadow: 0 0 25px rgba(255, 47, 115, 0.85) !important;
+}
+
+.intro-card .btn-giant-play:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 0 8px rgba(255, 47, 115, 0.3) !important;
+}
+
+/* Also ensure introCutsceneVideo has the same cover size */
+#introCutsceneVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+

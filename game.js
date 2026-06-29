@@ -9399,6 +9399,13 @@ if (usernameForm) {
   usernameForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    const stopIntroVideo = () => {
+      const introVideo = document.getElementById("introCutsceneVideo");
+      if (introVideo) {
+        introVideo.pause();
+      }
+    };
+
     if (serverMode === "local" || !supabaseClient || isGuestMode) {
       const username = introUsernameInput.value.trim();
       if (username.length < 3) {
@@ -9425,10 +9432,12 @@ if (usernameForm) {
       const tutorialStatus = localStorage.getItem("tutorial_status");
       if (tutorialStatus === "vs_screen") {
         localStorage.setItem("tutorial_status", "tutorial_match");
+        stopIntroVideo();
         startTutorialLocalMatch();
         return;
       }
 
+      stopIntroVideo();
       switchScreen(menuScreen);
       tryPlayMusic();
 
@@ -9497,10 +9506,12 @@ if (usernameForm) {
       const tutorialStatus = localStorage.getItem("tutorial_status");
       if (tutorialStatus === "vs_screen") {
         localStorage.setItem("tutorial_status", "tutorial_match");
+        stopIntroVideo();
         startTutorialLocalMatch();
         return;
       }
 
+      stopIntroVideo();
       switchScreen(menuScreen);
       tryPlayMusic();
     } catch (err) {
@@ -13661,6 +13672,7 @@ window.tutorialGuidePaused = false;
 window.tutorialGuideStep = 0;
 
 let cutsceneTimeListener = null;
+let introVideoTimeListener = null;
 
 function startInteractiveCutscene() {
   const cutsceneScreen = document.getElementById("tutorialCutsceneScreen");
@@ -13698,17 +13710,25 @@ function startInteractiveCutscene() {
       if (prevBtn) { prevBtn.classList.add("visible"); prevBtn.disabled = false; }
       if (nextBtn) { nextBtn.classList.remove("visible"); nextBtn.disabled = true; }
     }
+    
+    // Update Character Name Display
+    const charNameEl = document.getElementById("tutorialCutsceneCharName");
+    if (charNameEl) {
+      const names = ["USAGI", "CHIIKAWA", "HACHIWARE"];
+      charNameEl.textContent = names[tutorialState];
+      charNameEl.className = `tutorial-cutscene-charname visible char-${names[tutorialState].toLowerCase()}`;
+    }
   }
 
-  // Reset and play
-  video.currentTime = 0;
+  // Reset and play at Usagi start frame (0.9s)
+  video.currentTime = 0.9;
   video.play()
     .then(() => {
       console.log("Cutscene video playing successfully.");
     })
     .catch(e => {
       console.warn("Video play blocked, showing UI fallback:", e);
-      video.currentTime = 1.0;
+      video.currentTime = 0.9;
       showCutsceneUI();
     });
   
@@ -13717,11 +13737,21 @@ function startInteractiveCutscene() {
   }
   
   cutsceneTimeListener = () => {
-    if (video.currentTime >= 1.0 && video.paused === false && tutorialState === 0) {
-      video.pause();
-      video.currentTime = 1.0;
-      showCutsceneUI();
+    let minTime = 0.9;
+    let maxTime = 2.1;
+    if (tutorialState === 1) {
+      minTime = 2.2;
+      maxTime = 2.7;
+    } else if (tutorialState === 2) {
+      minTime = 2.8;
+      maxTime = 4.9;
     }
+    
+    if (video.currentTime >= maxTime || video.currentTime < minTime) {
+      video.currentTime = minTime;
+    }
+    
+    showCutsceneUI();
   };
   video.addEventListener("timeupdate", cutsceneTimeListener);
   
@@ -13741,7 +13771,7 @@ function startInteractiveCutscene() {
     newPrev.addEventListener("click", () => {
       if (tutorialState > 0) {
         tutorialState--;
-        video.currentTime = tutorialState === 0 ? 1.0 : 2.0;
+        video.currentTime = tutorialState === 0 ? 0.9 : 2.2;
         updateNavButtons();
       }
     });
@@ -13749,7 +13779,7 @@ function startInteractiveCutscene() {
     newNext.addEventListener("click", () => {
       if (tutorialState < 2) {
         tutorialState++;
-        video.currentTime = tutorialState === 1 ? 2.0 : 3.0;
+        video.currentTime = tutorialState === 1 ? 2.2 : 2.8;
         updateNavButtons();
       }
     });
@@ -13780,6 +13810,22 @@ function startInteractiveCutscene() {
 function startUsernameIntroFlowAfterCutscene() {
   switchScreen(introScreen);
   if (usernameForm) usernameForm.classList.add("hidden");
+
+  const introVideo = document.getElementById("introCutsceneVideo");
+  if (introVideo) {
+    introVideo.currentTime = 5.0;
+    introVideo.play().catch(e => console.warn("Intro video play error:", e));
+    
+    if (introVideoTimeListener) {
+      introVideo.removeEventListener("timeupdate", introVideoTimeListener);
+    }
+    introVideoTimeListener = () => {
+      if (introVideo.currentTime >= 8.5 || introVideo.currentTime < 5.0) {
+        introVideo.currentTime = 5.0;
+      }
+    };
+    introVideo.addEventListener("timeupdate", introVideoTimeListener);
+  }
 
   const chosenGuide = selectedCharacter || "chiikawa";
   const guideImg = document.querySelector(".intro-guide-character");

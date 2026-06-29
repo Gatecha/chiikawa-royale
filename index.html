@@ -179,7 +179,8 @@
 
       <!-- 00. USERNAME INTRODUCTION SCREEN -->
       <section id="introScreen" class="screen">
-        <div class="yellow-console intro-console">
+        <div class="tutorial-cutscene-container">
+          <video id="introCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline></video>
           <div class="intro-card glass">
             <!-- Guiding Bouncing Character Panel -->
             <div class="intro-guide-panel">
@@ -201,11 +202,6 @@
               <button id="btnConfirmUsername" class="btn-giant-play" type="submit">CONFIRM & ENTER</button>
             </form>
           </div>
-          <footer class="console-footer title-footer" style="height: auto; min-height: 42px; padding: 12px 24px; flex-direction: column; gap: 8px;">
-            <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(34, 31, 37, 0.7); font-weight: 600; text-align: center; line-height: 1.4; max-width: 500px;">
-              This game is still on its alpha stage, expect major bugs and optimization issues. If you want to send feedback please send it through our discord channel:
-            </div>
-          </footer>
         </div>
       </section>
 
@@ -214,6 +210,7 @@
         <div class="tutorial-cutscene-container">
           <video id="tutorialCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline></video>
           <div id="tutorialCutsceneTitle" class="tutorial-cutscene-title">choose your starter character</div>
+          <div id="tutorialCutsceneCharName" class="tutorial-cutscene-charname">USAGI</div>
           <button id="tutorialChooseBtn" class="tutorial-choose-btn">
             <span class="zzz-btn-sub">SELECT</span>
             <span class="zzz-btn-main">CHARACTER</span>
