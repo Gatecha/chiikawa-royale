@@ -2231,6 +2231,10 @@ function switchScreen(targetScreen) {
       window.tutorialGuideActive = false;
       window.tutorialGuidePaused = false;
       localStorage.setItem("tutorial_status", "tutorial_match_completed");
+      if (isGuestMode) {
+        loadProgression();
+        updateProgressionUI();
+      }
     }
   }
 
@@ -9297,21 +9301,25 @@ if (btnGuestLogin) {
     
     let guestName = localStorage.getItem("guest_username");
     if (!guestName) {
-      guestName = "Guest_" + Math.floor(1000 + Math.random() * 9000);
-      localStorage.setItem("guest_username", guestName);
+      // First-time guest flow: clear local username preference, reset tutorial, show cutscene
+      localStorage.removeItem("local_username");
+      localStorage.setItem("tutorial_status", "not_started");
+      
+      finishStartup();
+      startUsernameIntroFlow(true);
+    } else {
+      currentSocialUsername = guestName;
+      if (usernameInput) usernameInput.value = guestName;
+      localStorage.setItem("local_username", guestName);
+      
+      loadProgression();
+      updateProgressionUI();
+      connectWebSocket(true);
+      
+      finishStartup();
+      switchScreen(menuScreen);
+      tryPlayMusic();
     }
-    
-    currentSocialUsername = guestName;
-    if (usernameInput) usernameInput.value = guestName;
-    localStorage.setItem("local_username", guestName);
-    
-    loadProgression();
-    updateProgressionUI();
-    connectWebSocket(true);
-    
-    finishStartup();
-    switchScreen(menuScreen);
-    tryPlayMusic();
   });
 }
 
@@ -9391,7 +9399,7 @@ if (usernameForm) {
   usernameForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    if (serverMode === "local" || !supabaseClient) {
+    if (serverMode === "local" || !supabaseClient || isGuestMode) {
       const username = introUsernameInput.value.trim();
       if (username.length < 3) {
         if (usernameMessage) {
@@ -9401,6 +9409,12 @@ if (usernameForm) {
         }
         return;
       }
+      
+      if (isGuestMode) {
+        localStorage.setItem("guest_username", username);
+        currentSocialUsername = username;
+      }
+      
       localStorage.setItem("local_username", username);
       if (usernameInput) usernameInput.value = username;
       if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = username;
