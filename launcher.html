@@ -555,7 +555,27 @@
         <div class="news-col" id="newsCol"></div>
 
         <!-- Play column -->
-        <div class="play-col">
+        <div class="play-col" style="position: relative;">
+          <!-- Update progress wrapper -->
+          <div class="upd-wrap" id="updWrap">
+            <div class="upd-track">
+              <div class="upd-fill" id="updFill"></div>
+            </div>
+            <div class="upd-lbl" id="updLbl">Connecting to update server...</div>
+          </div>
+
+          <!-- Play button -->
+          <button class="btn-play" id="playBtn">PLAY</button>
+          
+          <!-- Update badge dot -->
+          <div class="upd-dot" id="updDot"></div>
+
+          <!-- Version info -->
+          <div class="ver-info">
+            <span id="curVer">Version: --</span>
+            <span id="latVer">Latest: --</span>
+          </div>
+        </div>
 <script>
 const $id = (id) => document.getElementById(id);
 const installerScreen = $id('installerScreen');

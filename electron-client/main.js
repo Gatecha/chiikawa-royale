@@ -279,6 +279,13 @@ ipcMain.on('launch-installed-game', (event, destExe, targetPath, createShortcut)
     }
   }
 
+  // Release the single-instance lock so the spawned process can acquire it!
+  try {
+    app.releaseSingleInstanceLock();
+  } catch (err) {
+    console.error('Failed to release single-instance lock:', err.message);
+  }
+
   try {
     const { spawn } = require('child_process');
     const child = spawn(destExe, ['--skip-loading'], { 
