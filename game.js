@@ -28,6 +28,49 @@ let supabaseClient = null;
 try {
   if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Global callback for native Android client to send back redirected OAuth URL with tokens
+    window.handleOAuthCallback = async function(url) {
+      console.log("OAuth Callback Intercepted from native client:", url);
+      try {
+        const hashIndex = url.indexOf('#');
+        if (hashIndex === -1) return;
+        const hash = url.substring(hashIndex + 1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        
+        if (accessToken && supabaseClient) {
+          const { data, error } = await supabaseClient.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (error) throw error;
+          console.log("Supabase session successfully restored from native callback:", data);
+        }
+      } catch (err) {
+        console.error("Failed to restore Supabase session in callback:", err);
+      }
+    };
+
+    // Listen for Electron main process to send back OAuth session tokens
+    if (window.electronAPI && typeof window.electronAPI.onOAuthLoginSuccess === 'function') {
+      window.electronAPI.onOAuthLoginSuccess(async (sessionData) => {
+        console.log("Received OAuth session from Electron:", sessionData);
+        if (supabaseClient) {
+          try {
+            const { data, error } = await supabaseClient.auth.setSession({
+              access_token: sessionData.access_token,
+              refresh_token: sessionData.refresh_token
+            });
+            if (error) throw error;
+            console.log("Supabase session set successfully via Electron OAuth:", data);
+          } catch (err) {
+            console.error("Failed to set Supabase session in Electron:", err);
+          }
+        }
+      });
+    }
     
     // Listen for auth state changes (e.g. when OAuth login completes in a popup)
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -9218,17 +9261,24 @@ if (btnGoogleLogin) {
   btnGoogleLogin.addEventListener("click", async () => {
     if (!supabaseClient) return;
     try {
+      const isLocalFile = window.location.protocol === 'file:';
+      const redirectToUrl = isLocalFile ? undefined : window.location.origin;
+
       const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectToUrl,
           skipBrowserRedirect: true
         }
       });
       if (error) throw error;
       if (data && data.url) {
-        // Open the OAuth screen in a popup window so it doesn't reload the game tab
-        window.open(data.url, "OAuthSignIn", "width=600,height=800,resizable=yes,scrollbars=yes");
+        if (typeof AndroidUpdater !== 'undefined' && typeof AndroidUpdater.openOAuth === 'function') {
+          AndroidUpdater.openOAuth(data.url);
+        } else {
+          // Open the OAuth screen in a popup window so it doesn't reload the game tab
+          window.open(data.url, "OAuthSignIn", "width=600,height=800,resizable=yes,scrollbars=yes");
+        }
       }
     } catch (err) {
       console.error("Google login error:", err);
@@ -9246,17 +9296,24 @@ if (btnDiscordLogin) {
   btnDiscordLogin.addEventListener("click", async () => {
     if (!supabaseClient) return;
     try {
+      const isLocalFile = window.location.protocol === 'file:';
+      const redirectToUrl = isLocalFile ? undefined : window.location.origin;
+
       const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: "discord",
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectToUrl,
           skipBrowserRedirect: true
         }
       });
       if (error) throw error;
       if (data && data.url) {
-        // Open the OAuth screen in a popup window so it doesn't reload the game tab
-        window.open(data.url, "OAuthSignIn", "width=600,height=800,resizable=yes,scrollbars=yes");
+        if (typeof AndroidUpdater !== 'undefined' && typeof AndroidUpdater.openOAuth === 'function') {
+          AndroidUpdater.openOAuth(data.url);
+        } else {
+          // Open the OAuth screen in a popup window so it doesn't reload the game tab
+          window.open(data.url, "OAuthSignIn", "width=600,height=800,resizable=yes,scrollbars=yes");
+        }
       }
     } catch (err) {
       console.error("Discord login error:", err);

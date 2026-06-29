@@ -78,6 +78,67 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.includes('/auth/v1/authorize')) {
+      const authWindow = new BrowserWindow({
+        width: 600,
+        height: 800,
+        parent: mainWindow,
+        modal: true,
+        show: false,
+        icon: path.join(__dirname, 'gamelogo.ico'),
+        title: 'Sign In',
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true
+        }
+      });
+
+      authWindow.loadURL(url);
+
+      authWindow.once('ready-to-show', () => {
+        authWindow.show();
+      });
+
+      const handleRedirect = (redirectUrl) => {
+        console.log("OAuth Redirect Intercepted:", redirectUrl);
+        if (redirectUrl.includes('access_token=')) {
+          try {
+            // Replace hash with search to parse via URLSearchParams
+            const urlObj = new URL(redirectUrl.replace('#', '?'));
+            const searchParams = urlObj.searchParams;
+            const accessToken = searchParams.get('access_token');
+            const refreshToken = searchParams.get('refresh_token');
+            const expiresAt = searchParams.get('expires_at');
+            const expiresIn = searchParams.get('expires_in');
+            const tokenType = searchParams.get('token_type');
+
+            if (accessToken) {
+              mainWindow.webContents.send('oauth-login-success', {
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: expiresAt,
+                expires_in: expiresIn,
+                token_type: tokenType
+              });
+              authWindow.destroy();
+            }
+          } catch (e) {
+            console.error("Failed to parse OAuth redirect URL:", e);
+          }
+        }
+      };
+
+      authWindow.webContents.on('will-navigate', (e, navigateUrl) => {
+        handleRedirect(navigateUrl);
+      });
+
+      authWindow.webContents.on('did-redirect-navigation', (e, navigateUrl) => {
+        handleRedirect(navigateUrl);
+      });
+
+      return { action: 'deny' };
+    }
+
     shell.openExternal(url);
     return { action: 'deny' };
   });

@@ -2,6 +2,7 @@ package com.example.chiikawaroyale
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Dialog
 import android.os.Bundle
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -148,6 +149,42 @@ class MainActivity : Activity() {
     @JavascriptInterface
     fun isUpdating(): Boolean {
         return isUpdating
+    }
+
+    @JavascriptInterface
+    fun openOAuth(url: String) {
+        mainHandler.post {
+            showOAuthDialog(url)
+        }
+    }
+
+    private fun showOAuthDialog(url: String) {
+        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val dialogWebView = WebView(this)
+        
+        val settings = dialogWebView.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.useWideViewPort = true
+        settings.loadWithOverviewMode = true
+        settings.allowFileAccess = true
+        settings.databaseEnabled = true
+        
+        dialogWebView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, pageUrl: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, pageUrl, favicon)
+                if (pageUrl != null && pageUrl.contains("access_token=")) {
+                    mainHandler.post {
+                        webView.evaluateJavascript("if (typeof handleOAuthCallback === 'function') handleOAuthCallback('$pageUrl');", null)
+                        dialog.dismiss()
+                    }
+                }
+            }
+        }
+        
+        dialog.setContentView(dialogWebView)
+        dialog.show()
+        dialogWebView.loadUrl(url)
     }
 
     private fun isOnline(): Boolean {

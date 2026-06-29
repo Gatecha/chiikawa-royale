@@ -27,4 +27,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-update');
   },
+  onOAuthLoginSuccess: (callback) => {
+    ipcRenderer.removeAllListeners('oauth-login-success');
+    ipcRenderer.on('oauth-login-success', (_event, data) => callback(data));
+  },
 });
