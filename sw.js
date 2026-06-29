@@ -1,4 +1,4 @@
-const CACHE_NAME = "bomb-battle-v2";
+const CACHE_NAME = "bomb-battle-v3";
 const ASSETS = [
   "/",
   "/emulator",
