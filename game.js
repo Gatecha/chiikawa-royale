@@ -7811,7 +7811,13 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && serverMode === "online" && running) {
     if (ingameChatInput) {
       event.preventDefault();
-      ingameChatInput.focus();
+      const chatBox = document.getElementById("ingameChatBox");
+      const toggleBtn = document.getElementById("ingameChatToggleBtn");
+      if (chatBox) chatBox.classList.remove("hidden");
+      if (toggleBtn) toggleBtn.classList.add("hidden");
+      setTimeout(() => {
+        ingameChatInput.focus();
+      }, 50);
       return;
     }
   }
@@ -12380,7 +12386,11 @@ function bindIngameChatToggleListeners() {
   if (!chatInput) return;
 
   toggleBtn?.addEventListener("click", () => {
-    chatInput.focus();
+    chatBox?.classList.remove("hidden");
+    toggleBtn?.classList.add("hidden");
+    setTimeout(() => {
+      chatInput.focus();
+    }, 50);
   });
 
   minBtn?.addEventListener("click", () => {
