@@ -203,7 +203,7 @@ const characterSelectVideos = {
   usagi: "assets/usagi/usagi_character_animation.mp4",
   momonga: "assets/momonga/momonga_character_animation.mp4",
 };
-let selectedCharacter = "chiikawa";
+let selectedCharacter = localStorage.getItem("equipped_character") || "chiikawa";
 let previewCharacter = selectedCharacter;
 let brmVideoEl = null;
 let brmActive = false;
@@ -285,9 +285,9 @@ let activeGraphics = graphicsProfiles[graphicsQuality] || graphicsProfiles.high;
 let lastFrameTime = 0;
 let lastMenuDrawTime = 0;
 
-function getVideoSrc(baseSrc) {
+function getVideoSrc(baseSrc, forceHighQuality = false) {
   if (!baseSrc) return "";
-  if (graphicsQuality === "high") {
+  if (graphicsQuality === "high" || forceHighQuality) {
     return baseSrc.replace(".mp4", "_high.mp4");
   }
   return baseSrc;
@@ -298,7 +298,7 @@ function reloadActiveVideosSettings() {
   if (characterSelectVideo) {
     const baseSrc = characterSelectVideos[previewCharacter || selectedCharacter];
     if (baseSrc) {
-      const targetSrc = getVideoSrc(baseSrc);
+      const targetSrc = getVideoSrc(baseSrc, true); // Force high quality for wardrobe
       if (!characterSelectVideo.src.endsWith(targetSrc)) {
         characterSelectVideo.src = targetSrc;
         characterSelectVideo.load();
@@ -964,7 +964,7 @@ function syncCharacterSelectPreview(kind) {
   }
 
   if (characterSelectVideo && characterSelectVideos[kind]) {
-    const targetSrc = getVideoSrc(characterSelectVideos[kind]);
+    const targetSrc = getVideoSrc(characterSelectVideos[kind], true); // Force high quality for wardrobe
     if (!characterSelectVideo.src.endsWith(targetSrc)) {
       characterSelectVideo.src = targetSrc;
       characterSelectVideo.load();
@@ -1783,6 +1783,9 @@ function handleServerMessage(msg) {
         if (data.playerId === localPlayerId) {
           let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
           localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+          
+          let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
+          localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
         }
 
         burstSparkles(collector.x, collector.y);
@@ -1823,21 +1826,20 @@ function handleServerMessage(msg) {
         // Progress weekly win quest
         let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
         localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+        totalWins += 1; // Increment totalWins for online victory
 
         if (data.tournamentFinished) {
-          crownCount += 2; gemsCount += 300;
-          addChatMessage("System", "TOURNAMENT VICTORY! You earned 300 gems and 2 crowns! 👑🏆", true);
+          crownCount += 2; gemsCount += 5;
+          addChatMessage("System", "TOURNAMENT VICTORY! You earned 5 gems and 2 crowns! 👑🏆", true);
         } else {
-          crownCount += 1; gemsCount += 100;
-          addChatMessage("System", "ROUND VICTORY! You earned 100 gems and 1 crown! 👑", true);
+          crownCount += 1; gemsCount += 5;
+          addChatMessage("System", "ROUND VICTORY! You earned 5 gems and 1 crown! 👑", true);
         }
       } else {
         if (data.tournamentFinished) {
-          gemsCount += 50;
-          addChatMessage("System", "Tournament Finished. You earned 50 gems! 💎", true);
+          addChatMessage("System", "Tournament Finished! 🏆", true);
         } else {
-          gemsCount += 20;
-          addChatMessage("System", "Round Finished. You earned 20 gems! 💎", true);
+          addChatMessage("System", "Round Finished! 🏁", true);
         }
       }
       document.getElementById("crownCount").textContent = crownCount;
@@ -2157,12 +2159,28 @@ function handleServerMessage(msg) {
 let alphaWelcomeDialogShown = false;
 
 function switchScreen(targetScreen) {
-  const previousActiveScreen = [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].find((s) => s && s.classList.contains("active"));
+  const tutorialCutsceneScreen = document.getElementById("tutorialCutsceneScreen");
+  const screens = [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen, tutorialCutsceneScreen];
+  const previousActiveScreen = screens.find((s) => s && s.classList.contains("active"));
 
-  [loginScreen, introScreen, titleScreen, menuScreen, lobbyScreen, gameScreen].forEach((s) => {
+  screens.forEach((s) => {
     if (s) s.classList.remove("active");
   });
   if (targetScreen) targetScreen.classList.add("active");
+
+  if (previousActiveScreen === gameScreen && targetScreen === menuScreen) {
+    if (window.tutorialGuideActive) {
+      window.tutorialGuideActive = false;
+      window.tutorialGuidePaused = false;
+      localStorage.setItem("tutorial_status", "tutorial_match_completed");
+    }
+  }
+
+  if (targetScreen === menuScreen) {
+    if (typeof checkMenuTutorialGuide === "function") {
+      checkMenuTutorialGuide();
+    }
+  }
   if (targetScreen !== gameScreen) {
     document.getElementById("couchControlPicker")?.classList.add("hidden");
     document.body.classList.remove("local-couch-active");
@@ -2317,6 +2335,7 @@ function openLocalFourPlayerLobby() {
     null,
     null,
   ];
+  currentRoomIsChallenge = true;
   switchScreen(menuScreen);
   document.body.classList.add("local-four-lobby-active");
   document.querySelector('.tab-btn[data-tab="squad"]')?.click();
@@ -2443,6 +2462,7 @@ function closeLocalFourPlayerLobby() {
   roomCode = null;
   hostId = null;
   localPlayerId = null;
+  currentRoomIsChallenge = false;
   document.body.classList.remove("local-four-lobby-active");
   syncSquadLobbyInterface();
 }
@@ -3019,6 +3039,9 @@ function localPlaceBomb(player) {
   if (player.id === localPlayerId) {
     let bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
     localStorage.setItem("quest_bombs_progress", Math.min(10, bombsPlaced + 1).toString());
+    
+    let lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
+    localStorage.setItem("lifetime_bombs_placed", (lifetimeBombs + 1).toString());
   }
 
   bombs.push({
@@ -3095,6 +3118,9 @@ function localTriggerExplosion(bomb) {
           if (p.hp <= 0 && hpBefore > 0 && p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
             let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
             localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            
+            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
+            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
           }
         } else {
           p.alive = false;
@@ -3104,6 +3130,9 @@ function localTriggerExplosion(bomb) {
           if (p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
             let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
             localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            
+            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
+            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
           }
         }
       }
@@ -3135,6 +3164,9 @@ function localCheckPickup(player) {
   if (player.id === localPlayerId) {
     let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
     localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+    
+    let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
+    localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
   }
 
   burstSparkles(player.x, player.y);
@@ -3188,7 +3220,7 @@ function awardLocalMatchProgress(playerWon) {
   }
 
   const gainedXp = playerWon ? 120 : 45;
-  const gainedGems = playerWon ? 85 : 25;
+  const gainedGems = playerWon ? 5 : 0;
   seasonXp += gainedXp;
   gemsCount += gainedGems;
   if (playerWon) crownCount += 1;
@@ -5936,6 +5968,10 @@ function updateControlledPlayer(player, dx, dy, dt) {
 }
 
 function update(dt) {
+  if (window.tutorialGuideActive && window.tutorialGuidePaused) {
+    return;
+  }
+
   if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
 
   if (running && startCountdownTimer > 0) {
@@ -5943,6 +5979,9 @@ function update(dt) {
     if (startCountdownTimer <= 0) {
       startCountdownTimer = 0;
       startCountdownState = "";
+      if (window.tutorialGuideActive && window.tutorialGuideStep === 0) {
+        showTutorialGuideStep(0);
+      }
     } else if (startCountdownTimer > 2.5) {
       startCountdownState = "3";
     } else if (startCountdownTimer > 1.5) {
@@ -7795,7 +7834,13 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && serverMode === "online" && running) {
     if (ingameChatInput) {
       event.preventDefault();
-      ingameChatInput.focus();
+      const chatBox = document.getElementById("ingameChatBox");
+      const toggleBtn = document.getElementById("ingameChatToggleBtn");
+      if (chatBox) chatBox.classList.remove("hidden");
+      if (toggleBtn) toggleBtn.classList.add("hidden");
+      setTimeout(() => {
+        ingameChatInput.focus();
+      }, 50);
       return;
     }
   }
@@ -8984,6 +9029,12 @@ async function handleAuthenticatedUser(user) {
       if (usernameInput) usernameInput.value = data.username;
       localStorage.setItem("local_username", data.username);
       updateProgressionUI();
+      
+      const status = localStorage.getItem("tutorial_status") || "not_started";
+      if (status === "not_started" || status === "vs_screen" || status === "tutorial_match") {
+        localStorage.setItem("tutorial_status", "tutorial_match_completed");
+      }
+
       // User has a username, proceed to main menu
       finishStartup();
       switchScreen(menuScreen);
@@ -9018,11 +9069,19 @@ async function handleAuthenticatedUser(user) {
 // Bouncing character introduction dialogue typewriter effect
 let introTypewriterInterval = null;
 function startUsernameIntroFlow() {
+  const tutorialStatus = localStorage.getItem("tutorial_status") || "not_started";
+  const savedLocalName = localStorage.getItem("local_username");
+
+  if (tutorialStatus === "not_started" && !savedLocalName) {
+    startInteractiveCutscene();
+    return;
+  }
+
   if (!navigator.onLine) {
     serverMode = "local";
-    const savedLocalName = localStorage.getItem("local_username") || "Friend";
-    if (usernameInput) usernameInput.value = savedLocalName;
-    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = savedLocalName;
+    const fallbackName = savedLocalName || "Friend";
+    if (usernameInput) usernameInput.value = fallbackName;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = fallbackName;
     switchScreen(menuScreen);
     tryPlayMusic();
     return;
@@ -9231,6 +9290,14 @@ if (usernameForm) {
       updateProgressionUI();
 
       if (usernameMessage) usernameMessage.classList.add("hidden");
+      
+      const tutorialStatus = localStorage.getItem("tutorial_status");
+      if (tutorialStatus === "vs_screen") {
+        localStorage.setItem("tutorial_status", "tutorial_match");
+        startTutorialLocalMatch();
+        return;
+      }
+
       switchScreen(menuScreen);
       tryPlayMusic();
 
@@ -9296,6 +9363,13 @@ if (usernameForm) {
       updateProgressionUI();
 
       // Go to main menu
+      const tutorialStatus = localStorage.getItem("tutorial_status");
+      if (tutorialStatus === "vs_screen") {
+        localStorage.setItem("tutorial_status", "tutorial_match");
+        startTutorialLocalMatch();
+        return;
+      }
+
       switchScreen(menuScreen);
       tryPlayMusic();
     } catch (err) {
@@ -9307,6 +9381,21 @@ if (usernameForm) {
       }
     }
   });
+}
+
+// Hook up Exit Game button in Settings (PC only)
+const btnExitGame = document.getElementById("btnExitGame");
+if (btnExitGame) {
+  const isPC = typeof window.electronAPI !== 'undefined';
+  if (isPC) {
+    // Show the exit game button container row
+    const pcExitRow = document.getElementById("pcExitRow");
+    if (pcExitRow) pcExitRow.style.display = "flex";
+    
+    btnExitGame.addEventListener("click", () => {
+      window.electronAPI.exitToLauncher();
+    });
+  }
 }
 
 // Hook up Log Out button in Settings
@@ -9383,7 +9472,20 @@ function initIntroSequence() {
 
   // Hook up the Play Button click handler
   if (titlePlayBtn) {
-    titlePlayBtn.addEventListener("click", () => {
+    titlePlayBtn.addEventListener("click", async () => {
+      if (supabaseClient) {
+        try {
+          const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 4000, "Play button session check");
+          if (session && session.user) {
+            // Already logged in, take directly to the game!
+            await handleAuthenticatedUser(session.user);
+            return;
+          }
+        } catch (err) {
+          console.warn("Play button session check failed:", err);
+        }
+      }
+      
       const startModeSelectionDialog = document.getElementById("startModeSelectionDialog");
       if (startModeSelectionDialog) {
         startModeSelectionDialog.classList.remove("hidden");
@@ -9484,27 +9586,23 @@ async function checkInitialSession() {
     return;
   }
 
-  if (!supabaseClient) {
-    initIntroSequence();
-    return;
+  // Pre-fetch session in the background if online, but always show intro loading screen first!
+  if (supabaseClient) {
+    supabaseClient.auth.getSession().catch(err => {
+      console.warn("Background session pre-fetch failed:", err);
+    });
   }
 
-  try {
-    const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 6000, "Initial auth session check");
-    if (session && session.user) {
-      // User is already authenticated! Bypass splash screen and go directly to main menu
-      await handleAuthenticatedUser(session.user);
-    } else {
-      // No active session, display normal intro splash and title screens
-      initIntroSequence();
-    }
-  } catch (err) {
-    console.warn("Initial session check failed (likely offline or network issue):", err);
-    initIntroSequence();
-  }
+  initIntroSequence();
 }
 
 function startTitleScreenLoading() {
+  if ((typeof AndroidUpdater !== 'undefined' && AndroidUpdater.isUpdating()) || window.isUpdating) {
+    if (titleLoadingStatus) {
+      titleLoadingStatus.textContent = "CHECKING FOR UPDATES...";
+    }
+    return;
+  }
   if (!titleLoadingSection || !titleProgressBarFill || !titleLoadingStatus) return;
   
   let progress = 0;
@@ -10147,6 +10245,33 @@ function showToastMsg(msg) {
   toast.innerHTML = msg;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 3000);
+}
+
+function showGemClaimRewardModal(amount, description) {
+  const modal = document.getElementById("gemRewardModal");
+  if (!modal) return;
+  
+  const subEl = document.getElementById("gemRewardSub");
+  if (subEl) {
+    if (description) {
+      subEl.innerHTML = `${description}<br><span style="font-size: 22px; color: #ffd86f; display: block; margin-top: 8px;">💎 +${amount} Gems</span>`;
+    } else {
+      subEl.textContent = `💎 +${amount} Gems`;
+    }
+  }
+  
+  modal.style.display = "flex";
+  modal.classList.remove("hidden");
+  
+  const confirmBtn = document.getElementById("gemRewardConfirmBtn");
+  if (confirmBtn) {
+    const handleClose = () => {
+      modal.style.display = "none";
+      modal.classList.add("hidden");
+      confirmBtn.removeEventListener("click", handleClose);
+    };
+    confirmBtn.addEventListener("click", handleClose);
+  }
 }
 
 // ----------------------------------------------------------------
@@ -12322,7 +12447,11 @@ function bindIngameChatToggleListeners() {
   if (!chatInput) return;
 
   toggleBtn?.addEventListener("click", () => {
-    chatInput.focus();
+    chatBox?.classList.remove("hidden");
+    toggleBtn?.classList.add("hidden");
+    setTimeout(() => {
+      chatInput.focus();
+    }, 50);
   });
 
   minBtn?.addEventListener("click", () => {
@@ -12423,6 +12552,32 @@ function syncBombSelectPreview(color) {
     bombSelectPreviewImg.classList.remove("active-preview");
     void bombSelectPreviewImg.offsetWidth;
     bombSelectPreviewImg.classList.add("active-preview");
+  }
+}
+
+function updateWardrobeTabBadges() {
+  const bombColors = ["pink", "blue", "green", "gold", "purple"];
+  const hasNewBomb = bombColors.some(color => localStorage.getItem("new_bomb_" + color) === "true");
+  
+  const effectColors = ["pink", "blue", "green", "gold", "purple"];
+  const hasNewEffect = effectColors.some(color => localStorage.getItem("new_effect_" + color) === "true");
+
+  const bombsTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="bombs"]');
+  if (bombsTab) {
+    bombsTab.classList.toggle("has-new", hasNewBomb);
+  }
+  const effectsTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="effects"]');
+  if (effectsTab) {
+    effectsTab.classList.toggle("has-new", hasNewEffect);
+  }
+  
+  const charactersTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="characters"]');
+  if (charactersTab) {
+    charactersTab.classList.remove("has-new");
+  }
+  const clothesTab = document.querySelector('.wardrobe-tab[data-wardrobe-mode="clothes"]');
+  if (clothesTab) {
+    clothesTab.classList.remove("has-new");
   }
 }
 
@@ -12769,6 +12924,11 @@ function handleGachaDraw() {
     const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
     localStorage.setItem(ownedKey, "true");
     
+    // Mark as new / untried
+    const newKey = winner.type === "effect" ? `new_effect_${winner.color}` : `new_bomb_${winner.color}`;
+    localStorage.setItem(newKey, "true");
+    updateWardrobeTabBadges();
+    
     // Sync pool and wardrobe
     renderGachaPool();
     syncBombWardrobe();
@@ -12807,6 +12967,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const bombColor = card.getAttribute("data-bomb-color");
       previewBombColor = bombColor;
       
+      // Clear new status
+      localStorage.removeItem(`new_bomb_${bombColor}`);
+      updateWardrobeTabBadges();
+      
       // Update card active states
       bombCards.forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
@@ -12826,6 +12990,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const effectColor = card.getAttribute("data-effect-color");
       previewEffectColor = effectColor;
       
+      // Clear new status
+      localStorage.removeItem(`new_effect_${effectColor}`);
+      updateWardrobeTabBadges();
+      
       // Update card active states
       effectCards.forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
@@ -12838,6 +13006,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initial syncs
   syncBombWardrobe();
   syncEffectWardrobe();
+  updateWardrobeTabBadges();
   initGachaShop();
   initQuestsSystem();
   if (typeof updateFooterColor === "function") updateFooterColor("play");
@@ -12895,18 +13064,38 @@ function initQuestsSystem() {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
 
-  // Weekly quests Claim buttons
-  bindQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
+
+  bindWeeklyQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
   });
-  bindQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
+  });
+
+  // Bind Weekly progress milestones
+  bindWeeklyMilestoneNode("weekly_chk_100", 100);
+  bindWeeklyMilestoneNode("weekly_chk_200", 200);
+  bindWeeklyMilestoneNode("weekly_chk_300", 300);
+  bindWeeklyMilestoneNode("weekly_chk_400", 400);
+
+  // Bind gameplay milestone quests (awarding direct gems)
+  bindGameplayQuestClaimButton("qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", 15, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindGameplayQuestClaimButton("qbtn_win5", "quest_win5_completed", "quest_win5_claimed", 10, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindGameplayQuestClaimButton("qbtn_total_pickups", "quest_total_pickups_completed", "quest_total_pickups_claimed", 5, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
+  });
+  bindGameplayQuestClaimButton("qbtn_total_kills", "quest_total_kills_completed", "quest_total_kills_claimed", 20, () => {
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
 
   // Bind engagement progress milestones
@@ -12943,6 +13132,80 @@ function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
   });
 }
 
+function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goAction) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  
+  btn.addEventListener("click", () => {
+    const completed = localStorage.getItem(compKey) === "true";
+    const claimed = localStorage.getItem(claimKey) === "true";
+    
+    if (completed && !claimed) {
+      localStorage.setItem(claimKey, "true");
+      
+      // Add gems directly
+      gemsCount += gemsVal;
+      const gemsEl = document.getElementById("gemsCount");
+      if (gemsEl) gemsEl.textContent = gemsCount;
+      updateShopWalletDisplay();
+      saveProgression();
+      
+      showGemClaimRewardModal(gemsVal, "Quest Reward Claimed!");
+      syncQuestsUI();
+    } else if (!completed && !claimed && typeof goAction === "function") {
+      goAction();
+    }
+  });
+}
+
+function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  
+  btn.addEventListener("click", () => {
+    const completed = localStorage.getItem(compKey) === "true";
+    const claimed = localStorage.getItem(claimKey) === "true";
+    
+    if (completed && !claimed) {
+      localStorage.setItem(claimKey, "true");
+      
+      // Add weekly engagement points
+      let engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+      engagement = Math.min(400, engagement + pointsVal);
+      localStorage.setItem("weekly_engagement", engagement.toString());
+      
+      showToastMsg(`Claimed ${pointsVal} Weekly Engagement Points!`);
+      syncQuestsUI();
+    } else if (!completed && !claimed && typeof goAction === "function") {
+      goAction();
+    }
+  });
+}
+
+function bindWeeklyMilestoneNode(nodeId, milestoneVal) {
+  const node = document.getElementById(nodeId);
+  if (!node) return;
+  
+  node.addEventListener("click", () => {
+    const engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+    const claimed = localStorage.getItem(`claimed_weekly_milestone_${milestoneVal}`) === "true";
+    
+    if (engagement >= milestoneVal && !claimed) {
+      localStorage.setItem(`claimed_weekly_milestone_${milestoneVal}`, "true");
+      
+      // Grant reward of 20 gems
+      gemsCount += 20;
+      const gemsEl = document.getElementById("gemsCount");
+      if (gemsEl) gemsEl.textContent = gemsCount;
+      updateShopWalletDisplay();
+      saveProgression();
+      
+      showGemClaimRewardModal(20, "Weekly Milestone Claimed!");
+      syncQuestsUI();
+    }
+  });
+}
+
 function bindMilestoneNode(nodeId, milestoneVal) {
   const node = document.getElementById(nodeId);
   if (!node) return;
@@ -12961,7 +13224,7 @@ function bindMilestoneNode(nodeId, milestoneVal) {
       updateShopWalletDisplay();
       saveProgression();
       
-      showToastMsg(`Claimed Milestone Reward: +10 Gems!`);
+      showGemClaimRewardModal(10, "Milestone Reward Claimed!");
       syncQuestsUI();
     }
   });
@@ -12984,6 +13247,23 @@ function syncQuestsUI() {
   updateMilestoneNode("chk_200", 200, engagement);
   updateMilestoneNode("chk_300", 300, engagement);
   updateMilestoneNode("chk_400", 400, engagement);
+
+  // Sync weekly engagement
+  const weeklyEngagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+  const weeklyValEl = document.getElementById("currentWeeklyEngagementVal");
+  if (weeklyValEl) weeklyValEl.textContent = weeklyEngagement;
+  
+  const weeklyProgressBar = document.getElementById("weeklyEngagementProgressBar");
+  if (weeklyProgressBar) {
+    const pct = (weeklyEngagement / 400) * 100;
+    weeklyProgressBar.style.width = `${pct}%`;
+  }
+  
+  // Weekly Milestone node updates
+  updateMilestoneNode("weekly_chk_100", 100, weeklyEngagement);
+  updateMilestoneNode("weekly_chk_200", 200, weeklyEngagement);
+  updateMilestoneNode("weekly_chk_300", 300, weeklyEngagement);
+  updateMilestoneNode("weekly_chk_400", 400, weeklyEngagement);
 
   // Sync Card 1: Login
   updateQuestCardUI("qprog_login", "qbtn_login", "quest_login_completed", "quest_login_claimed", 1, 1);
@@ -13022,13 +13302,35 @@ function syncQuestsUI() {
   const spend = parseInt(localStorage.getItem("quest_spend1000_progress") || "0");
   if (spend >= 1000) localStorage.setItem("quest_spend1000_completed", "true");
   updateQuestCardUI("qprog_spend1000", "qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", spend, 1000);
+
+  // Sync Gameplay Quests
+  // 1. Place 100 Bombs
+  const lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
+  if (lifetimeBombs >= 100) localStorage.setItem("quest_total_bombs_completed", "true");
+  updateQuestCardUI("qprog_total_bombs", "qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", lifetimeBombs, 100);
+
+  // 2. Win 5 Matches
+  if (totalWins >= 5) localStorage.setItem("quest_win5_completed", "true");
+  updateQuestCardUI("qprog_win5", "qbtn_win5", "quest_win5_completed", "quest_win5_claimed", totalWins, 5);
+
+  // 3. Collect 15 Power-ups
+  const lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
+  if (lifetimePickups >= 15) localStorage.setItem("quest_total_pickups_completed", "true");
+  updateQuestCardUI("qprog_total_pickups", "qbtn_total_pickups", "quest_total_pickups_completed", "quest_total_pickups_claimed", lifetimePickups, 15);
+
+  // 4. Defeat 15 Enemies
+  const lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
+  if (lifetimeKills >= 15) localStorage.setItem("quest_total_kills_completed", "true");
+  updateQuestCardUI("qprog_total_kills", "qbtn_total_kills", "quest_total_kills_completed", "quest_total_kills_claimed", lifetimeKills, 15);
 }
 
 function updateMilestoneNode(nodeId, milestoneVal, currentEngagement) {
   const node = document.getElementById(nodeId);
   if (!node) return;
   
-  const claimed = localStorage.getItem(`claimed_milestone_${milestoneVal}`) === "true";
+  const isWeekly = nodeId.startsWith("weekly_");
+  const key = isWeekly ? `claimed_weekly_milestone_${milestoneVal}` : `claimed_milestone_${milestoneVal}`;
+  const claimed = localStorage.getItem(key) === "true";
   
   node.className = "checkpoint-node";
   if (claimed) {
@@ -13158,7 +13460,7 @@ function syncLevelTabUI() {
         updateShopWalletDisplay();
         saveProgression();
         
-        showToastMsg(`Claimed Level ${lvl} reward: +5 Gems!`);
+        showGemClaimRewardModal(5, `Level ${lvl} Reward Claimed!`);
         syncLevelTabUI();
       });
     } else {
@@ -13199,3 +13501,305 @@ function updateFooterColor(tabName) {
     if (badgeText) badgeText.style.color = "#000000";
   }
 }
+
+// =================================================================
+// INTERACTIVE TUTORIAL GUIDE SYSTEM
+// =================================================================
+
+window.tutorialGuideActive = false;
+window.tutorialGuidePaused = false;
+window.tutorialGuideStep = 0;
+
+let cutsceneTimeListener = null;
+
+function startInteractiveCutscene() {
+  const cutsceneScreen = document.getElementById("tutorialCutsceneScreen");
+  const video = document.getElementById("tutorialCutsceneVideo");
+  const title = document.getElementById("tutorialCutsceneTitle");
+  const chooseBtn = document.getElementById("tutorialChooseBtn");
+  const prevBtn = document.getElementById("tutorialPrevBtn");
+  const nextBtn = document.getElementById("tutorialNextBtn");
+  
+  if (!cutsceneScreen || !video) {
+    localStorage.setItem("tutorial_status", "vs_screen");
+    startUsernameIntroFlow();
+    return;
+  }
+  
+  switchScreen(cutsceneScreen);
+  
+  // Reset and play
+  video.currentTime = 0;
+  video.play().catch(e => console.warn("Video play blocked:", e));
+  
+  let tutorialState = 0; // 0: Usagi, 1: Chiikawa, 2: Hachiware
+  const characterKeys = ["usagi", "chiikawa", "hachiware"];
+  
+  if (cutsceneTimeListener) {
+    video.removeEventListener("timeupdate", cutsceneTimeListener);
+  }
+  
+  cutsceneTimeListener = () => {
+    if (video.currentTime >= 1.0 && video.paused === false && tutorialState === 0) {
+      video.pause();
+      video.currentTime = 1.0;
+      showCutsceneUI();
+    }
+  };
+  video.addEventListener("timeupdate", cutsceneTimeListener);
+  
+  function showCutsceneUI() {
+    if (title) title.classList.add("visible");
+    if (chooseBtn) chooseBtn.classList.add("visible");
+    updateNavButtons();
+  }
+  
+  function updateNavButtons() {
+    if (tutorialState === 0) {
+      if (prevBtn) { prevBtn.classList.remove("visible"); prevBtn.disabled = true; }
+      if (nextBtn) { nextBtn.classList.add("visible"); nextBtn.disabled = false; }
+    } else if (tutorialState === 1) {
+      if (prevBtn) { prevBtn.classList.add("visible"); prevBtn.disabled = false; }
+      if (nextBtn) { nextBtn.classList.add("visible"); nextBtn.disabled = false; }
+    } else if (tutorialState === 2) {
+      if (prevBtn) { prevBtn.classList.add("visible"); prevBtn.disabled = false; }
+      if (nextBtn) { nextBtn.classList.remove("visible"); nextBtn.disabled = true; }
+    }
+  }
+  
+  if (prevBtn && nextBtn && chooseBtn) {
+    const newPrev = prevBtn.cloneNode(true);
+    const newNext = nextBtn.cloneNode(true);
+    const newChoose = chooseBtn.cloneNode(true);
+    
+    prevBtn.parentNode.replaceChild(newPrev, prevBtn);
+    nextBtn.parentNode.replaceChild(newNext, nextBtn);
+    chooseBtn.parentNode.replaceChild(newChoose, chooseBtn);
+    
+    newPrev.addEventListener("click", () => {
+      if (tutorialState > 0) {
+        tutorialState--;
+        video.currentTime = tutorialState === 0 ? 1.0 : 2.0;
+        updateNavButtons();
+      }
+    });
+    
+    newNext.addEventListener("click", () => {
+      if (tutorialState < 2) {
+        tutorialState++;
+        video.currentTime = tutorialState === 1 ? 2.0 : 3.0;
+        updateNavButtons();
+      }
+    });
+    
+    newChoose.addEventListener("click", () => {
+      selectedCharacter = characterKeys[tutorialState];
+      previewCharacter = selectedCharacter;
+      localStorage.setItem("equipped_character", selectedCharacter);
+      
+      syncCharacterSelectPreview(selectedCharacter);
+      syncLobbySpotlightVideo(selectedCharacter);
+      syncSquadLobbyVideo(selectedCharacter);
+      syncSquadLobbyInterface();
+      
+      localStorage.setItem("tutorial_status", "vs_screen");
+      
+      video.pause();
+      if (cutsceneTimeListener) {
+        video.removeEventListener("timeupdate", cutsceneTimeListener);
+        cutsceneTimeListener = null;
+      }
+      
+      startUsernameIntroFlowAfterCutscene();
+    });
+  }
+}
+
+function startUsernameIntroFlowAfterCutscene() {
+  switchScreen(introScreen);
+  if (usernameForm) usernameForm.classList.add("hidden");
+
+  const chosenGuide = selectedCharacter || "chiikawa";
+  const guideImg = document.querySelector(".intro-guide-character");
+  if (guideImg) {
+    guideImg.src = `assets/cards/${chosenGuide.toLowerCase()}.png`;
+  }
+
+  const welcomeMessage = `Hello there! I am ${characterStyle[chosenGuide]?.label || chosenGuide}, your starter character. Welcome to Chiikawa Royale! Let's choose a cool username for you so we can start matching with friends online!`;
+  
+  if (introSpeechBubble) {
+    introSpeechBubble.textContent = "";
+    let i = 0;
+    clearInterval(introTypewriterInterval);
+    introTypewriterInterval = setInterval(() => {
+      if (i < welcomeMessage.length) {
+        introSpeechBubble.textContent += welcomeMessage.charAt(i);
+        i++;
+      } else {
+        clearInterval(introTypewriterInterval);
+        if (usernameForm) {
+          usernameForm.classList.remove("hidden");
+          usernameForm.style.opacity = "0";
+          setTimeout(() => {
+            usernameForm.style.transition = "opacity 0.5s ease";
+            usernameForm.style.opacity = "1";
+          }, 50);
+        }
+      }
+    }, 35);
+  }
+}
+
+function startTutorialLocalMatch() {
+  const playerName = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
+  showVsLoadingScreen([
+    { id: "local_player", name: playerName, kind: selectedCharacter },
+    { id: "cpu_1", name: "Usagi CPU", kind: "usagi" },
+    { id: "cpu_2", name: "Momonga CPU", kind: "momonga" },
+    { id: "cpu_3", name: "Chiikawa CPU", kind: "chiikawa" },
+  ], () => {
+    window.tutorialGuideActive = true;
+    window.tutorialGuidePaused = false;
+    window.tutorialGuideStep = 0;
+    startLocalGame();
+  }, 4000);
+}
+
+function showTutorialGuideStep(step) {
+  window.tutorialGuideStep = step;
+  window.tutorialGuidePaused = true;
+  
+  const overlay = document.getElementById("tutorialGuideOverlay");
+  const textEl = document.getElementById("tutorialGuideText");
+  const avatarEl = document.getElementById("tutorialGuideAvatar");
+  
+  if (!overlay || !textEl) return;
+  
+  if (avatarEl) {
+    avatarEl.src = `assets/cards/${selectedCharacter}.png`;
+  }
+  
+  if (step === 0) {
+    textEl.innerHTML = "Welcome to the battlefield! Use <strong>WASD</strong> or <strong>ARROW KEYS</strong> to move your character. Avoid standing near explosive bombs! Click OKAY to begin.";
+  } else if (step === 1) {
+    textEl.innerHTML = "Press <strong>SPACEBAR</strong> to place a bomb! You can use bombs to destroy wooden crates and find power-up items. Be sure to run away to safety before the bomb explodes!";
+  } else if (step === 2) {
+    textEl.innerHTML = "Awesome! Items like speed boots, extra bombs, and fire potions will make you stronger. Defeat all CPU players to win the match!";
+  }
+  
+  overlay.classList.add("active");
+  overlay.classList.remove("hidden");
+}
+
+document.getElementById("tutorialGuideOkBtn")?.addEventListener("click", () => {
+  const overlay = document.getElementById("tutorialGuideOverlay");
+  if (overlay) {
+    overlay.classList.remove("active");
+    overlay.classList.add("hidden");
+  }
+  
+  window.tutorialGuidePaused = false;
+  keys.clear(); // Clear any pressed key queues
+  
+  if (window.tutorialGuideStep === 0) {
+    setTimeout(() => {
+      if (window.tutorialGuideActive && running) {
+        showTutorialGuideStep(1);
+      }
+    }, 3000);
+  } else if (window.tutorialGuideStep === 1) {
+    setTimeout(() => {
+      if (window.tutorialGuideActive && running) {
+        showTutorialGuideStep(2);
+      }
+    }, 7000);
+  } else if (window.tutorialGuideStep === 2) {
+    window.tutorialGuideStep = 3;
+  }
+});
+
+function addLobbyPulseOverlay(element) {
+  removeLobbyPulseOverlay();
+  const pulse = document.createElement("div");
+  pulse.className = "menu-guide-pulse-overlay";
+  element.style.position = "relative";
+  element.appendChild(pulse);
+}
+
+function removeLobbyPulseOverlay() {
+  const existing = document.querySelectorAll(".menu-guide-pulse-overlay");
+  existing.forEach(el => el.remove());
+}
+
+function checkMenuTutorialGuide() {
+  const status = localStorage.getItem("tutorial_status");
+  if (status !== "tutorial_match_completed") {
+    const guideEl = document.getElementById("menuTutorialGuide");
+    if (guideEl) guideEl.classList.remove("active");
+    removeLobbyPulseOverlay();
+    return;
+  }
+  
+  const guideEl = document.getElementById("menuTutorialGuide");
+  const textEl = document.getElementById("menuTutorialGuideText");
+  const avatarEl = document.getElementById("menuTutorialGuideAvatar");
+  
+  if (guideEl && textEl) {
+    if (avatarEl) {
+      avatarEl.src = `assets/cards/${selectedCharacter}.png`;
+    }
+    textEl.innerHTML = "Great job completing your training match! Now let's try an <strong>Online Multiplayer Match</strong> to battle against other players!";
+    guideEl.classList.add("active");
+  }
+  
+  const selectBtn = document.getElementById("btnOpenGamemodesPopup");
+  if (selectBtn) {
+    addLobbyPulseOverlay(selectBtn);
+  }
+}
+
+// Hook gamemodes popup listeners for tutorial flow
+const _origOpenGamemodesPopup = openGamemodesPopup;
+openGamemodesPopup = function() {
+  _origOpenGamemodesPopup();
+  const status = localStorage.getItem("tutorial_status");
+  if (status === "tutorial_match_completed") {
+    const textEl = document.getElementById("menuTutorialGuideText");
+    if (textEl) {
+      textEl.innerHTML = "Great! Now select <strong>Multiplayer Match</strong> to find other players online!";
+    }
+    removeLobbyPulseOverlay();
+    const multiBtn = document.getElementById("btnPlayOnlineMultiplayer");
+    if (multiBtn) {
+      addLobbyPulseOverlay(multiBtn);
+    }
+  }
+};
+
+const _origCloseGamemodesPopup = closeGamemodesPopup;
+closeGamemodesPopup = function() {
+  _origCloseGamemodesPopup();
+  const status = localStorage.getItem("tutorial_status");
+  if (status === "tutorial_match_completed") {
+    const textEl = document.getElementById("menuTutorialGuideText");
+    if (textEl) {
+      textEl.innerHTML = "Great job completing your training match! Now let's try an <strong>Online Multiplayer Match</strong> to battle against other players!";
+    }
+    removeLobbyPulseOverlay();
+    const selectBtn = document.getElementById("btnOpenGamemodesPopup");
+    if (selectBtn) {
+      addLobbyPulseOverlay(selectBtn);
+    }
+  }
+};
+
+// Hook Multiplayer Match selection to complete the tutorial
+document.getElementById("btnPlayOnlineMultiplayer")?.addEventListener("click", () => {
+  const status = localStorage.getItem("tutorial_status");
+  if (status === "tutorial_match_completed") {
+    localStorage.setItem("tutorial_status", "online_match_guided");
+    const guideEl = document.getElementById("menuTutorialGuide");
+    if (guideEl) guideEl.classList.remove("active");
+    removeLobbyPulseOverlay();
+  }
+});

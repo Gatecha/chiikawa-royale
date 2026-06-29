@@ -9472,7 +9472,20 @@ function initIntroSequence() {
 
   // Hook up the Play Button click handler
   if (titlePlayBtn) {
-    titlePlayBtn.addEventListener("click", () => {
+    titlePlayBtn.addEventListener("click", async () => {
+      if (supabaseClient) {
+        try {
+          const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 4000, "Play button session check");
+          if (session && session.user) {
+            // Already logged in, take directly to the game!
+            await handleAuthenticatedUser(session.user);
+            return;
+          }
+        } catch (err) {
+          console.warn("Play button session check failed:", err);
+        }
+      }
+      
       const startModeSelectionDialog = document.getElementById("startModeSelectionDialog");
       if (startModeSelectionDialog) {
         startModeSelectionDialog.classList.remove("hidden");
@@ -9573,27 +9586,23 @@ async function checkInitialSession() {
     return;
   }
 
-  if (!supabaseClient) {
-    initIntroSequence();
-    return;
+  // Pre-fetch session in the background if online, but always show intro loading screen first!
+  if (supabaseClient) {
+    supabaseClient.auth.getSession().catch(err => {
+      console.warn("Background session pre-fetch failed:", err);
+    });
   }
 
-  try {
-    const { data: { session } } = await withTimeout(supabaseClient.auth.getSession(), 6000, "Initial auth session check");
-    if (session && session.user) {
-      // User is already authenticated! Bypass splash screen and go directly to main menu
-      await handleAuthenticatedUser(session.user);
-    } else {
-      // No active session, display normal intro splash and title screens
-      initIntroSequence();
-    }
-  } catch (err) {
-    console.warn("Initial session check failed (likely offline or network issue):", err);
-    initIntroSequence();
-  }
+  initIntroSequence();
 }
 
 function startTitleScreenLoading() {
+  if ((typeof AndroidUpdater !== 'undefined' && AndroidUpdater.isUpdating()) || window.isUpdating) {
+    if (titleLoadingStatus) {
+      titleLoadingStatus.textContent = "CHECKING FOR UPDATES...";
+    }
+    return;
+  }
   if (!titleLoadingSection || !titleProgressBarFill || !titleLoadingStatus) return;
   
   let progress = 0;

@@ -207,6 +207,17 @@
         </div>
       </section>
 
+      <!-- 00. TUTORIAL INTERACTIVE CUTSCENE SCREEN -->
+      <section id="tutorialCutsceneScreen" class="screen">
+        <div class="tutorial-cutscene-container">
+          <video id="tutorialCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline></video>
+          <div id="tutorialCutsceneTitle" class="tutorial-cutscene-title">choose your starter character</div>
+          <button id="tutorialChooseBtn" class="tutorial-choose-btn">CHOOSE</button>
+          <button id="tutorialPrevBtn" class="tutorial-nav-btn prev-btn">◀</button>
+          <button id="tutorialNextBtn" class="tutorial-nav-btn next-btn">▶</button>
+        </div>
+      </section>
+
       <!-- 0. TITLE SCREEN -->
       <section id="titleScreen" class="screen active">
         <div class="yellow-console title-console">
@@ -274,7 +285,6 @@
 
             <!-- Tabs (Normal Header only) -->
             <nav class="console-tabs normal-header-only">
-              <span class="controller-key">LB</span>
               <button class="tab-btn active tab-play" data-tab="play" type="button" aria-label="Play">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon"><path d="M8 5v14l11-7z" fill="white"/></svg>
@@ -319,11 +329,10 @@
               <button class="tab-btn tab-gear" data-tab="gear" type="button" aria-label="Gear">
                 <span class="tab-icon">
                   <svg viewBox="0 0 24 24" class="svg-icon" fill="white">
-                    <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
                   </svg>
                 </span>
               </button>
-              <span class="controller-key">RB</span>
             </nav>
 
             <!-- Stats (Visible in both headers) -->
@@ -1171,13 +1180,58 @@
                   <!-- WEEKLY TAB PAGE -->
                   <div id="questsTabContent_weekly" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
                     
-                    <!-- Top Weekly Info Area -->
-                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);">
-                      <div style="display: flex; flex-direction: column;">
-                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase;">Weekly Targets</span>
-                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; margin-top: 2px;">Season Errands</strong>
+                    <!-- Top Weekly Engagement Progress Area -->
+                    <div class="engagement-tracker" style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); gap: 20px;">
+                      
+                      <!-- Left Engagement Label -->
+                      <div style="display: flex; flex-direction: column; flex-shrink: 0;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Weekly Targets</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; text-shadow: 1px 1px 0 #000; display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                          <span style="font-size: 14px;">🔥</span> <span id="currentWeeklyEngagementVal">0</span> / 400
+                        </strong>
                       </div>
-                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: bold;">Unlock larger reward checkpoints below!</span>
+
+                      <!-- Progress Checkpoints Track -->
+                      <div class="engagement-track-container" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; position: relative;">
+                        <!-- The Track Line -->
+                        <div class="engagement-track-bar">
+                          <div id="weeklyEngagementProgressBar"></div>
+                        </div>
+
+                        <!-- Checkpoints circles -->
+                        <div style="display: flex; justify-content: space-between; position: relative; z-index: 2; width: 100%;">
+                          
+                          <!-- Checkpoint 100 -->
+                          <button class="checkpoint-node" id="weekly_chk_100" data-milestone="100" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">100</span>
+                          </button>
+
+                          <!-- Checkpoint 200 -->
+                          <button class="checkpoint-node" id="weekly_chk_200" data-milestone="200" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">200</span>
+                          </button>
+
+                          <!-- Checkpoint 300 -->
+                          <button class="checkpoint-node" id="weekly_chk_300" data-milestone="300" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">300</span>
+                          </button>
+
+                          <!-- Checkpoint 400 -->
+                          <button class="checkpoint-node" id="weekly_chk_400" data-milestone="400" type="button">
+                            <span class="checkpoint-fire">🔥</span>
+                            <span class="checkpoint-check">✓</span>
+                            <span class="checkpoint-pts">400</span>
+                          </button>
+
+                        </div>
+                      </div>
+
                     </div>
 
                     <!-- Weekly Quests Grid -->
@@ -1309,12 +1363,106 @@
 
                   </div>
 
-                  <!-- QUESTS TAB PAGE (Empty State) -->
-                  <div id="questsTabContent_quests" class="quests-page" style="display: none; height: 100%; width: 100%;">
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #555; font-family: var(--font); box-sizing: border-box; padding: 20px; text-align: center; width: 100%;">
-                      <div style="font-size: 44px; filter: grayscale(1); margin-bottom: 12px; filter: drop-shadow(0 2px 0 #000);">📜</div>
-                      <span style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">No Quests Available</span>
-                      <small style="font-family: var(--font-clean); font-size: 12px; margin-top: 6px; color: #666; font-weight: bold;">Main story missions and side errands are currently empty.</small>
+                  <!-- QUESTS TAB PAGE (Gameplay Quests) -->
+                  <div id="questsTabContent_quests" class="quests-page" style="display: none; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    
+                    <!-- Top Quests Info Area -->
+                    <div style="background: #111215; border: 3px solid #000; border-radius: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); flex-shrink: 0;">
+                      <div style="display: flex; flex-direction: column;">
+                        <span style="color: #888; font-family: var(--font-clean); font-size: 10px; font-weight: bold; text-transform: uppercase;">Gameplay Milestones</span>
+                        <strong style="font-family: var(--font); font-size: 18px; color: #ffd86f; margin-top: 2px;">Combat Challenges</strong>
+                      </div>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: bold;">Earn direct Gems by completing these combat achievements!</span>
+                    </div>
+
+                    <!-- Quests Grid -->
+                    <div class="quests-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; flex-grow: 1;">
+                      
+                      <!-- Gameplay Quest Card 1: Place 100 Bombs -->
+                      <div class="quest-card" id="qcard_total_bombs">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_total_bombs">0/100</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Place 100 bombs in matches</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 15</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_total_bombs" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Gameplay Quest Card 2: Win 5 Matches -->
+                      <div class="quest-card" id="qcard_win5">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_win5">0/5</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Win 5 matches in total</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 10</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_win5" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Gameplay Quest Card 3: Collect 15 Power-ups -->
+                      <div class="quest-card" id="qcard_total_pickups">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_total_pickups">0/15</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Collect 15 power-ups in matches</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 5</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_total_pickups" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                      <!-- Gameplay Quest Card 4: Defeat 15 Enemies -->
+                      <div class="quest-card" id="qcard_total_kills">
+                        <div class="quest-card-header">
+                          <span>⚙ Progress: <strong id="qprog_total_kills">0/15</strong></span>
+                        </div>
+                        <div class="quest-card-body">
+                          <div class="quest-card-desc">Defeat 15 players or bots</div>
+                          <div class="quest-card-footer">
+                            <div class="quest-card-reward-box">
+                              <div class="quest-card-reward">💎 20</div>
+                              <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
+                            </div>
+                            <button class="quest-card-action-btn" id="qbtn_total_kills" type="button">Claim</button>
+                          </div>
+                        </div>
+                        <div class="quest-card-sub-footer">
+                          <span>● Errand in progress</span>
+                        </div>
+                      </div>
+
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 3px solid #000; padding-top: 12px; flex-shrink: 0;">
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold;">These global quests track your overall lifetime stats in matches.</span>
+                      <span style="font-family: var(--font-clean); font-size: 11px; color: #83cf00; font-weight: 900;">★ No expiration</span>
                     </div>
                   </div>
 
@@ -1394,6 +1542,10 @@
                   <div class="setting-row">
                     <span>Account Control</span>
                     <button id="btnLogoutAccount" class="btn btn-danger btn-sm" type="button" style="cursor:pointer; padding:6px 12px; border-radius:8px;">Log Out</button>
+                  </div>
+                  <div class="setting-row" id="pcExitRow" style="display: none;">
+                    <span>Client Options</span>
+                    <button id="btnExitGame" class="btn btn-danger btn-sm" type="button" style="cursor:pointer; padding:6px 12px; border-radius:8px; background: #e03131; border: 1px solid #c92a2a;">Exit Game</button>
                   </div>
                 </div>
               </div>
@@ -2399,6 +2551,48 @@
       </div>
     </div>
 
+    <!-- Gem Reward Popup Dialog -->
+    <div id="gemRewardModal" class="dialog-overlay hidden" style="display: none; align-items: center; justify-content: center; z-index: 100000; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+      <div class="gem-reward-card" style="background: #141416; border: 4px solid #ffd86f; border-radius: 24px; padding: 30px; width: 340px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(255, 216, 111, 0.2); position: relative; animation: gemRewardBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; font-family: var(--font);">
+        
+        <!-- Glowing background rays -->
+        <div class="gem-reward-glow" style="position: absolute; top: 50%; left: 50%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,216,111,0.25) 0%, rgba(255,216,111,0) 70%); transform: translate(-50%, -50%); z-index: 1; pointer-events: none; animation: gemGlowPulse 2s infinite ease-in-out;"></div>
+
+        <div style="position: relative; z-index: 2;">
+          <!-- Spinning Diamond SVG -->
+          <div class="gem-reward-icon-container" style="margin: 15px auto 25px; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 4px 12px rgba(255, 216, 111, 0.5)); animation: gemFloat 3s infinite ease-in-out;">
+            <svg viewBox="0 0 100 100" style="width: 80px; height: 80px; animation: gemSpin 6s infinite linear;">
+              <!-- Outer glowing layers -->
+              <polygon points="50,5 90,30 90,70 50,95 10,70 10,30" fill="url(#gemGrad)" stroke="#fff" stroke-width="3" />
+              <!-- Top facets -->
+              <polygon points="50,5 90,30 50,45" fill="rgba(255,255,255,0.4)" />
+              <polygon points="50,5 10,30 50,45" fill="rgba(255,255,255,0.2)" />
+              <!-- Lower facets -->
+              <polygon points="90,30 90,70 50,45" fill="rgba(0,0,0,0.15)" />
+              <polygon points="10,30 10,70 50,45" fill="rgba(0,0,0,0.3)" />
+              <polygon points="10,70 50,95 50,45" fill="rgba(255,255,255,0.1)" />
+              <polygon points="90,70 50,95 50,45" fill="rgba(0,0,0,0.2)" />
+              <defs>
+                <linearGradient id="gemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffd86f" />
+                  <stop offset="50%" stop-color="#ff3399" />
+                  <stop offset="100%" stop-color="#26c2ff" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          <h2 style="color: #fff; font-size: 24px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; text-shadow: 2px 2px 0 #000;">Reward Claimed!</h2>
+          <p id="gemRewardSub" style="font-family: var(--font-clean); color: #ffd86f; font-weight: bold; font-size: 16px; margin: 0 0 24px;">+5 Gems</p>
+          
+          <!-- Confirm Button -->
+          <button id="gemRewardConfirmBtn" class="btn" style="background: #ffd86f; color: #000; border: 3px solid #000; border-radius: 12px; padding: 10px 30px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 4px 4px 0 #000; transform: translate(0, 0); transition: all 0.1s ease; width: 100%; box-sizing: border-box;" type="button">
+            AWESOME!
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- BATTLE ROYALE MVP / RESULTS OVERLAY -->
     <div id="brGameOverOverlay" class="dialog-overlay hidden">
       <div class="card glass dialog-card br-results-card" style="max-width: 480px !important; text-align: center; padding: 25px;">
@@ -2517,6 +2711,27 @@
       // Disable right-click context menu on the entire game page
       document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
     </script>
+
+    <!-- Tutorial Guide Overlay -->
+    <div id="tutorialGuideOverlay" class="dialog-overlay hidden">
+      <div class="tutorial-guide-card glass" style="width: 90%; max-width: 450px; background: #fff; border: 4.5px solid #000; border-radius: 24px; box-shadow: 8px 8px 0px #000; padding: 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; position: relative;">
+        <div class="tutorial-guide-avatar-wrap" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #000; overflow: hidden; background: #ffeaa7;">
+          <img id="tutorialGuideAvatar" src="assets/cards/chiikawa.png" alt="Guide Character" style="width: 100%; height: 100%; object-fit: contain;" class="bouncing" />
+        </div>
+        <div style="font-family: 'DynaPuff', 'Fredoka', sans-serif; font-size: 20px; font-weight: 700; color: #ff2fa7;">BATTLE GUIDE!</div>
+        <p id="tutorialGuideText" style="font-family: 'Fredoka', sans-serif; font-size: 15px; font-weight: 600; color: #221f25; margin: 0; line-height: 1.4;"></p>
+        <button id="tutorialGuideOkBtn" class="btn btn-primary" style="font-family: 'DynaPuff', 'Fredoka', sans-serif; font-size: 18px; padding: 10px 32px; border-radius: 16px; cursor: pointer; border: 3.5px solid #000; box-shadow: 4px 4px 0px #000; background: #2ed573; color: #fff;">OKAY</button>
+      </div>
+    </div>
+
+    <!-- Lobby Menu Tutorial Guide Overlay -->
+    <div id="menuTutorialGuide">
+      <div style="width: 48px; height: 48px; border-radius: 50%; border: 2.5px solid #000; overflow: hidden; background: #ffebf2; flex-shrink: 0;">
+        <img id="menuTutorialGuideAvatar" src="assets/cards/chiikawa.png" alt="Guide Avatar" style="width: 100%; height: 100%; object-fit: contain;" class="bouncing" />
+      </div>
+      <p id="menuTutorialGuideText" class="menu-guide-text"></p>
+      <button id="menuTutorialGuideOkBtn" class="menu-guide-btn" style="display: none;">OKAY</button>
+    </div>
 
     <!-- Fullscreen Countdown Overlay -->
     <div id="fullscreenCountdownOverlay" class="fullscreen-countdown-overlay hidden">
