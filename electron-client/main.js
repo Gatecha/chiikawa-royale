@@ -3,13 +3,20 @@ const path   = require('path');
 const fs     = require('fs');
 const https  = require('https');
 
+const isGameOnly = process.argv.includes('--game-only');
+
 // ── App identity ──────────────────────────────────────────────────────────────
 app.setAppUserModelId('com.chiikawaroyale.launcher');
 app.setName('Chiikawa Royale');
 
 // ── Single-instance lock ──────────────────────────────────────────────────────
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) { app.quit(); }
+if (!isGameOnly) {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    app.quit();
+    process.exit(0);
+  }
+}
 
 let mainWindow;
 
@@ -24,42 +31,64 @@ function getLauncherPath()    { return path.join(getGameDir(), 'launcher.html');
 
 // ── Create window ─────────────────────────────────────────────────────────────
 function createWindow() {
-  mainWindow = new BrowserWindow({
-    width:  960,
-    height: 600,
-    frame:  false,
-    resizable: false,
-    transparent: false,
-    backgroundColor: '#080809',
-    icon: path.join(__dirname, 'gamelogo.ico'),
-    title: 'Chiikawa Royale',
-    webPreferences: {
-      nodeIntegration:  false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
-      webSecurity: false,
-    },
-    show: true, // snaps window open immediately
-  });
+  if (isGameOnly) {
+    mainWindow = new BrowserWindow({
+      width:  1280,
+      height: 720,
+      fullscreen: true,
+      resizable: true,
+      icon: path.join(__dirname, 'gamelogo.ico'),
+      title: 'Chiikawa Royale',
+      webPreferences: {
+        nodeIntegration:  false,
+        contextIsolation: true,
+        preload: path.join(__dirname, 'preload.js'),
+        webSecurity: false,
+      },
+      show: true,
+    });
 
-  mainWindow.loadFile(getLauncherPath());
+    mainWindow.loadFile(getGameIndexPath());
+  } else {
+    mainWindow = new BrowserWindow({
+      width:  960,
+      height: 600,
+      frame:  false,
+      resizable: false,
+      transparent: false,
+      backgroundColor: '#080809',
+      icon: path.join(__dirname, 'gamelogo.ico'),
+      title: 'Chiikawa Royale',
+      webPreferences: {
+        nodeIntegration:  false,
+        contextIsolation: true,
+        preload: path.join(__dirname, 'preload.js'),
+        webSecurity: false,
+      },
+      show: true, // snaps window open immediately
+    });
+
+    mainWindow.loadFile(getLauncherPath());
+  }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  mainWindow.webContents.on('did-navigate', (_event, url) => {
-    if (url.includes('index.html')) {
-      mainWindow.setResizable(true);
-      mainWindow.setFullScreen(true);
-    } else if (url.includes('launcher.html')) {
-      mainWindow.setFullScreen(false);
-      mainWindow.setResizable(false);
-      mainWindow.setSize(960, 600);
-      mainWindow.center();
-    }
-  });
+  if (!isGameOnly) {
+    mainWindow.webContents.on('did-navigate', (_event, url) => {
+      if (url.includes('index.html')) {
+        mainWindow.setResizable(true);
+        mainWindow.setFullScreen(true);
+      } else if (url.includes('launcher.html')) {
+        mainWindow.setFullScreen(false);
+        mainWindow.setResizable(false);
+        mainWindow.setSize(960, 600);
+        mainWindow.center();
+      }
+    });
+  }
 
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -79,10 +108,29 @@ ipcMain.on('window-maximize', () => {
 
 // ── IPC: start game ───────────────────────────────────────────────────────────
 ipcMain.on('start-game', () => {
+  if (isGameOnly) return;
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.setResizable(true);
-  mainWindow.setFullScreen(true);
-  mainWindow.loadFile(getGameIndexPath());
+
+  mainWindow.minimize();
+
+  const { spawn } = require('child_process');
+  const args = app.isPackaged ? ['--game-only'] : ['.', '--game-only'];
+  
+  const env = { ...process.env };
+  delete env.PORTABLE_EXECUTABLE_DIR;
+  delete env.PORTABLE_EXECUTABLE_FILE;
+
+  const child = spawn(process.execPath, args, {
+    cwd: getGameDir(),
+    env: env
+  });
+
+  child.on('exit', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
 });
 
 let returningFromGame = false;
@@ -90,12 +138,16 @@ let returningFromGame = false;
 // ── IPC: exit to launcher ─────────────────────────────────────────────────────
 ipcMain.on('exit-to-launcher', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  returningFromGame = true;
-  mainWindow.setFullScreen(false);
-  mainWindow.setResizable(false);
-  mainWindow.setSize(960, 600);
-  mainWindow.center();
-  mainWindow.loadFile(getLauncherPath());
+  if (isGameOnly) {
+    mainWindow.close();
+  } else {
+    returningFromGame = true;
+    mainWindow.setFullScreen(false);
+    mainWindow.setResizable(false);
+    mainWindow.setSize(960, 600);
+    mainWindow.center();
+    mainWindow.loadFile(getLauncherPath());
+  }
 });
 
 // ── IPC: get game path (sync) ─────────────────────────────────────────────────

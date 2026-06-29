@@ -989,6 +989,19 @@ playBtn.addEventListener('click', async () => {
     if (isElectron && api.startGame) {
       api.startGame();
     } else {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen();
+        } else if (document.documentElement.mozRequestFullScreen) {
+          document.documentElement.mozRequestFullScreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          document.documentElement.webkitRequestFullscreen();
+        } else if (document.documentElement.msRequestFullscreen) {
+          document.documentElement.msRequestFullscreen();
+        }
+      } catch (err) {
+        console.warn('Fullscreen request failed:', err);
+      }
       setTimeout(() => { window.location.href = 'index.html'; }, 1400);
     }
   }
