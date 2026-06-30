@@ -12,6 +12,9 @@ create table if not exists public.profiles (
   gems_count integer not null default 100,
   season_level integer not null default 1,
   season_xp integer not null default 0,
+  rank_rp integer not null default 0,
+  total_wins integer not null default 0,
+  total_matches integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -23,6 +26,9 @@ alter table public.profiles
   add column if not exists gems_count integer not null default 100,
   add column if not exists season_level integer not null default 1,
   add column if not exists season_xp integer not null default 0,
+  add column if not exists rank_rp integer not null default 0,
+  add column if not exists total_wins integer not null default 0,
+  add column if not exists total_matches integer not null default 0,
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
 

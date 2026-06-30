@@ -3865,7 +3865,7 @@ async function loadProgression() {
 
     const { data, error } = await supabaseClient
       .from('profiles')
-      .select('crown_count, gems_count, season_level, season_xp')
+      .select('crown_count, gems_count, season_level, season_xp, rank_rp, total_wins, total_matches')
       .eq('id', user.id)
       .single();
 
@@ -3909,6 +3909,9 @@ async function saveProgression() {
         gems_count: gemsCount,
         season_level:  seasonLevel,
         season_xp:     seasonXp,
+        rank_rp:       rankRp,
+        total_wins:    totalWins,
+        total_matches: totalMatches,
         updated_at:    new Date().toISOString()
       })
       .eq('id', user.id);
