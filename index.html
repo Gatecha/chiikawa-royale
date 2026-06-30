@@ -181,25 +181,23 @@
       <section id="introScreen" class="screen">
         <div class="tutorial-cutscene-container">
           <video id="introCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline></video>
+          <canvas id="introCutsceneCanvas"></canvas>
           <div class="intro-card glass">
-            <!-- Guiding Bouncing Character Panel -->
-            <div class="intro-guide-panel">
-              <div class="intro-avatar-container">
-                <img class="intro-guide-character bouncing" src="assets/cards/hachiware.png" alt="Hachiware Guide" />
-              </div>
-              <div class="intro-bubble">
-                <p id="introSpeechBubble" class="intro-speech-bubble-text"></p>
-              </div>
+            <!-- ZZZ-style heading -->
+            <div class="zzz-intro-heading">
+              <span class="zzz-intro-badge">NEW PLAYER</span>
+              <h2 class="zzz-intro-title">CREATE YOUR USERNAME</h2>
+              <div class="zzz-intro-divider"></div>
+              <p class="zzz-intro-sub">Your username will be displayed in battle and on the leaderboard.</p>
             </div>
 
             <!-- Username Form -->
-            <form id="usernameForm" class="username-form hidden">
-              <div class="form-group">
-                <label for="introUsernameInput">Choose Your Username</label>
-                <input id="introUsernameInput" type="text" maxlength="12" required placeholder="Enter username..." autocomplete="off" />
+            <form id="usernameForm" class="username-form zzz-username-form">
+              <div class="form-group zzz-form-group">
+                <input id="introUsernameInput" type="text" maxlength="12" required placeholder="Enter username..." autocomplete="off" class="zzz-input" />
               </div>
               <div id="usernameMessage" class="username-message hidden"></div>
-              <button id="btnConfirmUsername" class="btn-giant-play" type="submit">CONFIRM & ENTER</button>
+              <button id="btnConfirmUsername" class="zzz-confirm-btn" type="submit">CONFIRM &amp; ENTER</button>
             </form>
           </div>
         </div>
@@ -208,7 +206,8 @@
       <!-- 00. TUTORIAL INTERACTIVE CUTSCENE SCREEN -->
       <section id="tutorialCutsceneScreen" class="screen">
         <div class="tutorial-cutscene-container">
-          <video id="tutorialCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline></video>
+          <video id="tutorialCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline style="display:none;"></video>
+          <canvas id="tutorialCutsceneCanvas"></canvas>
           <div id="tutorialCutsceneTitle" class="tutorial-cutscene-title">choose your starter character</div>
           <div id="tutorialCutsceneCharName" class="tutorial-cutscene-charname">USAGI</div>
           <button id="tutorialChooseBtn" class="tutorial-choose-btn">
@@ -2724,7 +2723,24 @@
         <div class="zzz-guide-badge">BATTLE GUIDE</div>
         <p id="tutorialGuideText" class="zzz-guide-text"></p>
         <div class="zzz-guide-divider"></div>
-        <button id="tutorialGuideOkBtn" class="zzz-guide-ok-btn">OKAY</button>
+        <button id="tutorialGuideOkBtn" class="zzz-guide-ok-btn"
+          onclick="window._closeBattleGuide && window._closeBattleGuide()"
+          ontouchend="event.preventDefault(); window._closeBattleGuide && window._closeBattleGuide()">OKAY</button>
+      </div>
+    </div>
+
+    <!-- Debug Popup -->
+    <div id="debugBtnFloat" style="position:fixed;bottom:18px;left:18px;z-index:2147483646;">
+      <button onclick="document.getElementById('debugPopupOverlay').classList.toggle('dbg-show')" style="background:#0e0e1a;border:1px solid rgba(255,80,80,0.5);color:#ff5050;font-size:10px;font-weight:700;letter-spacing:2px;padding:6px 12px;border-radius:2px;cursor:pointer;font-family:monospace;">DEBUG</button>
+    </div>
+    <div id="debugPopupOverlay" style="position:fixed;inset:0;background:rgba(4,4,12,0.85);backdrop-filter:blur(6px);z-index:2147483647;display:none;flex-direction:column;justify-content:center;align-items:center;">
+      <div style="width:90%;max-width:600px;background:linear-gradient(145deg,#0e0e1a,#141428);border:1px solid rgba(255,80,80,0.3);border-top:2px solid #ff5050;border-radius:4px;padding:24px;display:flex;flex-direction:column;gap:14px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-family:monospace;font-size:10px;font-weight:700;letter-spacing:4px;color:#ff5050;background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.3);padding:4px 10px;border-radius:2px;">ERROR LOG</span>
+          <button onclick="document.getElementById('debugPopupOverlay').classList.remove('dbg-show')" style="background:none;border:none;color:rgba(200,200,220,0.5);font-size:18px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+        <pre id="debugLogText" style="font-family:monospace;font-size:11px;color:rgba(220,220,240,0.85);background:#060610;border:1px solid rgba(255,255,255,0.06);border-radius:2px;padding:14px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin:0;">No errors logged yet.</pre>
+        <button onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('debugLogText').textContent)" style="align-self:flex-end;font-family:monospace;font-size:10px;font-weight:700;letter-spacing:3px;color:#0a0a18;background:linear-gradient(135deg,#00e6ff,#00bcd4);border:none;border-radius:2px;padding:9px 22px;cursor:pointer;">COPY LOG</button>
       </div>
     </div>
 

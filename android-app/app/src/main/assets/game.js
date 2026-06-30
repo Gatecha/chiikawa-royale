@@ -1,4 +1,240 @@
+// =================================================================
+// DEBUG LOG SYSTEM — intercepts errors and console.error/warn
+// =================================================================
+(function() {
+  const _debugLogs = [];
+  const MAX_LOGS = 80;
+
+  function _pushLog(type, args) {
+    const line = `[${type}] ${Array.from(args).map(a => {
+      try { return (typeof a === 'object') ? JSON.stringify(a, null, 1) : String(a); } catch(e) { return String(a); }
+    }).join(' ')}`;
+    _debugLogs.push(`${new Date().toISOString().slice(11,23)} ${line}`);
+    if (_debugLogs.length > MAX_LOGS) _debugLogs.shift();
+    const el = document.getElementById('debugLogText');
+    if (el) { el.textContent = _debugLogs.join('\n'); el.scrollTop = el.scrollHeight; }
+  }
+
+  const _origError = console.error.bind(console);
+  const _origWarn  = console.warn.bind(console);
+
+  console.error = function() { _origError.apply(console, arguments); _pushLog('ERR', arguments); };
+  console.warn  = function() { _origWarn.apply(console, arguments);  _pushLog('WRN', arguments); };
+
+  window.onerror = function(msg, src, line, col, err) {
+    _pushLog('UNCAUGHT', [msg, `${src}:${line}:${col}`]);
+  };
+  window.onunhandledrejection = function(e) {
+    _pushLog('PROMISE', [e.reason]);
+  };
+})();
+
+// =================================================================
+// BATTLE GUIDE GLOBAL CLOSE HANDLER
+// (runs via inline onclick so it works even if addEventListener fires early)
+// =================================================================
+window._closeBattleGuide = function() {
+  const overlay = document.getElementById('tutorialGuideOverlay');
+  if (overlay) overlay.classList.remove('zzz-guide-show');
+  window.tutorialGuidePaused = false;
+  if (typeof keys !== 'undefined') keys.clear();
+  if (window.tutorialGuideStep === 0) {
+    setTimeout(() => { if (window.tutorialGuideActive && running) showTutorialGuideStep(1); }, 3000);
+  } else if (window.tutorialGuideStep === 1) {
+    setTimeout(() => { if (window.tutorialGuideActive && running) showTutorialGuideStep(2); }, 7000);
+  } else if (window.tutorialGuideStep === 2) {
+    window.tutorialGuideStep = 3;
+  }
+};
+
+// =================================================================
+// CANVAS-BASED CHARACTER FRAME PRE-CAPTURE (smooth yoyo, no seek-stutter)
+// =================================================================
+const CHARACTER_SEGMENTS = {
+  usagi:     { min: 0.9,  max: 1.9 },
+  chiikawa:  { min: 2.2,  max: 2.6 },
+  hachiware: { min: 2.8,  max: 4.5 }
+};
+const YOYO_FPS = 18;
+const _capturedFrames = {};   // { usagi: ImageBitmap[], chiikawa: [...], hachiware: [...] }
+let _framesReady = false;
+let _captureInProgress = false;
+
+// Active yoyo ticker state (one at a time)
+let _yoyoRAF = null;
+const _yoyoState = { frameIndex: 0, direction: 1, lastTime: 0 };
+
+async function _captureAllCharacterFrames() {
+  if (_captureInProgress || _framesReady) return;
+  _captureInProgress = true;
+
+  const video = document.getElementById('tutorialCutsceneVideo');
+  if (!video || !video.src) { _captureInProgress = false; return; }
+
+  // Ensure video is loaded enough to seek
+  if (video.readyState < 1) {
+    await new Promise(r => video.addEventListener('loadedmetadata', r, { once: true }));
+  }
+
+  const W = video.videoWidth  || 640;
+  const H = video.videoHeight || 360;
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = W; offCanvas.height = H;
+  const offCtx = offCanvas.getContext('2d');
+
+  async function seekTo(t) {
+    return new Promise(resolve => {
+      const handler = () => { video.removeEventListener('seeked', handler); resolve(); };
+      video.addEventListener('seeked', handler);
+      video.currentTime = t;
+      // Safety timeout in case seeked never fires
+      setTimeout(resolve, 300);
+    });
+  }
+
+  for (const [key, seg] of Object.entries(CHARACTER_SEGMENTS)) {
+    const frames = [];
+    const duration = seg.max - seg.min;
+    const count    = Math.max(2, Math.ceil(duration * YOYO_FPS));
+    for (let i = 0; i < count; i++) {
+      const t = seg.min + (i / YOYO_FPS);
+      await seekTo(t);
+      offCtx.drawImage(video, 0, 0, W, H);
+      try {
+        const bmp = await createImageBitmap(offCanvas);
+        frames.push(bmp);
+      } catch(e) {
+        // createImageBitmap not supported (old WebView) — store ImageData instead
+        frames.push(offCtx.getImageData(0, 0, W, H));
+      }
+    }
+    _capturedFrames[key] = { frames, W, H };
+    console.warn(`[YoyoCapture] ${key}: ${frames.length} frames captured`);
+  }
+
+  _framesReady = true;
+  _captureInProgress = false;
+  console.warn('[YoyoCapture] All character frames ready.');
+}
+
+function _startYoyoCanvas(canvasEl, character) {
+  if (_yoyoRAF) { cancelAnimationFrame(_yoyoRAF); _yoyoRAF = null; }
+  if (!canvasEl) return;
+
+  const data = _capturedFrames[character];
+  if (!data || !data.frames || data.frames.length === 0) {
+    // Frames not ready — silently skip (video will remain hidden)
+    return;
+  }
+
+  const ctx2 = canvasEl.getContext('2d');
+  canvasEl.width  = data.W;
+  canvasEl.height = data.H;
+
+  _yoyoState.frameIndex = 0;
+  _yoyoState.direction  = 1;
+  _yoyoState.lastTime   = 0;
+
+  const frameDuration = 1000 / YOYO_FPS;
+
+  function tick(ts) {
+    if (ts - _yoyoState.lastTime >= frameDuration) {
+      const frame = data.frames[_yoyoState.frameIndex];
+      ctx2.clearRect(0, 0, data.W, data.H);
+      if (frame instanceof ImageBitmap) {
+        ctx2.drawImage(frame, 0, 0, data.W, data.H);
+      } else {
+        // Fallback: ImageData
+        ctx2.putImageData(frame, 0, 0);
+      }
+      _yoyoState.frameIndex += _yoyoState.direction;
+      if (_yoyoState.frameIndex >= data.frames.length - 1) _yoyoState.direction = -1;
+      if (_yoyoState.frameIndex <= 0)                      _yoyoState.direction =  1;
+      _yoyoState.lastTime = ts;
+    }
+    _yoyoRAF = requestAnimationFrame(tick);
+  }
+
+  _yoyoRAF = requestAnimationFrame(tick);
+}
+
+function _stopYoyoCanvas() {
+  if (_yoyoRAF) { cancelAnimationFrame(_yoyoRAF); _yoyoRAF = null; }
+}
+
+// Active intro yoyo state (separate from character selection)
+let _introYoyoRAF = null;
+const _introYoyoState = { frameIndex: 0, direction: 1, lastTime: 0 };
+let _introCapturedFrames = null;
+
+async function _captureIntroFrames() {
+  const video = document.getElementById('introCutsceneVideo');
+  if (!video) return;
+  if (video.readyState < 1) {
+    await new Promise(r => video.addEventListener('loadedmetadata', r, { once: true }));
+  }
+  const W = video.videoWidth  || 640;
+  const H = video.videoHeight || 360;
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = W; offCanvas.height = H;
+  const offCtx = offCanvas.getContext('2d');
+
+  async function seekTo(t) {
+    return new Promise(resolve => {
+      const handler = () => { video.removeEventListener('seeked', handler); resolve(); };
+      video.addEventListener('seeked', handler);
+      video.currentTime = t;
+      setTimeout(resolve, 300);
+    });
+  }
+
+  const MIN_T = 5.0, MAX_T = 8.0;
+  const dur = MAX_T - MIN_T;
+  const count = Math.max(2, Math.ceil(dur * YOYO_FPS));
+  const frames = [];
+  for (let i = 0; i < count; i++) {
+    const t = MIN_T + (i / YOYO_FPS);
+    await seekTo(t);
+    offCtx.drawImage(video, 0, 0, W, H);
+    try { frames.push(await createImageBitmap(offCanvas)); }
+    catch(e) { frames.push(offCtx.getImageData(0, 0, W, H)); }
+  }
+  _introCapturedFrames = { frames, W, H };
+  console.warn('[YoyoCapture] Intro frames ready: ' + frames.length);
+}
+
+function _startIntroYoyo(canvasEl) {
+  if (_introYoyoRAF) { cancelAnimationFrame(_introYoyoRAF); _introYoyoRAF = null; }
+  if (!canvasEl || !_introCapturedFrames) return;
+  const { frames, W, H } = _introCapturedFrames;
+  const ctx2 = canvasEl.getContext('2d');
+  canvasEl.width = W; canvasEl.height = H;
+  _introYoyoState.frameIndex = 0;
+  _introYoyoState.direction  = 1;
+  _introYoyoState.lastTime   = 0;
+  const frameDuration = 1000 / YOYO_FPS;
+  function tick(ts) {
+    if (ts - _introYoyoState.lastTime >= frameDuration) {
+      const frame = frames[_introYoyoState.frameIndex];
+      ctx2.clearRect(0, 0, W, H);
+      if (frame instanceof ImageBitmap) ctx2.drawImage(frame, 0, 0, W, H);
+      else ctx2.putImageData(frame, 0, 0);
+      _introYoyoState.frameIndex += _introYoyoState.direction;
+      if (_introYoyoState.frameIndex >= frames.length - 1) _introYoyoState.direction = -1;
+      if (_introYoyoState.frameIndex <= 0)                 _introYoyoState.direction =  1;
+      _introYoyoState.lastTime = ts;
+    }
+    _introYoyoRAF = requestAnimationFrame(tick);
+  }
+  _introYoyoRAF = requestAnimationFrame(tick);
+}
+
+function _stopIntroYoyo() {
+  if (_introYoyoRAF) { cancelAnimationFrame(_introYoyoRAF); _introYoyoRAF = null; }
+}
+
 // Check if this window was opened as an OAuth login popup redirect
+
 const oauthRedirectParams = new URLSearchParams(window.location.search);
 const oauthHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
 const oauthError =
@@ -13680,13 +13916,14 @@ let introAnimationFrameId = null;
 
 function startInteractiveCutscene() {
   const cutsceneScreen = document.getElementById("tutorialCutsceneScreen");
-  const video = document.getElementById("tutorialCutsceneVideo");
-  const title = document.getElementById("tutorialCutsceneTitle");
+  const video          = document.getElementById("tutorialCutsceneVideo");
+  const canvas         = document.getElementById("tutorialCutsceneCanvas");
+  const title          = document.getElementById("tutorialCutsceneTitle");
   let chooseBtn = document.getElementById("tutorialChooseBtn");
-  let prevBtn = document.getElementById("tutorialPrevBtn");
-  let nextBtn = document.getElementById("tutorialNextBtn");
+  let prevBtn   = document.getElementById("tutorialPrevBtn");
+  let nextBtn   = document.getElementById("tutorialNextBtn");
   
-  if (!cutsceneScreen || !video) {
+  if (!cutsceneScreen) {
     localStorage.setItem("tutorial_status", "vs_screen");
     startUsernameIntroFlow();
     return;
@@ -13694,28 +13931,27 @@ function startInteractiveCutscene() {
   
   switchScreen(cutsceneScreen);
   
-  let tutorialState = 0; // 0: Usagi, 1: Chiikawa, 2: Hachiware
+  let tutorialState = 0;
   const characterKeys = ["usagi", "chiikawa", "hachiware"];
   
-  function showCutsceneUI() {
+  function showUI() {
     if (title) title.classList.add("visible");
     if (chooseBtn) chooseBtn.classList.add("visible");
     updateNavButtons();
   }
+  showUI();
   
   function updateNavButtons() {
     if (tutorialState === 0) {
       if (prevBtn) { prevBtn.classList.remove("visible"); prevBtn.disabled = true; }
-      if (nextBtn) { nextBtn.classList.add("visible"); nextBtn.disabled = false; }
+      if (nextBtn) { nextBtn.classList.add("visible");   nextBtn.disabled = false; }
     } else if (tutorialState === 1) {
       if (prevBtn) { prevBtn.classList.add("visible"); prevBtn.disabled = false; }
       if (nextBtn) { nextBtn.classList.add("visible"); nextBtn.disabled = false; }
-    } else if (tutorialState === 2) {
-      if (prevBtn) { prevBtn.classList.add("visible"); prevBtn.disabled = false; }
+    } else {
+      if (prevBtn) { prevBtn.classList.add("visible");    prevBtn.disabled = false; }
       if (nextBtn) { nextBtn.classList.remove("visible"); nextBtn.disabled = true; }
     }
-    
-    // Update Character Name Display
     const charNameEl = document.getElementById("tutorialCutsceneCharName");
     if (charNameEl) {
       const names = ["USAGI", "CHIIKAWA", "HACHIWARE"];
@@ -13724,87 +13960,44 @@ function startInteractiveCutscene() {
     }
   }
 
-  // Cancel any existing loops
+  // Start canvas yoyo for current character
+  function startCharacterYoyo(charKey) {
+    if (_framesReady) {
+      _startYoyoCanvas(canvas, charKey);
+    } else {
+      // Frames not ready yet — capture then start
+      _captureAllCharacterFrames().then(() => {
+        _startYoyoCanvas(canvas, charKey);
+      });
+    }
+  }
+
+  // Kick off frame capture and start yoyo
+  startCharacterYoyo(characterKeys[tutorialState]);
+
+  // Stop old animation loops
   if (cutsceneAnimationFrameId) {
     cancelAnimationFrame(cutsceneAnimationFrameId);
     cutsceneAnimationFrameId = null;
   }
 
-  // Yoyo/Ping-pong loop state
-  let isReversing = false;
-  let lastTime = performance.now();
-  
-  function loopTicker() {
-    let minTime = 0.9;
-    let maxTime = 1.9;
-    if (tutorialState === 1) {
-      minTime = 2.2;
-      maxTime = 2.6;
-    } else if (tutorialState === 2) {
-      minTime = 2.8;
-      maxTime = 4.5;
-    }
-    
-    const now = performance.now();
-    const delta = (now - lastTime) / 1000;
-    lastTime = now;
-    
-    if (isReversing) {
-      video.pause();
-      let newTime = video.currentTime - delta;
-      if (newTime <= minTime) {
-        newTime = minTime;
-        isReversing = false;
-        video.play().catch(e => console.warn(e));
-      }
-      video.currentTime = newTime;
-    } else {
-      if (video.currentTime >= maxTime) {
-        isReversing = true;
-        video.pause();
-      } else if (video.currentTime < minTime) {
-        video.currentTime = minTime;
-      }
-    }
-    
-    showCutsceneUI();
-    cutsceneAnimationFrameId = requestAnimationFrame(loopTicker);
-  }
-
-  // Reset and play at Usagi start frame (0.9s)
-  video.currentTime = 0.9;
-  video.play()
-    .then(() => {
-      console.log("Cutscene video playing successfully.");
-      lastTime = performance.now();
-      loopTicker();
-    })
-    .catch(e => {
-      console.warn("Video play blocked, showing UI fallback:", e);
-      video.currentTime = 0.9;
-      lastTime = performance.now();
-      loopTicker();
-    });
-  
   if (prevBtn && nextBtn && chooseBtn) {
-    const newPrev = prevBtn.cloneNode(true);
-    const newNext = nextBtn.cloneNode(true);
+    const newPrev   = prevBtn.cloneNode(true);
+    const newNext   = nextBtn.cloneNode(true);
     const newChoose = chooseBtn.cloneNode(true);
     
     prevBtn.parentNode.replaceChild(newPrev, prevBtn);
     nextBtn.parentNode.replaceChild(newNext, nextBtn);
     chooseBtn.parentNode.replaceChild(newChoose, chooseBtn);
     
-    prevBtn = newPrev;
-    nextBtn = newNext;
+    prevBtn   = newPrev;
+    nextBtn   = newNext;
     chooseBtn = newChoose;
     
     newPrev.addEventListener("click", () => {
       if (tutorialState > 0) {
         tutorialState--;
-        isReversing = false;
-        video.currentTime = tutorialState === 0 ? 0.9 : 2.2;
-        video.play().catch(e => console.warn(e));
+        startCharacterYoyo(characterKeys[tutorialState]);
         updateNavButtons();
       }
     });
@@ -13812,16 +14005,14 @@ function startInteractiveCutscene() {
     newNext.addEventListener("click", () => {
       if (tutorialState < 2) {
         tutorialState++;
-        isReversing = false;
-        video.currentTime = tutorialState === 1 ? 2.2 : 2.8;
-        video.play().catch(e => console.warn(e));
+        startCharacterYoyo(characterKeys[tutorialState]);
         updateNavButtons();
       }
     });
     
     newChoose.addEventListener("click", () => {
       selectedCharacter = characterKeys[tutorialState];
-      previewCharacter = selectedCharacter;
+      previewCharacter  = selectedCharacter;
       localStorage.setItem("equipped_character", selectedCharacter);
       
       syncCharacterSelectPreview(selectedCharacter);
@@ -13831,12 +14022,7 @@ function startInteractiveCutscene() {
       
       localStorage.setItem("tutorial_status", "vs_screen");
       
-      video.pause();
-      if (cutsceneAnimationFrameId) {
-        cancelAnimationFrame(cutsceneAnimationFrameId);
-        cutsceneAnimationFrameId = null;
-      }
-      
+      _stopYoyoCanvas();
       startUsernameIntroFlowAfterCutscene();
     });
   }
@@ -13844,84 +14030,34 @@ function startInteractiveCutscene() {
 
 function startUsernameIntroFlowAfterCutscene() {
   switchScreen(introScreen);
-  if (usernameForm) usernameForm.classList.add("hidden");
 
-  // Cancel any existing intro loop
+  // Cancel any old video-based loops
   if (introAnimationFrameId) {
     cancelAnimationFrame(introAnimationFrameId);
     introAnimationFrameId = null;
   }
 
-  const introVideo = document.getElementById("introCutsceneVideo");
-  if (introVideo) {
-    introVideo.currentTime = 5.0;
-    introVideo.play().catch(e => console.warn("Intro video play error:", e));
-    
-    let isIntroReversing = false;
-    let lastIntroTime = performance.now();
-    
-    function introLoopTicker() {
-      const minTime = 5.0;
-      const maxTime = 8.0;
-      
-      const now = performance.now();
-      const delta = (now - lastIntroTime) / 1000;
-      lastIntroTime = now;
-      
-      if (isIntroReversing) {
-        introVideo.pause();
-        let newTime = introVideo.currentTime - delta;
-        if (newTime <= minTime) {
-          newTime = minTime;
-          isIntroReversing = false;
-          introVideo.play().catch(e => console.warn(e));
-        }
-        introVideo.currentTime = newTime;
-      } else {
-        if (introVideo.currentTime >= maxTime) {
-          isIntroReversing = true;
-          introVideo.pause();
-        } else if (introVideo.currentTime < minTime) {
-          introVideo.currentTime = minTime;
-        }
-      }
-      introAnimationFrameId = requestAnimationFrame(introLoopTicker);
+  // Start canvas yoyo on the intro screen
+  const introCanvas = document.getElementById("introCutsceneCanvas");
+  if (introCanvas) {
+    if (_introCapturedFrames) {
+      _startIntroYoyo(introCanvas);
+    } else {
+      _captureIntroFrames().then(() => _startIntroYoyo(introCanvas));
     }
-    
-    lastIntroTime = performance.now();
-    introLoopTicker();
   }
 
-  const chosenGuide = selectedCharacter || "chiikawa";
-  const guideImg = document.querySelector(".intro-guide-character");
-  if (guideImg) {
-    guideImg.src = `assets/cards/${chosenGuide.toLowerCase()}.png`;
-  }
-
-  const welcomeMessage = `Hello there! I am ${characterStyle[chosenGuide]?.label || chosenGuide}, your starter character. Welcome to Chiikawa Royale! Let's choose a cool username for you so we can start matching with friends online!`;
-  
-  if (introSpeechBubble) {
-    introSpeechBubble.textContent = "";
-    let i = 0;
-    clearInterval(introTypewriterInterval);
-    introTypewriterInterval = setInterval(() => {
-      if (i < welcomeMessage.length) {
-        introSpeechBubble.textContent += welcomeMessage.charAt(i);
-        i++;
-      } else {
-        clearInterval(introTypewriterInterval);
-        if (usernameForm) {
-          usernameForm.classList.remove("hidden");
-          usernameForm.style.opacity = "0";
-          setTimeout(() => {
-            usernameForm.style.transition = "opacity 0.5s ease";
-            usernameForm.style.opacity = "1";
-          }, 50);
-        }
-      }
-    }, 35);
+  // Show the username form immediately (no typewriter delay needed)
+  if (usernameForm) {
+    usernameForm.classList.remove("hidden");
+    usernameForm.style.opacity = "0";
+    setTimeout(() => {
+      usernameForm.style.transition = "opacity 0.5s ease";
+      usernameForm.style.opacity = "1";
+    }, 50);
   }
 }
+
 
 function startTutorialLocalMatch() {
   const playerName = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";

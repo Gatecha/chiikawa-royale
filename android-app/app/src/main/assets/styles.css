@@ -4907,6 +4907,13 @@ body.local-four-lobby-active .lobby-card {
 /* ==========================
    VS LOADING SCREEN STYLES
    ========================== */
+/* Register custom property so CSS can animate it */
+@property --grad-offset {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 .vs-screen-overlay {
   position: fixed;
   inset: 0;
@@ -4930,6 +4937,7 @@ body.local-four-lobby-active .lobby-card {
     #fec61a calc(var(--grad-offset, 0px) + 176px),
     #fec61a calc(var(--grad-offset, 0px) + 240px)
   );
+  animation: vsRingsExpand 2.5s linear infinite;
   z-index: 10000;
   display: none;
   flex-direction: column;
@@ -4939,20 +4947,62 @@ body.local-four-lobby-active .lobby-card {
   overflow: hidden;
 }
 
+@keyframes vsRingsExpand {
+  0%   { --grad-offset: 0px; }
+  100% { --grad-offset: 240px; }
+}
+
 .vs-screen-overlay.active {
   display: flex;
 }
 
-/* Dot grid background texture on VS Screen */
+/* Dot grid background texture on VS Screen — also scrolls diagonally */
 .vs-screen-overlay::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-image: radial-gradient(rgba(0, 0, 0, 0.12) 2px, transparent 2px);
+  top: -100%; left: -100%;
+  width: 300%; height: 300%;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.14) 2px, transparent 2px);
   background-size: 20px 20px;
   pointer-events: none;
   z-index: 1;
+  animation: vsDotScroll 6s linear infinite;
 }
+
+@keyframes vsDotScroll {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(20px, 20px); }
+}
+
+/* Diagonal light sweep across the VS screen */
+.vs-screen-overlay::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -80%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.08) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+  animation: vsSweep 3.5s ease-in-out infinite;
+}
+
+@keyframes vsSweep {
+  0%   { left: -80%; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { left: 140%; opacity: 0; }
+}
+
+
 
 .vs-teams-container {
   display: flex;
@@ -11858,5 +11908,178 @@ body.is-iphone {
   height: 100%;
   object-fit: cover;
   z-index: 1;
+}
+
+/* Canvas display for cutscene yoyo playback */
+#tutorialCutsceneCanvas,
+#introCutsceneCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+/* =================================================================
+   ZZZ INTRO / NAME CREATION SCREEN
+   ================================================================= */
+
+/* Center the card over the video canvas */
+.intro-card {
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(145deg, rgba(10,10,24,0.92) 0%, rgba(18,18,40,0.95) 100%) !important;
+  border: 1px solid rgba(0, 230, 255, 0.2) !important;
+  border-top: 2px solid rgba(0, 230, 255, 0.55) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.8), 0 30px 80px rgba(0,0,0,0.65) !important;
+  padding: 32px 28px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 400px;
+  width: 90%;
+}
+
+/* ZZZ intro heading block */
+.zzz-intro-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.zzz-intro-badge {
+  font-family: 'Outfit', 'Fredoka', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #00e6ff;
+  background: rgba(0, 230, 255, 0.08);
+  border: 1px solid rgba(0, 230, 255, 0.25);
+  border-radius: 2px;
+  padding: 4px 10px;
+  width: fit-content;
+}
+
+.zzz-intro-title {
+  font-family: 'Outfit', 'Fredoka', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.zzz-intro-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,230,255,0.35) 0%, rgba(0,230,255,0.04) 100%);
+}
+
+.zzz-intro-sub {
+  font-family: 'Outfit', 'Fredoka', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(200, 200, 230, 0.65);
+  margin: 0;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+}
+
+/* ZZZ Username Form */
+.zzz-username-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.zzz-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.zzz-input {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(0, 230, 255, 0.2) !important;
+  border-bottom: 2px solid rgba(0, 230, 255, 0.5) !important;
+  border-radius: 2px !important;
+  color: #ffffff !important;
+  padding: 13px 16px !important;
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.2s ease, background 0.2s ease !important;
+  outline: none !important;
+}
+
+.zzz-input::placeholder {
+  color: rgba(200, 200, 230, 0.3) !important;
+  letter-spacing: 0.5px !important;
+}
+
+.zzz-input:focus {
+  background: rgba(0, 230, 255, 0.05) !important;
+  border-color: rgba(0, 230, 255, 0.35) !important;
+  border-bottom-color: #00e6ff !important;
+}
+
+.zzz-confirm-btn {
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 4px !important;
+  text-transform: uppercase !important;
+  color: #0a0a18 !important;
+  background: linear-gradient(135deg, #00e6ff 0%, #00bcd4 100%) !important;
+  border: none !important;
+  border-radius: 2px !important;
+  padding: 13px 0 !important;
+  width: 100% !important;
+  cursor: pointer !important;
+  transition: filter 0.15s ease, transform 0.15s ease !important;
+  box-shadow: 0 4px 20px rgba(0, 230, 255, 0.3) !important;
+}
+
+.zzz-confirm-btn:hover {
+  filter: brightness(1.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+.zzz-confirm-btn:active {
+  transform: translateY(0) !important;
+  filter: brightness(0.95) !important;
+}
+
+/* Debug popup toggle */
+#debugPopupOverlay.dbg-show {
+  display: flex !important;
+}
+
+/* Nuclear pointer-events fix for battle guide overlay */
+#tutorialGuideOverlay,
+#tutorialGuideOverlay * {
+  pointer-events: none;
+}
+#tutorialGuideOverlay.zzz-guide-show,
+#tutorialGuideOverlay.zzz-guide-show * {
+  pointer-events: all !important;
+}
+#tutorialGuideOkBtn {
+  cursor: pointer !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: rgba(0,230,255,0.2) !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  position: relative !important;
+  z-index: 2147483647 !important;
 }
 
