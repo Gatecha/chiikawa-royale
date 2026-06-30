@@ -14599,6 +14599,7 @@ let mbSpeedMultiplier = 1;
 let mbWalkTimeout = null;
 let mbRoll10Results = [];
 let mbSummaryQueueType = 1;
+let mbBoardModActive = false; // true when pity 49 reached – board shows all S-Class
 
 // Pity system
 let mbTotalRolls = parseInt(localStorage.getItem('mb_rolls_total') || '0');
@@ -14757,6 +14758,10 @@ function openMonopolyBoard() {
   if (speedBtn) speedBtn.textContent = ">> 1x";
   document.getElementById("mbGachaControls")?.classList.add("hidden");
   document.getElementById("mbSummaryPopup")?.classList.add("hidden");
+  // Bug fix: reset board-mod flag on every open so stale state doesn't persist
+  mbBoardModActive = false;
+  mbRoll10Results = [];
+  mbSummaryQueueType = 1;
 
   setTimeout(() => {
     const mbOverlay = document.getElementById("monopolyBoardOverlay");
@@ -15098,10 +15103,9 @@ document.addEventListener("DOMContentLoaded", () => {
 async function handleMonopolyRoll(count) {
   if (mbRolling || mbMoving) return;
 
+  // Bug fix: always clear results array for both Roll 1 and Roll 10
+  mbRoll10Results = [];
   mbSummaryQueueType = count;
-  if (count === 10) {
-    mbRoll10Results = [];
-  }
 
   if (count === 1) {
     // Check cost
@@ -15147,8 +15151,10 @@ function triggerDiceRollSequence() {
   diceOverlay.classList.remove("hidden");
   dice3d.classList.remove("hidden");
   
-  // Set dice animation speed
-  dice3d.style.animationDuration = `${1.4 / mbSpeedMultiplier}s`;
+  // Set dice animation speed – drive via CSS custom property so the keyframe picks it up
+  const diceDuration = 1.4 / mbSpeedMultiplier;
+  dice3d.style.setProperty('--dice-spin-dur', `${diceDuration}s`);
+  dice3d.style.animationDuration = `${diceDuration}s`;
   dice3d.classList.add("rolling");
   diceResult.classList.add("hidden");
 
@@ -15419,7 +15425,7 @@ function handleTileLanding() {
   }
 }
 
-// Crate open sequence
+// Crate open sequence — Bug fix: scale timeouts by mbSpeedMultiplier
 function triggerCrateOpenAnimation(tileDiv, rarity) {
   if (tileDiv) {
     tileDiv.classList.add("mb-tile-shaking");
@@ -15434,9 +15440,9 @@ function triggerCrateOpenAnimation(tileDiv, rarity) {
     setTimeout(() => {
       if (tileDiv) tileDiv.classList.remove("mb-tile-opening");
       drawMonopolyReward(rarity);
-    }, 600);
+    }, 600 / mbSpeedMultiplier);
 
-  }, 500);
+  }, 500 / mbSpeedMultiplier);
 }
 
 function triggerClassRevealSequence(rank, callback) {
@@ -15480,7 +15486,15 @@ function drawMonopolyReward(rarity) {
   if (mbPityMod >= 50) {
     mbPityMod = 0;
     forceSClassItem = true;
-    showToastMsg("Board Modified! Guaranteed S-Class Item!");
+    mbBoardModActive = false;
+    // Revert tiles back to normal after claiming reward
+    setTimeout(() => revertBoardModTiles(), 3000);
+  }
+
+  // At pity 49 warn the player with a glitch animation
+  if (mbPityMod === 49 && !mbBoardModActive) {
+    mbBoardModActive = true;
+    triggerBoardModAnimation();
   }
 
   localStorage.setItem('mb_rolls_total', mbTotalRolls.toString());
@@ -15720,6 +15734,12 @@ function drawMonopolyRewardSilently(rarity) {
     localStorage.setItem('mb_rolls_pity_a', '0');
   }
 
+  // Bug fix: update coin display after silent draws
+  const crownEl = document.getElementById("crownCount");
+  if (crownEl) crownEl.textContent = crownCount;
+  const statEl = document.getElementById("statCrowns");
+  if (statEl) statEl.textContent = crownCount;
+
   mbRoll10Results.push({ item: finalItem, rank: rank });
 
   saveProgression();
@@ -15744,8 +15764,14 @@ function triggerMonopolySkip() {
     mbWalkTimeout = null;
   }
 
-  // Draw remaining queue rolls silently
-  while (mbRollQueue > 0) {
+  // Bug fix: the in-flight roll already drew one reward via drawMonopolyReward.
+  // Only draw silently for the REMAINING queued rolls (queue - 1 since current
+  // roll is already in progress and will be accounted for on landing).
+  // We set queue to 0 first so auto-close logic doesn’t fire during skip.
+  const remainingToSimulate = Math.max(0, mbRollQueue - 1);
+  mbRollQueue = 0;
+
+  for (let i = 0; i < remainingToSimulate; i++) {
     const steps = Math.floor(Math.random() * 6) + 1;
     mbMainIndex = (mbMainIndex + steps) % 28;
     localStorage.setItem('mb_main_index', mbMainIndex.toString());
@@ -15757,7 +15783,6 @@ function triggerMonopolySkip() {
     else if (tile.type === "portal1" || tile.type === "portal2") rarity = "rare";
 
     drawMonopolyRewardSilently(rarity);
-    mbRollQueue--;
   }
 
   // Hide gacha overlays
@@ -15780,9 +15805,11 @@ function triggerMonopolySkip() {
   if (mbSummaryQueueType === 10) {
     showRoll10SummaryOverlay();
   } else {
-    // Show single card popup instantly for Roll 1
+    // Show single card popup for Roll 1 skip
     const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
     if (lastResult) {
+      // Force show the popup with claim button visible (not auto-close)
+      mbSummaryQueueType = 1;
       showCrateRewardPopup(lastResult.item, lastResult.rank, false);
     }
   }
@@ -15795,16 +15822,20 @@ function showRoll10SummaryOverlay() {
   const grid = document.getElementById("mbSummaryGrid");
   grid.innerHTML = "";
 
-  mbRoll10Results.forEach(res => {
+  mbRoll10Results.forEach((res, i) => {
     const card = document.createElement("div");
     card.className = `mb-summary-card rank-${res.rank.toLowerCase()}`;
+    card.style.setProperty('--card-delay', `${i * 80}ms`);
 
-    let iconHtml = getGachaItemImageHtml(res.item, 48);
+    let iconHtml = getGachaItemImageHtml(res.item, 52);
+    const isS = res.rank === 'S';
 
     card.innerHTML = `
-      <div class="mb-sc-rank rank-${res.rank.toLowerCase()}">${res.rank}</div>
-      <div class="mb-sc-icon">${iconHtml}</div>
+      <div class="mb-sc-shine"></div>
+      <div class="mb-sc-rank-badge rank-${res.rank.toLowerCase()}">${res.rank}</div>
+      <div class="mb-sc-icon-wrap">${iconHtml}</div>
       <div class="mb-sc-name">${res.item.name}</div>
+      ${isS ? '<div class="mb-sc-sparkle">✦</div>' : ''}
     `;
     grid.appendChild(card);
   });
@@ -15844,10 +15875,25 @@ function showCrateRewardPopup(item, rank, isDuplicate) {
     gemsBonus.classList.add("hidden");
   }
 
-  popup.classList.remove("hidden");
-
-  // Play win sound
-  if (typeof playSound === "function") playSound("victory_royale");
+  // Bug fix: during 10x pulls auto-advance as long as there are more rolls left
+  // mbRollQueue > 1 means this is NOT the last roll, so auto-close and continue.
+  const claimBtn = document.getElementById("mbCrateClaimBtn");
+  if (mbSummaryQueueType === 10 && mbRollQueue > 1) {
+    if (claimBtn) claimBtn.style.display = "none";
+    popup.classList.remove("hidden");
+    if (typeof playSound === "function") playSound("tutorial_beep");
+    // Auto close after brief flash then advance queue
+    setTimeout(() => {
+      popup.classList.add("hidden");
+      if (claimBtn) claimBtn.style.display = "";
+      checkQueueOrUnlockRoll();
+    }, 900 / mbSpeedMultiplier);
+  } else {
+    // Last roll of 10x or Roll 1: show CLAIM button normally
+    if (claimBtn) claimBtn.style.display = "";
+    popup.classList.remove("hidden");
+    if (typeof playSound === "function") playSound("victory_royale");
+  }
 }
 
 function claimMonopolyReward() {
@@ -15896,6 +15942,8 @@ function triggerBridgeTravelSequence(islandId) {
     planks.appendChild(p);
   }
 
+  // Bug fix: scale bridge cinematic duration by speed multiplier
+  const bridgeDur = Math.round(1900 / mbSpeedMultiplier);
   setTimeout(() => {
     // Transition views
     cinematic.classList.add("hidden");
@@ -15914,12 +15962,11 @@ function triggerBridgeTravelSequence(islandId) {
 
     mbMoving = false;
 
-    // Trigger walk step inside island
     showToastMsg(`Welcome to the ${destLabel}!`);
 
     checkQueueOrUnlockRoll();
 
-  }, 1900);
+  }, bridgeDur);
 }
 
 function playBridgeRetractCinematic(islandId, remainingSteps = 0) {
@@ -15949,6 +15996,8 @@ function playBridgeRetractCinematic(islandId, remainingSteps = 0) {
   mbMainIndex = portalIndex;
   localStorage.setItem('mb_main_index', mbMainIndex.toString());
 
+  // Bug fix: scale retract cinematic duration by speed multiplier
+  const retractDur = Math.round(1900 / mbSpeedMultiplier);
   setTimeout(() => {
     cinematic.classList.add("hidden");
 
@@ -15966,7 +16015,7 @@ function playBridgeRetractCinematic(islandId, remainingSteps = 0) {
       mbMoving = false;
       handleTileLanding();
     }
-  }, 1900);
+  }, retractDur);
 }
 
 // Free pull popup handlers
@@ -16056,4 +16105,42 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Board Modification Animation  (triggered at pity roll 49)
+// ─────────────────────────────────────────────────────────────────────────────
+function triggerBoardModAnimation() {
+  showToastMsg("⚠️ BOARD MODIFICATION INCOMING! Next pull guaranteed S-Class!");
+
+  const tilesContainer = document.getElementById("mbTiles");
+  if (!tilesContainer) return;
+
+  const allTiles = Array.from(tilesContainer.children);
+
+  // Phase 1 – glitch flicker on all tiles
+  allTiles.forEach((t, i) => {
+    t.classList.add("mb-tile-board-glitch");
+  });
+
+  // Phase 2 – after glitch, convert every tile label/icon to S-CLASS style
+  setTimeout(() => {
+    allTiles.forEach((t, i) => {
+      t.classList.remove("mb-tile-board-glitch");
+      // Keep start/corner tiles neutral; convert everything else to S-class glow
+      const cfg = mbMainTilesConfig[i];
+      if (cfg && cfg.type !== 'start' && cfg.type !== 'corner') {
+        t.classList.add("mb-tile-board-mod-s");
+      }
+    });
+  }, 900);
+}
+
+function revertBoardModTiles() {
+  const tilesContainer = document.getElementById("mbTiles");
+  if (!tilesContainer) return;
+
+  const allTiles = Array.from(tilesContainer.children);
+  allTiles.forEach(t => {
+    t.classList.remove("mb-tile-board-mod-s");
+  });
+}
 
