@@ -15011,6 +15011,12 @@ let mbPityMod = parseInt(localStorage.getItem('mb_rolls_pity_mod') || '0');
 
 // Categorize gachaPool items into ranks
 const mbItemRanks = {
+  'magical_chiikawa': 'S',
+  'magical_hachiware': 'S',
+  'magical_usagi': 'S',
+  'magical_chiikawa_bomb': 'S',
+  'magical_hachiware_bomb': 'S',
+  'magical_usagi_bomb': 'S',
   // S-Class
   'gold-bomb': 'S',
   'gold-effect': 'S',
@@ -15887,9 +15893,17 @@ function triggerClassRevealSequence(rank, callback) {
 // Shared helpers to pick items
 // Shared helper to pick S-Class items (forced = true guarantees an S-Class item even if duplicate)
 // Shared helper to pick S-Class items (always returns an item, never coins fallback)
-function _pickSItem() {
-  var allS = gachaPool.filter(function(x) { return (mbItemRanks[x.id] || 'B') === 'S'; });
+function _pickSItem(isFiftyPity) {
+  var allS = gachaPool.filter(function(x) {
+    if (isFiftyPity) {
+      return x.type === "character" && (x.id === "magical_chiikawa" || x.id === "magical_hachiware" || x.id === "magical_usagi");
+    }
+    return (mbItemRanks[x.id] || 'B') === 'S';
+  });
   var unowned = allS.filter(function(x) {
+    if (x.type === "character") {
+      return !getUnlockedCharacters().includes(x.id);
+    }
     var k = x.type === "effect" ? "owned_effect_" + x.color : "owned_bomb_" + x.color;
     return localStorage.getItem(k) !== "true";
   });
@@ -15897,12 +15911,24 @@ function _pickSItem() {
   var pool = unowned.length > 0 ? unowned : allS;
   if (pool.length === 0) return null;
   var chosen = pool[Math.floor(Math.random() * pool.length)];
-  var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
-  var isDup = localStorage.getItem(oKey) === "true";
-  if (!isDup) {
-    localStorage.setItem(oKey, "true");
-    var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
-    localStorage.setItem(nKey, "true");
+  
+  var isDup = false;
+  if (chosen.type === "character") {
+    isDup = getUnlockedCharacters().includes(chosen.id);
+    if (!isDup) {
+      var unlocked = getUnlockedCharacters();
+      unlocked.push(chosen.id);
+      localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+      localStorage.setItem("new_character_" + chosen.id, "true");
+    }
+  } else {
+    var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
+    isDup = localStorage.getItem(oKey) === "true";
+    if (!isDup) {
+      localStorage.setItem(oKey, "true");
+      var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
+      localStorage.setItem(nKey, "true");
+    }
   }
   return { item: chosen, isDuplicate: isDup };
 }
@@ -15955,7 +15981,7 @@ function drawMonopolyReward(rarity) {
 
   if (rank === 'S') {
     // S-Class is strictly skins/effects, never coins
-    var picked = _pickSItem();
+    var picked = _pickSItem(forceSClassItem);
     if (picked) {
       finalItem = picked.item;
       isDuplicate = picked.isDuplicate;
@@ -16045,7 +16071,7 @@ function drawMonopolyRewardSilently(rarity) {
   var isDuplicate = false;
 
   if (rank === 'S') {
-    var picked = _pickSItem();
+    var picked = _pickSItem(forceSClassItem);
     if (picked) {
       finalItem = picked.item;
       isDuplicate = picked.isDuplicate;
