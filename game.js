@@ -618,6 +618,7 @@ let lastMenuDrawTime = 0;
 
 function getVideoSrc(baseSrc, forceHighQuality = false) {
   if (!baseSrc) return "";
+  if (window.electronAPI?.isElectron) forceHighQuality = true;
   if (graphicsQuality === "high" || forceHighQuality) {
     return baseSrc.replace(".mp4", "_high.mp4");
   }
@@ -846,10 +847,10 @@ const emoteSymbols = {
 
 // Progression State
 let crownCount = 0;
-let gemsCount = 2830;
-let seasonLevel = 4;
-let seasonXp = 609;
-let seasonXpToNext = 800;
+let gemsCount = 0;
+let seasonLevel = 1;
+let seasonXp = 0;
+let seasonXpToNext = 100;
 
 // Rank System State (RP = Ranking Points)
 let rankRp = 0;        // Current RP total
@@ -3696,7 +3697,7 @@ function awardLocalMatchProgress(playerWon) {
   }
 
   const gainedXp = playerWon ? 120 : 45;
-  const gainedGems = playerWon ? 5 : 0;
+  const gainedGems = playerWon ? 10 : 0;
   const gainedCoins = playerWon ? 500 : 100;
   seasonXp += gainedXp;
   gemsCount += gainedGems;
@@ -7361,7 +7362,7 @@ surrenderNoBtn?.addEventListener("click", () => {
 });
 
 // Return to Lobby after Victory
-document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
+document.getElementById("victoryReturnBtn")?.addEventListener("click", () => {
   players = [];
   document.getElementById("tournamentOverlay").classList.add("hidden");
   stopConfetti();
@@ -7382,6 +7383,7 @@ document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
     resetCouchControls();
     resetLobbyMapSelectToNormal();
     switchScreen(menuScreen);
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
   } else {
     switchScreen(menuScreen);
     document.querySelector('.tab-btn[data-tab="squad"]')?.click();
@@ -9550,6 +9552,7 @@ async function handleAuthenticatedUser(user) {
       // User has a username, proceed to main menu
       finishStartup();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
     } else {
       // No username, show intro registration screen
@@ -9751,6 +9754,7 @@ if (btnGuestLogin) {
       
       finishStartup();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
     }
   });
@@ -9876,6 +9880,7 @@ if (usernameForm) {
 
       stopIntroVideo();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
 
       if (pendingLocalConnect) {
@@ -9950,6 +9955,7 @@ if (usernameForm) {
 
       stopIntroVideo();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
     } catch (err) {
       console.error("Username registration error:", err);
