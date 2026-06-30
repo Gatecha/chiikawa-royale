@@ -15102,6 +15102,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("mbSkipBtn")?.addEventListener("click", triggerMonopolySkip);
   document.getElementById("mbSummaryCloseBtn")?.addEventListener("click", closeRoll10Summary);
   document.getElementById("mbSummaryClickaway")?.addEventListener("click", closeRoll10Summary);
+  document.getElementById("mbTutNext")?.addEventListener("click", advanceMbTutorial);
+  document.getElementById("mbTutSkipAll")?.addEventListener("click", finishMbTutorial);
 });
 
 async function handleMonopolyRoll(count) {
