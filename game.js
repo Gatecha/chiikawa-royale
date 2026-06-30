@@ -1,4 +1,4 @@
-// =================================================================
+﻿// =================================================================
 // DEBUG LOG SYSTEM — intercepts errors and console.error/warn
 // =================================================================
 (function() {
@@ -15482,22 +15482,62 @@ function triggerClassRevealSequence(rank, callback) {
   }, 2000 / mbSpeedMultiplier);
 }
 
+// Shared helpers to pick items
+function _pickSItem(forced) {
+  var allS = gachaPool.filter(function(x) { return (mbItemRanks[x.id] || 'B') === 'S'; });
+  var unowned = allS.filter(function(x) {
+    var k = x.type === "effect" ? "owned_effect_" + x.color : "owned_bomb_" + x.color;
+    return localStorage.getItem(k) !== "true";
+  });
+  var pool = unowned.length > 0 ? unowned : (forced ? allS : []);
+  if (pool.length === 0) return null;
+  var chosen = pool[Math.floor(Math.random() * pool.length)];
+  var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
+  var isDup = localStorage.getItem(oKey) === "true";
+  if (!isDup) {
+    localStorage.setItem(oKey, "true");
+    var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
+    localStorage.setItem(nKey, "true");
+  }
+  return { item: chosen, isDuplicate: isDup };
+}
+
+function _pickABItem(forced) {
+  var allAB = gachaPool.filter(function(x) {
+    var r = mbItemRanks[x.id] || 'B';
+    return r === 'A' || r === 'B';
+  });
+  var unowned = allAB.filter(function(x) {
+    var k = x.type === "effect" ? "owned_effect_" + x.color : "owned_bomb_" + x.color;
+    return localStorage.getItem(k) !== "true";
+  });
+  var pool = unowned.length > 0 ? unowned : (forced ? allAB : []);
+  if (pool.length === 0) return null;
+  var chosen = pool[Math.floor(Math.random() * pool.length)];
+  var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
+  var isDup = localStorage.getItem(oKey) === "true";
+  if (!isDup) {
+    localStorage.setItem(oKey, "true");
+    var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
+    localStorage.setItem(nKey, "true");
+  }
+  return { item: chosen, isDuplicate: isDup };
+}
+
 function drawMonopolyReward(rarity) {
   mbTotalRolls++;
   mbPityA++;
   mbPityS++;
   mbPityMod++;
 
-  let forceSClassItem = false;
+  var forceSClassItem = false;
   if (mbPityMod >= 50) {
     mbPityMod = 0;
     forceSClassItem = true;
     mbBoardModActive = false;
-    // Revert tiles back to normal after claiming reward
-    setTimeout(() => revertBoardModTiles(), 3000);
+    setTimeout(revertBoardModTiles, 3000);
   }
 
-  // At pity 49 warn the player with a glitch animation
   if (mbPityMod === 49 && !mbBoardModActive) {
     mbBoardModActive = true;
     triggerBoardModAnimation();
@@ -15508,95 +15548,117 @@ function drawMonopolyReward(rarity) {
   localStorage.setItem('mb_rolls_pity_s', mbPityS.toString());
   localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
 
-  let rank = 'A';
-  let isItem = false;
+  var rank = 'A';
+  var isItem = false;
 
-  // 1. Force S-Class item if board modified (50 pity)
   if (forceSClassItem) {
     rank = 'S';
     isItem = true;
-  }
-  // 2. Force S-Class item if S pity hit (10 rolls)
-  else if (mbPityS >= 10) {
+  } else if (mbPityS >= 10) {
     rank = 'S';
     isItem = true;
-  }
-  // 3. Force A-Class if A pity hit (5 rolls)
-  else if (mbPityA >= 5) {
+  } else if (mbPityA >= 5) {
     rank = 'A';
-    isItem = false;
-  }
-    // 4. Normal rates  (common ~5% item overall, rare ~18%, sclass ~90%)
-  else {
-    const roll = Math.random();
+    isItem = true;
+  } else {
+    var roll = Math.random();
     if (rarity === 'common') {
-      if (roll < 0.15) { rank = 'S'; isItem = Math.random() < 0.35; }
-      else { rank = 'A'; isItem = false; }
+      if (roll < 0.15) {
+        rank = 'S';
+        isItem = Math.random() < 0.35;
+      } else {
+        rank = 'A';
+        isItem = Math.random() < 0.12;
+      }
     } else if (rarity === 'rare') {
-      if (roll < 0.30) { rank = 'S'; isItem = Math.random() < 0.60; }
-      else { rank = 'A'; isItem = false; }
+      if (roll < 0.30) {
+        rank = 'S';
+        isItem = Math.random() < 0.60;
+      } else {
+        rank = 'A';
+        isItem = Math.random() < 0.30;
+      }
     } else if (rarity === 'sclass') {
-      if (roll < 0.90) { rank = 'S'; isItem = true; }
-      else { rank = 'A'; isItem = false; }
+      if (roll < 0.90) {
+        rank = 'S';
+        isItem = true;
+      } else {
+        rank = 'A';
+        isItem = true;
+      }
     }
   }
 
-  let finalItem = null;
+  var finalItem = null;
+  var isDuplicate = false;
 
   if (rank === 'S') {
     if (isItem) {
-      // Award S-Class Item (Bomb Skin or Blast Effect)
-      let unownedS = gachaPool.filter(item => {
-        const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
-        const owned = localStorage.getItem(ownedKey) === "true";
-        const itemRank = mbItemRanks[item.id] || 'B';
-        return !owned && itemRank === 'S';
-      });
-
-      if (unownedS.length > 0) {
-        finalItem = unownedS[Math.floor(Math.random() * unownedS.length)];
-        const ownedKey = finalItem.type === "effect" ? `owned_effect_${finalItem.color}` : `owned_bomb_${finalItem.color}`;
-        localStorage.setItem(ownedKey, "true");
-        const newKey = finalItem.type === "effect" ? `new_effect_${finalItem.color}` : `new_bomb_${finalItem.color}`;
-        localStorage.setItem(newKey, "true");
+      var picked = _pickSItem(forceSClassItem);
+      if (picked) {
+        finalItem = picked.item;
+        isDuplicate = picked.isDuplicate;
+        if (isDuplicate) {
+          crownCount += 500;
+          document.getElementById("crownCount").textContent = crownCount;
+          if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+        }
       } else {
-        // Fallback: 1000 Coins
         finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
         crownCount += 1000;
         document.getElementById("crownCount").textContent = crownCount;
         if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
       }
     } else {
-      // S-Class Coins
       finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
       crownCount += 1000;
       document.getElementById("crownCount").textContent = crownCount;
       if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
     }
-
-    // Reset both pities
     mbPityS = 0;
     mbPityA = 0;
     localStorage.setItem('mb_rolls_pity_s', '0');
     localStorage.setItem('mb_rolls_pity_a', '0');
   } else {
-    // A-Class Coins
-    let coinsAmount = 300;
-    if (rarity === 'common') {
-      coinsAmount = Math.floor(Math.random() * 201) + 300; // 300 - 500
-    } else if (rarity === 'rare') {
-      coinsAmount = Math.floor(Math.random() * 501) + 500; // 500 - 1000
+    if (isItem) {
+      var picked = _pickABItem(mbPityA >= 5);
+      if (picked) {
+        finalItem = picked.item;
+        isDuplicate = picked.isDuplicate;
+        rank = mbItemRanks[finalItem.id] || 'A';
+        if (isDuplicate) {
+          crownCount += 250;
+          document.getElementById("crownCount").textContent = crownCount;
+          if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+        }
+      } else {
+        var coinsAmount = 300;
+        if (rarity === 'common') {
+          coinsAmount = Math.floor(Math.random() * 201) + 300;
+        } else if (rarity === 'rare') {
+          coinsAmount = Math.floor(Math.random() * 501) + 500;
+        } else {
+          coinsAmount = 1000;
+        }
+        crownCount += coinsAmount;
+        document.getElementById("crownCount").textContent = crownCount;
+        if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+        finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
+      }
     } else {
-      coinsAmount = 1000;
+      var coinsAmount = 300;
+      if (rarity === 'common') {
+        coinsAmount = Math.floor(Math.random() * 201) + 300;
+      } else if (rarity === 'rare') {
+        coinsAmount = Math.floor(Math.random() * 501) + 500;
+      } else {
+        coinsAmount = 1000;
+      }
+      crownCount += coinsAmount;
+      document.getElementById("crownCount").textContent = crownCount;
+      if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+      finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
     }
-
-    crownCount += coinsAmount;
-    document.getElementById("crownCount").textContent = crownCount;
-    if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-
-    finalItem = { id: "coins", name: `${coinsAmount} Coins`, color: "gold", type: "coins" };
-
-    // Reset A-class pity
     mbPityA = 0;
     localStorage.setItem('mb_rolls_pity_a', '0');
   }
@@ -15606,14 +15668,12 @@ function drawMonopolyReward(rarity) {
   saveProgression();
   syncMonopolyStats();
 
-  // Refresh wardrobes
   if (typeof updateWardrobeTabBadges === "function") updateWardrobeTabBadges();
   if (typeof syncBombWardrobe === "function") syncBombWardrobe();
   if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
 
-  // Intermediate Reveal sequence then show reward
-  triggerClassRevealSequence(rank, () => {
-    showCrateRewardPopup(finalItem, rank, false);
+  triggerClassRevealSequence(rank, function() {
+    showCrateRewardPopup(finalItem, rank, isDuplicate);
   });
 }
 
@@ -15623,7 +15683,7 @@ function drawMonopolyRewardSilently(rarity) {
   mbPityS++;
   mbPityMod++;
 
-  let forceSClassItem = false;
+  var forceSClassItem = false;
   if (mbPityMod >= 50) {
     mbPityMod = 0;
     forceSClassItem = true;
@@ -15634,8 +15694,8 @@ function drawMonopolyRewardSilently(rarity) {
   localStorage.setItem('mb_rolls_pity_s', mbPityS.toString());
   localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
 
-  let rank = 'A';
-  let isItem = false;
+  var rank = 'A';
+  var isItem = false;
 
   if (forceSClassItem) {
     rank = 'S';
@@ -15645,24 +15705,24 @@ function drawMonopolyRewardSilently(rarity) {
     isItem = true;
   } else if (mbPityA >= 5) {
     rank = 'A';
-    isItem = false;
+    isItem = true;
   } else {
-    const roll = Math.random();
+    var roll = Math.random();
     if (rarity === 'common') {
       if (roll < 0.15) {
         rank = 'S';
-        isItem = Math.random() < 0.10;
+        isItem = Math.random() < 0.35;
       } else {
         rank = 'A';
-        isItem = false;
+        isItem = Math.random() < 0.12;
       }
     } else if (rarity === 'rare') {
       if (roll < 0.30) {
         rank = 'S';
-        isItem = Math.random() < 0.20;
+        isItem = Math.random() < 0.60;
       } else {
         rank = 'A';
-        isItem = false;
+        isItem = Math.random() < 0.30;
       }
     } else if (rarity === 'sclass') {
       if (roll < 0.90) {
@@ -15670,28 +15730,21 @@ function drawMonopolyRewardSilently(rarity) {
         isItem = true;
       } else {
         rank = 'A';
-        isItem = false;
+        isItem = true;
       }
     }
   }
 
-  let finalItem = null;
+  var finalItem = null;
+  var isDuplicate = false;
 
   if (rank === 'S') {
     if (isItem) {
-      let unownedS = gachaPool.filter(item => {
-        const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
-        const owned = localStorage.getItem(ownedKey) === "true";
-        const itemRank = mbItemRanks[item.id] || 'B';
-        return !owned && itemRank === 'S';
-      });
-
-      if (unownedS.length > 0) {
-        finalItem = unownedS[Math.floor(Math.random() * unownedS.length)];
-        const ownedKey = finalItem.type === "effect" ? `owned_effect_${finalItem.color}` : `owned_bomb_${finalItem.color}`;
-        localStorage.setItem(ownedKey, "true");
-        const newKey = finalItem.type === "effect" ? `new_effect_${finalItem.color}` : `new_bomb_${finalItem.color}`;
-        localStorage.setItem(newKey, "true");
+      var picked = _pickSItem(forceSClassItem);
+      if (picked) {
+        finalItem = picked.item;
+        isDuplicate = picked.isDuplicate;
+        if (isDuplicate) crownCount += 500;
       } else {
         finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
         crownCount += 1000;
@@ -15705,29 +15758,39 @@ function drawMonopolyRewardSilently(rarity) {
     localStorage.setItem('mb_rolls_pity_s', '0');
     localStorage.setItem('mb_rolls_pity_a', '0');
   } else {
-    let coinsAmount = 300;
-    if (rarity === 'common') {
-      coinsAmount = Math.floor(Math.random() * 201) + 300;
-    } else if (rarity === 'rare') {
-      coinsAmount = Math.floor(Math.random() * 501) + 500;
+    if (isItem) {
+      var picked = _pickABItem(mbPityA >= 5);
+      if (picked) {
+        finalItem = picked.item;
+        isDuplicate = picked.isDuplicate;
+        rank = mbItemRanks[finalItem.id] || 'A';
+        if (isDuplicate) crownCount += 250;
+      } else {
+        var coinsAmount = 300;
+        if (rarity === 'common') coinsAmount = Math.floor(Math.random() * 201) + 300;
+        else if (rarity === 'rare') coinsAmount = Math.floor(Math.random() * 501) + 500;
+        else coinsAmount = 1000;
+        crownCount += coinsAmount;
+        finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
+      }
     } else {
-      coinsAmount = 1000;
+      var coinsAmount = 300;
+      if (rarity === 'common') coinsAmount = Math.floor(Math.random() * 201) + 300;
+      else if (rarity === 'rare') coinsAmount = Math.floor(Math.random() * 501) + 500;
+      else coinsAmount = 1000;
+      crownCount += coinsAmount;
+      finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
     }
-
-    crownCount += coinsAmount;
-    finalItem = { id: "coins", name: `${coinsAmount} Coins`, color: "gold", type: "coins" };
     mbPityA = 0;
     localStorage.setItem('mb_rolls_pity_a', '0');
   }
 
-  // Bug fix: update coin display after silent draws
-  const crownEl = document.getElementById("crownCount");
+  var crownEl = document.getElementById("crownCount");
   if (crownEl) crownEl.textContent = crownCount;
-  const statEl = document.getElementById("statCrowns");
+  var statEl = document.getElementById("statCrowns");
   if (statEl) statEl.textContent = crownCount;
 
   mbRoll10Results.push({ item: finalItem, rank: rank });
-
   saveProgression();
 }
 
