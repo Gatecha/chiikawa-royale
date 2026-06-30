@@ -15617,6 +15617,209 @@ function drawMonopolyReward(rarity) {
   });
 }
 
+function drawMonopolyRewardSilently(rarity) {
+  mbTotalRolls++;
+  mbPityA++;
+  mbPityS++;
+  mbPityMod++;
+
+  let forceSClassItem = false;
+  if (mbPityMod >= 50) {
+    mbPityMod = 0;
+    forceSClassItem = true;
+  }
+
+  localStorage.setItem('mb_rolls_total', mbTotalRolls.toString());
+  localStorage.setItem('mb_rolls_pity_a', mbPityA.toString());
+  localStorage.setItem('mb_rolls_pity_s', mbPityS.toString());
+  localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
+
+  let rank = 'A';
+  let isItem = false;
+
+  if (forceSClassItem) {
+    rank = 'S';
+    isItem = true;
+  } else if (mbPityS >= 10) {
+    rank = 'S';
+    isItem = true;
+  } else if (mbPityA >= 5) {
+    rank = 'A';
+    isItem = false;
+  } else {
+    const roll = Math.random();
+    if (rarity === 'common') {
+      if (roll < 0.15) {
+        rank = 'S';
+        isItem = Math.random() < 0.10;
+      } else {
+        rank = 'A';
+        isItem = false;
+      }
+    } else if (rarity === 'rare') {
+      if (roll < 0.30) {
+        rank = 'S';
+        isItem = Math.random() < 0.20;
+      } else {
+        rank = 'A';
+        isItem = false;
+      }
+    } else if (rarity === 'sclass') {
+      if (roll < 0.90) {
+        rank = 'S';
+        isItem = true;
+      } else {
+        rank = 'A';
+        isItem = false;
+      }
+    }
+  }
+
+  let finalItem = null;
+
+  if (rank === 'S') {
+    if (isItem) {
+      let unownedS = gachaPool.filter(item => {
+        const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+        const owned = localStorage.getItem(ownedKey) === "true";
+        const itemRank = mbItemRanks[item.id] || 'B';
+        return !owned && itemRank === 'S';
+      });
+
+      if (unownedS.length > 0) {
+        finalItem = unownedS[Math.floor(Math.random() * unownedS.length)];
+        const ownedKey = finalItem.type === "effect" ? `owned_effect_${finalItem.color}` : `owned_bomb_${finalItem.color}`;
+        localStorage.setItem(ownedKey, "true");
+        const newKey = finalItem.type === "effect" ? `new_effect_${finalItem.color}` : `new_bomb_${finalItem.color}`;
+        localStorage.setItem(newKey, "true");
+      } else {
+        finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
+        crownCount += 1000;
+      }
+    } else {
+      finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
+      crownCount += 1000;
+    }
+    mbPityS = 0;
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_s', '0');
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  } else {
+    let coinsAmount = 300;
+    if (rarity === 'common') {
+      coinsAmount = Math.floor(Math.random() * 201) + 300;
+    } else if (rarity === 'rare') {
+      coinsAmount = Math.floor(Math.random() * 501) + 500;
+    } else {
+      coinsAmount = 1000;
+    }
+
+    crownCount += coinsAmount;
+    finalItem = { id: "coins", name: `${coinsAmount} Coins`, color: "gold", type: "coins" };
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  }
+
+  mbRoll10Results.push({ item: finalItem, rank: rank });
+
+  saveProgression();
+}
+
+function toggleGachaSpeed() {
+  mbSpeedMultiplier = mbSpeedMultiplier === 1 ? 2 : mbSpeedMultiplier === 2 ? 3 : 1;
+  const speedBtn = document.getElementById("mbSpeedBtn");
+  if (speedBtn) speedBtn.textContent = `>> ${mbSpeedMultiplier}x`;
+
+  const dice3d = document.getElementById("mbDice3d");
+  if (dice3d) {
+    dice3d.style.animationDuration = `${1.4 / mbSpeedMultiplier}s`;
+  }
+}
+
+function triggerMonopolySkip() {
+  if (!mbRolling && !mbMoving && mbRollQueue === 0) return;
+
+  if (mbWalkTimeout) {
+    clearTimeout(mbWalkTimeout);
+    mbWalkTimeout = null;
+  }
+
+  // Draw remaining queue rolls silently
+  while (mbRollQueue > 0) {
+    const steps = Math.floor(Math.random() * 6) + 1;
+    mbMainIndex = (mbMainIndex + steps) % 28;
+    localStorage.setItem('mb_main_index', mbMainIndex.toString());
+
+    const tile = mbMainTilesConfig[mbMainIndex];
+    let rarity = "common";
+    if (tile.type === "rare") rarity = "rare";
+    else if (tile.type === "sclass") rarity = "sclass";
+    else if (tile.type === "portal1" || tile.type === "portal2") rarity = "rare";
+
+    drawMonopolyRewardSilently(rarity);
+    mbRollQueue--;
+  }
+
+  // Hide gacha overlays
+  document.getElementById("mbDiceOverlay")?.classList.add("hidden");
+  document.getElementById("mbClassReveal")?.classList.add("hidden");
+  document.getElementById("mbCratePopup")?.classList.add("hidden");
+  document.getElementById("mbGachaControls")?.classList.add("hidden");
+
+  // Reset zoom
+  updateCameraZoom(false);
+
+  // Position character at final tile
+  positionCharacterAt(mbMainIndex);
+
+  mbRolling = false;
+  mbMoving = false;
+
+  syncMonopolyStats();
+
+  if (mbSummaryQueueType === 10) {
+    showRoll10SummaryOverlay();
+  } else {
+    // Show single card popup instantly for Roll 1
+    const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
+    if (lastResult) {
+      showCrateRewardPopup(lastResult.item, lastResult.rank, false);
+    }
+  }
+}
+
+function showRoll10SummaryOverlay() {
+  const popup = document.getElementById("mbSummaryPopup");
+  if (!popup) return;
+
+  const grid = document.getElementById("mbSummaryGrid");
+  grid.innerHTML = "";
+
+  mbRoll10Results.forEach(res => {
+    const card = document.createElement("div");
+    card.className = `mb-summary-card rank-${res.rank.toLowerCase()}`;
+
+    let iconHtml = getGachaItemImageHtml(res.item, 48);
+
+    card.innerHTML = `
+      <div class="mb-sc-rank rank-${res.rank.toLowerCase()}">${res.rank}</div>
+      <div class="mb-sc-icon">${iconHtml}</div>
+      <div class="mb-sc-name">${res.item.name}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  popup.classList.remove("hidden");
+
+  if (typeof playSound === "function") playSound("victory_royale");
+}
+
+function closeRoll10Summary() {
+  const popup = document.getElementById("mbSummaryPopup");
+  if (popup) popup.classList.add("hidden");
+  syncMonopolyStats();
+}
+
 function showCrateRewardPopup(item, rank, isDuplicate) {
   const popup = document.getElementById("mbCratePopup");
   if (!popup) return;
@@ -15651,7 +15854,6 @@ function claimMonopolyReward() {
   const popup = document.getElementById("mbCratePopup");
   if (popup) popup.classList.add("hidden");
 
-  // Process next queue step or release rolling lock
   checkQueueOrUnlockRoll();
 }
 
@@ -15661,10 +15863,15 @@ function checkQueueOrUnlockRoll() {
     // Auto trigger next roll
     setTimeout(() => {
       triggerDiceRollSequence();
-    }, 500);
+    }, 500 / mbSpeedMultiplier);
   } else {
     mbRollQueue = 0;
+    document.getElementById("mbGachaControls")?.classList.add("hidden");
     syncMonopolyStats();
+
+    if (mbSummaryQueueType === 10) {
+      showRoll10SummaryOverlay();
+    }
   }
 }
 
