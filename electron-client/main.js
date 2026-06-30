@@ -329,6 +329,16 @@ function setWindowsHidden(targetPath) {
   } catch (_) {}
 }
 
+function setWindowsUnhidden(targetPath) {
+  if (process.platform !== 'win32' || !fs.existsSync(targetPath)) return;
+  try {
+    require('child_process').execFileSync('attrib.exe', ['-h', targetPath], {
+      windowsHide: true,
+      stdio: 'ignore'
+    });
+  } catch (_) {}
+}
+
 function hideInstalledGameAssets(gameDir) {
   if (!fs.existsSync(gameDir)) return;
 
@@ -354,6 +364,33 @@ function hideInstalledGameAssets(gameDir) {
   }
 
   hideMediaFiles(path.join(gameDir, 'assets'));
+}
+
+function unhideInstalledGameAssets(gameDir) {
+  if (!fs.existsSync(gameDir)) return;
+
+  [
+    path.join(gameDir, 'assets'),
+    path.join(gameDir, 'hachiware-lobby.mp4'),
+    path.join(gameDir, 'uwauwa.mp3'),
+    path.join(gameDir, 'chiikawa-royale-logo.png')
+  ].forEach(setWindowsUnhidden);
+
+  function unhideMediaFiles(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        unhideMediaFiles(fullPath);
+        continue;
+      }
+      if (/\.(png|jpe?g|mp4|mp3|svg|ico)$/i.test(entry.name)) {
+        setWindowsUnhidden(fullPath);
+      }
+    }
+  }
+
+  unhideMediaFiles(path.join(gameDir, 'assets'));
 }
 
 function pruneRuntimeLicenses(runtimeDir) {
@@ -434,6 +471,9 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
       fs.mkdirSync(targetPath, { recursive: true });
     }
 
+    // Unhide target game directory assets before overwriting to prevent EPERM
+    unhideInstalledGameAssets(getInstalledGameDir(targetPath));
+
     const srcDir = path.dirname(process.execPath);
     const appDir = path.join(targetPath, 'Launcher');
     if (!fs.existsSync(appDir)) {
@@ -483,6 +523,7 @@ ipcMain.handle('install-game', async (event, targetPath, createShortcut) => {
           if (!fs.existsSync(parent)) {
             await fs.promises.mkdir(parent, { recursive: true });
           }
+          setWindowsUnhidden(item.dest);
           await fs.promises.copyFile(item.src, item.dest);
         }
         
@@ -722,6 +763,7 @@ async function getCompareFiles(currentCommit, latestCommit) {
 
 function downloadFile(url, destPath, onProgress) {
   return new Promise((resolve, reject) => {
+    setWindowsUnhidden(destPath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     
     function doGet(currentUrl) {
@@ -922,6 +964,7 @@ ipcMain.handle('download-update', async () => {
   send({ stage: 'downloading', pct: 0, label: 'Connecting to update server...' });
 
   const gameDir = getGameDir();
+  unhideInstalledGameAssets(gameDir);
   const local = readLocalVersion();
   let latestCommit = null;
 
@@ -1087,8 +1130,10 @@ ipcMain.handle('download-update', async () => {
           if (['.', 'node_modules', 'android-app', 'electron-client', '.git'].includes(entry.name) || entry.name.startsWith('.')) continue;
           const sp = path.join(src, entry.name), dp = path.join(dest, entry.name);
           if (entry.isDirectory()) copyDir(sp, dp);
-          else if (COPY_EXTS.includes(path.extname(entry.name).toLowerCase()) && !SKIP_FILES.includes(entry.name))
+          else if (COPY_EXTS.includes(path.extname(entry.name).toLowerCase()) && !SKIP_FILES.includes(entry.name)) {
+            setWindowsUnhidden(dp);
             fs.copyFileSync(sp, dp);
+          }
         }
       }
       copyDir(srcDir, gameDir);

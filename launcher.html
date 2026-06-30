@@ -1017,14 +1017,41 @@ async function startLauncherUpdate() {
   
   // Bind repair files button
   $id('repairBtn').addEventListener('click', async () => {
-    if (isElectron && api.repairGameFiles) {
-      const result = await api.repairGameFiles();
-      if (!result.success) {
-        showAlert('FILE REPAIR', result.error || 'Could not repair local files.');
-        return;
-      }
+    if (!isElectron) {
+      showAlert('REPAIR CLIENT', 'Launcher update is only available in PC client mode.');
+      return;
     }
-    showAlert('FILE REPAIR', 'Local game files cleaned and verified (100%). No issues found.');
+    try {
+      const res = await api.checkLauncherUpdate();
+      if (res && res.hasUpdate) {
+        showConfirm(
+          'LAUNCHER UPDATE AVAILABLE',
+          `There is a new update for the PC launcher (v${res.latestVersion}).<br>Your current version: v${res.currentVersion}.<br><br>Would you like to update the launcher to the latest version now?`,
+          async () => {
+            startLauncherUpdate();
+          }
+        );
+      } else {
+        if (api.repairGameFiles) {
+          const result = await api.repairGameFiles();
+          if (!result.success) {
+            showAlert('FILE REPAIR', result.error || 'Could not repair local files.');
+            return;
+          }
+        }
+        showAlert('FILE REPAIR', 'Local game files cleaned and verified (100%). No issues found.');
+      }
+    } catch (err) {
+      console.warn('Error checking launcher update during repair:', err);
+      if (api.repairGameFiles) {
+        const result = await api.repairGameFiles();
+        if (!result.success) {
+          showAlert('FILE REPAIR', result.error || 'Could not repair local files.');
+          return;
+        }
+      }
+      showAlert('FILE REPAIR', 'Local game files cleaned and verified (100%). No issues found.');
+    }
   });
 
   if (!isElectron) {
