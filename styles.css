@@ -12115,19 +12115,19 @@ body.is-iphone {
 
 /* ZZZ style Victory Card */
 .victory-card.zzz-victory-card {
-  background: rgba(14, 14, 17, 0.96) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 4.5px solid #000 !important;
-  border-radius: 20px !important;
-  box-shadow: 12px 12px 0px #000 !important;
-  max-width: 440px !important;
-  padding: 45px 55px !important;
-  gap: 16px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  text-align: center !important;
+  background: rgba(14, 14, 17, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 4.5px solid #000;
+  border-radius: 20px;
+  box-shadow: 12px 12px 0px #000;
+  max-width: 440px;
+  padding: 45px 55px;
+  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .zzz-victory-badge {
