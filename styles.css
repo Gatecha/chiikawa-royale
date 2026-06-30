@@ -12352,6 +12352,13 @@ body.is-iphone {
   font-size: 13px; font-weight: 900; color: #d9aaff;
   font-family: var(--font-clean, 'Inter', sans-serif);
 }
+.mb-coin-pill {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(255,216,111,0.12); border: 2px solid rgba(255,216,111,0.35);
+  border-radius: 10px; padding: 4px 10px;
+  font-size: 13px; font-weight: 900; color: #ffd86f;
+  font-family: var(--font-clean, 'Inter', sans-serif);
+}
 .mb-x-btn {
   width: 30px; height: 30px; border-radius: 50%;
   border: 3px solid #000; background: #ff3366; color: #fff;
@@ -12603,7 +12610,9 @@ body.is-iphone {
 /* ── Character Piece ── */
 .mb-char-piece {
   position: absolute;
-  width: 32px; height: 48px;
+  width: 44px; height: 60px;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
   z-index: 10;
   transition: left 0.32s cubic-bezier(0.4,0,0.2,1), top 0.32s cubic-bezier(0.4,0,0.2,1);
   pointer-events: none;
@@ -12613,21 +12622,22 @@ body.is-iphone {
   object-fit: contain;
   image-rendering: pixelated;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+  animation: mbSpriteJiggle 1.2s ease-in-out infinite alternate;
+  transform-origin: bottom center;
 }
 .mb-char-shadow {
   position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
-  width: 26px; height: 6px;
+  width: 32px; height: 6px;
   background: radial-gradient(ellipse, rgba(0,0,0,0.5), transparent);
   border-radius: 50%;
 }
 .mb-char-glow {
   position: absolute; inset: 0;
   background: radial-gradient(circle at 50% 80%, rgba(255,216,111,0.25), transparent 70%);
-  animation: mbCharGlow 1.5s ease-in-out infinite alternate;
 }
-@keyframes mbCharGlow {
-  from { opacity: 0.5; }
-  to   { opacity: 1; }
+@keyframes mbSpriteJiggle {
+  0% { transform: scale(1) translateY(0); }
+  100% { transform: scale(1.06, 0.94) translateY(1.5px); }
 }
 
 /* Char hop animation when stepping on tile */
@@ -13080,7 +13090,11 @@ body.is-iphone {
   color: #4fc3f7; text-shadow: 0 0 12px rgba(79,195,247,0.8);
 }
 .mb-popup-rank small { font-size: 10px; display: block; letter-spacing: 1px; }
-.mb-popup-rank.rank-a { color: #1be6cc; text-shadow: 0 0 12px rgba(27,230,204,0.8); }
+.mb-popup-rank.rank-a {
+  color: #fff !important;
+  background: none !important;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.8) !important;
+}
 .mb-popup-rank.rank-s {
   color: #ffd86f; text-shadow: 0 0 12px rgba(255,216,111,0.8);
   animation: mbSrankShimmer 1s ease-in-out infinite alternate;

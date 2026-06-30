@@ -14715,8 +14715,8 @@ function getTileCoordsMain(index) {
   const padding = 8;
   const tileSize = 60;
   const gap = 2;
-  const charWidth = 32;
-  const charHeight = 48;
+  const charWidth = 44;
+  const charHeight = 60;
 
   const left = padding + layout.col * (tileSize + gap) + (tileSize - charWidth) / 2;
   const top = padding + layout.row * (tileSize + gap) + (tileSize - charHeight) / 2;
@@ -14726,13 +14726,14 @@ function getTileCoordsMain(index) {
 // Coordinate helper for islands
 function getTileCoordsIsland(index) {
   const layout = mbIslandBoardLayout[index];
+  const padding = 20;
   const tileSize = 80;
   const gap = 4;
-  const charWidth = 32;
-  const charHeight = 48;
+  const charWidth = 44;
+  const charHeight = 60;
 
-  const left = layout.col * (tileSize + gap) + (tileSize - charWidth) / 2;
-  const top = layout.row * (tileSize + gap) + (tileSize - charHeight) / 2;
+  const left = padding + layout.col * (tileSize + gap) + (tileSize - charWidth) / 2;
+  const top = padding + layout.row * (tileSize + gap) + (tileSize - charHeight) / 2;
   return { left, top };
 }
 
@@ -14958,13 +14959,11 @@ function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
   } else if (dir === 'down') {
     src = `assets/${char}/${char}_walk_front${suffix}.png`;
   } else { // 'left' or 'right'
-    let fileSuffix = suffix;
     if (char === 'chiikawa' && suffix === '2') {
-      fileSuffix = 'd2'; // chiikawa_walk_sid2.png
+      src = `assets/${char}/${char}_walk_sid2.png`;
     } else {
-      fileSuffix = 'e' + suffix; // walk_side1 or walk_side2
+      src = `assets/${char}/${char}_walk_side${suffix}.png`;
     }
-    src = `assets/${char}/${char}_walk_sid${fileSuffix}.png`;
 
     if (dir === 'right') {
       transform = 'scaleX(-1)';
@@ -15018,7 +15017,9 @@ function positionCharacterAtIsland(islandId, index) {
 }
 
 function syncMonopolyStats() {
-  // Sync gems wallet
+  // Sync gems and coins wallet
+  const hCoins = document.getElementById("mbHeaderCoins");
+  if (hCoins) hCoins.textContent = crownCount.toLocaleString();
   const hGems = document.getElementById("mbHeaderGems");
   if (hGems) hGems.textContent = gemsCount.toLocaleString();
   const fGems = document.getElementById("mbFooterGems");
@@ -15239,8 +15240,8 @@ function animateCharacterWalk(steps) {
         img.src = idle;
         img.style.transform = "scaleX(1)";
 
-        // Bridge retraction cinematic
-        playBridgeRetractCinematic(isId);
+        // Bridge retraction cinematic (carries remaining steps back to main board)
+        playBridgeRetractCinematic(isId, remaining);
         return;
       }
 
@@ -15600,7 +15601,10 @@ function showCrateRewardPopup(item, rank, isDuplicate) {
   itemDisplay.innerHTML = getGachaItemImageHtml(item, 90);
 
   document.getElementById("mbCrateItemName").textContent = item.name;
-  document.getElementById("mbCrateItemType").textContent = item.type === "effect" ? "BLAST EFFECT" : "BOMB SKIN";
+  let typeText = "BOMB SKIN";
+  if (item.type === "effect") typeText = "BLAST EFFECT";
+  else if (item.type === "coins") typeText = "COINS";
+  document.getElementById("mbCrateItemType").textContent = typeText;
 
   const rankEl = document.getElementById("mbCrateRank");
   rankEl.className = `mb-popup-rank rank-${rank.toLowerCase()}`;
@@ -15687,8 +15691,10 @@ function triggerBridgeTravelSequence(islandId) {
   }, 1900);
 }
 
-function playBridgeRetractCinematic(islandId) {
+function playBridgeRetractCinematic(islandId, remainingSteps = 0) {
   mbMoving = true;
+  // Zoom out camera zoom on retract start
+  updateCameraZoom(false);
 
   const destLabel = "Returning to Main Board";
   document.getElementById("mbBridgeDestLabel").textContent = destLabel;
@@ -15707,6 +15713,11 @@ function playBridgeRetractCinematic(islandId) {
     planks.appendChild(p);
   }
 
+  // Portal tile mappings: Island 1 -> portal at index 4, Island 2 -> portal at index 16
+  const portalIndex = islandId === 1 ? 4 : 16;
+  mbMainIndex = portalIndex;
+  localStorage.setItem('mb_main_index', mbMainIndex.toString());
+
   setTimeout(() => {
     cinematic.classList.add("hidden");
 
@@ -15717,10 +15728,13 @@ function playBridgeRetractCinematic(islandId) {
     mbCurrentBoard = 'main';
     positionCharacterAt(mbMainIndex);
 
-    mbMoving = false;
-
-    checkQueueOrUnlockRoll();
-
+    if (remainingSteps > 0) {
+      // Continue walking remaining steps on main board
+      animateCharacterWalk(remainingSteps);
+    } else {
+      mbMoving = false;
+      handleTileLanding();
+    }
   }, 1900);
 }
 
