@@ -2953,7 +2953,7 @@ function renderLocalFourPlayerLobby() {
     if (slot) {
       const style = characterStyle[slot.kind] || characterStyle.chiikawa;
       card.innerHTML = `
-        <img src="assets/lobby cards/${slot.kind} character card.png" alt="${escapeHTML(style.label)}" />
+        <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" />
         <strong>P${i + 1} ${escapeHTML(style.label)}</strong>
         <span>Tap to change / hold remove</span>
       `;
@@ -2996,7 +2996,7 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
       <div class="card-inner-skew">
         <button class="local-four-remove" type="button" aria-label="Remove P${index + 1}" ${index === 0 ? "hidden" : ""}>x</button>
         <div class="squad-card-image-container">
-          <img src="assets/lobby cards/${slot.kind} character card.png" alt="${escapeHTML(style.label)}" />
+          <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" />
         </div>
       </div>
       <div class="card-footer-bar">
@@ -3922,9 +3922,9 @@ function updateProgressionUI() {
   // Centered Premium Play Card updates
   const playCardImg = document.getElementById("playCharacterCardImg");
   if (playCardImg) {
-    const src = `assets/lobby cards/${selectedCharacter} character card.png`;
-    if (!playCardImg.src.endsWith(src)) {
-      playCardImg.src = src;
+    const cardPath = getCharacterCardPath(selectedCharacter);
+    if (!playCardImg.src.endsWith(cardPath)) {
+      playCardImg.src = cardPath;
     }
   }
   const playCharName = document.getElementById("playCharName");
@@ -7258,8 +7258,11 @@ function syncSquadLobbyInterface() {
     userNameEl.textContent = getActivePlayerName();
   }
   const img = document.getElementById("squadLobbyCharImg");
-  if (img && !img.src.endsWith(`/lobby cards/${selectedCharacter} character card.png`)) {
-    img.src = `assets/lobby cards/${selectedCharacter} character card.png`;
+  if (img) {
+    const cardPath = getCharacterCardPath(selectedCharacter);
+    if (!img.src.endsWith(cardPath)) {
+      img.src = cardPath;
+    }
   }
 
   // Teammates-only filtering: must share the same squadCode and not be bots
@@ -7279,7 +7282,7 @@ function syncSquadLobbyInterface() {
       leftCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
           </div>
         </div>
         <div class="card-footer-bar">
@@ -7319,7 +7322,7 @@ function syncSquadLobbyInterface() {
       rightCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
           </div>
         </div>
         <div class="card-footer-bar">
@@ -7360,7 +7363,7 @@ function syncSquadLobbyInterface() {
         fourthCard.innerHTML = `
           <div class="card-inner-skew">
             <div class="squad-card-image-container">
-              <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+              <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
             </div>
           </div>
           <div class="card-footer-bar">
