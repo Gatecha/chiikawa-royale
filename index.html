@@ -3079,15 +3079,30 @@
         <!-- Floating tooltip card -->
         <div id="mbTutCard" class="mb-tut-card">
           <div class="mb-tut-card-glow"></div>
-          <div class="mb-tut-step-badge" id="mbTutBadge">1 / 6</div>
-          <div class="mb-tut-icon" id="mbTutIcon">🎲</div>
+          <div class="mb-tut-step-badge" id="mbTutBadge">1 / 5</div>
+          <div class="mb-tut-icon" id="mbTutIcon">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l7.5 4.5v9L12 20l-7.5-4.5v-9L12 2z" />
+              <path d="M12 22V12" />
+              <path d="M12 12l7.5-4.5" />
+              <path d="M12 12l-7.5-4.5" />
+            </svg>
+          </div>
           <h3 class="mb-tut-title" id="mbTutTitle">Welcome to the Draw Board!</h3>
           <p class="mb-tut-desc" id="mbTutDesc">Spin the dice, walk across the board and land on crates to win bomb skins, blast effects, and coins.</p>
 
           <!-- Free pull gift banner (only step 0) -->
           <div class="mb-tut-gift" id="mbTutGift">
             <div class="mb-tut-gift-inner">
-              <span class="mb-tut-gift-icon">🎁</span>
+              <span class="mb-tut-gift-icon" style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 12 20 22 4 22 4 12"/>
+                  <rect x="2" y="7" width="20" height="5"/>
+                  <line x1="12" y1="22" x2="12" y2="7"/>
+                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                </svg>
+              </span>
               <div>
                 <div class="mb-tut-gift-title">Welcome Gift!</div>
                 <div class="mb-tut-gift-sub">You have received <strong>1 Free Roll</strong></div>

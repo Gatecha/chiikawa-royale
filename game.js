@@ -1,4 +1,4 @@
-﻿// =================================================================
+// =================================================================
 // DEBUG LOG SYSTEM — intercepts errors and console.error/warn
 // =================================================================
 (function() {
@@ -16117,13 +16117,13 @@ function triggerBoardModAnimation() {
   // Phase 1: glitch flicker all tiles
   allTiles.forEach(function(t) { t.classList.add("mb-tile-board-glitch"); });
 
-  // Phase 2: replace every non-corner/start tile icon + label with S-CLASS
+  // Phase 2: replace every non-start tile icon + label with S-CLASS (including corner/REST tiles)
   setTimeout(function() {
     var sclassSvg = getTileIconSvg('sclass');
     allTiles.forEach(function(t, i) {
       t.classList.remove("mb-tile-board-glitch");
       var cfg = mbMainTilesConfig[i];
-      if (cfg && cfg.type !== 'start' && cfg.type !== 'corner') {
+      if (cfg && cfg.type !== 'start') {
         t.classList.remove('mb-tile-common','mb-tile-rare','mb-tile-rest','mb-tile-dice','mb-tile-portal','mb-tile-secret');
         t.classList.add('mb-tile-sclass','mb-tile-board-mod-s');
         t.innerHTML = sclassSvg + '<span class="mb-tile-label">S-CLASS</span><span class="mb-tile-stepnum">' + i + '</span>';
@@ -16139,7 +16139,7 @@ function revertBoardModTiles() {
   allTiles.forEach(function(t, i) {
     t.classList.remove("mb-tile-board-mod-s");
     var cfg = mbMainTilesConfig[i];
-    if (cfg && cfg.type !== 'start' && cfg.type !== 'corner') {
+    if (cfg && cfg.type !== 'start') {
       t.classList.remove('mb-tile-sclass');
       t.className = 'mb-tile ' + getTileClass(cfg.type);
       t.innerHTML = getTileIconSvg(cfg.type) + '<span class="mb-tile-label">' + cfg.label + '</span><span class="mb-tile-stepnum">' + i + '</span>';
@@ -16171,6 +16171,23 @@ var _mbTutSteps = [
   { id:"mbRoll1Btn",       title:"You're All Set!",            body:"We've given you 1 FREE ROLL to kick things off. Good luck!", gift:false }
 ];
 
+function _getMbTutIconSvg(step) {
+  switch (step) {
+    case 0:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5" fill="#ffd86f"/><circle cx="15.5" cy="15.5" r="1.5" fill="#ffd86f"/></svg>';
+    case 1:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
+    case 2:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    case 3:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>';
+    case 4:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+    default:
+      return '';
+  }
+}
+
 function showMbTutStep(step) {
   mbTutorialStep = step;
   var data = _mbTutSteps[step];
@@ -16179,6 +16196,7 @@ function showMbTutStep(step) {
   if (gel("mbTutBadge"))    gel("mbTutBadge").textContent    = (step+1) + " / " + _mbTutSteps.length;
   if (gel("mbTutTitle"))    gel("mbTutTitle").textContent    = data.title;
   if (gel("mbTutDesc"))     gel("mbTutDesc").textContent     = data.body;
+  if (gel("mbTutIcon"))     gel("mbTutIcon").innerHTML       = _getMbTutIconSvg(step);
   if (gel("mbTutGift"))     gel("mbTutGift").classList.toggle("hidden", !data.gift);
   if (gel("mbTutNextLabel"))gel("mbTutNextLabel").textContent = step === _mbTutSteps.length - 1 ? "Start Rolling!" : "Next";
 
@@ -16199,18 +16217,35 @@ function showMbTutStep(step) {
     var t2 = r.top  - or.top  - pad;
     var w  = r.width  + pad*2;
     var h  = r.height + pad*2;
-    spotlight.style.cssText = "left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
-    if (ring) ring.style.cssText = "left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
-    if (card) {
-      setTimeout(function(){
-        var cw = card.offsetWidth  || 300;
-        var ch = card.offsetHeight || 200;
-        var cl = l + w/2 - cw/2;
-        cl = Math.max(10, Math.min(cl, or.width - cw - 10));
-        var below = or.height - (t2 + h);
-        var ct = below > ch + 20 ? t2 + h + 14 : t2 - ch - 14;
-        card.style.cssText = "left:"+cl+"px;top:"+ct+"px;";
-      }, 30);
+    
+    if (step === 0) {
+      // First step: No spotlight transparent hole, card in the exact center of overlay
+      spotlight.style.cssText = "display:none;";
+      if (ring) ring.style.cssText = "display:none;";
+      if (card) {
+        setTimeout(function(){
+          var cw = card.offsetWidth  || 300;
+          var ch = card.offsetHeight || 220;
+          var cl = (or.width - cw) / 2;
+          var ct = (or.height - ch) / 2;
+          card.style.cssText = "left:" + cl + "px;top:" + ct + "px;";
+        }, 30);
+      }
+    } else {
+      // Other steps: Normal spotlight cutout and relative card positioning
+      spotlight.style.cssText = "display:block;left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
+      if (ring) ring.style.cssText = "display:block;left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
+      if (card) {
+        setTimeout(function(){
+          var cw = card.offsetWidth  || 300;
+          var ch = card.offsetHeight || 200;
+          var cl = l + w/2 - cw/2;
+          cl = Math.max(10, Math.min(cl, or.width - cw - 10));
+          var below = or.height - (t2 + h);
+          var ct = below > ch + 20 ? t2 + h + 14 : t2 - ch - 14;
+          card.style.cssText = "left:"+cl+"px;top:"+ct+"px;";
+        }, 30);
+      }
     }
   }
 }
