@@ -15051,9 +15051,9 @@ function triggerDiceRollSequence() {
 
   dice3d.style.setProperty('--dice-final-rot', rotMap[steps]);
 
-  // Construct dots inside face helper
+  // Construct dots inside face helper (accurate mapping)
   const faces = ['front', 'back', 'right', 'left', 'top', 'bot'];
-  const dotCounts = [1, 6, 3, 4, 2, 5]; // match faces config
+  const dotCounts = [1, 2, 3, 4, 5, 6]; // match faces configurations accurately
   faces.forEach((f, idx) => {
     const el = dice3d.querySelector(`.mb-dface-${f}`);
     if (el) {
@@ -15091,6 +15091,9 @@ function triggerDiceRollSequence() {
 function animateCharacterWalk(steps) {
   mbMoving = true;
   let remaining = steps;
+
+  // Initialize camera tracking zoom
+  updateCameraZoom(true, mbMainIndex);
 
   const char = selectedCharacter || "chiikawa";
   const idle = `assets/${char}/${char}_idle.png`;
@@ -15135,6 +15138,9 @@ function animateCharacterWalk(steps) {
       img.src = walkInfo.src;
       img.style.transform = walkInfo.transform;
 
+      // Update camera follow center
+      updateCameraZoom(true, mbMainIndex);
+
     } else if (mbCurrentBoard === 'island1' || mbCurrentBoard === 'island2') {
       const isId = mbCurrentBoard === 'island1' ? 1 : 2;
       let curIdx = mbCurrentBoard === 'island1' ? mbIsland1Index : mbIsland2Index;
@@ -15171,6 +15177,9 @@ function animateCharacterWalk(steps) {
       const img = document.getElementById(`mbIslandCharImg${isId}`);
       img.src = walkInfo.src;
       img.style.transform = walkInfo.transform;
+
+      // Update camera follow center on island platform
+      updateCameraZoom(true);
     }
 
     frameTick = !frameTick;
@@ -15185,6 +15194,9 @@ function animateCharacterWalk(steps) {
 }
 
 function handleTileLanding() {
+  // Zoom out camera
+  updateCameraZoom(false);
+
   // Set character back to idle image and default rotation
   const char = selectedCharacter || "chiikawa";
   const idleFile = `assets/${char}/${char}_idle.png`;
@@ -15549,4 +15561,75 @@ function closeFreePullPopup() {
   document.getElementById("mbFreePullPopup").classList.add("hidden");
   checkQueueOrUnlockRoll();
 }
+
+// Camera tracking zoom helper
+function updateCameraZoom(zoomIn, index) {
+  const mainContainer = document.getElementById("mbBoardContainer");
+  if (!mainContainer) return;
+  
+  if (zoomIn) {
+    let coords;
+    if (mbCurrentBoard === 'main') {
+      coords = getTileCoordsMain(index !== undefined ? index : mbMainIndex);
+      const x = coords.left + 16;
+      const y = coords.top + 24;
+      mainContainer.style.transition = "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
+      mainContainer.style.transformOrigin = `${x}px ${y}px`;
+      mainContainer.style.transform = "perspective(1000px) rotateX(8deg) scale(1.6)";
+    } else {
+      const isId = mbCurrentBoard === 'island1' ? 1 : 2;
+      const plat = document.querySelector(`.mb-island-plat-${isId === 1 ? 'gold' : 'purple'}`);
+      if (plat) {
+        const idx = mbCurrentBoard === 'island1' ? mbIsland1Index : mbIsland2Index;
+        coords = getTileCoordsIsland(idx);
+        const x = coords.left + 16;
+        const y = coords.top + 24;
+        plat.style.transition = "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
+        plat.style.transformOrigin = `${x}px ${y}px`;
+        plat.style.transform = "scale(1.4)";
+      }
+    }
+  } else {
+    // Reset main board container
+    mainContainer.style.transition = "transform 0.5s ease, transform-origin 0.5s ease";
+    mainContainer.style.transform = "perspective(1000px) rotateX(8deg) scale(1)";
+    mainContainer.style.transformOrigin = "center top";
+    
+    // Reset island platforms
+    document.querySelectorAll(".mb-island-platform").forEach(plat => {
+      plat.style.transition = "transform 0.5s ease, transform-origin 0.5s ease";
+      plat.style.transform = "scale(1)";
+      plat.style.transformOrigin = "center center";
+    });
+  }
+}
+
+// 3D Parallax Tilt Hover effect
+document.addEventListener("DOMContentLoaded", () => {
+  const world = document.getElementById("mbBoardWorld");
+  if (world) {
+    world.style.transformStyle = "preserve-3d";
+    world.addEventListener("mousemove", (e) => {
+      if (mbMoving || mbRolling) return; // disable during active moves/rolls
+      const rect = world.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const normX = (x / rect.width) - 0.5;
+      const normY = (y / rect.height) - 0.5;
+      
+      const tiltX = -normY * 12; // tilt up to 12 degrees
+      const tiltY = normX * 12;  // tilt up to 12 degrees
+      
+      world.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+      world.style.transition = "transform 0.1s ease";
+    });
+    
+    world.addEventListener("mouseleave", () => {
+      world.style.transform = "none";
+      world.style.transition = "transform 0.5s ease";
+    });
+  }
+});
+
 
