@@ -1,4 +1,4 @@
-// =================================================================
+﻿// =================================================================
 // DEBUG LOG SYSTEM — intercepts errors and console.error/warn
 // =================================================================
 (function() {
@@ -14769,6 +14769,7 @@ function openMonopolyBoard() {
       mbOverlay.classList.remove("hidden");
     }
     initMonopolyBoardUI();
+    if (!localStorage.getItem("mb_tutorial_completed")) { setTimeout(function(){ if (typeof startMonopolyTutorial === "function") startMonopolyTutorial(); }, 600); }
   }, 300);
 
   setTimeout(() => {
@@ -15523,38 +15524,18 @@ function drawMonopolyReward(rarity) {
     rank = 'A';
     isItem = false;
   }
-  // 4. Normal rates check
+    // 4. Normal rates  (common ~5% item overall, rare ~18%, sclass ~90%)
   else {
     const roll = Math.random();
     if (rarity === 'common') {
-      // 85% A-Class, 15% S-Class
-      if (roll < 0.15) {
-        rank = 'S';
-        // Common crate: 10% S-class item, 90% S-class 1000 Coins
-        isItem = Math.random() < 0.10;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      if (roll < 0.15) { rank = 'S'; isItem = Math.random() < 0.35; }
+      else { rank = 'A'; isItem = false; }
     } else if (rarity === 'rare') {
-      // 70% A-Class, 30% S-Class
-      if (roll < 0.30) {
-        rank = 'S';
-        // Rare crate: 20% S-class item, 80% S-class 1000 Coins
-        isItem = Math.random() < 0.20;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      if (roll < 0.30) { rank = 'S'; isItem = Math.random() < 0.60; }
+      else { rank = 'A'; isItem = false; }
     } else if (rarity === 'sclass') {
-      // 90% S-Class item, 10% A-Class coins
-      if (roll < 0.90) {
-        rank = 'S';
-        isItem = true;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      if (roll < 0.90) { rank = 'S'; isItem = true; }
+      else { rank = 'A'; isItem = false; }
     }
   }
 
@@ -15762,58 +15743,69 @@ function toggleGachaSpeed() {
 function triggerMonopolySkip() {
   if (!mbRolling && !mbMoving && mbRollQueue === 0) return;
 
-  if (mbWalkTimeout) {
-    clearTimeout(mbWalkTimeout);
-    mbWalkTimeout = null;
-  }
+  // Cancel any pending walk timeouts
+  if (mbWalkTimeout) { clearTimeout(mbWalkTimeout); mbWalkTimeout = null; }
 
-  // Bug fix: the in-flight roll already drew one reward via drawMonopolyReward.
-  // Only draw silently for the REMAINING queued rolls (queue - 1 since current
-  // roll is already in progress and will be accounted for on landing).
-  // We set queue to 0 first so auto-close logic doesn’t fire during skip.
-  const remainingToSimulate = Math.max(0, mbRollQueue - 1);
+  // Draw silently for ALL remaining rolls in queue (including the current in-flight one
+  // which may not have landed yet — we simulate it here and block its landing callback).
+  const toSimulate = Math.max(0, mbRollQueue);
+  const wasQueueType = mbSummaryQueueType;
+
+  // Lock everything so in-flight callbacks no-op when they fire
   mbRollQueue = 0;
+  mbRolling = false;
+  mbMoving = false;
 
-  for (let i = 0; i < remainingToSimulate; i++) {
+  // Simulate all remaining steps + draw
+  for (let i = 0; i < toSimulate; i++) {
     const steps = Math.floor(Math.random() * 6) + 1;
     mbMainIndex = (mbMainIndex + steps) % 28;
     localStorage.setItem('mb_main_index', mbMainIndex.toString());
-
     const tile = mbMainTilesConfig[mbMainIndex];
     let rarity = "common";
     if (tile.type === "rare") rarity = "rare";
     else if (tile.type === "sclass") rarity = "sclass";
     else if (tile.type === "portal1" || tile.type === "portal2") rarity = "rare";
-
     drawMonopolyRewardSilently(rarity);
   }
 
-  // Hide gacha overlays
-  document.getElementById("mbDiceOverlay")?.classList.add("hidden");
-  document.getElementById("mbClassReveal")?.classList.add("hidden");
-  document.getElementById("mbCratePopup")?.classList.add("hidden");
-  document.getElementById("mbGachaControls")?.classList.add("hidden");
+  // Hide ALL gacha overlays and controls
+  ["mbDiceOverlay","mbClassReveal","mbCratePopup","mbGachaControls","mbDice3d"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
 
-  // Reset zoom
   updateCameraZoom(false);
-
-  // Position character at final tile
   positionCharacterAt(mbMainIndex);
-
-  mbRolling = false;
-  mbMoving = false;
-
   syncMonopolyStats();
 
-  if (mbSummaryQueueType === 10) {
+  // Show appropriate summary
+  if (wasQueueType === 10) {
+    // Ensure exactly 10 results (pad if we skipped mid-way)
+    while (mbRoll10Results.length < 10) {
+      mbRoll10Results.push(mbRoll10Results[mbRoll10Results.length - 1] || { item: { id:"coins", name:"Coins", color:"gold", type:"coins" }, rank:"A" });
+    }
     showRoll10SummaryOverlay();
   } else {
-    // Show single card popup for Roll 1 skip
+    // 1x pull: show last result popup ONCE with claim button
     const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
     if (lastResult) {
-      // Force show the popup with claim button visible (not auto-close)
-      mbSummaryQueueType = 1;
-      showCrateRewardPopup(lastResult.item, lastResult.rank, false);
+      mbSummaryQueueType = 0; // sentinel so claimMonopolyReward won't re-trigger summary
+      const popup = document.getElementById("mbCratePopup");
+      const itemDisplay = document.getElementById("mbCrateItemDisplay");
+      const claimBtn = document.getElementById("mbCrateClaimBtn");
+      if (popup && itemDisplay) {
+        itemDisplay.innerHTML = getGachaItemImageHtml(lastResult.item, 90);
+        document.getElementById("mbCrateItemName").textContent = lastResult.item.name;
+        var typeText = lastResult.item.type === "effect" ? "BLAST EFFECT" : lastResult.item.type === "coins" ? "COINS" : "BOMB SKIN";
+        document.getElementById("mbCrateItemType").textContent = typeText;
+        var rankEl = document.getElementById("mbCrateRank");
+        if (rankEl) { rankEl.className = "mb-popup-rank rank-" + lastResult.rank.toLowerCase(); rankEl.innerHTML = lastResult.rank + "<br><small>RANK</small>"; }
+        var gemsBonus = document.getElementById("mbCrateGemsBonus");
+        if (gemsBonus) gemsBonus.classList.add("hidden");
+        if (claimBtn) claimBtn.style.display = "";
+        popup.classList.remove("hidden");
+      }
     }
   }
 }
@@ -15822,6 +15814,10 @@ function showRoll10SummaryOverlay() {
   const popup = document.getElementById("mbSummaryPopup");
   if (!popup) return;
 
+  // Guard: hide crate popup first so it doesn't show under the summary
+  var cratePopup = document.getElementById("mbCratePopup");
+  if (cratePopup) cratePopup.classList.add("hidden");
+
   const grid = document.getElementById("mbSummaryGrid");
   grid.innerHTML = "";
 
@@ -15829,10 +15825,8 @@ function showRoll10SummaryOverlay() {
     const card = document.createElement("div");
     card.className = `mb-summary-card rank-${res.rank.toLowerCase()}`;
     card.style.setProperty('--card-delay', `${i * 80}ms`);
-
     let iconHtml = getGachaItemImageHtml(res.item, 52);
     const isS = res.rank === 'S';
-
     card.innerHTML = `
       <div class="mb-sc-shine"></div>
       <div class="mb-sc-rank-badge rank-${res.rank.toLowerCase()}">${res.rank}</div>
@@ -15844,13 +15838,15 @@ function showRoll10SummaryOverlay() {
   });
 
   popup.classList.remove("hidden");
-
   if (typeof playSound === "function") playSound("victory_royale");
 }
 
 function closeRoll10Summary() {
   const popup = document.getElementById("mbSummaryPopup");
   if (popup) popup.classList.add("hidden");
+  // Clear results so they can't re-fire
+  mbRoll10Results = [];
+  mbSummaryQueueType = 1;
   syncMonopolyStats();
 }
 
@@ -15900,24 +15896,22 @@ function showCrateRewardPopup(item, rank, isDuplicate) {
 }
 
 function claimMonopolyReward() {
-  const popup = document.getElementById("mbCratePopup");
+  var popup = document.getElementById("mbCratePopup");
   if (popup) popup.classList.add("hidden");
-
+  // Sentinel 0 = skipped 1x pull - just close, do not trigger further rolls or 10x summary
+  if (mbSummaryQueueType === 0) { mbRoll10Results = []; mbSummaryQueueType = 1; syncMonopolyStats(); return; }
   checkQueueOrUnlockRoll();
 }
 
 function checkQueueOrUnlockRoll() {
   if (mbRollQueue > 1) {
     mbRollQueue--;
-    // Auto trigger next roll
-    setTimeout(() => {
-      triggerDiceRollSequence();
-    }, 500 / mbSpeedMultiplier);
+    setTimeout(function() { triggerDiceRollSequence(); }, 500 / mbSpeedMultiplier);
   } else {
     mbRollQueue = 0;
-    document.getElementById("mbGachaControls")?.classList.add("hidden");
+    var ctrl = document.getElementById("mbGachaControls");
+    if (ctrl) ctrl.classList.add("hidden");
     syncMonopolyStats();
-
     if (mbSummaryQueueType === 10) {
       showRoll10SummaryOverlay();
     }
@@ -16087,6 +16081,7 @@ document.addEventListener("DOMContentLoaded", () => {
     world.style.transformStyle = "preserve-3d";
     world.addEventListener("mousemove", (e) => {
       if (mbMoving || mbRolling) return; // disable during active moves/rolls
+      if (mbCurrentBoard !== "main") { world.style.transform = "none"; return; } // no tilt on islands
       const rect = world.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -16112,38 +16107,124 @@ document.addEventListener("DOMContentLoaded", () => {
 // Board Modification Animation  (triggered at pity roll 49)
 // ─────────────────────────────────────────────────────────────────────────────
 function triggerBoardModAnimation() {
-  showToastMsg("⚠️ BOARD MODIFICATION INCOMING! Next pull guaranteed S-Class!");
-
+  showToastMsg("BOARD MODIFICATION INCOMING! Next pull guaranteed S-Class!");
   const tilesContainer = document.getElementById("mbTiles");
   if (!tilesContainer) return;
-
   const allTiles = Array.from(tilesContainer.children);
 
-  // Phase 1 – glitch flicker on all tiles
-  allTiles.forEach((t, i) => {
-    t.classList.add("mb-tile-board-glitch");
-  });
+  // Phase 1: glitch flicker all tiles
+  allTiles.forEach(function(t) { t.classList.add("mb-tile-board-glitch"); });
 
-  // Phase 2 – after glitch, convert every tile label/icon to S-CLASS style
-  setTimeout(() => {
-    allTiles.forEach((t, i) => {
+  // Phase 2: replace every non-corner/start tile icon + label with S-CLASS
+  setTimeout(function() {
+    var sclassSvg = getTileIconSvg('sclass');
+    allTiles.forEach(function(t, i) {
       t.classList.remove("mb-tile-board-glitch");
-      // Keep start/corner tiles neutral; convert everything else to S-class glow
-      const cfg = mbMainTilesConfig[i];
+      var cfg = mbMainTilesConfig[i];
       if (cfg && cfg.type !== 'start' && cfg.type !== 'corner') {
-        t.classList.add("mb-tile-board-mod-s");
+        t.classList.remove('mb-tile-common','mb-tile-rare','mb-tile-rest','mb-tile-dice','mb-tile-portal','mb-tile-secret');
+        t.classList.add('mb-tile-sclass','mb-tile-board-mod-s');
+        t.innerHTML = sclassSvg + '<span class="mb-tile-label">S-CLASS</span><span class="mb-tile-stepnum">' + i + '</span>';
       }
     });
   }, 900);
 }
 
 function revertBoardModTiles() {
-  const tilesContainer = document.getElementById("mbTiles");
+  var tilesContainer = document.getElementById("mbTiles");
   if (!tilesContainer) return;
-
-  const allTiles = Array.from(tilesContainer.children);
-  allTiles.forEach(t => {
+  var allTiles = Array.from(tilesContainer.children);
+  allTiles.forEach(function(t, i) {
     t.classList.remove("mb-tile-board-mod-s");
+    var cfg = mbMainTilesConfig[i];
+    if (cfg && cfg.type !== 'start' && cfg.type !== 'corner') {
+      t.classList.remove('mb-tile-sclass');
+      t.className = 'mb-tile ' + getTileClass(cfg.type);
+      t.innerHTML = getTileIconSvg(cfg.type) + '<span class="mb-tile-label">' + cfg.label + '</span><span class="mb-tile-stepnum">' + i + '</span>';
+    }
   });
+}
+
+// =============================================================================
+// Monopoly Gacha Tutorial - shown ONCE to brand-new players only
+// =============================================================================
+var mbTutorialStep = 0;
+
+function startMonopolyTutorial() {
+  if (localStorage.getItem("mb_tutorial_completed") === "true") return;
+  // Gift 1 free pull
+  mbFreePulls = Math.max(mbFreePulls, 1);
+  localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+  syncMonopolyStats();
+  var overlay = document.getElementById("mbTutorialOverlay");
+  if (overlay) overlay.classList.remove("hidden");
+  showMbTutStep(0);
+}
+
+var _mbTutSteps = [
+  { id:"mbBoardContainer", title:"Welcome to the Draw Board!", body:"Roll the dice, land on crates and win bomb skins, blast effects & coins.", gift:true  },
+  { id:"mbPityCol",        title:"Pity Guarantee Tracks",      body:"A-Class guaranteed every 5 rolls, S-Class every 10. Hit 50 pity and every tile becomes S-Class!", gift:false },
+  { id:"mbCharPiece",      title:"Your Avatar Piece",          body:"Your character walks across the board based on the dice roll.", gift:false },
+  { id:"mbHeaderGems",     title:"Gems & Coins",               body:"1 roll = 300 gems, 10x = 2700 gems. Coins from rewards can be spent in the wardrobe shop!", gift:false },
+  { id:"mbRoll1Btn",       title:"You're All Set!",            body:"We've given you 1 FREE ROLL to kick things off. Good luck!", gift:false }
+];
+
+function showMbTutStep(step) {
+  mbTutorialStep = step;
+  var data = _mbTutSteps[step];
+  if (!data) { finishMbTutorial(); return; }
+  var gel = function(id) { return document.getElementById(id); };
+  if (gel("mbTutBadge"))    gel("mbTutBadge").textContent    = (step+1) + " / " + _mbTutSteps.length;
+  if (gel("mbTutTitle"))    gel("mbTutTitle").textContent    = data.title;
+  if (gel("mbTutDesc"))     gel("mbTutDesc").textContent     = data.body;
+  if (gel("mbTutGift"))     gel("mbTutGift").classList.toggle("hidden", !data.gift);
+  if (gel("mbTutNextLabel"))gel("mbTutNextLabel").textContent = step === _mbTutSteps.length - 1 ? "Start Rolling!" : "Next";
+
+  document.querySelectorAll(".mb-tut-target-glow").forEach(function(e){ e.classList.remove("mb-tut-target-glow"); });
+  var target = gel(data.id);
+  if (target) target.classList.add("mb-tut-target-glow");
+
+  // Position spotlight
+  var spotlight = gel("mbTutSpotlight");
+  var ring      = gel("mbTutHighlightRing");
+  var card      = gel("mbTutCard");
+  var overlayEl = gel("mbTutorialOverlay");
+  if (target && spotlight && overlayEl) {
+    var r  = target.getBoundingClientRect();
+    var or = overlayEl.getBoundingClientRect();
+    var pad = 8;
+    var l  = r.left - or.left - pad;
+    var t2 = r.top  - or.top  - pad;
+    var w  = r.width  + pad*2;
+    var h  = r.height + pad*2;
+    spotlight.style.cssText = "left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
+    if (ring) ring.style.cssText = "left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
+    if (card) {
+      setTimeout(function(){
+        var cw = card.offsetWidth  || 300;
+        var ch = card.offsetHeight || 200;
+        var cl = l + w/2 - cw/2;
+        cl = Math.max(10, Math.min(cl, or.width - cw - 10));
+        var below = or.height - (t2 + h);
+        var ct = below > ch + 20 ? t2 + h + 14 : t2 - ch - 14;
+        card.style.cssText = "left:"+cl+"px;top:"+ct+"px;";
+      }, 30);
+    }
+  }
+}
+
+function advanceMbTutorial() {
+  if (mbTutorialStep < _mbTutSteps.length - 1) {
+    showMbTutStep(mbTutorialStep + 1);
+  } else {
+    finishMbTutorial();
+  }
+}
+
+function finishMbTutorial() {
+  localStorage.setItem("mb_tutorial_completed", "true");
+  var overlay = document.getElementById("mbTutorialOverlay");
+  if (overlay) overlay.classList.add("hidden");
+  document.querySelectorAll(".mb-tut-target-glow").forEach(function(e){ e.classList.remove("mb-tut-target-glow"); });
 }
 
