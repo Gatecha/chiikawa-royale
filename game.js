@@ -5245,6 +5245,10 @@ function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0,
       size = canvasWidth * 0.92;
     }
     
+    if (kind === "magical_chiikawa" || kind === "magical_hachiware" || kind === "magical_usagi") {
+      size *= 1.60;
+    }
+    
     if (isWalking) {
       // Walking animation
       let frame1, frame2;
