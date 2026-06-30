@@ -432,6 +432,14 @@ function handleMessage(ws, msg) {
       break;
     }
 
+    case "fill_match_with_bots": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
+      clearMatchmakingTimers(room);
+      fillAllRemainingWithBots(room);
+      break;
+    }
+
     case "remove_bot": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.hostId !== ws.id || room.state !== "lobby") return;

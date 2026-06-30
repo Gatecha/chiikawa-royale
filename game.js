@@ -52,6 +52,12 @@ window._closeBattleGuide = function() {
   }
 };
 
+function dismissMenuTutorialGuide() {
+  const guideEl = document.getElementById("menuTutorialGuide");
+  if (guideEl) guideEl.classList.remove("active");
+  if (typeof removeLobbyPulseOverlay === "function") removeLobbyPulseOverlay();
+}
+
 // =================================================================
 // CANVAS-BASED CHARACTER FRAME PRE-CAPTURE (smooth yoyo, no seek-stutter)
 // =================================================================
@@ -612,10 +618,24 @@ let lastMenuDrawTime = 0;
 
 function getVideoSrc(baseSrc, forceHighQuality = false) {
   if (!baseSrc) return "";
+  if (window.electronAPI?.isElectron) return baseSrc;
   if (graphicsQuality === "high" || forceHighQuality) {
     return baseSrc.replace(".mp4", "_high.mp4");
   }
   return baseSrc;
+}
+
+function installVideoFallback(videoEl, baseSrc) {
+  if (!videoEl || !baseSrc || videoEl.dataset.fallbackInstalled === baseSrc) return;
+  videoEl.dataset.fallbackInstalled = baseSrc;
+  videoEl.addEventListener("error", () => {
+    const currentSrc = videoEl.currentSrc || videoEl.src || "";
+    const fallbackSrc = baseSrc;
+    if (!currentSrc.includes("_high.mp4") || currentSrc.endsWith(fallbackSrc)) return;
+    videoEl.src = fallbackSrc;
+    videoEl.load();
+    playMutedLoop(videoEl);
+  });
 }
 
 function reloadActiveVideosSettings() {
@@ -623,6 +643,7 @@ function reloadActiveVideosSettings() {
   if (characterSelectVideo) {
     const baseSrc = characterSelectVideos[previewCharacter || selectedCharacter];
     if (baseSrc) {
+      installVideoFallback(characterSelectVideo, baseSrc);
       const targetSrc = getVideoSrc(baseSrc, true); // Force high quality for wardrobe
       if (!characterSelectVideo.src.endsWith(targetSrc)) {
         characterSelectVideo.src = targetSrc;
@@ -636,6 +657,7 @@ function reloadActiveVideosSettings() {
   if (spotlightVideo) {
     const baseSrc = characterSelectVideos[selectedCharacter];
     if (baseSrc) {
+      installVideoFallback(spotlightVideo, baseSrc);
       const targetSrc = getVideoSrc(baseSrc);
       if (!spotlightVideo.src.endsWith(targetSrc)) {
         spotlightVideo.src = targetSrc;
@@ -649,6 +671,7 @@ function reloadActiveVideosSettings() {
   if (squadLobbyVideo) {
     const baseSrc = characterSelectVideos[selectedCharacter];
     if (baseSrc) {
+      installVideoFallback(squadLobbyVideo, baseSrc);
       const targetSrc = getVideoSrc(baseSrc);
       if (!squadLobbyVideo.src.endsWith(targetSrc)) {
         squadLobbyVideo.src = targetSrc;
@@ -1303,6 +1326,7 @@ function syncCharacterSelectPreview(kind) {
   }
 
   if (characterSelectVideo && characterSelectVideos[kind]) {
+    installVideoFallback(characterSelectVideo, characterSelectVideos[kind]);
     const targetSrc = getVideoSrc(characterSelectVideos[kind], true); // Force high quality for wardrobe
     if (!characterSelectVideo.src.endsWith(targetSrc)) {
       characterSelectVideo.src = targetSrc;
@@ -1336,6 +1360,7 @@ function syncCharacterSelectPreview(kind) {
 
 function syncLobbySpotlightVideo(kind) {
   if (!spotlightVideo || !characterSelectVideos[kind]) return;
+  installVideoFallback(spotlightVideo, characterSelectVideos[kind]);
   const targetSrc = getVideoSrc(characterSelectVideos[kind]);
   if (!spotlightVideo.src.endsWith(targetSrc)) {
     spotlightVideo.src = targetSrc;
@@ -1346,6 +1371,7 @@ function syncLobbySpotlightVideo(kind) {
 
 function syncSquadLobbyVideo(kind) {
   if (!squadLobbyVideo || !characterSelectVideos[kind]) return;
+  installVideoFallback(squadLobbyVideo, characterSelectVideos[kind]);
   const targetSrc = getVideoSrc(characterSelectVideos[kind]);
   if (!squadLobbyVideo.src.endsWith(targetSrc)) {
     squadLobbyVideo.src = targetSrc;
@@ -1903,6 +1929,7 @@ function handleServerMessage(msg) {
     }
 
     case "game_started":
+      dismissMenuTutorialGuide();
       if (shouldShowVsBeforeGameStart(data)) {
         showServerVsThenStart(data);
         break;
@@ -2590,7 +2617,9 @@ function startLocalGame() {
   currentActiveRoundPlayers = [];
   
   const mapSelect = document.getElementById("localMapSelect");
-  currentMapType = pendingLocalMapChoice || (mapSelect ? mapSelect.value : "classic");
+  currentMapType = window._tutorialMatchMode
+    ? TUTORIAL_MATCH_MAP_TYPE
+    : (pendingLocalMapChoice || (mapSelect ? mapSelect.value : "classic"));
   pendingLocalMapChoice = null;
   map = buildLocalMap(currentMapType);
   const activeStarts = getStartsForMap(currentMapType);
@@ -3539,7 +3568,7 @@ function localCheckGameEnd() {
     winner.trophies = (winner.trophies || 0) + 1;
   }
   
-  const winThreshold = window._tutorialMatchMode ? 3 : 8;
+  const winThreshold = getLocalMatchTrophyGoal();
   const grandWinner = players.find((p) => (p.trophies || 0) >= winThreshold);
   const tournamentFinished = !!grandWinner;
   
@@ -3548,7 +3577,7 @@ function localCheckGameEnd() {
     stateEl.textContent = `${grandWinner.name} wins the Match! 🏆`;
   }
   
-  showTournamentResults(players, winnerId, tournamentFinished);
+  showTournamentResults(players, winnerId, tournamentFinished, winThreshold);
 }
 
 function awardLocalMatchProgress(playerWon) {
@@ -7687,14 +7716,7 @@ function startOnlineMatchmakingTimer() {
       if (slotsNeeded > 0 && socket && socket.readyState === WebSocket.OPEN) {
         const titleEl = matchmakingPopup ? matchmakingPopup.querySelector(".matchmaking-title") : null;
         if (titleEl) titleEl.textContent = "FILLING WITH BOTS...";
-        // Send one add_bot per missing slot with small stagger
-        for (let i = 0; i < slotsNeeded; i++) {
-          setTimeout(() => {
-            if (isOnlineMatchmakingActive && socket && socket.readyState === WebSocket.OPEN) {
-              sendServerMessage("add_bot");
-            }
-          }, i * 400);
-        }
+        sendServerMessage("fill_match_with_bots");
       }
     }
   }, 1000);
@@ -9000,7 +9022,8 @@ function resetLobbyMapSelectToNormal() {
   if (mapSelect) mapSelect.value = "classic";
 }
 
-function showTournamentResults(playersList, winnerId, tournamentFinished) {
+function showTournamentResults(playersList, winnerId, tournamentFinished, trophyGoalOverride = null) {
+  const trophyGoal = trophyGoalOverride || getLocalMatchTrophyGoal();
   // Sync global players list for drawing avatars
   if (playersList && playersList.length > 0) {
     players = playersList;
@@ -9033,7 +9056,7 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
       }
 
       // Identify grand winner
-      const grandWinner = players.find(p => p.id === winnerId || (p.trophies || 0) >= 8);
+      const grandWinner = players.find(p => p.id === winnerId || (p.trophies || 0) >= trophyGoal);
       const winnerName = grandWinner ? grandWinner.name : "Winner";
       const winnerMsgEl = document.getElementById("grandWinnerMessage");
       if (winnerMsgEl) {
@@ -9078,11 +9101,11 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
           
           const renderTeamCard = (teamTag, members, score) => {
             const card = document.createElement("div");
-            const isWinner = score >= 8 || (winnerId && members.includes(winnerId));
+            const isWinner = score >= trophyGoal || (winnerId && members.includes(winnerId));
             card.className = `result-team-card ${teamTag.toLowerCase()}-theme ${isWinner ? 'winner' : ''}`;
             
             let trophiesHtml = "";
-            for (let i = 1; i <= 8; i++) {
+            for (let i = 1; i <= trophyGoal; i++) {
               if (i < score) {
                 trophiesHtml += `<span class="trophy-slot active"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               } else if (i === score && isWinner) {
@@ -9123,7 +9146,7 @@ function showTournamentResults(playersList, winnerId, tournamentFinished) {
 
             let trophiesHtml = "";
             const trophiesCount = p.trophies || 0;
-            for (let i = 1; i <= 8; i++) {
+            for (let i = 1; i <= trophyGoal; i++) {
               if (i < trophiesCount) {
                 trophiesHtml += `<span class="trophy-slot active"><svg class="svg-trophy-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></span>`;
               } else if (i === trophiesCount && isWinner) {
@@ -10701,10 +10724,11 @@ function showGemClaimRewardModal(amount, description) {
   
   const subEl = document.getElementById("gemRewardSub");
   if (subEl) {
+    const gemIcon = '<svg class="inline-gem-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12l4 6-10 14L2 8z" fill="#b16cff"/></svg>';
     if (description) {
-      subEl.innerHTML = `${description}<br><span style="font-size: 22px; color: #ffd86f; display: block; margin-top: 8px;">💎 +${amount} Gems</span>`;
+      subEl.innerHTML = `${description}<br><span class="gem-reward-amount">${gemIcon} +${amount} Gems</span>`;
     } else {
-      subEl.textContent = `💎 +${amount} Gems`;
+      subEl.innerHTML = `<span class="gem-reward-amount">${gemIcon} +${amount} Gems</span>`;
     }
   }
   
@@ -11057,6 +11081,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const triggerOnlineSessionLobby = () => {
     serverMode = "online";
+    if (isGuestMode) {
+      const guestName = localStorage.getItem("guest_username") || `Guest_${Math.floor(1000 + Math.random() * 9000)}`;
+      localStorage.setItem("guest_username", guestName);
+      localStorage.setItem("local_username", guestName);
+      currentSocialUsername = guestName;
+      if (usernameInput) usernameInput.value = guestName;
+      if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = guestName;
+      updateProgressionUI();
+      connectWebSocket(true);
+      document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+      return;
+    }
     if (supabaseClient) {
       supabaseClient.auth.getSession().then(({ data: { session } }) => {
         if (session && session.user) {
@@ -13960,6 +13996,13 @@ window.tutorialGuideStep = 0;
 
 let cutsceneAnimationFrameId = null;
 let introAnimationFrameId = null;
+const LOCAL_MATCH_TROPHY_GOAL = 8;
+const TUTORIAL_MATCH_TROPHY_GOAL = 3;
+const TUTORIAL_MATCH_MAP_TYPE = "powerzone";
+
+function getLocalMatchTrophyGoal() {
+  return window._tutorialMatchMode ? TUTORIAL_MATCH_TROPHY_GOAL : LOCAL_MATCH_TROPHY_GOAL;
+}
 
 function startInteractiveCutscene() {
   const cutsceneScreen = document.getElementById("tutorialCutsceneScreen");
@@ -14179,6 +14222,7 @@ window._tutorialMatchMode = false;
 function startTutorialLocalMatch() {
   const playerName = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
   window._tutorialMatchMode = true;
+  pendingLocalMapChoice = TUTORIAL_MATCH_MAP_TYPE;
   showVsLoadingScreen([
     { id: "local_player", name: playerName, kind: selectedCharacter },
     { id: "cpu_1", name: "Usagi CPU", kind: "usagi" },
@@ -14204,7 +14248,7 @@ function showTutorialGuideStep(step) {
   const steps = [
     "Use <strong>WASD</strong> or <strong>ARROW KEYS</strong> to move. Avoid standing near explosive bombs.",
     "Press <strong>SPACEBAR</strong> to place a bomb. Destroy crates to find power-ups. Run before it explodes!",
-    "Collect speed boots, extra bombs, and fire potions. Defeat all CPU players to win the match."
+    "Complete <strong>3 trophies</strong> to get victory. Defeat all CPU players, collect power-ups, and finish the tutorial match."
   ];
   
   if (step >= 0 && step < steps.length) {

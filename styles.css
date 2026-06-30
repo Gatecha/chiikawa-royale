@@ -28,6 +28,12 @@
   --font-clean: "Comfortaa", "Fredoka", "Segoe UI", sans-serif;
 }
 
+@property --grad-offset {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #3f4450 #0d0d0e;
@@ -376,6 +382,23 @@ body.android-apk .badge-text {
   width: 14px;
   height: 14px;
   display: block;
+}
+
+.inline-gem-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 4px rgba(177, 108, 255, 0.45));
+}
+
+.gem-reward-amount {
+  font-size: 22px;
+  color: #ffd86f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 /* Console Body */
@@ -729,6 +752,7 @@ body.android-apk .badge-text {
     );
   isolation: isolate;
   transition: background 0.4s ease, --char-swirl 0.4s ease, --char-dark 0.4s ease;
+  animation: radialRingDrift 18s linear infinite;
 }
 
 .character-select-screen::before {
@@ -3010,11 +3034,17 @@ canvas#game {
     #0b0a0e calc(var(--grad-offset, 0px) + 240px)
   );
   opacity: 0.95;
+  animation: radialRingDrift 18s linear infinite;
 }
 
 @keyframes squadGridScroll {
   from { background-position: 0 0; }
   to { background-position: 50px 100px; }
+}
+
+@keyframes radialRingDrift {
+  from { --grad-offset: 0px; }
+  to { --grad-offset: 240px; }
 }
 
 /* Slanted Cards Row */
