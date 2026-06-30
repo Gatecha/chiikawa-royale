@@ -15566,17 +15566,48 @@ function drawMonopolyReward(rarity) {
       crownCount += 1000;
       document.getElementById("crownCount").textContent = crownCount;
       if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-      saveProgression();
-      syncMonopolyStats();
-
-      const coinItem = {
-        id: "coins",
-        name: `${coinsAmount} Coins`,
-        color: "gold",
-        type: "coins"
-      };
-      showCrateRewardPopup(coinItem, 'A', false);
     }
+
+    // Reset both pities
+    mbPityS = 0;
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_s', '0');
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  } else {
+    // A-Class Coins
+    let coinsAmount = 300;
+    if (rarity === 'common') {
+      coinsAmount = Math.floor(Math.random() * 201) + 300; // 300 - 500
+    } else if (rarity === 'rare') {
+      coinsAmount = Math.floor(Math.random() * 501) + 500; // 500 - 1000
+    } else {
+      coinsAmount = 1000;
+    }
+
+    crownCount += coinsAmount;
+    document.getElementById("crownCount").textContent = crownCount;
+    if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+
+    finalItem = { id: "coins", name: `${coinsAmount} Coins`, color: "gold", type: "coins" };
+
+    // Reset A-class pity
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  }
+
+  mbRoll10Results.push({ item: finalItem, rank: rank });
+
+  saveProgression();
+  syncMonopolyStats();
+
+  // Refresh wardrobes
+  if (typeof updateWardrobeTabBadges === "function") updateWardrobeTabBadges();
+  if (typeof syncBombWardrobe === "function") syncBombWardrobe();
+  if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
+
+  // Intermediate Reveal sequence then show reward
+  triggerClassRevealSequence(rank, () => {
+    showCrateRewardPopup(finalItem, rank, false);
   });
 }
 
