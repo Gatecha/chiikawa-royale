@@ -2754,25 +2754,40 @@
     <!-- ================================================================ -->
     <div id="monopolyBoardOverlay" class="mb-overlay hidden">
 
+      <!-- Detailed background elements -->
+      <div class="mb-background-deco">
+        <div class="mb-bg-nebula nb-1"></div>
+        <div class="mb-bg-nebula nb-2"></div>
+        <div class="mb-bg-grid"></div>
+        <div class="mb-bg-star fstar-1">✦</div>
+        <div class="mb-bg-star fstar-2">✦</div>
+        <div class="mb-bg-star fstar-3">✦</div>
+        <div class="mb-bg-star fstar-4">✦</div>
+        <div class="mb-bg-star fstar-5">✦</div>
+        <div class="mb-bg-star fstar-6">✦</div>
+        <div class="mb-bg-star fstar-7">✦</div>
+        <div class="mb-bg-star fstar-8">✦</div>
+      </div>
+
       <!-- ZZZ hazard header -->
       <div class="mb-header">
         <div class="mb-hazard-stripe"></div>
         <div class="mb-header-inner">
           <div class="mb-pity-col">
             <div class="mb-pity-row">
-              <span class="mb-pity-lbl">Guaranteed <em class="pity-a">A-Class</em> Item within roll <em class="pity-a">×10</em></span>
+              <span class="mb-pity-lbl">Guaranteed <em class="pity-a">A-Class</em> Item within roll <em class="pity-a">×5</em></span>
               <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-a" id="mbFillA" style="width:0%"></div></div>
-              <span class="mb-pity-val" id="mbValA">0/10</span>
+              <span class="mb-pity-val" id="mbValA">0/5</span>
             </div>
             <div class="mb-pity-row">
-              <span class="mb-pity-lbl">Get <em class="pity-s">S-Class</em> Item after roll <em class="pity-s">×90</em></span>
+              <span class="mb-pity-lbl">Get <em class="pity-s">S-Class</em> Item within roll <em class="pity-s">×10</em></span>
               <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-s" id="mbFillS" style="width:0%"></div></div>
-              <span class="mb-pity-val" id="mbValS">0/90</span>
+              <span class="mb-pity-val" id="mbValS">0/10</span>
             </div>
             <div class="mb-pity-row">
-              <span class="mb-pity-lbl">Triggers <em class="pity-b">Board Modification</em> after roll <em class="pity-b">×70</em></span>
+              <span class="mb-pity-lbl">Triggers <em class="pity-b">Board Modification</em> after roll <em class="pity-b">×50</em></span>
               <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-b" id="mbFillB" style="width:0%"></div></div>
-              <span class="mb-pity-val" id="mbValB">0/70</span>
+              <span class="mb-pity-val" id="mbValB">0/50</span>
             </div>
           </div>
           <div class="mb-header-right">
@@ -2897,10 +2912,6 @@
       <!-- Footer -->
       <div class="mb-footer">
         <div class="mb-footer-left">
-          <div class="mb-footer-gems">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="#b16cff"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
-            <span id="mbFooterGems">0</span>
-          </div>
           <div id="mbFreeRollBadge" class="mb-free-badge hidden">🎲 FREE ROLL <span id="mbFreeRollCnt">×1</span></div>
         </div>
         <div class="mb-roll-buttons">
@@ -2985,6 +2996,13 @@
           <div class="mb-fp-sub">Granted! Next roll is on the house.</div>
           <button class="mb-claim-btn mb-fp-ok" id="mbFreePullOk" type="button">SWEET! ✨</button>
         </div>
+      </div>
+
+      <!-- CLASS REVEAL OVERLAY -->
+      <div id="mbClassReveal" class="mb-class-reveal hidden">
+        <div class="mb-cr-glow" id="mbCrGlow"></div>
+        <div class="mb-cr-badge" id="mbCrBadge">S</div>
+        <div class="mb-cr-label" id="mbCrLabel">S-CLASS REWARD</div>
       </div>
 
     </div><!-- /monopolyBoardOverlay -->

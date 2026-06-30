@@ -13151,6 +13151,13 @@ const gachaPool = [
 ];
 
 function getGachaItemImageHtml(item, size = 44) {
+  if (item.type === "coins") {
+    return `
+      <div style="font-size: 70px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); animation: mbFreeBadgePulse 1s ease-in-out infinite alternate;">
+        🪙
+      </div>
+    `;
+  }
   if (item.isSvgMarkup) {
     let outerColor = "#ff6f4f";
     let innerColor = "#fff06d";
@@ -14769,6 +14776,71 @@ function closeMonopolyBoard() {
   }, 800);
 }
 
+function getTileIconSvg(type) {
+  switch (type) {
+    case 'start':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#ffd86f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" fill="rgba(255,216,111,0.15)"/>
+          <line x1="4" y1="22" x2="4" y2="15"/>
+        </svg>
+      `;
+    case 'common':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <rect x="3" y="8" width="18" height="12" rx="2" fill="rgba(167,139,250,0.15)"/>
+          <path d="M3 8l9 4 9-4"/>
+          <circle cx="12" cy="14" r="1.5" fill="#a78bfa"/>
+        </svg>
+      `;
+    case 'rare':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <rect x="3" y="8" width="18" height="12" rx="2" fill="rgba(249,115,22,0.15)"/>
+          <path d="M12 8V20M3 14h18M8 8s1-3 4-3 4 3 4 3"/>
+        </svg>
+      `;
+    case 'sclass':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#ff5e97" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));">
+          <path d="M2 4l4 12h12l4-12-5 6-3-8-3 8z" fill="rgba(255,94,151,0.2)"/>
+          <circle cx="12" cy="20" r="2" fill="#ff5e97"/>
+        </svg>
+      `;
+    case 'portal1':
+    case 'portal2':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#c084fc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); animation: mbWheelSpin 6s linear infinite;">
+          <path d="M12 2a10 10 0 1 0 10 10M12 6a6 6 0 1 0 6 6M12 10a2 2 0 1 0 2 2"/>
+        </svg>
+      `;
+    case 'dice':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#4fc3f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <rect x="3" y="3" width="18" height="18" rx="4" fill="rgba(79,195,247,0.15)"/>
+          <circle cx="8" cy="8" r="1.5" fill="#4fc3f7"/>
+          <circle cx="16" cy="16" r="1.5" fill="#4fc3f7"/>
+          <circle cx="12" cy="12" r="1.5" fill="#4fc3f7"/>
+        </svg>
+      `;
+    case 'pullx1':
+    case 'pullx2':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#1be6cc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <path d="M2 9a3 3 0 0 1 0-6h20a3 3 0 0 1 0 6M2 15a3 3 0 0 0 0 6h20a3 3 0 0 0 0-6" fill="rgba(27,230,204,0.15)"/>
+          <line x1="12" y1="3" x2="12" y2="21" stroke-dasharray="3 3"/>
+        </svg>
+      `;
+    case 'corner':
+    default:
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#ffebf2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <path d="M18 10h-1.26A8 8 0 1 0 9 15h9a5 5 0 0 0 0-10z" fill="rgba(255,235,242,0.15)"/>
+        </svg>
+      `;
+  }
+}
+
 function initMonopolyBoardUI() {
   // Render main board tiles
   const tilesContainer = document.getElementById("mbTiles");
@@ -14781,7 +14853,7 @@ function initMonopolyBoardUI() {
       tileDiv.style.gridColumnStart = layout.col + 1;
       tileDiv.style.gridRowStart = layout.row + 1;
       tileDiv.innerHTML = `
-        <span style="font-size:22px; filter: drop-shadow(0 2px 0 #000);">${tile.emoji}</span>
+        ${getTileIconSvg(tile.type)}
         <span class="mb-tile-label">${tile.label}</span>
         <span class="mb-tile-stepnum">${index}</span>
       `;
@@ -14802,7 +14874,7 @@ function initMonopolyBoardUI() {
       tileDiv.style.gridColumnStart = layout.col + 1;
       tileDiv.style.gridRowStart = layout.row + 1;
       tileDiv.innerHTML = `
-        <span style="font-size:26px; filter: drop-shadow(0 2px 0 #000);">${tile.emoji}</span>
+        ${getTileIconSvg(tile.type)}
         <span class="mb-tile-label">${tile.label}</span>
       `;
       island1Container.appendChild(tileDiv);
@@ -14822,7 +14894,7 @@ function initMonopolyBoardUI() {
       tileDiv.style.gridColumnStart = layout.col + 1;
       tileDiv.style.gridRowStart = layout.row + 1;
       tileDiv.innerHTML = `
-        <span style="font-size:26px; filter: drop-shadow(0 2px 0 #000);">${tile.emoji}</span>
+        ${getTileIconSvg(tile.type)}
         <span class="mb-tile-label">${tile.label}</span>
       `;
       island2Container.appendChild(tileDiv);
@@ -14894,7 +14966,7 @@ function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
     }
     src = `assets/${char}/${char}_walk_sid${fileSuffix}.png`;
 
-    if (dir === 'left') {
+    if (dir === 'right') {
       transform = 'scaleX(-1)';
     }
   }
@@ -14947,18 +15019,32 @@ function positionCharacterAtIsland(islandId, index) {
 
 function syncMonopolyStats() {
   // Sync gems wallet
-  document.getElementById("mbHeaderGems").textContent = gemsCount.toLocaleString();
-  document.getElementById("mbFooterGems").textContent = gemsCount.toLocaleString();
+  const hGems = document.getElementById("mbHeaderGems");
+  if (hGems) hGems.textContent = gemsCount.toLocaleString();
+  const fGems = document.getElementById("mbFooterGems");
+  if (fGems) fGems.textContent = gemsCount.toLocaleString();
 
   // Sync Pity
-  document.getElementById("mbFillA").style.width = `${Math.min(100, (mbPityA / 10) * 100)}%`;
-  document.getElementById("mbValA").textContent = `${mbPityA}/10`;
+  const fillA = document.getElementById("mbFillA");
+  const valA = document.getElementById("mbValA");
+  if (fillA && valA) {
+    fillA.style.width = `${Math.min(100, (mbPityA / 5) * 100)}%`;
+    valA.textContent = `${mbPityA}/5`;
+  }
 
-  document.getElementById("mbFillS").style.width = `${Math.min(100, (mbPityS / 90) * 100)}%`;
-  document.getElementById("mbValS").textContent = `${mbPityS}/90`;
+  const fillS = document.getElementById("mbFillS");
+  const valS = document.getElementById("mbValS");
+  if (fillS && valS) {
+    fillS.style.width = `${Math.min(100, (mbPityS / 10) * 100)}%`;
+    valS.textContent = `${mbPityS}/10`;
+  }
 
-  document.getElementById("mbFillB").style.width = `${Math.min(100, (mbPityMod / 70) * 100)}%`;
-  document.getElementById("mbValB").textContent = `${mbPityMod}/70`;
+  const fillB = document.getElementById("mbFillB");
+  const valB = document.getElementById("mbValB");
+  if (fillB && valB) {
+    fillB.style.width = `${Math.min(100, (mbPityMod / 50) * 100)}%`;
+    valB.textContent = `${mbPityMod}/50`;
+  }
 
   // Free pull indicator
   const freeBadge = document.getElementById("mbFreeRollBadge");
@@ -15317,100 +15403,193 @@ function triggerCrateOpenAnimation(tileDiv, rarity) {
   }, 500);
 }
 
-function drawMonopolyReward(rarity) {
-  // Pity logic to determine final rank category
-  let finalRank = 'B';
+function triggerClassRevealSequence(rank, callback) {
+  const reveal = document.getElementById("mbClassReveal");
+  if (!reveal) {
+    if (callback) callback();
+    return;
+  }
 
+  const badge = document.getElementById("mbCrBadge");
+  const label = document.getElementById("mbCrLabel");
+
+  badge.textContent = rank;
+  if (rank === 'S') {
+    reveal.style.setProperty('--badge-color', '#ffd86f');
+    reveal.style.setProperty('--glow-color', '#ff9900');
+    label.textContent = "S-Class Item Reward";
+  } else {
+    reveal.style.setProperty('--badge-color', '#1be6cc');
+    reveal.style.setProperty('--glow-color', '#00bbfb');
+    label.textContent = "A-Class Coin Reward";
+  }
+
+  reveal.classList.remove("hidden");
+
+  if (typeof playSound === "function") playSound("tutorial_beep");
+
+  setTimeout(() => {
+    reveal.classList.add("hidden");
+    if (callback) callback();
+  }, 2000);
+}
+
+function drawMonopolyReward(rarity) {
   mbTotalRolls++;
   mbPityA++;
   mbPityS++;
   mbPityMod++;
+
+  if (mbPityMod >= 50) {
+    mbPityMod = 0;
+    showToastMsg("Board Modified!");
+  }
 
   localStorage.setItem('mb_rolls_total', mbTotalRolls.toString());
   localStorage.setItem('mb_rolls_pity_a', mbPityA.toString());
   localStorage.setItem('mb_rolls_pity_s', mbPityS.toString());
   localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
 
-  // Check S pity
-  if (mbPityS >= 90) {
-    finalRank = 'S';
-  } else if (mbPityA >= 10) {
-    finalRank = Math.random() < 0.2 ? 'S' : 'A';
-  } else {
-    // Choose based on crate rarity
+  let rank = 'A';
+  let isItem = false;
+
+  // S-Class Pity (10 pulls)
+  if (mbPityS >= 10) {
+    rank = 'S';
+    isItem = true;
+  }
+  // A-Class Pity (5 pulls)
+  else if (mbPityA >= 5) {
+    rank = 'A';
+    isItem = false;
+  }
+  // Rates check based on landed crate type
+  else {
     const roll = Math.random();
     if (rarity === 'common') {
-      if (roll < 0.05) finalRank = 'S';
-      else if (roll < 0.20) finalRank = 'A';
-      else finalRank = 'B';
+      // 85% A-Class (Coins), 15% S-Class (Item)
+      if (roll < 0.15) {
+        rank = 'S';
+        isItem = true;
+      } else {
+        rank = 'A';
+        isItem = false;
+      }
     } else if (rarity === 'rare') {
-      if (roll < 0.20) finalRank = 'S';
-      else if (roll < 0.80) finalRank = 'A';
-      else finalRank = 'B';
+      // 70% A-Class (Coins), 30% S-Class (Item)
+      if (roll < 0.30) {
+        rank = 'S';
+        isItem = true;
+      } else {
+        rank = 'A';
+        isItem = false;
+      }
     } else if (rarity === 'sclass') {
-      if (roll < 0.90) finalRank = 'S';
-      else finalRank = 'A';
+      // 90% S-Class (Item), 10% A-Class (Coins)
+      if (roll < 0.90) {
+        rank = 'S';
+        isItem = true;
+      } else {
+        rank = 'A';
+        isItem = false;
+      }
     }
   }
 
-  // Draw unowned item in rank category
-  let unowned = gachaPool.filter(item => {
-    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
-    const owned = localStorage.getItem(ownedKey) === "true";
-    const rank = mbItemRanks[item.id] || 'B';
-    return !owned && rank === finalRank;
+  // Intermediate Reveal sequence then show reward
+  triggerClassRevealSequence(rank, () => {
+    if (isItem) {
+      // Award S-Class Item!
+      // Filter unowned S-class items in gachaPool
+      let unownedS = gachaPool.filter(item => {
+        const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+        const owned = localStorage.getItem(ownedKey) === "true";
+        const itemRank = mbItemRanks[item.id] || 'B';
+        return !owned && itemRank === 'S';
+      });
+
+      if (unownedS.length > 0) {
+        // Draw unowned S-class item
+        const winnerItem = unownedS[Math.floor(Math.random() * unownedS.length)];
+        const ownedKey = winnerItem.type === "effect" ? `owned_effect_${winnerItem.color}` : `owned_bomb_${winnerItem.color}`;
+        localStorage.setItem(ownedKey, "true");
+
+        const newKey = winnerItem.type === "effect" ? `new_effect_${winnerItem.color}` : `new_bomb_${winnerItem.color}`;
+        localStorage.setItem(newKey, "true");
+
+        // Reset Pities since we drew an S-class item
+        mbPityS = 0;
+        mbPityA = 0;
+        localStorage.setItem('mb_rolls_pity_s', '0');
+        localStorage.setItem('mb_rolls_pity_a', '0');
+
+        saveProgression();
+        syncMonopolyStats();
+
+        // Refresh wardrobes
+        if (typeof updateWardrobeTabBadges === "function") updateWardrobeTabBadges();
+        if (typeof syncBombWardrobe === "function") syncBombWardrobe();
+        if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
+
+        showCrateRewardPopup(winnerItem, 'S', false);
+      } else {
+        // All S-class items owned! Award S-Class fallback: 1000 Coins!
+        const coinsAmount = 1000;
+        crownCount += coinsAmount;
+        document.getElementById("crownCount").textContent = crownCount;
+        if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+
+        // Reset pities
+        mbPityS = 0;
+        mbPityA = 0;
+        localStorage.setItem('mb_rolls_pity_s', '0');
+        localStorage.setItem('mb_rolls_pity_a', '0');
+
+        saveProgression();
+        syncMonopolyStats();
+
+        const fallbackCoinItem = {
+          id: "coins",
+          name: "1,000 Coins",
+          color: "gold",
+          type: "coins"
+        };
+        showCrateRewardPopup(fallbackCoinItem, 'S', false);
+      }
+    } else {
+      // Award A-Class Coins!
+      let coinsAmount = 300;
+      if (rarity === 'common') {
+        // Purple crate: 300 - 500 coins
+        coinsAmount = Math.floor(Math.random() * 201) + 300;
+      } else if (rarity === 'rare') {
+        // Orange crate: 500 - 1000 coins
+        coinsAmount = Math.floor(Math.random() * 501) + 500;
+      } else {
+        // Sclass: 1000 coins fallback
+        coinsAmount = 1000;
+      }
+
+      crownCount += coinsAmount;
+      document.getElementById("crownCount").textContent = crownCount;
+      if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+
+      // Reset only A-class pity
+      mbPityA = 0;
+      localStorage.setItem('mb_rolls_pity_a', '0');
+
+      saveProgression();
+      syncMonopolyStats();
+
+      const coinItem = {
+        id: "coins",
+        name: `${coinsAmount} Coins`,
+        color: "gold",
+        type: "coins"
+      };
+      showCrateRewardPopup(coinItem, 'A', false);
+    }
   });
-
-  // Fallbacks if selected rank is complete
-  if (unowned.length === 0) {
-    unowned = gachaPool.filter(item => {
-      const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
-      return localStorage.getItem(ownedKey) !== "true";
-    });
-  }
-
-  let winnerItem = null;
-  let isDuplicate = false;
-
-  if (unowned.length > 0) {
-    winnerItem = unowned[Math.floor(Math.random() * unowned.length)];
-    // Save as owned
-    const ownedKey = winnerItem.type === "effect" ? `owned_effect_${winnerItem.color}` : `owned_bomb_${winnerItem.color}`;
-    localStorage.setItem(ownedKey, "true");
-
-    const newKey = winnerItem.type === "effect" ? `new_effect_${winnerItem.color}` : `new_bomb_${winnerItem.color}`;
-    localStorage.setItem(newKey, "true");
-
-  } else {
-    // Duplicate fallback
-    isDuplicate = true;
-    winnerItem = gachaPool[Math.floor(Math.random() * gachaPool.length)];
-    // Duplicate awards 100 extra gems!
-    gemsCount += 100;
-    updateShopWalletDisplay();
-  }
-
-  // Reset pity counters
-  const actualRank = mbItemRanks[winnerItem.id] || 'B';
-  if (actualRank === 'S') {
-    mbPityS = 0;
-    mbPityA = 0;
-    localStorage.setItem('mb_rolls_pity_s', '0');
-    localStorage.setItem('mb_rolls_pity_a', '0');
-  } else if (actualRank === 'A') {
-    mbPityA = 0;
-    localStorage.setItem('mb_rolls_pity_a', '0');
-  }
-
-  saveProgression();
-  syncMonopolyStats();
-
-  // Trigger wardrobe UI refreshes
-  if (typeof updateWardrobeTabBadges === "function") updateWardrobeTabBadges();
-  if (typeof syncBombWardrobe === "function") syncBombWardrobe();
-  if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
-
-  showCrateRewardPopup(winnerItem, actualRank, isDuplicate);
 }
 
 function showCrateRewardPopup(item, rank, isDuplicate) {

@@ -12837,6 +12837,8 @@ body.is-iphone {
   transition: transform 0.1s, box-shadow 0.1s;
   min-width: 120px;
   background: #1a1a1a;
+  padding: 0 !important;
+  align-items: stretch;
 }
 .mb-roll-btn:hover { transform: translateY(-2px); box-shadow: 4px 6px 0 #000; }
 .mb-roll-btn:active { transform: translateY(1px); box-shadow: 2px 2px 0 #000; }
@@ -13170,4 +13172,109 @@ body.is-iphone {
   color: rgba(255,255,255,0.5);
   font-family: var(--font-clean, 'Inter', sans-serif);
 }
+
+/* ── Class Reveal Overlay ── */
+.mb-class-reveal {
+  position: absolute; inset: 0; z-index: 250;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(4px);
+}
+.mb-class-reveal.hidden { display: none; }
+.mb-cr-glow {
+  position: absolute; width: 320px; height: 320px; border-radius: 50%;
+  background: radial-gradient(circle, var(--glow-color, #ffd86f) 0%, transparent 70%);
+  opacity: 0.6;
+}
+.mb-cr-badge {
+  font-family: var(--font, 'Outfit', sans-serif);
+  font-size: 130px; font-weight: 900;
+  color: var(--badge-color, #ffd86f);
+  text-shadow: 0 0 50px var(--glow-color, #ffd86f), 4px 4px 0 #000;
+  animation: mbBadgeReveal 2s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  z-index: 2;
+  line-height: 1;
+}
+.mb-cr-label {
+  font-family: var(--font, 'Outfit', sans-serif);
+  font-size: 18px; font-weight: 900; letter-spacing: 4px;
+  color: #fff; text-shadow: 2px 2px 0 #000;
+  margin-top: 10px; z-index: 2;
+  text-transform: uppercase;
+  animation: mbLabelReveal 2s ease-in-out forwards;
+}
+
+@keyframes mbBadgeReveal {
+  0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
+  25% { transform: scale(1.25) rotate(8deg); opacity: 1; }
+  35% { transform: scale(0.95) rotate(-3deg); }
+  45%, 80% { transform: scale(1) rotate(0deg); filter: brightness(1.2); }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes mbLabelReveal {
+  0%, 25% { opacity: 0; transform: translateY(12px); }
+  45%, 80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; }
+}
+
+/* ── Background decoration ── */
+.mb-background-deco {
+  position: absolute; inset: 0;
+  overflow: hidden; pointer-events: none;
+  z-index: 0;
+}
+.mb-bg-nebula {
+  position: absolute; border-radius: 50%;
+  filter: blur(120px); opacity: 0.22;
+  animation: mbNebulaFloat 20s ease-in-out infinite alternate;
+}
+.nb-1 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #b16cff 0%, transparent 80%);
+  top: -10%; left: -10%;
+}
+.nb-2 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, #ff5e97 0%, transparent 80%);
+  bottom: -15%; right: -10%;
+  animation-delay: -5s;
+}
+@keyframes mbNebulaFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -60px) scale(1.1); }
+  100% { transform: translate(-30px, 40px) scale(0.9); }
+}
+
+.mb-bg-grid {
+  position: absolute; inset: 0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.7;
+}
+
+.mb-bg-star {
+  position: absolute; font-size: 16px; color: rgba(255,216,111,0.3);
+  animation: mbStarFloat 12s linear infinite;
+  text-shadow: 0 0 8px rgba(255,216,111,0.5);
+}
+.fstar-1 { top: 15%; left: 8%; animation-duration: 9s; }
+.fstar-2 { top: 40%; left: 15%; animation-duration: 15s; animation-delay: -3s; }
+.fstar-3 { top: 75%; left: 10%; animation-duration: 11s; animation-delay: -1s; }
+.fstar-4 { top: 20%; right: 12%; animation-duration: 14s; animation-delay: -5s; }
+.fstar-5 { top: 55%; right: 7%; animation-duration: 10s; animation-delay: -2s; }
+.fstar-6 { top: 80%; right: 18%; animation-duration: 16s; animation-delay: -4s; }
+.fstar-7 { top: 5%; left: 45%; animation-duration: 13s; }
+.fstar-8 { bottom: 8%; left: 52%; animation-duration: 12s; animation-delay: -6s; }
+
+@keyframes mbStarFloat {
+  0% { transform: translateY(0) rotate(0deg) scale(0.7); opacity: 0; }
+  15% { opacity: 0.5; }
+  85% { opacity: 0.5; }
+  100% { transform: translateY(-80px) rotate(360deg) scale(1.2); opacity: 0; }
+}
+
 
