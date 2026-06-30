@@ -13748,17 +13748,43 @@ function handleGachaDraw() {
   document.getElementById("gachaDrawBtn").disabled = true;
   document.getElementById("closeGachaModalBtn").disabled = true;
   
-  // Select a weighted random unowned item as the winner
-  const totalWeight = unowned.reduce((sum, item) => sum + (item.weight || 10), 0);
+  // Load and increment gacha pity
+  let gachaPity = parseInt(localStorage.getItem('gacha_draw_pity') || '0');
+  gachaPity++;
+  
+  const charactersInPool = unowned.filter(item => item.type === "character");
+  const forceCharacter = (gachaPity >= 50 && charactersInPool.length > 0);
+  
+  // Calculate dynamic weights based on pity
+  const itemWeights = unowned.map(item => {
+    let weight = item.weight || 10;
+    if (item.type === "character") {
+      if (forceCharacter) {
+        weight = 100;
+      } else if (gachaPity >= 20) {
+        weight = 6.0; // Kinda high chance
+      } else if (gachaPity >= 10) {
+        weight = 1.5; // Very low chance
+      } else {
+        weight = 0.3; // Extremely low chance
+      }
+    } else {
+      if (forceCharacter) {
+        weight = 0; // Disable other items on 50 pity guarantee
+      }
+    }
+    return { item, weight };
+  });
+
+  const totalWeight = itemWeights.reduce((sum, entry) => sum + entry.weight, 0);
   let randomValue = Math.random() * totalWeight;
   let winner = unowned[unowned.length - 1]; // Fallback
-  for (const item of unowned) {
-    const w = item.weight || 10;
-    if (randomValue < w) {
-      winner = item;
+  for (const entry of itemWeights) {
+    if (randomValue < entry.weight) {
+      winner = entry.item;
       break;
     }
-    randomValue -= w;
+    randomValue -= entry.weight;
   }
   
   // Construct the gacha reel items list:
@@ -13810,16 +13836,18 @@ function handleGachaDraw() {
     gachaDrawing = false;
     document.getElementById("closeGachaModalBtn").disabled = false;
     
-    // Save to owned
+    // Save to owned and update gacha pity
     if (winner.type === "character") {
       const unlocked = getUnlockedCharacters();
       if (!unlocked.includes(winner.id)) {
         unlocked.push(winner.id);
         localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
       }
+      localStorage.setItem('gacha_draw_pity', '0');
     } else {
       const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
       localStorage.setItem(ownedKey, "true");
+      localStorage.setItem('gacha_draw_pity', gachaPity.toString());
     }
     
     // Mark as new / untried
@@ -15379,20 +15407,16 @@ function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
     else dir = 'left';
   }
 
-  const suffix = stepNum === 1 ? '1' : '2';
+  const suffix = stepNum === 1 ? 1 : 2;
   let src = '';
   let transform = 'scaleX(1)';
 
   if (dir === 'up') {
-    src = `assets/${char}/${char}_walk_back${suffix}.png`;
+    src = getCharacterSpritePath(char, 'back', suffix);
   } else if (dir === 'down') {
-    src = `assets/${char}/${char}_walk_front${suffix}.png`;
+    src = getCharacterSpritePath(char, 'front', suffix);
   } else { // 'left' or 'right'
-    if (char === 'chiikawa' && suffix === '2') {
-      src = `assets/${char}/${char}_walk_sid2.png`;
-    } else {
-      src = `assets/${char}/${char}_walk_side${suffix}.png`;
-    }
+    src = getCharacterSpritePath(char, 'side', suffix);
 
     if (dir === 'right') {
       transform = 'scaleX(-1)';
@@ -15404,7 +15428,7 @@ function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
 
 function updateCharacterSprite() {
   const char = selectedCharacter || "chiikawa";
-  const idleFile = `assets/${char}/${char}_idle.png`;
+  const idleFile = getCharacterSpritePath(char, 'idle');
 
   const mainCharImg = document.getElementById("mbCharImg");
   if (mainCharImg) {
@@ -15632,7 +15656,7 @@ function animateCharacterWalk(steps) {
   updateCameraZoom(true, mbMainIndex);
 
   const char = selectedCharacter || "chiikawa";
-  const idle = `assets/${char}/${char}_idle.png`;
+  const idle = getCharacterSpritePath(char, 'idle');
 
   let frameTick = false;
 
@@ -15741,7 +15765,7 @@ function handleTileLanding() {
 
   // Set character back to idle image and default rotation
   const char = selectedCharacter || "chiikawa";
-  const idleFile = `assets/${char}/${char}_idle.png`;
+  const idleFile = getCharacterSpritePath(char, 'idle');
   
   const imgMain = document.getElementById("mbCharImg");
   if (imgMain) {
