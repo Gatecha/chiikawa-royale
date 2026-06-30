@@ -12512,7 +12512,7 @@ body.is-iphone {
   border: 2.5px solid #000;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  cursor: default; overflow: hidden;
+  cursor: default; overflow: visible;
   z-index: 2;
   transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
@@ -12633,8 +12633,7 @@ body.is-iphone {
   z-index: -1;
 }
 .mb-char-glow {
-  position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 80%, rgba(255,216,111,0.25), transparent 70%);
+  display: none; /* removed — no bottom glow on avatar */
 }
 @keyframes mbSpriteJiggle {
   0% { transform: scale(1) translateY(0); }
@@ -12662,7 +12661,8 @@ body.is-iphone {
   position: absolute; inset: 0;
 }
 .mb-island-bg-gold {
-  background: radial-gradient(ellipse at 50% 30%, #3d1a00 0%, #1a0900 50%, #080400 100%);
+  background: radial-gradient(ellipse at 50% 50%, #0d0a00 0%, #070500 60%, #030300 100%);
+  overflow: hidden;
 }
 .mb-island-bg-purple {
   background: radial-gradient(ellipse at 50% 30%, #1a003d 0%, #0a0019 50%, #030008 100%);
@@ -12739,6 +12739,106 @@ body.is-iphone {
 }
 .mb-island-char {
   z-index: 15;
+}
+
+/* ── Island Rainbow Background Decorations ── */
+.mb-isl-nebula {
+  position: absolute; border-radius: 50%;
+  filter: blur(90px); pointer-events: none;
+  animation: mbNebulaFloat 18s ease-in-out infinite alternate;
+}
+/* Six rainbow nebula blobs cycling through all colours */
+.isl-nb-1 {
+  width: 380px; height: 380px; top: -10%; left: -8%;
+  background: radial-gradient(circle, #ffd86f 0%, transparent 75%);
+  opacity: 0.28; animation-duration: 16s;
+}
+.isl-nb-2 {
+  width: 340px; height: 340px; top: 5%; right: -5%;
+  background: radial-gradient(circle, #ff5e97 0%, transparent 75%);
+  opacity: 0.25; animation-duration: 22s; animation-delay: -4s;
+}
+.isl-nb-3 {
+  width: 300px; height: 300px; bottom: -5%; left: 15%;
+  background: radial-gradient(circle, #1be6cc 0%, transparent 75%);
+  opacity: 0.22; animation-duration: 19s; animation-delay: -8s;
+}
+.isl-nb-4 {
+  width: 260px; height: 260px; bottom: 10%; right: 10%;
+  background: radial-gradient(circle, #b16cff 0%, transparent 75%);
+  opacity: 0.25; animation-duration: 24s; animation-delay: -2s;
+}
+.isl-nb-5 {
+  width: 220px; height: 220px; top: 40%; left: 30%;
+  background: radial-gradient(circle, #ff9f43 0%, transparent 75%);
+  opacity: 0.20; animation-duration: 14s; animation-delay: -6s;
+}
+.isl-nb-6 {
+  width: 200px; height: 200px; top: 55%; right: 28%;
+  background: radial-gradient(circle, #26de81 0%, transparent 75%);
+  opacity: 0.18; animation-duration: 20s; animation-delay: -10s;
+}
+/* Grid overlay reused */
+.mb-isl-grid {
+  background-size: 44px 44px;
+  opacity: 0.5;
+}
+/* Floating sparkle particles */
+.mb-isl-particle {
+  position: absolute;
+  font-size: 14px;
+  pointer-events: none;
+  animation: mbIslandParticleFloat 10s linear infinite;
+  opacity: 0;
+}
+.isl-p-1 { color: #ffd86f; top: 80%; left: 6%;  animation-duration: 8s;  animation-delay: 0s; }
+.isl-p-2 { color: #ff5e97; top: 80%; left: 25%; animation-duration: 11s; animation-delay: -2s; }
+.isl-p-3 { color: #1be6cc; top: 80%; left: 48%; animation-duration: 9s;  animation-delay: -4s; }
+.isl-p-4 { color: #b16cff; top: 80%; left: 68%; animation-duration: 13s; animation-delay: -1s; }
+.isl-p-5 { color: #ff9f43; top: 80%; left: 85%; animation-duration: 7s;  animation-delay: -3s; }
+.isl-p-6 { color: #26de81; top: 80%; left: 14%; animation-duration: 12s; animation-delay: -5s; }
+.isl-p-7 { color: #ffd86f; top: 80%; left: 58%; animation-duration: 10s; animation-delay: -7s; }
+.isl-p-8 { color: #ff5e97; top: 80%; left: 38%; animation-duration: 14s; animation-delay: -9s; }
+@keyframes mbIslandParticleFloat {
+  0%   { transform: translateY(0)   rotate(0deg)   scale(0.6); opacity: 0; }
+  10%  { opacity: 0.7; }
+  85%  { opacity: 0.6; }
+  100% { transform: translateY(-70vh) rotate(360deg) scale(1.3); opacity: 0; }
+}
+/* Diagonal rainbow light beams */
+.mb-isl-rainbow-beam {
+  position: absolute;
+  width: 3px;
+  height: 120%;
+  top: -10%; 
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(6px);
+  animation: mbRainbowBeamFade 6s ease-in-out infinite;
+  transform-origin: top center;
+  border-radius: 2px;
+}
+.isb-1 {
+  left: 18%;
+  background: linear-gradient(to bottom, transparent, #ffd86f, #ff5e97, transparent);
+  animation-delay: 0s;
+  transform: rotate(15deg);
+}
+.isb-2 {
+  left: 50%;
+  background: linear-gradient(to bottom, transparent, #1be6cc, #b16cff, transparent);
+  animation-delay: -2s;
+  transform: rotate(-10deg);
+}
+.isb-3 {
+  left: 80%;
+  background: linear-gradient(to bottom, transparent, #ff9f43, #26de81, transparent);
+  animation-delay: -4s;
+  transform: rotate(20deg);
+}
+@keyframes mbRainbowBeamFade {
+  0%,100% { opacity: 0; }
+  30%,70%  { opacity: 0.35; }
 }
 
 /* ── Island Tiles Grid ── */
@@ -13385,5 +13485,371 @@ body.is-iphone {
   animation: mbCharHop 0.25s ease-out, mbSpriteJiggle 1.2s ease-in-out infinite alternate;
 }
 
+/* ════════════════════════════════════════════════════════════
+   BOARD MODIFICATION TILE EFFECTS
+════════════════════════════════════════════════════════════ */
+/* Board-glitch flicker (pity 49 warning) */
+@keyframes mbBoardGlitch {
+  0%,100% { filter: brightness(1) hue-rotate(0deg);   opacity: 1; }
+  10%      { filter: brightness(2) hue-rotate(90deg);  opacity: 0.6; transform: translate(2px,-1px) skewX(3deg); }
+  20%      { filter: brightness(0.5) hue-rotate(180deg); opacity: 0.9; transform: translate(-2px,1px) skewX(-2deg); }
+  30%      { filter: brightness(3) hue-rotate(270deg); opacity: 0.5; transform: translate(3px,0) skewX(5deg); }
+  40%      { filter: brightness(1) hue-rotate(0deg);   opacity: 1;   transform: translate(0,0); }
+  50%      { filter: brightness(2.5) hue-rotate(120deg); opacity: 0.7; transform: translate(-3px,2px) skewX(-4deg); }
+  60%      { filter: brightness(0.7); opacity: 0.8; transform: translate(1px,-2px); }
+  70%      { filter: brightness(3) hue-rotate(200deg); opacity: 0.4; transform: translate(-1px,1px) skewX(2deg); }
+  80%      { filter: brightness(1.5); opacity: 0.9; transform: translate(0,0); }
+  90%      { filter: brightness(2) hue-rotate(60deg);  opacity: 0.6; transform: translate(2px,0) skewX(-3deg); }
+}
+.mb-tile-board-glitch {
+  animation: mbBoardGlitch 0.9s steps(1,end) forwards !important;
+  z-index: 99 !important;
+}
 
+/* S-Class board modification permanent glow */
+@keyframes mbModSPulse {
+  0%,100% { box-shadow: 0 0 10px rgba(255,180,0,0.6), 0 0 20px rgba(255,80,0,0.3), inset 0 0 6px rgba(255,200,0,0.2); border-color: #ffd86f; }
+  50%      { box-shadow: 0 0 20px rgba(255,220,0,0.9), 0 0 40px rgba(255,120,0,0.5), inset 0 0 12px rgba(255,220,0,0.3); border-color: #ffaa00; }
+}
+.mb-tile-board-mod-s {
+  background: linear-gradient(135deg, #1a0e00, #2e1800, #1a0e00) !important;
+  border-color: #ffd86f !important;
+  animation: mbModSPulse 1.5s ease-in-out infinite !important;
+}
+.mb-tile-board-mod-s .mb-tile-label {
+  color: #ffd86f !important;
+  text-shadow: 0 0 8px rgba(255,216,111,0.8) !important;
+}
 
+/* ════════════════════════════════════════════════════════════
+   ZZZ-STYLE 10x SUMMARY CARDS
+════════════════════════════════════════════════════════════ */
+/* Override summary-wrap for ZZZ style */
+.summary-wrap {
+  max-width: 780px !important;
+  width: 94% !important;
+  background: linear-gradient(160deg, #0a0a14 0%, #0d0820 50%, #080614 100%) !important;
+  border: 2px solid rgba(255,216,111,0.3) !important;
+  box-shadow: 0 0 60px rgba(0,0,0,0.95), 0 0 30px rgba(180,100,255,0.15), inset 0 0 30px rgba(0,0,0,0.7) !important;
+  border-radius: 20px !important;
+  padding: 28px 24px 24px !important;
+  position: relative;
+  overflow: hidden;
+}
+.summary-wrap::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,216,111,0.04) 0%, transparent 50%, rgba(150,80,255,0.06) 100%);
+  pointer-events: none;
+}
+.mb-summary-title {
+  font-family: var(--font, 'Outfit', sans-serif);
+  font-size: 22px; font-weight: 900; color: #fff;
+  text-transform: uppercase; letter-spacing: 4px;
+  margin-bottom: 22px; text-align: center;
+  background: linear-gradient(90deg, #ffd86f, #ffaa00, #ffd86f);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: mbSummaryTitleShimmer 3s linear infinite;
+  background-size: 200% auto;
+}
+@keyframes mbSummaryTitleShimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+.mb-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px; margin-bottom: 22px;
+  width: 100%;
+}
+/* ZZZ-style card — pops in with staggered delay */
+@keyframes mbCardPopIn {
+  0%   { opacity: 0; transform: translateY(30px) scale(0.7) rotateX(20deg); filter: brightness(2); }
+  60%  { transform: translateY(-6px) scale(1.05) rotateX(-3deg); filter: brightness(1.2); }
+  80%  { transform: translateY(2px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotateX(0deg); filter: brightness(1); }
+}
+.mb-summary-card {
+  background: linear-gradient(160deg, #141428 0%, #0d0d1e 100%);
+  border: 2px solid rgba(80,80,120,0.5);
+  border-radius: 14px;
+  padding: 10px 4px 8px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  position: relative; overflow: hidden;
+  aspect-ratio: 0.72;
+  opacity: 0;
+  animation: mbCardPopIn 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+  animation-delay: var(--card-delay, 0ms);
+  cursor: default;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.mb-summary-card:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+  z-index: 2;
+}
+/* Rank-specific card styles */
+.mb-summary-card.rank-s {
+  background: linear-gradient(160deg, #1c1200 0%, #2a1800 50%, #1c1200 100%);
+  border-color: rgba(255,180,0,0.7);
+  box-shadow: 0 0 16px rgba(255,180,0,0.2), inset 0 0 12px rgba(255,160,0,0.08);
+}
+.mb-summary-card.rank-a {
+  background: linear-gradient(160deg, #001520 0%, #00182a 50%, #001520 100%);
+  border-color: rgba(27,230,204,0.5);
+  box-shadow: 0 0 10px rgba(27,230,204,0.12), inset 0 0 8px rgba(27,230,204,0.05);
+}
+/* Shine sweep on S cards */
+.mb-sc-shine {
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,220,100,0.18) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: mbShineSwipe 3s ease-in-out infinite;
+  animation-delay: var(--card-delay, 0ms);
+  pointer-events: none;
+}
+@keyframes mbShineSwipe {
+  0%,70%,100% { background-position: -200% 0; }
+  40%          { background-position:  200% 0; }
+}
+.mb-summary-card.rank-a .mb-sc-shine {
+  background: linear-gradient(115deg, transparent 30%, rgba(27,230,204,0.1) 50%, transparent 70%);
+  background-size: 200% 100%;
+}
+/* Rank badge top-left */
+.mb-sc-rank-badge {
+  position: absolute; top: 6px; left: 7px;
+  font-size: 13px; font-weight: 900;
+  font-family: var(--font, 'Outfit', sans-serif);
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 8px currentColor;
+}
+.mb-sc-rank-badge.rank-s { color: #ffd86f; }
+.mb-sc-rank-badge.rank-a { color: #1be6cc; }
+/* Icon wrapper */
+.mb-sc-icon-wrap {
+  width: 54px; height: 54px;
+  display: flex; align-items: center; justify-content: center;
+  margin: auto;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+}
+/* Item name */
+.mb-sc-name {
+  font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.85);
+  text-align: center; text-transform: uppercase;
+  line-height: 1.2; font-family: var(--font-clean, 'Inter', sans-serif);
+  letter-spacing: 0.3px;
+}
+/* S-class sparkle corner */
+.mb-sc-sparkle {
+  position: absolute; bottom: 5px; right: 7px;
+  font-size: 12px; color: #ffd86f;
+  animation: mbSparkleFlick 1.5s ease-in-out infinite;
+  animation-delay: var(--card-delay, 0ms);
+}
+@keyframes mbSparkleFlick {
+  0%,100% { opacity:1; transform: scale(1); }
+  50%      { opacity:0.4; transform: scale(0.7) rotate(15deg); }
+}
+/* Claim All button */
+.summary-btn {
+  background: linear-gradient(135deg, #ffd86f, #ffaa00, #ff7700) !important;
+  color: #000 !important; font-weight: 900 !important;
+  font-size: 14px !important; letter-spacing: 2px !important;
+  border: none !important; border-radius: 30px !important;
+  padding: 12px 40px !important;
+  box-shadow: 0 4px 20px rgba(255,180,0,0.4) !important;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+}
+.summary-btn:hover {
+  transform: scale(1.04) !important;
+  box-shadow: 0 6px 28px rgba(255,180,0,0.6) !important;
+}
+.summary-btn:active { transform: scale(0.97) !important; }
+
+/* ════════════════════════════════════════════════════════════
+   GACHA TUTORIAL OVERLAY
+════════════════════════════════════════════════════════════ */
+.mb-tutorial-overlay {
+  position: absolute; inset: 0;
+  z-index: 9000;
+  pointer-events: all;
+  /* Dark scrim with hole punched out by clip-path via JS */
+  background: rgba(0,0,0,0.78);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition: opacity 0.4s;
+}
+.mb-tutorial-overlay.hidden { opacity: 0; pointer-events: none; }
+
+/* Spotlight transparent circle — animated via JS */
+.mb-tut-spotlight {
+  position: absolute;
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.78);
+  transition: left 0.45s cubic-bezier(0.4,0,0.2,1),
+              top  0.45s cubic-bezier(0.4,0,0.2,1),
+              width 0.45s cubic-bezier(0.4,0,0.2,1),
+              height 0.45s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+}
+
+/* Tutorial card */
+.mb-tut-card {
+  position: absolute;
+  background: linear-gradient(160deg, #0e0e1e 0%, #141428 60%, #0c0c18 100%);
+  border: 2px solid rgba(255,216,111,0.4);
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  width: 300px;
+  box-shadow: 0 8px 60px rgba(0,0,0,0.9), 0 0 40px rgba(180,100,255,0.15), inset 0 0 20px rgba(0,0,0,0.5);
+  transition: left 0.45s cubic-bezier(0.4,0,0.2,1),
+              top  0.45s cubic-bezier(0.4,0,0.2,1);
+  z-index: 9010;
+  overflow: hidden;
+}
+.mb-tut-card-glow {
+  position: absolute; inset: -20px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,180,0,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.mb-tut-step-badge {
+  display: inline-block;
+  background: rgba(255,216,111,0.15);
+  border: 1px solid rgba(255,216,111,0.35);
+  color: #ffd86f;
+  font-size: 10px; font-weight: 700;
+  font-family: var(--font, 'Outfit', sans-serif);
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 2px 10px; border-radius: 20px;
+  margin-bottom: 12px;
+}
+.mb-tut-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+  display: block; text-align: center;
+  animation: mbTutIconBounce 2s ease-in-out infinite;
+}
+@keyframes mbTutIconBounce {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.mb-tut-title {
+  font-family: var(--font, 'Outfit', sans-serif);
+  font-size: 17px; font-weight: 900;
+  color: #fff; margin: 0 0 8px;
+  text-align: center; line-height: 1.25;
+}
+.mb-tut-desc {
+  font-family: var(--font-clean, 'Inter', sans-serif);
+  font-size: 12.5px; line-height: 1.55;
+  color: rgba(255,255,255,0.75);
+  margin: 0 0 14px; text-align: center;
+}
+
+/* Free pull gift banner */
+.mb-tut-gift {
+  background: linear-gradient(135deg, rgba(255,180,0,0.15), rgba(255,100,0,0.1));
+  border: 1px solid rgba(255,180,0,0.4);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  animation: mbTutGiftPulse 2s ease-in-out infinite;
+}
+@keyframes mbTutGiftPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,180,0,0.2); }
+  50%      { box-shadow: 0 0 0 6px rgba(255,180,0,0); }
+}
+.mb-tut-gift.hidden { display: none; }
+.mb-tut-gift-inner {
+  display: flex; align-items: center; gap: 10px;
+}
+.mb-tut-gift-icon {
+  font-size: 26px;
+  animation: mbTutIconBounce 1.5s ease-in-out infinite;
+}
+.mb-tut-gift-title {
+  font-family: var(--font, 'Outfit', sans-serif);
+  font-size: 12px; font-weight: 800;
+  color: #ffd86f; text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.mb-tut-gift-sub {
+  font-size: 11px; color: rgba(255,255,255,0.75);
+  font-family: var(--font-clean, 'Inter', sans-serif);
+}
+.mb-tut-gift-sub strong { color: #ffd86f; }
+
+/* Nav buttons */
+.mb-tut-nav {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 10px;
+  margin-top: 4px;
+}
+.mb-tut-btn-skip {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.5);
+  font-size: 11px; font-family: var(--font-clean, 'Inter', sans-serif);
+  padding: 7px 14px; border-radius: 20px;
+  cursor: pointer; transition: all 0.2s;
+}
+.mb-tut-btn-skip:hover {
+  border-color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.8);
+}
+.mb-tut-btn-next {
+  flex: 1;
+  background: linear-gradient(135deg, #ffd86f, #ff9900);
+  border: none; border-radius: 20px;
+  color: #000; font-weight: 900;
+  font-size: 13px; font-family: var(--font, 'Outfit', sans-serif);
+  letter-spacing: 0.5px;
+  padding: 9px 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(255,160,0,0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.mb-tut-btn-next:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 22px rgba(255,160,0,0.6);
+}
+.mb-tut-btn-next:active { transform: scale(0.96); }
+
+/* Pulsing highlight ring around the target element */
+@keyframes mbTutRingPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255,216,111,0.8), 0 0 0 0 rgba(255,216,111,0.4); }
+  70%  { box-shadow: 0 0 0 10px rgba(255,216,111,0), 0 0 0 20px rgba(255,216,111,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,216,111,0), 0 0 0 0 rgba(255,216,111,0); }
+}
+.mb-tut-ring {
+  position: absolute;
+  border: 3px solid #ffd86f;
+  border-radius: 14px;
+  pointer-events: none;
+  z-index: 9005;
+  animation: mbTutRingPulse 1.4s ease-out infinite;
+  transition: left 0.45s cubic-bezier(0.4,0,0.2,1),
+              top  0.45s cubic-bezier(0.4,0,0.2,1),
+              width 0.45s cubic-bezier(0.4,0,0.2,1),
+              height 0.45s cubic-bezier(0.4,0,0.2,1);
+}
+.mb-tut-ring.hidden { display: none; }
+
+/* Tutorial-active button highlight classes */
+.mb-tut-target-glow {
+  position: relative;
+  z-index: 9002 !important;
+}
+.mb-tut-target-glow::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: inherit;
+  border: 2px solid #ffd86f;
+  box-shadow: 0 0 20px rgba(255,216,111,0.7), 0 0 40px rgba(255,216,111,0.3);
+  animation: mbTutRingPulse 1.4s ease-out infinite;
+  pointer-events: none;
+}

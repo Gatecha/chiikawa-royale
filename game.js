@@ -14852,8 +14852,11 @@ function getTileIconSvg(type) {
     case 'corner':
     default:
       return `
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#ffebf2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-          <path d="M18 10h-1.26A8 8 0 1 0 9 15h9a5 5 0 0 0 0-10z" fill="rgba(255,235,242,0.15)"/>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffcce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block; flex-shrink:0;">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="rgba(255,200,225,0.15)"/>
+          <circle cx="19" cy="5" r="0.8" fill="#ffcce0" stroke="none"/>
+          <circle cx="21" cy="9" r="0.8" fill="#ffcce0" stroke="none"/>
+          <circle cx="20" cy="7" r="0.5" fill="#ffcce0" stroke="none"/>
         </svg>
       `;
   }

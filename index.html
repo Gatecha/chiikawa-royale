@@ -2842,7 +2842,27 @@
 
           <!-- ISLAND VIEW 1: Golden Vault -->
           <div class="mb-island-view mb-island-view-1 hidden" id="mbIslandView1">
-            <div class="mb-island-bg mb-island-bg-gold"></div>
+            <!-- Rainbow deco background matching main board style -->
+            <div class="mb-island-bg mb-island-bg-gold">
+              <div class="mb-isl-nebula isl-nb-1"></div>
+              <div class="mb-isl-nebula isl-nb-2"></div>
+              <div class="mb-isl-nebula isl-nb-3"></div>
+              <div class="mb-isl-nebula isl-nb-4"></div>
+              <div class="mb-isl-nebula isl-nb-5"></div>
+              <div class="mb-isl-nebula isl-nb-6"></div>
+              <div class="mb-bg-grid mb-isl-grid"></div>
+              <div class="mb-isl-particle isl-p-1">✦</div>
+              <div class="mb-isl-particle isl-p-2">✦</div>
+              <div class="mb-isl-particle isl-p-3">✦</div>
+              <div class="mb-isl-particle isl-p-4">✦</div>
+              <div class="mb-isl-particle isl-p-5">✦</div>
+              <div class="mb-isl-particle isl-p-6">✦</div>
+              <div class="mb-isl-particle isl-p-7">✦</div>
+              <div class="mb-isl-particle isl-p-8">✦</div>
+              <div class="mb-isl-rainbow-beam isb-1"></div>
+              <div class="mb-isl-rainbow-beam isb-2"></div>
+              <div class="mb-isl-rainbow-beam isb-3"></div>
+            </div>
             <div class="mb-island-content">
               <div class="mb-island-header-banner mb-island-gold-banner">
                 <div class="mb-island-crown-anim">👑</div>
@@ -3035,7 +3055,48 @@
         </div>
       </div>
 
+
+      <!-- ═══════════════════════════════════════════════════
+           GACHA TUTORIAL OVERLAY
+      ════════════════════════════════════════════════════════ -->
+      <div id="mbTutorialOverlay" class="mb-tutorial-overlay hidden">
+
+        <!-- Spotlight cutout -->
+        <div id="mbTutSpotlight" class="mb-tut-spotlight"></div>
+
+        <!-- Floating tooltip card -->
+        <div id="mbTutCard" class="mb-tut-card">
+          <div class="mb-tut-card-glow"></div>
+          <div class="mb-tut-step-badge" id="mbTutBadge">1 / 6</div>
+          <div class="mb-tut-icon" id="mbTutIcon">🎲</div>
+          <h3 class="mb-tut-title" id="mbTutTitle">Welcome to the Draw Board!</h3>
+          <p class="mb-tut-desc" id="mbTutDesc">Spin the dice, walk across the board and land on crates to win bomb skins, blast effects, and coins.</p>
+
+          <!-- Free pull gift banner (only step 0) -->
+          <div class="mb-tut-gift" id="mbTutGift">
+            <div class="mb-tut-gift-inner">
+              <span class="mb-tut-gift-icon">🎁</span>
+              <div>
+                <div class="mb-tut-gift-title">Welcome Gift!</div>
+                <div class="mb-tut-gift-sub">You have received <strong>1 Free Roll</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-tut-nav">
+            <button class="mb-tut-btn-skip" id="mbTutSkipAll" type="button">Skip Tutorial</button>
+            <button class="mb-tut-btn-next" id="mbTutNext" type="button">
+              <span id="mbTutNextLabel">Let's Go →</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pulsing ring that highlights the target element -->
+        <div id="mbTutHighlightRing" class="mb-tut-ring hidden"></div>
+      </div>
+
     </div><!-- /monopolyBoardOverlay -->
+
 
   </body>
 </html>
