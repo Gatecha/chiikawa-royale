@@ -12113,3 +12113,166 @@ body.is-iphone {
   z-index: 2147483647 !important;
 }
 
+/* ZZZ style Victory Card */
+.victory-card.zzz-victory-card {
+  background: rgba(14, 14, 17, 0.96) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 4.5px solid #000 !important;
+  border-radius: 20px !important;
+  box-shadow: 12px 12px 0px #000 !important;
+  max-width: 440px !important;
+  padding: 45px 55px !important;
+  gap: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+.zzz-victory-badge {
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 4px !important;
+  text-transform: uppercase !important;
+  color: #83cf00 !important; /* Neon Green */
+  background: rgba(131, 207, 0, 0.1) !important;
+  border: 1.5px solid rgba(131, 207, 0, 0.35) !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important;
+  margin-top: 10px !important;
+  transform: skewX(-8deg) !important;
+}
+
+.victory-title.zzz-victory-title {
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 48px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+  color: #fff !important;
+  text-shadow: 5px 5px 0px #000 !important;
+  -webkit-text-stroke: 0px !important;
+  animation: none !important; /* remove pulse */
+  transform: skewX(-8deg) !important;
+  margin-bottom: 5px !important;
+}
+
+.winner-msg.zzz-winner-msg {
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  background: #1c1d22 !important;
+  border: 3px solid #000 !important;
+  border-radius: 8px !important;
+  padding: 8px 20px !important;
+  box-shadow: 4px 4px 0px #000 !important;
+  transform: skewX(-8deg) !important;
+  display: inline-block !important;
+  margin-bottom: 15px !important;
+}
+
+/* Rewards display */
+.zzz-victory-rewards-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  background: #0f1013 !important;
+  border: 3px solid #000 !important;
+  border-radius: 12px !important;
+  padding: 12px 24px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  box-shadow: 4px 4px 0px #000 !important;
+  margin-bottom: 15px !important;
+  transform: skewX(-8deg) !important;
+}
+
+.zzz-rewards-label {
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  letter-spacing: 2px !important;
+  color: #888 !important;
+  margin-bottom: 8px !important;
+  text-transform: uppercase !important;
+  transform: skewX(8deg) !important; /* Unskew label */
+}
+
+.zzz-reward-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transform: skewX(8deg) !important; /* Unskew content */
+}
+
+.reward-coin-icon {
+  flex: 0 0 auto !important;
+}
+
+.reward-amount {
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  color: #ffd86f !important; /* Yellow */
+}
+
+.reward-currency {
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #ffd86f !important;
+  opacity: 0.8 !important;
+}
+
+/* Return button */
+.zzz-victory-card .btn-victory-lobby {
+  width: 100% !important;
+  margin-top: 5px !important;
+  border: 3.5px solid #000 !important;
+  border-radius: 10px !important;
+  box-shadow: 0px 5px 0px #000 !important;
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.5px !important;
+  padding: 12px 0 !important;
+  transform: skewX(-8deg) !important;
+}
+
+.zzz-victory-card .btn-victory-lobby:active {
+  box-shadow: 0px 1px 0px #000 !important;
+  transform: skewX(-8deg) translateY(4px) !important;
+}
+
+/* Locked card indicators */
+.card-lock-indicator {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  color: #ff3377 !important; /* Neon pink/red */
+  border: 2.5px solid #000 !important;
+  padding: 3px 8px !important;
+  font-family: 'Outfit', 'Fredoka', sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  border-radius: 6px !important;
+  z-index: 10 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  transform: skewX(12deg) !important; /* Unskew so it's upright */
+  pointer-events: none !important;
+  box-shadow: 2px 2px 0 #000 !important;
+}
+
+.character-card.locked .card-character-image {
+  filter: grayscale(1) brightness(0.4) !important; /* Make locked characters gray/dark */
+  transition: filter 0.2s ease !important;
+}
+
+.character-card.locked:hover .card-character-image {
+  filter: grayscale(0.6) brightness(0.6) !important; /* Slightly light up on hover */
+}

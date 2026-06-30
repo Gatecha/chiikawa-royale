@@ -618,7 +618,6 @@ let lastMenuDrawTime = 0;
 
 function getVideoSrc(baseSrc, forceHighQuality = false) {
   if (!baseSrc) return "";
-  if (window.electronAPI?.isElectron) return baseSrc;
   if (graphicsQuality === "high" || forceHighQuality) {
     return baseSrc.replace(".mp4", "_high.mp4");
   }
@@ -1310,6 +1309,50 @@ document.querySelectorAll(".character-card video").forEach((video) => {
   playMutedLoop(video);
 });
 
+function getUnlockedCharacters() {
+  let unlocked = localStorage.getItem("unlocked_characters");
+  if (!unlocked) {
+    // If not set, unlock the currently equipped character!
+    const equipped = localStorage.getItem("equipped_character") || "chiikawa";
+    unlocked = [equipped];
+    localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+  } else {
+    try {
+      unlocked = JSON.parse(unlocked);
+      if (!Array.isArray(unlocked)) unlocked = ["chiikawa"];
+    } catch {
+      unlocked = ["chiikawa"];
+    }
+  }
+  return unlocked;
+}
+
+function refreshWardrobeLocks() {
+  const unlocked = getUnlockedCharacters();
+  const characterCards = document.querySelectorAll(".character-card");
+  characterCards.forEach((card) => {
+    const kind = card.getAttribute("data-kind");
+    if (!kind) return;
+    const isUnlocked = unlocked.includes(kind);
+    
+    let lockIndicator = card.querySelector(".card-lock-indicator");
+    if (!isUnlocked) {
+      card.classList.add("locked");
+      if (!lockIndicator) {
+        lockIndicator = document.createElement("span");
+        lockIndicator.className = "card-lock-indicator";
+        lockIndicator.textContent = "🔒 UNLOCK";
+        card.appendChild(lockIndicator);
+      }
+    } else {
+      card.classList.remove("locked");
+      if (lockIndicator) {
+        lockIndicator.remove();
+      }
+    }
+  });
+}
+
 function syncCharacterSelectPreview(kind) {
   const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
   const characterSelectCanvas = document.getElementById("characterSelectCanvas");
@@ -1318,11 +1361,28 @@ function syncCharacterSelectPreview(kind) {
     bombSelectPreviewImg.style.display = "none";
   }
 
-  if (characterSelectName) {
-    characterSelectName.textContent = characterStyle[kind]?.label || kind;
-  }
-  if (characterSelectState) {
-    characterSelectState.textContent = kind === selectedCharacter ? "Selected" : "Ready to select";
+  // Locked/Unlocked state check for the selection button
+  const unlocked = getUnlockedCharacters();
+  const isUnlocked = unlocked.includes(kind);
+  const copyBtn = document.querySelector("#confirmCharacterBtn .select-button-copy");
+  
+  if (!isUnlocked) {
+    if (copyBtn) copyBtn.textContent = "UNLOCK";
+    if (characterSelectName) {
+      characterSelectName.textContent = "5000 COINS";
+    }
+    if (characterSelectState) {
+      const name = characterStyle[kind]?.label || kind;
+      characterSelectState.textContent = `Unlock ${name}`;
+    }
+  } else {
+    if (copyBtn) copyBtn.textContent = "SELECT";
+    if (characterSelectName) {
+      characterSelectName.textContent = characterStyle[kind]?.label || kind;
+    }
+    if (characterSelectState) {
+      characterSelectState.textContent = kind === selectedCharacter ? "Selected" : "Ready to select";
+    }
   }
 
   if (characterSelectVideo && characterSelectVideos[kind]) {
@@ -1399,7 +1459,42 @@ function confirmCharacterSelection() {
     return;
   }
 
+  // Character unlocking / selection logic
+  const unlocked = getUnlockedCharacters();
+  const isUnlocked = unlocked.includes(previewCharacter);
+
+  if (!isUnlocked) {
+    if (crownCount >= 5000) {
+      crownCount -= 5000;
+      unlocked.push(previewCharacter);
+      localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+      
+      saveProgression();
+      updateProgressionUI();
+      refreshWardrobeLocks();
+      
+      const charName = characterStyle[previewCharacter]?.label || previewCharacter;
+      showToastMsg(`Unlocked ${charName} for 5000 Coins!`);
+      
+      // Equip unlocked character automatically
+      selectedCharacter = previewCharacter;
+      localStorage.setItem("equipped_character", selectedCharacter);
+      
+      syncCharacterSelectPreview(selectedCharacter);
+      syncLobbySpotlightVideo(selectedCharacter);
+      syncSquadLobbyVideo(selectedCharacter);
+      syncSquadLobbyInterface();
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        sendServerMessage("select_character", { kind: selectedCharacter });
+      }
+    } else {
+      showToastMsg(`Not enough coins! You need 5000 coins to unlock this character.`);
+    }
+    return;
+  }
+
   selectedCharacter = previewCharacter;
+  localStorage.setItem("equipped_character", selectedCharacter);
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
   syncSquadLobbyVideo(selectedCharacter);
@@ -1415,6 +1510,7 @@ syncCharacterSelectPreview(selectedCharacter);
 syncLobbySpotlightVideo(selectedCharacter);
 syncSquadLobbyVideo(selectedCharacter);
 syncSquadLobbyInterface();
+refreshWardrobeLocks();
 
 // Setup wardrobe character selection click handlers
 const characterCards = document.querySelectorAll(".character-card");
@@ -1467,6 +1563,7 @@ wardrobeTabs.forEach((tab) => {
       
       if (mode === "characters") {
         if (typeof syncCharacterSelectPreview === "function") syncCharacterSelectPreview(previewCharacter);
+        refreshWardrobeLocks();
       }
     }
   });
@@ -2193,17 +2290,22 @@ function handleServerMessage(msg) {
         let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
         localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
         totalWins += 1; // Increment totalWins for online victory
+      }
 
-        if (data.tournamentFinished) {
-          crownCount += 2; gemsCount += 5;
-          addChatMessage("System", "TOURNAMENT VICTORY! You earned 5 gems and 2 crowns! 👑🏆", true);
+      if (data.tournamentFinished) {
+        const coinsEarned = isWinner ? 500 : 100;
+        crownCount += coinsEarned;
+        if (isWinner) {
+          gemsCount += 5;
+          addChatMessage("System", `TOURNAMENT VICTORY! You earned 5 gems and 500 coins! 🪙🏆`, true);
         } else {
-          crownCount += 1; gemsCount += 5;
-          addChatMessage("System", "ROUND VICTORY! You earned 5 gems and 1 crown! 👑", true);
+          addChatMessage("System", `TOURNAMENT FINISHED! You earned 100 coins! 🪙`, true);
         }
       } else {
-        if (data.tournamentFinished) {
-          addChatMessage("System", "Tournament Finished! 🏆", true);
+        if (isWinner) {
+          crownCount += 100; // Let's give 100 coins for a round victory
+          gemsCount += 5;
+          addChatMessage("System", "ROUND VICTORY! You earned 5 gems and 100 coins! 🪙", true);
         } else {
           addChatMessage("System", "Round Finished! 🏁", true);
         }
@@ -3595,9 +3697,10 @@ function awardLocalMatchProgress(playerWon) {
 
   const gainedXp = playerWon ? 120 : 45;
   const gainedGems = playerWon ? 5 : 0;
+  const gainedCoins = playerWon ? 500 : 100;
   seasonXp += gainedXp;
   gemsCount += gainedGems;
-  if (playerWon) crownCount += 1;
+  crownCount += gainedCoins;
 
   // RP gain/loss — Bronze I is floor (RP never goes below 0)
   const rpGain = playerWon ? 50 : -15;
@@ -3610,6 +3713,7 @@ function awardLocalMatchProgress(playerWon) {
     seasonLevel += 1;
     seasonXpToNext += 100;
     gemsCount += 50;
+    crownCount += 100; // +100 coins per level!
   }
 
   saveProgression();
@@ -9063,15 +9167,38 @@ function showTournamentResults(playersList, winnerId, tournamentFinished, trophy
         winnerMsgEl.textContent = `${winnerName} wins the Tournament! 🏆`;
       }
 
-      // Play Victory Video
-      if (victoryVideo) {
-        const targetSrc = getVideoSrc("hachiware-lobby.mp4");
-        if (!victoryVideo.src.endsWith(targetSrc)) {
-          victoryVideo.src = targetSrc;
-          victoryVideo.load();
+      // Update ZZZ title, badge and coins reward dynamically based on won/lost
+      const isWinner = grandWinner && grandWinner.id === localPlayerId;
+      const vTitle = document.getElementById("victoryTitle");
+      const vBadge = document.getElementById("victoryBadge");
+      const vCoinsReward = document.getElementById("victoryRewardAmount");
+
+      if (isWinner) {
+        if (vTitle) {
+          vTitle.textContent = "VICTORY";
+          vTitle.style.color = "#ffffff";
+          vTitle.style.textShadow = "5px 5px 0px #000";
         }
-        victoryVideo.currentTime = 0;
-        playMutedLoop(victoryVideo);
+        if (vBadge) {
+          vBadge.textContent = "MISSION ACCOMPLISHED";
+          vBadge.style.color = "#83cf00";
+          vBadge.style.background = "rgba(131, 207, 0, 0.1)";
+          vBadge.style.borderColor = "rgba(131, 207, 0, 0.35)";
+        }
+        if (vCoinsReward) vCoinsReward.textContent = "+500";
+      } else {
+        if (vTitle) {
+          vTitle.textContent = "DEFEAT";
+          vTitle.style.color = "#ffffff";
+          vTitle.style.textShadow = "5px 5px 0px #ff3377";
+        }
+        if (vBadge) {
+          vBadge.textContent = "MISSION FAILED";
+          vBadge.style.color = "#ff3377";
+          vBadge.style.background = "rgba(255, 51, 153, 0.1)";
+          vBadge.style.borderColor = "rgba(255, 51, 153, 0.35)";
+        }
+        if (vCoinsReward) vCoinsReward.textContent = "+100";
       }
 
       // Start confetti particle physics
@@ -10718,17 +10845,27 @@ function showToastMsg(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-function showGemClaimRewardModal(amount, description) {
+function showGemClaimRewardModal(amount, description, coinAmount = 0) {
   const modal = document.getElementById("gemRewardModal");
   if (!modal) return;
   
   const subEl = document.getElementById("gemRewardSub");
   if (subEl) {
     const gemIcon = '<svg class="inline-gem-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12l4 6-10 14L2 8z" fill="#b16cff"/></svg>';
+    const coinIcon = '<svg class="inline-gem-icon" viewBox="0 0 24 24" fill="#ffd86f" style="vertical-align: middle; margin-right: 4px; display: inline-block; width: 18px; height: 18px;"><circle cx="12" cy="12" r="10" stroke="#000" stroke-width="2"/><path d="M12 7v10M10 9h3.5a1.5 1.5 0 0 1 0 3H12h-1.5a1.5 1.5 0 0 0 0 3H14" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none"/></svg>';
+    
+    let rewardText = "";
+    if (amount > 0) {
+      rewardText += `<span class="gem-reward-amount" style="margin-right: 12px;">${gemIcon} +${amount} Gems</span>`;
+    }
+    if (coinAmount > 0) {
+      rewardText += `<span class="gem-reward-amount" style="color: #ffd86f;">${coinIcon} +${coinAmount} Coins</span>`;
+    }
+    
     if (description) {
-      subEl.innerHTML = `${description}<br><span class="gem-reward-amount">${gemIcon} +${amount} Gems</span>`;
+      subEl.innerHTML = `${description}<br><span style="display: flex; align-items: center; justify-content: center; margin-top: 10px;">${rewardText}</span>`;
     } else {
-      subEl.innerHTML = `<span class="gem-reward-amount">${gemIcon} +${amount} Gems</span>`;
+      subEl.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; margin-top: 10px;">${rewardText}</span>`;
     }
   }
   
@@ -13537,36 +13674,36 @@ function initQuestsSystem() {
   localStorage.setItem("quest_login_completed", "true");
 
   // Bind quest card action buttons (Claim buttons)
-  bindQuestClaimButton("qbtn_login", "quest_login_completed", "quest_login_claimed", 100);
-  bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100, () => {
+  bindQuestClaimButton("qbtn_login", "quest_login_completed", "quest_login_claimed", 100, 100);
+  bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100, 200, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", 100, () => {
+  bindQuestClaimButton("qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", 100, 300, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100, () => {
+  bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100, 500, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
 
 
-  bindWeeklyQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, 300, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindWeeklyQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, 200, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
   });
-  bindWeeklyQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, 300, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindWeeklyQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, 500, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
   });
 
   // Bind Weekly progress milestones
-  bindWeeklyMilestoneNode("weekly_chk_100", 100);
-  bindWeeklyMilestoneNode("weekly_chk_200", 200);
-  bindWeeklyMilestoneNode("weekly_chk_300", 300);
-  bindWeeklyMilestoneNode("weekly_chk_400", 400);
+  bindWeeklyMilestoneNode("weekly_chk_100", 100, 100);
+  bindWeeklyMilestoneNode("weekly_chk_200", 200, 120);
+  bindWeeklyMilestoneNode("weekly_chk_300", 300, 130);
+  bindWeeklyMilestoneNode("weekly_chk_400", 400, 150);
 
   // Bind gameplay milestone quests (awarding direct gems)
   bindGameplayQuestClaimButton("qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", 15, () => {
@@ -13583,16 +13720,16 @@ function initQuestsSystem() {
   });
 
   // Bind engagement progress milestones
-  bindMilestoneNode("chk_100", 100);
-  bindMilestoneNode("chk_200", 200);
-  bindMilestoneNode("chk_300", 300);
-  bindMilestoneNode("chk_400", 400);
+  bindMilestoneNode("chk_100", 100, 50);
+  bindMilestoneNode("chk_200", 200, 70);
+  bindMilestoneNode("chk_300", 300, 80);
+  bindMilestoneNode("chk_400", 400, 100);
 
   syncQuestsUI();
   syncLevelTabUI();
 }
 
-function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
+function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, coinVal, goAction) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   
@@ -13608,7 +13745,13 @@ function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
       engagement = Math.min(400, engagement + pointsVal);
       localStorage.setItem("daily_engagement", engagement.toString());
       
-      showToastMsg(`Claimed ${pointsVal} Engagement Points!`);
+      // Add coins
+      crownCount += coinVal;
+      const crownEl = document.getElementById("crownCount");
+      if (crownEl) crownEl.textContent = crownCount;
+      saveProgression();
+      
+      showToastMsg(`Claimed ${pointsVal} Engagement & ${coinVal} Coins!`);
       syncQuestsUI();
     } else if (!completed && !claimed && typeof goAction === "function") {
       goAction();
@@ -13642,7 +13785,7 @@ function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goActio
   });
 }
 
-function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
+function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, coinVal, goAction) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   
@@ -13658,7 +13801,13 @@ function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, goActio
       engagement = Math.min(400, engagement + pointsVal);
       localStorage.setItem("weekly_engagement", engagement.toString());
       
-      showToastMsg(`Claimed ${pointsVal} Weekly Engagement Points!`);
+      // Add coins
+      crownCount += coinVal;
+      const crownEl = document.getElementById("crownCount");
+      if (crownEl) crownEl.textContent = crownCount;
+      saveProgression();
+      
+      showToastMsg(`Claimed ${pointsVal} Weekly Engagement & ${coinVal} Coins!`);
       syncQuestsUI();
     } else if (!completed && !claimed && typeof goAction === "function") {
       goAction();
@@ -13666,7 +13815,7 @@ function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, goActio
   });
 }
 
-function bindWeeklyMilestoneNode(nodeId, milestoneVal) {
+function bindWeeklyMilestoneNode(nodeId, milestoneVal, coinVal) {
   const node = document.getElementById(nodeId);
   if (!node) return;
   
@@ -13677,20 +13826,23 @@ function bindWeeklyMilestoneNode(nodeId, milestoneVal) {
     if (engagement >= milestoneVal && !claimed) {
       localStorage.setItem(`claimed_weekly_milestone_${milestoneVal}`, "true");
       
-      // Grant reward of 20 gems
+      // Grant reward of 20 gems + coins
       gemsCount += 20;
+      crownCount += coinVal;
       const gemsEl = document.getElementById("gemsCount");
+      const crownEl = document.getElementById("crownCount");
       if (gemsEl) gemsEl.textContent = gemsCount;
+      if (crownEl) crownEl.textContent = crownCount;
       updateShopWalletDisplay();
       saveProgression();
       
-      showGemClaimRewardModal(20, "Weekly Milestone Claimed!");
+      showGemClaimRewardModal(20, "Weekly Milestone Claimed!", coinVal);
       syncQuestsUI();
     }
   });
 }
 
-function bindMilestoneNode(nodeId, milestoneVal) {
+function bindMilestoneNode(nodeId, milestoneVal, coinVal) {
   const node = document.getElementById(nodeId);
   if (!node) return;
   
@@ -13701,14 +13853,17 @@ function bindMilestoneNode(nodeId, milestoneVal) {
     if (engagement >= milestoneVal && !claimed) {
       localStorage.setItem(`claimed_milestone_${milestoneVal}`, "true");
       
-      // Grant reward of 10 gems
+      // Grant reward of 10 gems + coins
       gemsCount += 10;
+      crownCount += coinVal;
       const gemsEl = document.getElementById("gemsCount");
+      const crownEl = document.getElementById("crownCount");
       if (gemsEl) gemsEl.textContent = gemsCount;
+      if (crownEl) crownEl.textContent = crownCount;
       updateShopWalletDisplay();
       saveProgression();
       
-      showGemClaimRewardModal(10, "Milestone Reward Claimed!");
+      showGemClaimRewardModal(10, "Milestone Reward Claimed!", coinVal);
       syncQuestsUI();
     }
   });
@@ -13910,8 +14065,11 @@ function syncLevelTabUI() {
       </div>
       
       <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-family: var(--font); font-size: 12px; color: #b16cff; font-weight: 900; display: flex; align-items: center; gap: 3px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#b16cff" style="display: inline-block; vertical-align: middle;"><path d="M6 2h12l4 6-10 14L2 8z"/></svg> 5
+        </span>
         <span style="font-family: var(--font); font-size: 12px; color: #ffd86f; font-weight: 900; display: flex; align-items: center; gap: 3px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="#ffd86f" style="display: inline-block; vertical-align: middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> 5
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#ffd86f" style="display: inline-block; vertical-align: middle;"><circle cx="12" cy="12" r="10" stroke="#000" stroke-width="2"/><path d="M12 7v10M10 9h3.5a1.5 1.5 0 0 1 0 3H12h-1.5a1.5 1.5 0 0 0 0 3H14" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none"/></svg> 100
         </span>
         
         <button class="level-claim-btn" data-level-milestone="${lvl}" type="button" style="padding: 4px 12px; font-family: var(--font); font-size: 11px; font-weight: 900; text-transform: uppercase; border-radius: 8px; border: 2.5px solid #000; box-shadow: 1.5px 1.5px 0 #000; cursor: pointer; transition: transform 0.1s;"></button>
@@ -13937,14 +14095,17 @@ function syncLevelTabUI() {
       btn.addEventListener("click", () => {
         localStorage.setItem(`level_reward_claimed_${lvl}`, "true");
         
-        // Grant 5 gems
+        // Grant 5 gems and 100 coins
         gemsCount += 5;
+        crownCount += 100;
         const gemsEl = document.getElementById("gemsCount");
+        const crownEl = document.getElementById("crownCount");
         if (gemsEl) gemsEl.textContent = gemsCount;
+        if (crownEl) crownEl.textContent = crownCount;
         updateShopWalletDisplay();
         saveProgression();
         
-        showGemClaimRewardModal(5, `Level ${lvl} Reward Claimed!`);
+        showGemClaimRewardModal(5, `Level ${lvl} Reward Claimed!`, 100);
         syncLevelTabUI();
       });
     } else {
