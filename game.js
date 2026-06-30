@@ -2996,7 +2996,7 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
       <div class="card-inner-skew">
         <button class="local-four-remove" type="button" aria-label="Remove P${index + 1}" ${index === 0 ? "hidden" : ""}>x</button>
         <div class="squad-card-image-container">
-          <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" />
+          <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" ${slot.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
         </div>
       </div>
       <div class="card-footer-bar">
@@ -3925,6 +3925,11 @@ function updateProgressionUI() {
     const cardPath = getCharacterCardPath(selectedCharacter);
     if (!playCardImg.src.endsWith(cardPath)) {
       playCardImg.src = cardPath;
+    }
+    if (selectedCharacter === "magical_usagi") {
+      playCardImg.style.transform = "translateX(24px) scale(1.05)";
+    } else {
+      playCardImg.style.transform = "";
     }
   }
   const playCharName = document.getElementById("playCharName");
@@ -6510,11 +6515,21 @@ function drawCharacterSelectPreview() {
   const height = characterSelectCanvas.height;
   characterSelectCtx.clearRect(0, 0, width, height);
 
-  const scale = Math.min(width / characterSelectVideo.videoWidth, height / characterSelectVideo.videoHeight) * 1.76;
+  let scaleBoost = 1.76;
+  let yOffset = 1.03;
+  if (previewCharacter === "magical_hachiware") {
+    scaleBoost = 2.45;
+    yOffset = 0.98;
+  } else if (previewCharacter === "magical_chiikawa" || previewCharacter === "magical_usagi") {
+    scaleBoost = 2.15;
+    yOffset = 1.0;
+  }
+
+  const scale = Math.min(width / characterSelectVideo.videoWidth, height / characterSelectVideo.videoHeight) * scaleBoost;
   const drawW = characterSelectVideo.videoWidth * scale;
   const drawH = characterSelectVideo.videoHeight * scale;
   const drawX = (width - drawW) / 2;
-  const drawY = height - drawH * 1.03;
+  const drawY = height - drawH * yOffset;
 
   characterSelectCtx.drawImage(characterSelectVideo, drawX, drawY, drawW, drawH);
   removeGreenScreenFromCanvas(characterSelectCtx, width, height);
@@ -7263,6 +7278,19 @@ function syncSquadLobbyInterface() {
     if (!img.src.endsWith(cardPath)) {
       img.src = cardPath;
     }
+    if (selectedCharacter === "magical_usagi") {
+      img.style.transform = "translateX(24px) scale(1.05)";
+    } else {
+      img.style.transform = "";
+    }
+  }
+  const squadLobbyRankIcon = document.getElementById("squadLobbyRankIcon");
+  if (squadLobbyRankIcon) {
+    squadLobbyRankIcon.innerHTML = getRankIconSvg(rank.id);
+  }
+  const squadLobbyLevelNum = document.getElementById("squadLobbyLevelNum");
+  if (squadLobbyLevelNum) {
+    squadLobbyLevelNum.textContent = seasonLevel;
   }
 
   // Teammates-only filtering: must share the same squadCode and not be bots
@@ -7282,16 +7310,20 @@ function syncSquadLobbyInterface() {
       leftCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
           </div>
         </div>
         <div class="card-footer-bar">
-          <div class="avatar-circle">
-            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          <div class="showcase-rank-badge">
+            ${getRankIconSvg(p.rank || ['bronze', 'silver', 'gold', 'platinum'][p.name.charCodeAt(0) % 4])}
           </div>
           <div class="user-info">
             <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
             <div class="user-level">${escapeHTML(p.name)}</div>
+          </div>
+          <div class="showcase-level-badge">
+            <span class="lvl-label">LV.</span>
+            <span>${p.level || (p.name.charCodeAt(0) % 15) + 1}</span>
           </div>
         </div>
       `;
@@ -7322,16 +7354,20 @@ function syncSquadLobbyInterface() {
       rightCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
           </div>
         </div>
         <div class="card-footer-bar">
-          <div class="avatar-circle">
-            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          <div class="showcase-rank-badge">
+            ${getRankIconSvg(p.rank || ['bronze', 'silver', 'gold', 'platinum'][p.name.charCodeAt(0) % 4])}
           </div>
           <div class="user-info">
             <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
             <div class="user-level">${escapeHTML(p.name)}</div>
+          </div>
+          <div class="showcase-level-badge">
+            <span class="lvl-label">LV.</span>
+            <span>${p.level || (p.name.charCodeAt(0) % 15) + 1}</span>
           </div>
         </div>
       `;
@@ -7363,16 +7399,20 @@ function syncSquadLobbyInterface() {
         fourthCard.innerHTML = `
           <div class="card-inner-skew">
             <div class="squad-card-image-container">
-              <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
+              <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
             </div>
           </div>
           <div class="card-footer-bar">
-            <div class="avatar-circle">
-              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            <div class="showcase-rank-badge">
+              ${getRankIconSvg(p.rank || ['bronze', 'silver', 'gold', 'platinum'][p.name.charCodeAt(0) % 4])}
             </div>
             <div class="user-info">
               <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
               <div class="user-level">${escapeHTML(p.name)}</div>
+            </div>
+            <div class="showcase-level-badge">
+              <span class="lvl-label">LV.</span>
+              <span>${p.level || (p.name.charCodeAt(0) % 15) + 1}</span>
             </div>
           </div>
         `;
@@ -8330,13 +8370,17 @@ function setVsCardTheme(slotNum, charKind) {
   if (!cardInner) return;
   
   cardInner.classList.remove("card-pink", "card-yellow", "card-blue", "card-purple");
-  if (charKind === "chiikawa") {
+  let baseKind = charKind || "chiikawa";
+  if (baseKind.startsWith("magical_")) {
+    baseKind = baseKind.replace("magical_", "");
+  }
+  if (baseKind === "chiikawa") {
     cardInner.classList.add("card-pink");
-  } else if (charKind === "usagi") {
+  } else if (baseKind === "usagi") {
     cardInner.classList.add("card-yellow");
-  } else if (charKind === "hachiware") {
+  } else if (baseKind === "hachiware") {
     cardInner.classList.add("card-blue");
-  } else if (charKind === "momonga") {
+  } else if (baseKind === "momonga") {
     cardInner.classList.add("card-purple");
   } else {
     cardInner.classList.add("card-pink");

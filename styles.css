@@ -10633,6 +10633,19 @@ body.is-iphone {
   display: none !important;
 }
 
+/* Characters Tab: Show normal, hide magical */
+.select-card-grid[data-mode="characters"] .character-card[data-kind^="magical_"] {
+  display: none !important;
+}
+
+/* Clothes Tab: Show magical, hide normal */
+.select-card-grid[data-mode="clothes"] .character-card {
+  display: none !important;
+}
+.select-card-grid[data-mode="clothes"] .character-card[data-kind^="magical_"] {
+  display: block !important;
+}
+
 /* Gacha Stage Styles */
 .gacha-stage {
   perspective: 1000px;
