@@ -320,7 +320,7 @@ function pruneGameDirectory(gameDir) {
         pruneGeneratedAssets(fullPath);
         continue;
       }
-      if (/\.bak\./i.test(entry.name) || /_high\.mp4$/i.test(entry.name)) {
+      if (/\.bak\./i.test(entry.name)) {
         removeIfInside(gameDir, fullPath);
       }
     }

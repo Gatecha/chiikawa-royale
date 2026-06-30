@@ -2661,6 +2661,10 @@ function switchScreen(targetScreen) {
     document.getElementById("ingameChatToggleBtn")?.classList.add("hidden");
     const gameMicBtn = document.getElementById("gameMicBtn");
     if (gameMicBtn) gameMicBtn.style.display = "none";
+    const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+    if (fsOverlay) fsOverlay.classList.add('hidden');
+    startCountdownTimer = 0;
+    startCountdownState = "";
   } else {
     const chatBox = document.getElementById("ingameChatBox");
     const chatMsgs = document.getElementById("ingameChatMessages");
@@ -7310,6 +7314,7 @@ leaveLobbyBtn?.addEventListener("click", () => {
 
 // Exit Match
 leaveGameBtn?.addEventListener("click", () => {
+  if (startCountdownTimer > 0) return;
   if (!localMode && running && socket && socket.readyState === WebSocket.OPEN) {
     if (isTeamMode(currentRoomMode)) {
       sendServerMessage("request_surrender");
@@ -8266,12 +8271,14 @@ function normalizeInputKey(event) {
 }
 
 function triggerPlayerBomb(player) {
+  if (startCountdownTimer > 0) return;
   if (!player || !player.alive) return;
   if (localMode) localPlaceBomb(player);
   else sendServerMessage("place_bomb");
 }
 
 function triggerPlayerPunch(player) {
+  if (startCountdownTimer > 0) return;
   if (!player || !player.alive) return;
   if (localMode) {
     triggerLocalPunch(player);
@@ -10002,14 +10009,34 @@ if (btnLogoutAccount) {
     
     // Reset progression locally
     crownCount = 0;
-    gemsCount = 100;
+    gemsCount = 0;
     seasonLevel = 1;
     seasonXp = 0;
+    seasonXpToNext = 100;
     currentSocialUsername = "";
     localStorage.removeItem("local_username");
+    localStorage.removeItem("chiikawaProgress");
+    localStorage.removeItem("tutorial_status");
     if (usernameInput) usernameInput.value = "Friend";
     if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = "Friend";
     updateProgressionUI();
+
+    // Reset console navigation active states back to 'play' (lobby) tab
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const tabContents = document.querySelectorAll(".tab-content");
+    tabButtons.forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-tab") === "play");
+    });
+    tabContents.forEach((c) => {
+      c.classList.toggle("active", c.id === "tabContent_play");
+    });
+    const consoleTitle = document.querySelector(".console-title");
+    if (consoleTitle) consoleTitle.textContent = "LOBBY";
+    const consoleEl = document.querySelector(".yellow-console");
+    if (consoleEl) {
+      consoleEl.classList.remove("squad-lobby-active");
+      consoleEl.classList.remove("character-select-active");
+    }
 
     // Go back to login screen
     switchScreen(loginScreen);
@@ -11307,6 +11334,7 @@ function addBRPing(ping) {
 }
 
 function useHealingItemLocal(itemType) {
+  if (startCountdownTimer > 0) return;
   const localPlayer = players.find(p => p.id === localPlayerId);
   if (!localPlayer || !localPlayer.alive || localPlayer.knocked) return;
   
