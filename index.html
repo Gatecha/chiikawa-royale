@@ -2749,5 +2749,259 @@
       <div id="fullscreenCountdownNum" class="fullscreen-countdown-num">3</div>
     </div>
 
+    <!-- ================================================================ -->
+    <!-- MONOPOLY GACHA BOARD OVERLAY -->
+    <!-- ================================================================ -->
+    <div id="monopolyBoardOverlay" class="mb-overlay hidden">
+
+      <!-- ZZZ hazard header -->
+      <div class="mb-header">
+        <div class="mb-hazard-stripe"></div>
+        <div class="mb-header-inner">
+          <div class="mb-pity-col">
+            <div class="mb-pity-row">
+              <span class="mb-pity-lbl">Guaranteed <em class="pity-a">A-Class</em> Item within roll <em class="pity-a">×10</em></span>
+              <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-a" id="mbFillA" style="width:0%"></div></div>
+              <span class="mb-pity-val" id="mbValA">0/10</span>
+            </div>
+            <div class="mb-pity-row">
+              <span class="mb-pity-lbl">Get <em class="pity-s">S-Class</em> Chaos after roll <em class="pity-s">×90</em></span>
+              <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-s" id="mbFillS" style="width:0%"></div></div>
+              <span class="mb-pity-val" id="mbValS">0/90</span>
+            </div>
+            <div class="mb-pity-row">
+              <span class="mb-pity-lbl">Triggers <em class="pity-b">Board Modification</em> after roll <em class="pity-b">×70</em></span>
+              <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-b" id="mbFillB" style="width:0%"></div></div>
+              <span class="mb-pity-val" id="mbValB">0/70</span>
+            </div>
+          </div>
+          <div class="mb-header-right">
+            <div class="mb-gem-pill">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="#b16cff"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+              <span id="mbHeaderGems">0</span>
+            </div>
+            <button id="monopolyCloseBtn" class="mb-x-btn" type="button">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene area: board + islands -->
+      <div class="mb-scene-area">
+
+        <!-- Side decorations -->
+        <div class="mb-side-deco mb-side-left">
+          <div class="mb-lamp"><div class="mb-lamp-glow"></div></div>
+          <div class="mb-coin-stack"><div class="mb-coin"></div><div class="mb-coin"></div><div class="mb-coin"></div></div>
+          <div class="mb-lamp mb-lamp-s"><div class="mb-lamp-glow"></div></div>
+        </div>
+
+        <!-- Board + Island wrapper -->
+        <div class="mb-board-world" id="mbBoardWorld">
+
+          <!-- MAIN BOARD VIEW -->
+          <div class="mb-main-view" id="mbMainView">
+            <div class="mb-board-container" id="mbBoardContainer">
+              <!-- Floor deco -->
+              <div class="mb-floor">
+                <div class="mb-wheel">
+                  <div class="mb-wheel-ring mwr-1"></div>
+                  <div class="mb-wheel-ring mwr-2"></div>
+                  <div class="mb-wheel-ring mwr-3"></div>
+                  <div class="mb-wheel-center">✦</div>
+                </div>
+                <div class="mb-floor-brand">MAGICAL CHIIKAWA</div>
+                <div class="mb-floor-star fstar-tl">⭐</div>
+                <div class="mb-floor-star fstar-tr">⭐</div>
+                <div class="mb-floor-star fstar-bl">⭐</div>
+                <div class="mb-floor-star fstar-br">⭐</div>
+              </div>
+              <!-- Tiles injected by JS -->
+              <div id="mbTiles"></div>
+              <!-- Character piece -->
+              <div id="mbCharPiece" class="mb-char-piece">
+                <img id="mbCharImg" src="" alt="" class="mb-char-sprite" />
+                <div class="mb-char-shadow"></div>
+                <div class="mb-char-glow"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ISLAND VIEW 1: Golden Vault -->
+          <div class="mb-island-view mb-island-view-1 hidden" id="mbIslandView1">
+            <div class="mb-island-bg mb-island-bg-gold"></div>
+            <div class="mb-island-content">
+              <div class="mb-island-header-banner mb-island-gold-banner">
+                <div class="mb-island-crown-anim">👑</div>
+                <div class="mb-island-title-wrap">
+                  <h2 class="mb-island-big-title">Golden Vault</h2>
+                  <span class="mb-island-subtitle">High-Chance Rare Zone — Rare Crates &amp; Free Pulls!</span>
+                </div>
+              </div>
+              <div class="mb-island-platform mb-island-plat-gold">
+                <div class="mb-island-plat-light"></div>
+                <div class="mb-island-plat-light mb-ipl-2"></div>
+                <div id="mbIsland1Tiles" class="mb-island-tiles"></div>
+                <div id="mbIslandChar1" class="mb-char-piece mb-island-char hidden">
+                  <img id="mbIslandCharImg1" src="" alt="" class="mb-char-sprite" />
+                  <div class="mb-char-shadow"></div>
+                  <div class="mb-char-glow"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ISLAND VIEW 2: Star Sanctum -->
+          <div class="mb-island-view mb-island-view-2 hidden" id="mbIslandView2">
+            <div class="mb-island-bg mb-island-bg-purple"></div>
+            <div class="mb-island-content">
+              <div class="mb-island-header-banner mb-island-purple-banner">
+                <div class="mb-island-crown-anim">✦</div>
+                <div class="mb-island-title-wrap">
+                  <h2 class="mb-island-big-title mb-island-title-purple">Star Sanctum</h2>
+                  <span class="mb-island-subtitle">Ultra-Rare Zone — S-Class Crates &amp; ×2 Pulls!</span>
+                </div>
+              </div>
+              <div class="mb-island-platform mb-island-plat-purple">
+                <div class="mb-island-plat-light mb-ipl-purple"></div>
+                <div class="mb-island-plat-light mb-ipl-purple mb-ipl-2"></div>
+                <div id="mbIsland2Tiles" class="mb-island-tiles"></div>
+                <div id="mbIslandChar2" class="mb-char-piece mb-island-char hidden">
+                  <img id="mbIslandCharImg2" src="" alt="" class="mb-char-sprite" />
+                  <div class="mb-char-shadow"></div>
+                  <div class="mb-char-glow"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bridge cinematic overlay -->
+          <div class="mb-bridge-cinematic hidden" id="mbBridgeCinematic">
+            <div class="mb-bridge-bg"></div>
+            <div class="mb-bridge-scene">
+              <div class="mb-bridge-label" id="mbBridgeLabel">Building Bridge...</div>
+              <div class="mb-bridge-track-wrap">
+                <div class="mb-bridge-rail mb-bridge-rail-top"></div>
+                <div class="mb-bridge-planks" id="mbBridgePlanks">
+                  <div class="mb-bridge-plank" style="--di:0"></div>
+                  <div class="mb-bridge-plank" style="--di:1"></div>
+                  <div class="mb-bridge-plank" style="--di:2"></div>
+                  <div class="mb-bridge-plank" style="--di:3"></div>
+                  <div class="mb-bridge-plank" style="--di:4"></div>
+                  <div class="mb-bridge-plank" style="--di:5"></div>
+                  <div class="mb-bridge-plank" style="--di:6"></div>
+                  <div class="mb-bridge-plank" style="--di:7"></div>
+                </div>
+                <div class="mb-bridge-rail mb-bridge-rail-bot"></div>
+              </div>
+              <div class="mb-bridge-dest-label" id="mbBridgeDestLabel">Golden Vault</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right side deco -->
+        <div class="mb-side-deco mb-side-right">
+          <div class="mb-spin-wheel"></div>
+          <div class="mb-pillar"></div>
+          <div class="mb-coin-stack mb-coin-right"><div class="mb-coin"></div><div class="mb-coin"></div></div>
+        </div>
+
+      </div><!-- /mb-scene-area -->
+
+      <!-- Footer -->
+      <div class="mb-footer">
+        <div class="mb-footer-left">
+          <div class="mb-footer-gems">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="#b16cff"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+            <span id="mbFooterGems">0</span>
+          </div>
+          <div id="mbFreeRollBadge" class="mb-free-badge hidden">🎲 FREE ROLL <span id="mbFreeRollCnt">×1</span></div>
+        </div>
+        <div class="mb-roll-buttons">
+          <button class="mb-roll-btn mb-roll-single" id="mbRoll1Btn" type="button">
+            <div class="mb-roll-cost-bar mb-rcb-red">
+              <svg viewBox="0 0 24 24" width="9" height="9" fill="#ff6b6b"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+              <span>×300</span>
+            </div>
+            <div class="mb-roll-body">
+              <span class="mb-roll-num">1</span>
+              <span class="mb-roll-lbl">Roll 1 ×</span>
+            </div>
+          </button>
+          <button class="mb-roll-btn mb-roll-ten" id="mbRoll10Btn" type="button">
+            <div class="mb-roll-cost-bar mb-rcb-blue">
+              <svg viewBox="0 0 24 24" width="9" height="9" fill="#4fc3f7"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+              <span class="mb-cost-blue">×2,700</span>
+            </div>
+            <div class="mb-roll-body">
+              <span class="mb-roll-num">10</span>
+              <span class="mb-roll-lbl">Roll 10 ×</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- DICE OVERLAY -->
+      <div id="mbDiceOverlay" class="mb-dice-overlay hidden">
+        <div class="mb-dice-blur"></div>
+        <div class="mb-dice-stage">
+          <div class="mb-dice-3d" id="mbDice3d">
+            <div class="mb-dface mb-dface-front"></div>
+            <div class="mb-dface mb-dface-back"></div>
+            <div class="mb-dface mb-dface-right"></div>
+            <div class="mb-dface mb-dface-left"></div>
+            <div class="mb-dface mb-dface-top"></div>
+            <div class="mb-dface mb-dface-bot"></div>
+          </div>
+          <div class="mb-dice-result hidden" id="mbDiceResult">
+            <div class="mb-dice-result-glow"></div>
+            <div class="mb-dice-big-num" id="mbDiceNum">3</div>
+            <div class="mb-dice-steps-lbl">STEPS</div>
+          </div>
+          <div class="mb-dice-ground-shadow"></div>
+        </div>
+      </div>
+
+      <!-- CRATE REWARD POPUP -->
+      <div id="mbCratePopup" class="mb-popup-overlay hidden">
+        <div class="mb-popup-clickaway" id="mbPopupClickaway"></div>
+        <div class="mb-popup-wrap">
+          <div class="mb-popup-halo"><div class="mb-popup-halo-ring"></div></div>
+          <div class="mb-popup-phone">
+            <div class="mb-phone-top">
+              <div class="mb-phone-conn mb-phone-conn-l"></div>
+              <div class="mb-phone-conn mb-phone-conn-r"></div>
+            </div>
+            <div class="mb-phone-screen">
+              <div class="mb-phone-item" id="mbCrateItemDisplay"></div>
+              <div class="mb-phone-spin"></div>
+            </div>
+            <div class="mb-popup-rank" id="mbCrateRank">B<br><small>RANK</small></div>
+          </div>
+          <div class="mb-popup-name" id="mbCrateItemName">Pink Bomb</div>
+          <div class="mb-popup-type" id="mbCrateItemType">BOMB SKIN</div>
+          <div class="mb-popup-gems-bonus hidden" id="mbCrateGemsBonus">+100 💎 gems bonus</div>
+          <button class="mb-claim-btn" id="mbCrateClaimBtn" type="button">
+            <span>CLAIM</span>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="#000"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          </button>
+          <p class="mb-popup-hint">Press empty area to close</p>
+        </div>
+      </div>
+
+      <!-- FREE PULL POPUP -->
+      <div id="mbFreePullPopup" class="mb-popup-overlay hidden">
+        <div class="mb-popup-clickaway" id="mbFreePullClickaway"></div>
+        <div class="mb-fp-card">
+          <div class="mb-fp-rays"></div>
+          <div class="mb-fp-icon" id="mbFpIcon">×1</div>
+          <div class="mb-fp-title" id="mbFpTitle">FREE PULL ×1</div>
+          <div class="mb-fp-sub">Granted! Next roll is on the house.</div>
+          <button class="mb-claim-btn mb-fp-ok" id="mbFreePullOk" type="button">SWEET! ✨</button>
+        </div>
+      </div>
+
+    </div><!-- /monopolyBoardOverlay -->
+
   </body>
 </html>

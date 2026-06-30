@@ -14574,3 +14574,912 @@ document.getElementById("btnPlayOnlineMultiplayer")?.addEventListener("click", (
     removeLobbyPulseOverlay();
   }
 });
+
+// ================================================================
+// MONOPOLY GACHA BOARD SYSTEM
+// ================================================================
+
+let mbCurrentBoard = 'main'; // 'main', 'island1', 'island2'
+let mbMainIndex = parseInt(localStorage.getItem('mb_main_index') || '0');
+let mbIsland1Index = 0;
+let mbIsland2Index = 0;
+let mbFreePulls = parseInt(localStorage.getItem('mb_free_pulls') || '0');
+let mbRolling = false;
+let mbMoving = false;
+let mbRollQueue = 0;
+
+// Pity system
+let mbTotalRolls = parseInt(localStorage.getItem('mb_rolls_total') || '0');
+let mbPityA = parseInt(localStorage.getItem('mb_rolls_pity_a') || '0');
+let mbPityS = parseInt(localStorage.getItem('mb_rolls_pity_s') || '0');
+let mbPityMod = parseInt(localStorage.getItem('mb_rolls_pity_mod') || '0');
+
+// Categorize gachaPool items into ranks
+const mbItemRanks = {
+  // S-Class
+  'gold-bomb': 'S',
+  'gold-effect': 'S',
+  'purple-bomb': 'S',
+  'purple-effect': 'S',
+  // A-Class
+  'blue-bomb': 'A',
+  'blue-effect': 'A',
+  'green-bomb': 'A',
+  'green-effect': 'A',
+  // B-Class
+  'pink-bomb': 'B',
+  'pink-effect': 'B'
+};
+
+// Main board tile definition
+const mbMainTilesConfig = [
+  { type: 'start', label: 'START', emoji: '🏁' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'portal1', label: 'SECRET', emoji: '🌀' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'corner', label: 'REST', emoji: '☕' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'corner', label: 'REST', emoji: '⭐' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'portal2', label: 'SECRET', emoji: '🌀' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'corner', label: 'REST', emoji: '☕' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' }
+];
+
+const mbMainBoardLayout = [
+  { col: 0, row: 6 }, // 0
+  { col: 0, row: 5 }, // 1
+  { col: 0, row: 4 }, // 2
+  { col: 0, row: 3 }, // 3
+  { col: 0, row: 2 }, // 4 (Portal 1)
+  { col: 0, row: 1 }, // 5
+  { col: 0, row: 0 }, // 6 (Corner 1)
+  { col: 1, row: 0 }, // 7
+  { col: 2, row: 0 }, // 8
+  { col: 3, row: 0 }, // 9
+  { col: 4, row: 0 }, // 10
+  { col: 5, row: 0 }, // 11
+  { col: 6, row: 0 }, // 12
+  { col: 7, row: 0 }, // 13
+  { col: 8, row: 0 }, // 14 (Corner 2)
+  { col: 8, row: 1 }, // 15
+  { col: 8, row: 2 }, // 16 (Portal 2)
+  { col: 8, row: 3 }, // 17
+  { col: 8, row: 4 }, // 18
+  { col: 8, row: 5 }, // 19
+  { col: 8, row: 6 }, // 20 (Corner 3)
+  { col: 7, row: 6 }, // 21
+  { col: 6, row: 6 }, // 22
+  { col: 5, row: 6 }, // 23
+  { col: 4, row: 6 }, // 24
+  { col: 3, row: 6 }, // 25
+  { col: 2, row: 6 }, // 26
+  { col: 1, row: 6 }  // 27
+];
+
+// Island layouts (3 columns x 2 rows serpentine path)
+const mbIslandBoardLayout = [
+  { col: 0, row: 0 },
+  { col: 1, row: 0 },
+  { col: 2, row: 0 },
+  { col: 2, row: 1 },
+  { col: 1, row: 1 },
+  { col: 0, row: 1 }
+];
+
+const mbIsland1TilesConfig = [
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'pullx1', label: 'FREE ROLL', emoji: '🎫' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' }
+];
+
+const mbIsland2TilesConfig = [
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'pullx2', label: '2 ROLLS', emoji: '🎟️' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'sclass', label: 'CHAOS', emoji: '👑' }
+];
+
+// Coordinate helper for main board
+function getTileCoordsMain(index) {
+  const layout = mbMainBoardLayout[index];
+  const padding = 8;
+  const tileSize = 60;
+  const gap = 2;
+  const charWidth = 32;
+  const charHeight = 48;
+
+  const left = padding + layout.col * (tileSize + gap) + (tileSize - charWidth) / 2;
+  const top = padding + layout.row * (tileSize + gap) + (tileSize - charHeight) / 2;
+  return { left, top };
+}
+
+// Coordinate helper for islands
+function getTileCoordsIsland(index) {
+  const layout = mbIslandBoardLayout[index];
+  const tileSize = 80;
+  const gap = 4;
+  const charWidth = 32;
+  const charHeight = 48;
+
+  const left = layout.col * (tileSize + gap) + (tileSize - charWidth) / 2;
+  const top = layout.row * (tileSize + gap) + (tileSize - charHeight) / 2;
+  return { left, top };
+}
+
+// Global hook to open Monopoly board instead of old slot gacha
+openGachaModal = function() {
+  openMonopolyBoard();
+};
+
+function openMonopolyBoard() {
+  const overlay = document.getElementById("tabTransitionOverlay");
+  if (overlay) overlay.classList.add("animate-swipe");
+
+  setTimeout(() => {
+    const mbOverlay = document.getElementById("monopolyBoardOverlay");
+    if (mbOverlay) {
+      mbOverlay.classList.remove("hidden");
+    }
+    initMonopolyBoardUI();
+  }, 300);
+
+  setTimeout(() => {
+    if (overlay) overlay.classList.remove("animate-swipe");
+  }, 800);
+}
+
+function closeMonopolyBoard() {
+  if (mbRolling || mbMoving) {
+    showToastMsg("Cannot close while rolling or moving!");
+    return;
+  }
+  const overlay = document.getElementById("tabTransitionOverlay");
+  if (overlay) overlay.classList.add("animate-swipe");
+
+  setTimeout(() => {
+    const mbOverlay = document.getElementById("monopolyBoardOverlay");
+    if (mbOverlay) mbOverlay.classList.add("hidden");
+  }, 300);
+
+  setTimeout(() => {
+    if (overlay) overlay.classList.remove("animate-swipe");
+  }, 800);
+}
+
+function initMonopolyBoardUI() {
+  // Render main board tiles
+  const tilesContainer = document.getElementById("mbTiles");
+  if (tilesContainer) {
+    tilesContainer.innerHTML = "";
+    mbMainTilesConfig.forEach((tile, index) => {
+      const tileDiv = document.createElement("div");
+      tileDiv.className = `mb-tile ${getTileClass(tile.type)}`;
+      const layout = mbMainBoardLayout[index];
+      tileDiv.style.gridColumnStart = layout.col + 1;
+      tileDiv.style.gridRowStart = layout.row + 1;
+      tileDiv.innerHTML = `
+        <span style="font-size:22px; filter: drop-shadow(0 2px 0 #000);">${tile.emoji}</span>
+        <span class="mb-tile-label">${tile.label}</span>
+        <span class="mb-tile-stepnum">${index}</span>
+      `;
+      tilesContainer.appendChild(tileDiv);
+    });
+  }
+
+  // Render Island 1 tiles
+  const island1Container = document.getElementById("mbIsland1Tiles");
+  if (island1Container) {
+    island1Container.innerHTML = "";
+    mbIsland1TilesConfig.forEach((tile, index) => {
+      const tileDiv = document.createElement("div");
+      tileDiv.className = `mb-tile ${getTileClass(tile.type)}`;
+      tileDiv.style.width = "80px";
+      tileDiv.style.height = "80px";
+      const layout = mbIslandBoardLayout[index];
+      tileDiv.style.gridColumnStart = layout.col + 1;
+      tileDiv.style.gridRowStart = layout.row + 1;
+      tileDiv.innerHTML = `
+        <span style="font-size:26px; filter: drop-shadow(0 2px 0 #000);">${tile.emoji}</span>
+        <span class="mb-tile-label">${tile.label}</span>
+      `;
+      island1Container.appendChild(tileDiv);
+    });
+  }
+
+  // Render Island 2 tiles
+  const island2Container = document.getElementById("mbIsland2Tiles");
+  if (island2Container) {
+    island2Container.innerHTML = "";
+    mbIsland2TilesConfig.forEach((tile, index) => {
+      const tileDiv = document.createElement("div");
+      tileDiv.className = `mb-tile ${getTileClass(tile.type)}`;
+      tileDiv.style.width = "80px";
+      tileDiv.style.height = "80px";
+      const layout = mbIslandBoardLayout[index];
+      tileDiv.style.gridColumnStart = layout.col + 1;
+      tileDiv.style.gridRowStart = layout.row + 1;
+      tileDiv.innerHTML = `
+        <span style="font-size:26px; filter: drop-shadow(0 2px 0 #000);">${tile.emoji}</span>
+        <span class="mb-tile-label">${tile.label}</span>
+      `;
+      island2Container.appendChild(tileDiv);
+    });
+  }
+
+  // Set character sprites
+  updateCharacterSprite();
+
+  // Reset indices and views
+  mbCurrentBoard = 'main';
+  document.getElementById("mbMainView").classList.remove("hidden");
+  document.getElementById("mbIslandView1").classList.add("hidden");
+  document.getElementById("mbIslandView2").classList.add("hidden");
+  document.getElementById("mbIslandChar1").classList.add("hidden");
+  document.getElementById("mbIslandChar2").classList.add("hidden");
+
+  // Sync wallet and stats
+  syncMonopolyStats();
+
+  // Position character at starting tile
+  positionCharacterAt(mbMainIndex);
+}
+
+function getTileClass(type) {
+  switch (type) {
+    case 'start': return 'mb-tile-start';
+    case 'common': return 'mb-tile-common';
+    case 'rare': return 'mb-tile-rare';
+    case 'sclass': return 'mb-tile-sclass';
+    case 'portal1': return 'mb-tile-portal1';
+    case 'portal2': return 'mb-tile-portal2';
+    case 'dice': return 'mb-tile-dice';
+    case 'corner': return 'mb-tile-corner';
+    case 'pullx1': return 'mb-tile-pullx1';
+    case 'pullx2': return 'mb-tile-pullx2';
+    default: return 'mb-tile-common';
+  }
+}
+
+function updateCharacterSprite() {
+  const char = selectedCharacter || "chiikawa";
+  const idleFile = `assets/${char}/${char}_idle.png`;
+
+  const mainCharImg = document.getElementById("mbCharImg");
+  if (mainCharImg) mainCharImg.src = idleFile;
+
+  const island1CharImg = document.getElementById("mbIslandCharImg1");
+  if (island1CharImg) island1CharImg.src = idleFile;
+
+  const island2CharImg = document.getElementById("mbIslandCharImg2");
+  if (island2CharImg) island2CharImg.src = idleFile;
+}
+
+function positionCharacterAt(index) {
+  const piece = document.getElementById("mbCharPiece");
+  if (!piece) return;
+
+  const coords = getTileCoordsMain(index);
+  piece.style.left = `${coords.left}px`;
+  piece.style.top = `${coords.top}px`;
+  piece.classList.remove("hidden");
+}
+
+function positionCharacterAtIsland(islandId, index) {
+  const piece = document.getElementById(`mbIslandChar${islandId}`);
+  if (!piece) return;
+
+  const coords = getTileCoordsIsland(index);
+  piece.style.left = `${coords.left}px`;
+  piece.style.top = `${coords.top}px`;
+  piece.classList.remove("hidden");
+}
+
+function syncMonopolyStats() {
+  // Sync gems wallet
+  document.getElementById("mbHeaderGems").textContent = gemsCount.toLocaleString();
+  document.getElementById("mbFooterGems").textContent = gemsCount.toLocaleString();
+
+  // Sync Pity
+  document.getElementById("mbFillA").style.width = `${Math.min(100, (mbPityA / 10) * 100)}%`;
+  document.getElementById("mbValA").textContent = `${mbPityA}/10`;
+
+  document.getElementById("mbFillS").style.width = `${Math.min(100, (mbPityS / 90) * 100)}%`;
+  document.getElementById("mbValS").textContent = `${mbPityS}/90`;
+
+  document.getElementById("mbFillB").style.width = `${Math.min(100, (mbPityMod / 70) * 100)}%`;
+  document.getElementById("mbValB").textContent = `${mbPityMod}/70`;
+
+  // Free pull indicator
+  const freeBadge = document.getElementById("mbFreeRollBadge");
+  const freeRoll1Btn = document.getElementById("mbRoll1Btn");
+  if (freeBadge && freeRoll1Btn) {
+    if (mbFreePulls > 0) {
+      freeBadge.classList.remove("hidden");
+      document.getElementById("mbFreeRollCnt").textContent = `×${mbFreePulls}`;
+      freeRoll1Btn.querySelector(".mb-roll-cost-bar").innerHTML = `<span style="color:#ffd86f; font-weight:900;">FREE ROLL</span>`;
+    } else {
+      freeBadge.classList.add("hidden");
+      freeRoll1Btn.querySelector(".mb-roll-cost-bar").innerHTML = `
+        <svg viewBox="0 0 24 24" width="9" height="9" fill="#ff6b6b"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+        <span>×300</span>
+      `;
+    }
+  }
+}
+
+// Bind click handlers for Monopoly Gacha Board
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("monopolyCloseBtn")?.addEventListener("click", closeMonopolyBoard);
+
+  document.getElementById("mbRoll1Btn")?.addEventListener("click", () => handleMonopolyRoll(1));
+  document.getElementById("mbRoll10Btn")?.addEventListener("click", () => handleMonopolyRoll(10));
+
+  // Claim button close handlers
+  document.getElementById("mbCrateClaimBtn")?.addEventListener("click", claimMonopolyReward);
+  document.getElementById("mbFreePullOk")?.addEventListener("click", closeFreePullPopup);
+});
+
+async function handleMonopolyRoll(count) {
+  if (mbRolling || mbMoving) return;
+
+  if (count === 1) {
+    // Check cost
+    if (mbFreePulls > 0) {
+      mbFreePulls--;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+    } else {
+      if (gemsCount < 300) {
+        showToastMsg("Not enough gems!");
+        return;
+      }
+      gemsCount -= 300;
+      updateShopWalletDisplay();
+    }
+    mbRollQueue = 1;
+  } else if (count === 10) {
+    if (gemsCount < 2700) {
+      showToastMsg("Not enough gems!");
+      return;
+    }
+    gemsCount -= 2700;
+    updateShopWalletDisplay();
+    mbRollQueue = 10;
+  }
+
+  saveProgression();
+  syncMonopolyStats();
+
+  triggerDiceRollSequence();
+}
+
+function triggerDiceRollSequence() {
+  mbRolling = true;
+
+  // Dice Overlay view
+  const diceOverlay = document.getElementById("mbDiceOverlay");
+  const dice3d = document.getElementById("mbDice3d");
+  const diceResult = document.getElementById("mbDiceResult");
+
+  diceOverlay.classList.remove("hidden");
+  dice3d.classList.remove("hidden");
+  dice3d.classList.add("rolling");
+  diceResult.classList.add("hidden");
+
+  // Roll result
+  const steps = Math.floor(Math.random() * 6) + 1;
+
+  // 3D rotations config for final face
+  const rotMap = {
+    1: 'rotateX(0deg) rotateY(0deg)',
+    2: 'rotateX(180deg) rotateY(0deg)',
+    3: 'rotateX(0deg) rotateY(-90deg)',
+    4: 'rotateX(0deg) rotateY(90deg)',
+    5: 'rotateX(-90deg) rotateY(0deg)',
+    6: 'rotateX(90deg) rotateY(0deg)'
+  };
+
+  dice3d.style.setProperty('--dice-final-rot', rotMap[steps]);
+
+  // Construct dots inside face helper
+  const faces = ['front', 'back', 'right', 'left', 'top', 'bot'];
+  const dotCounts = [1, 6, 3, 4, 2, 5]; // match faces config
+  faces.forEach((f, idx) => {
+    const el = dice3d.querySelector(`.mb-dface-${f}`);
+    if (el) {
+      const cnt = dotCounts[idx];
+      let dotsHtml = `<div class="mb-dots-${cnt}">`;
+      for(let d=0; d<cnt; d++) dotsHtml += `<div class="mb-dot"></div>`;
+      dotsHtml += `</div>`;
+      el.innerHTML = dotsHtml;
+    }
+  });
+
+  setTimeout(() => {
+    // Snap dice to correct rotation and hide spin animation
+    dice3d.classList.remove("rolling");
+    dice3d.style.transform = rotMap[steps];
+
+    setTimeout(() => {
+      // Reveal result number
+      dice3d.classList.add("hidden");
+      diceResult.classList.remove("hidden");
+      document.getElementById("mbDiceNum").textContent = steps;
+
+      setTimeout(() => {
+        // Close overlay and walk character
+        diceOverlay.classList.add("hidden");
+        mbRolling = false;
+        animateCharacterWalk(steps);
+      }, 1100);
+
+    }, 500);
+
+  }, 1400);
+}
+
+function animateCharacterWalk(steps) {
+  mbMoving = true;
+  let remaining = steps;
+
+  const char = selectedCharacter || "chiikawa";
+  const walk1 = `assets/${char}/${char}_walk_front1.png`;
+  const walk2 = `assets/${char}/${char}_walk_front2.png`;
+  const idle = `assets/${char}/${char}_idle.png`;
+
+  let frameTick = false;
+
+  function takeStep() {
+    if (remaining <= 0) {
+      mbMoving = false;
+      // Landing action
+      handleTileLanding();
+      return;
+    }
+
+    remaining--;
+
+    // Update indices and coordinate mapping
+    let coords;
+    if (mbCurrentBoard === 'main') {
+      mbMainIndex = (mbMainIndex + 1) % 28;
+      localStorage.setItem('mb_main_index', mbMainIndex.toString());
+      coords = getTileCoordsMain(mbMainIndex);
+
+      // Highlight active tile
+      document.querySelectorAll(".mb-tile").forEach(t => t.classList.remove("mb-tile-highlight"));
+      const allTiles = document.getElementById("mbTiles").children;
+      if (allTiles && allTiles[mbMainIndex]) {
+        allTiles[mbMainIndex].classList.add("mb-tile-highlight");
+      }
+
+      // Move piece
+      const piece = document.getElementById("mbCharPiece");
+      piece.style.left = `${coords.left}px`;
+      piece.style.top = `${coords.top}px`;
+      piece.classList.remove("mb-char-hop");
+      void piece.offsetWidth;
+      piece.classList.add("mb-char-hop");
+
+      // Alternate walk frames
+      document.getElementById("mbCharImg").src = frameTick ? walk1 : walk2;
+
+    } else if (mbCurrentBoard === 'island1' || mbCurrentBoard === 'island2') {
+      const isId = mbCurrentBoard === 'island1' ? 1 : 2;
+      let curIdx = mbCurrentBoard === 'island1' ? mbIsland1Index : mbIsland2Index;
+
+      curIdx++;
+      if (curIdx >= 6) {
+        // Return to main board Portal tile!
+        mbCurrentBoard = 'main';
+        document.getElementById("mbCharImg").src = idle;
+
+        // Bridge retraction cinematic
+        playBridgeRetractCinematic(isId);
+        return;
+      }
+
+      if (mbCurrentBoard === 'island1') {
+        mbIsland1Index = curIdx;
+      } else {
+        mbIsland2Index = curIdx;
+      }
+
+      coords = getTileCoordsIsland(curIdx);
+      const piece = document.getElementById(`mbIslandChar${isId}`);
+      piece.style.left = `${coords.left}px`;
+      piece.style.top = `${coords.top}px`;
+      piece.classList.remove("mb-char-hop");
+      void piece.offsetWidth;
+      piece.classList.add("mb-char-hop");
+
+      // Alternate walk frames
+      document.getElementById(`mbIslandCharImg${isId}`).src = frameTick ? walk1 : walk2;
+    }
+
+    frameTick = !frameTick;
+
+    // Beep sound
+    if (typeof playSound === "function") playSound("tutorial_beep");
+
+    setTimeout(takeStep, 350);
+  }
+
+  takeStep();
+}
+
+function handleTileLanding() {
+  // Set character back to idle image
+  const char = selectedCharacter || "chiikawa";
+  const idleFile = `assets/${char}/${char}_idle.png`;
+  document.getElementById("mbCharImg").src = idleFile;
+  document.getElementById("mbIslandCharImg1").src = idleFile;
+  document.getElementById("mbIslandCharImg2").src = idleFile;
+
+  let tile;
+  let tilesContainerId = "mbTiles";
+  let curIdx = mbMainIndex;
+
+  if (mbCurrentBoard === 'main') {
+    tile = mbMainTilesConfig[mbMainIndex];
+    tilesContainerId = "mbTiles";
+    curIdx = mbMainIndex;
+  } else if (mbCurrentBoard === 'island1') {
+    tile = mbIsland1TilesConfig[mbIsland1Index];
+    tilesContainerId = "mbIsland1Tiles";
+    curIdx = mbIsland1Index;
+  } else if (mbCurrentBoard === 'island2') {
+    tile = mbIsland2TilesConfig[mbIsland2Index];
+    tilesContainerId = "mbIsland2Tiles";
+    curIdx = mbIsland2Index;
+  }
+
+  // Highlight landing tile
+  const container = document.getElementById(tilesContainerId);
+  const tileDiv = container?.children[curIdx];
+  if (tileDiv) {
+    tileDiv.classList.add("mb-tile-highlight");
+  }
+
+  // Act on tile type
+  switch (tile.type) {
+    case 'common':
+    case 'rare':
+    case 'sclass':
+      triggerCrateOpenAnimation(tileDiv, tile.type);
+      break;
+
+    case 'portal1':
+      triggerBridgeTravelSequence(1);
+      break;
+
+    case 'portal2':
+      triggerBridgeTravelSequence(2);
+      break;
+
+    case 'dice':
+      // Award free roll
+      mbFreePulls++;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+      syncMonopolyStats();
+      showFreePullPopup(1);
+      break;
+
+    case 'pullx1':
+      mbFreePulls += 1;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+      syncMonopolyStats();
+      showFreePullPopup(1);
+      break;
+
+    case 'pullx2':
+      mbFreePulls += 2;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+      syncMonopolyStats();
+      showFreePullPopup(2);
+      break;
+
+    case 'start':
+      // Pass start reward
+      gemsCount += 100;
+      updateShopWalletDisplay();
+      syncMonopolyStats();
+      showToastMsg("START: Bonus +100 Gems!");
+      checkQueueOrUnlockRoll();
+      break;
+
+    case 'corner':
+    default:
+      // Rest spot, no reward
+      checkQueueOrUnlockRoll();
+      break;
+  }
+}
+
+// Crate open sequence
+function triggerCrateOpenAnimation(tileDiv, rarity) {
+  if (tileDiv) {
+    tileDiv.classList.add("mb-tile-shaking");
+  }
+
+  setTimeout(() => {
+    if (tileDiv) {
+      tileDiv.classList.remove("mb-tile-shaking");
+      tileDiv.classList.add("mb-tile-opening");
+    }
+
+    setTimeout(() => {
+      if (tileDiv) tileDiv.classList.remove("mb-tile-opening");
+      drawMonopolyReward(rarity);
+    }, 600);
+
+  }, 500);
+}
+
+function drawMonopolyReward(rarity) {
+  // Pity logic to determine final rank category
+  let finalRank = 'B';
+
+  mbTotalRolls++;
+  mbPityA++;
+  mbPityS++;
+  mbPityMod++;
+
+  localStorage.setItem('mb_rolls_total', mbTotalRolls.toString());
+  localStorage.setItem('mb_rolls_pity_a', mbPityA.toString());
+  localStorage.setItem('mb_rolls_pity_s', mbPityS.toString());
+  localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
+
+  // Check S pity
+  if (mbPityS >= 90) {
+    finalRank = 'S';
+  } else if (mbPityA >= 10) {
+    finalRank = Math.random() < 0.2 ? 'S' : 'A';
+  } else {
+    // Choose based on crate rarity
+    const roll = Math.random();
+    if (rarity === 'common') {
+      if (roll < 0.05) finalRank = 'S';
+      else if (roll < 0.20) finalRank = 'A';
+      else finalRank = 'B';
+    } else if (rarity === 'rare') {
+      if (roll < 0.20) finalRank = 'S';
+      else if (roll < 0.80) finalRank = 'A';
+      else finalRank = 'B';
+    } else if (rarity === 'sclass') {
+      if (roll < 0.90) finalRank = 'S';
+      else finalRank = 'A';
+    }
+  }
+
+  // Draw unowned item in rank category
+  let unowned = gachaPool.filter(item => {
+    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+    const owned = localStorage.getItem(ownedKey) === "true";
+    const rank = mbItemRanks[item.id] || 'B';
+    return !owned && rank === finalRank;
+  });
+
+  // Fallbacks if selected rank is complete
+  if (unowned.length === 0) {
+    unowned = gachaPool.filter(item => {
+      const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
+      return localStorage.getItem(ownedKey) !== "true";
+    });
+  }
+
+  let winnerItem = null;
+  let isDuplicate = false;
+
+  if (unowned.length > 0) {
+    winnerItem = unowned[Math.floor(Math.random() * unowned.length)];
+    // Save as owned
+    const ownedKey = winnerItem.type === "effect" ? `owned_effect_${winnerItem.color}` : `owned_bomb_${winnerItem.color}`;
+    localStorage.setItem(ownedKey, "true");
+
+    const newKey = winnerItem.type === "effect" ? `new_effect_${winnerItem.color}` : `new_bomb_${winnerItem.color}`;
+    localStorage.setItem(newKey, "true");
+
+  } else {
+    // Duplicate fallback
+    isDuplicate = true;
+    winnerItem = gachaPool[Math.floor(Math.random() * gachaPool.length)];
+    // Duplicate awards 100 extra gems!
+    gemsCount += 100;
+    updateShopWalletDisplay();
+  }
+
+  // Reset pity counters
+  const actualRank = mbItemRanks[winnerItem.id] || 'B';
+  if (actualRank === 'S') {
+    mbPityS = 0;
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_s', '0');
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  } else if (actualRank === 'A') {
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  }
+
+  saveProgression();
+  syncMonopolyStats();
+
+  // Trigger wardrobe UI refreshes
+  if (typeof updateWardrobeTabBadges === "function") updateWardrobeTabBadges();
+  if (typeof syncBombWardrobe === "function") syncBombWardrobe();
+  if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
+
+  showCrateRewardPopup(winnerItem, actualRank, isDuplicate);
+}
+
+function showCrateRewardPopup(item, rank, isDuplicate) {
+  const popup = document.getElementById("mbCratePopup");
+  if (!popup) return;
+
+  const itemDisplay = document.getElementById("mbCrateItemDisplay");
+  itemDisplay.innerHTML = getGachaItemImageHtml(item, 90);
+
+  document.getElementById("mbCrateItemName").textContent = item.name;
+  document.getElementById("mbCrateItemType").textContent = item.type === "effect" ? "BLAST EFFECT" : "BOMB SKIN";
+
+  const rankEl = document.getElementById("mbCrateRank");
+  rankEl.className = `mb-popup-rank rank-${rank.toLowerCase()}`;
+  rankEl.innerHTML = `${rank}<br><small>RANK</small>`;
+
+  const gemsBonus = document.getElementById("mbCrateGemsBonus");
+  if (isDuplicate) {
+    gemsBonus.classList.remove("hidden");
+  } else {
+    gemsBonus.classList.add("hidden");
+  }
+
+  popup.classList.remove("hidden");
+
+  // Play win sound
+  if (typeof playSound === "function") playSound("victory_royale");
+}
+
+function claimMonopolyReward() {
+  const popup = document.getElementById("mbCratePopup");
+  if (popup) popup.classList.add("hidden");
+
+  // Process next queue step or release rolling lock
+  checkQueueOrUnlockRoll();
+}
+
+function checkQueueOrUnlockRoll() {
+  if (mbRollQueue > 1) {
+    mbRollQueue--;
+    // Auto trigger next roll
+    setTimeout(() => {
+      triggerDiceRollSequence();
+    }, 500);
+  } else {
+    mbRollQueue = 0;
+    syncMonopolyStats();
+  }
+}
+
+// Secret Islands travel
+function triggerBridgeTravelSequence(islandId) {
+  mbMoving = true;
+
+  const destLabel = islandId === 1 ? "Golden Vault" : "Star Sanctum";
+  document.getElementById("mbBridgeDestLabel").textContent = destLabel;
+  document.getElementById("mbBridgeDestLabel").className = `mb-bridge-dest-label ${islandId === 2 ? 'mb-island-title-purple' : ''}`;
+
+  const cinematic = document.getElementById("mbBridgeCinematic");
+  cinematic.classList.remove("hidden");
+
+  // Plank animation reset/trigger
+  const planks = document.getElementById("mbBridgePlanks");
+  planks.innerHTML = "";
+  for(let i=0; i<8; i++) {
+    const p = document.createElement("div");
+    p.className = "mb-bridge-plank";
+    p.style.setProperty("--di", i.toString());
+    planks.appendChild(p);
+  }
+
+  setTimeout(() => {
+    // Transition views
+    cinematic.classList.add("hidden");
+
+    document.getElementById("mbMainView").classList.add("hidden");
+    document.getElementById(`mbIslandView${islandId}`).classList.remove("hidden");
+
+    mbCurrentBoard = `island${islandId}`;
+    if (islandId === 1) {
+      mbIsland1Index = 0;
+      positionCharacterAtIsland(1, 0);
+    } else {
+      mbIsland2Index = 0;
+      positionCharacterAtIsland(2, 0);
+    }
+
+    mbMoving = false;
+
+    // Trigger walk step inside island
+    showToastMsg(`Welcome to the ${destLabel}!`);
+
+    checkQueueOrUnlockRoll();
+
+  }, 1900);
+}
+
+function playBridgeRetractCinematic(islandId) {
+  mbMoving = true;
+
+  const destLabel = "Returning to Main Board";
+  document.getElementById("mbBridgeDestLabel").textContent = destLabel;
+  document.getElementById("mbBridgeDestLabel").className = "mb-bridge-dest-label";
+
+  const cinematic = document.getElementById("mbBridgeCinematic");
+  cinematic.classList.remove("hidden");
+
+  // Bridge retract has same visual planks
+  const planks = document.getElementById("mbBridgePlanks");
+  planks.innerHTML = "";
+  for(let i=7; i>=0; i--) {
+    const p = document.createElement("div");
+    p.className = "mb-bridge-plank";
+    p.style.setProperty("--di", (7 - i).toString());
+    planks.appendChild(p);
+  }
+
+  setTimeout(() => {
+    cinematic.classList.add("hidden");
+
+    document.getElementById(`mbIslandView${islandId}`).classList.add("hidden");
+    document.getElementById(`mbIslandChar${islandId}`).classList.add("hidden");
+    document.getElementById("mbMainView").classList.remove("hidden");
+
+    mbCurrentBoard = 'main';
+    positionCharacterAt(mbMainIndex);
+
+    mbMoving = false;
+
+    checkQueueOrUnlockRoll();
+
+  }, 1900);
+}
+
+// Free pull popup handlers
+function showFreePullPopup(amount) {
+  const popup = document.getElementById("mbFreePullPopup");
+  if (!popup) return;
+
+  document.getElementById("mbFpIcon").textContent = `×${amount}`;
+  document.getElementById("mbFpTitle").textContent = `FREE ROLL ×${amount}`;
+  document.getElementById("mbFreePullPopup").classList.remove("hidden");
+
+  if (typeof playSound === "function") playSound("quest_complete");
+}
+
+function closeFreePullPopup() {
+  document.getElementById("mbFreePullPopup").classList.add("hidden");
+  checkQueueOrUnlockRoll();
+}
+
