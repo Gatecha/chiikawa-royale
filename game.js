@@ -6518,11 +6518,11 @@ function drawCharacterSelectPreview() {
   let scaleBoost = 1.76;
   let yOffset = 1.03;
   if (previewCharacter === "magical_hachiware") {
-    scaleBoost = 2.45;
-    yOffset = 0.98;
+    scaleBoost = 2.05;
+    yOffset = 1.03;
   } else if (previewCharacter === "magical_chiikawa" || previewCharacter === "magical_usagi") {
-    scaleBoost = 2.15;
-    yOffset = 1.0;
+    scaleBoost = 1.95;
+    yOffset = 1.03;
   }
 
   const scale = Math.min(width / characterSelectVideo.videoWidth, height / characterSelectVideo.videoHeight) * scaleBoost;
