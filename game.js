@@ -13944,31 +13944,26 @@ function showTutorialGuideStep(step) {
   
   const overlay = document.getElementById("tutorialGuideOverlay");
   const textEl = document.getElementById("tutorialGuideText");
-  const avatarEl = document.getElementById("tutorialGuideAvatar");
   
   if (!overlay || !textEl) return;
   
-  if (avatarEl) {
-    avatarEl.src = `assets/cards/${selectedCharacter}.png`;
+  const steps = [
+    "Use <strong>WASD</strong> or <strong>ARROW KEYS</strong> to move. Avoid standing near explosive bombs.",
+    "Press <strong>SPACEBAR</strong> to place a bomb. Destroy crates to find power-ups. Run before it explodes!",
+    "Collect speed boots, extra bombs, and fire potions. Defeat all CPU players to win the match."
+  ];
+  
+  if (step >= 0 && step < steps.length) {
+    textEl.innerHTML = steps[step];
   }
   
-  if (step === 0) {
-    textEl.innerHTML = "Welcome to the battlefield! Use <strong>WASD</strong> or <strong>ARROW KEYS</strong> to move your character. Avoid standing near explosive bombs! Click OKAY to begin.";
-  } else if (step === 1) {
-    textEl.innerHTML = "Press <strong>SPACEBAR</strong> to place a bomb! You can use bombs to destroy wooden crates and find power-up items. Be sure to run away to safety before the bomb explodes!";
-  } else if (step === 2) {
-    textEl.innerHTML = "Awesome! Items like speed boots, extra bombs, and fire potions will make you stronger. Defeat all CPU players to win the match!";
-  }
-  
-  overlay.classList.add("active");
-  overlay.classList.remove("hidden");
+  overlay.classList.add("zzz-guide-show");
 }
 
 document.getElementById("tutorialGuideOkBtn")?.addEventListener("click", () => {
   const overlay = document.getElementById("tutorialGuideOverlay");
   if (overlay) {
-    overlay.classList.remove("active");
-    overlay.classList.add("hidden");
+    overlay.classList.remove("zzz-guide-show");
   }
   
   window.tutorialGuidePaused = false;
