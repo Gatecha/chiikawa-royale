@@ -3909,9 +3909,6 @@ async function saveProgression() {
         gems_count: gemsCount,
         season_level:  seasonLevel,
         season_xp:     seasonXp,
-        rank_rp:       rankRp,
-        total_wins:    totalWins,
-        total_matches: totalMatches,
         updated_at:    new Date().toISOString()
       })
       .eq('id', user.id);
@@ -14623,7 +14620,7 @@ const mbMainTilesConfig = [
   { type: 'common', label: 'CRATE', emoji: '📦' },
   { type: 'dice', label: 'DICE +1', emoji: '🎲' },
   { type: 'rare', label: 'RARE', emoji: '🎁' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
   { type: 'common', label: 'CRATE', emoji: '📦' },
   { type: 'dice', label: 'DICE +1', emoji: '🎲' },
   { type: 'common', label: 'CRATE', emoji: '📦' },
@@ -14636,7 +14633,7 @@ const mbMainTilesConfig = [
   { type: 'corner', label: 'REST', emoji: '☕' },
   { type: 'common', label: 'CRATE', emoji: '📦' },
   { type: 'rare', label: 'RARE', emoji: '🎁' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
   { type: 'common', label: 'CRATE', emoji: '📦' },
   { type: 'dice', label: 'DICE +1', emoji: '🎲' },
   { type: 'common', label: 'CRATE', emoji: '📦' },
@@ -14687,19 +14684,19 @@ const mbIslandBoardLayout = [
 const mbIsland1TilesConfig = [
   { type: 'rare', label: 'RARE', emoji: '🎁' },
   { type: 'rare', label: 'RARE', emoji: '🎁' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
   { type: 'pullx1', label: 'FREE ROLL', emoji: '🎫' },
   { type: 'rare', label: 'RARE', emoji: '🎁' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' }
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' }
 ];
 
 const mbIsland2TilesConfig = [
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
   { type: 'pullx2', label: '2 ROLLS', emoji: '🎟️' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' },
-  { type: 'sclass', label: 'CHAOS', emoji: '👑' }
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' }
 ];
 
 // Coordinate helper for main board
@@ -14863,18 +14860,66 @@ function getTileClass(type) {
   }
 }
 
+function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
+  let dir = 'down';
+  if (board === 'main') {
+    if (index >= 0 && index < 6) dir = 'up';
+    else if (index >= 6 && index < 14) dir = 'right';
+    else if (index >= 14 && index < 20) dir = 'down';
+    else dir = 'left';
+  } else {
+    // Islands serpentine
+    if (index >= 0 && index < 2) dir = 'right';
+    else if (index === 2) dir = 'down';
+    else dir = 'left';
+  }
+
+  const suffix = stepNum === 1 ? '1' : '2';
+  let src = '';
+  let transform = 'scaleX(1)';
+
+  if (dir === 'up') {
+    src = `assets/${char}/${char}_walk_back${suffix}.png`;
+  } else if (dir === 'down') {
+    src = `assets/${char}/${char}_walk_front${suffix}.png`;
+  } else { // 'left' or 'right'
+    let fileSuffix = suffix;
+    if (char === 'chiikawa' && suffix === '2') {
+      fileSuffix = 'd2'; // chiikawa_walk_sid2.png
+    } else {
+      fileSuffix = 'e' + suffix; // walk_side1 or walk_side2
+    }
+    src = `assets/${char}/${char}_walk_sid${fileSuffix}.png`;
+
+    if (dir === 'left') {
+      transform = 'scaleX(-1)';
+    }
+  }
+
+  return { src, transform };
+}
+
 function updateCharacterSprite() {
   const char = selectedCharacter || "chiikawa";
   const idleFile = `assets/${char}/${char}_idle.png`;
 
   const mainCharImg = document.getElementById("mbCharImg");
-  if (mainCharImg) mainCharImg.src = idleFile;
+  if (mainCharImg) {
+    mainCharImg.src = idleFile;
+    mainCharImg.style.transform = "scaleX(1)";
+  }
 
   const island1CharImg = document.getElementById("mbIslandCharImg1");
-  if (island1CharImg) island1CharImg.src = idleFile;
+  if (island1CharImg) {
+    island1CharImg.src = idleFile;
+    island1CharImg.style.transform = "scaleX(1)";
+  }
 
   const island2CharImg = document.getElementById("mbIslandCharImg2");
-  if (island2CharImg) island2CharImg.src = idleFile;
+  if (island2CharImg) {
+    island2CharImg.src = idleFile;
+    island2CharImg.style.transform = "scaleX(1)";
+  }
 }
 
 function positionCharacterAt(index) {
@@ -15045,8 +15090,6 @@ function animateCharacterWalk(steps) {
   let remaining = steps;
 
   const char = selectedCharacter || "chiikawa";
-  const walk1 = `assets/${char}/${char}_walk_front1.png`;
-  const walk2 = `assets/${char}/${char}_walk_front2.png`;
   const idle = `assets/${char}/${char}_idle.png`;
 
   let frameTick = false;
@@ -15083,8 +15126,11 @@ function animateCharacterWalk(steps) {
       void piece.offsetWidth;
       piece.classList.add("mb-char-hop");
 
-      // Alternate walk frames
-      document.getElementById("mbCharImg").src = frameTick ? walk1 : walk2;
+      // Alternate walk frames & directions
+      const walkInfo = getCharacterSpriteWalkInfo(char, 'main', mbMainIndex, frameTick ? 1 : 2);
+      const img = document.getElementById("mbCharImg");
+      img.src = walkInfo.src;
+      img.style.transform = walkInfo.transform;
 
     } else if (mbCurrentBoard === 'island1' || mbCurrentBoard === 'island2') {
       const isId = mbCurrentBoard === 'island1' ? 1 : 2;
@@ -15094,7 +15140,9 @@ function animateCharacterWalk(steps) {
       if (curIdx >= 6) {
         // Return to main board Portal tile!
         mbCurrentBoard = 'main';
-        document.getElementById("mbCharImg").src = idle;
+        const img = document.getElementById("mbCharImg");
+        img.src = idle;
+        img.style.transform = "scaleX(1)";
 
         // Bridge retraction cinematic
         playBridgeRetractCinematic(isId);
@@ -15115,8 +15163,11 @@ function animateCharacterWalk(steps) {
       void piece.offsetWidth;
       piece.classList.add("mb-char-hop");
 
-      // Alternate walk frames
-      document.getElementById(`mbIslandCharImg${isId}`).src = frameTick ? walk1 : walk2;
+      // Alternate walk frames & directions
+      const walkInfo = getCharacterSpriteWalkInfo(char, mbCurrentBoard, curIdx, frameTick ? 1 : 2);
+      const img = document.getElementById(`mbIslandCharImg${isId}`);
+      img.src = walkInfo.src;
+      img.style.transform = walkInfo.transform;
     }
 
     frameTick = !frameTick;
@@ -15131,12 +15182,25 @@ function animateCharacterWalk(steps) {
 }
 
 function handleTileLanding() {
-  // Set character back to idle image
+  // Set character back to idle image and default rotation
   const char = selectedCharacter || "chiikawa";
   const idleFile = `assets/${char}/${char}_idle.png`;
-  document.getElementById("mbCharImg").src = idleFile;
-  document.getElementById("mbIslandCharImg1").src = idleFile;
-  document.getElementById("mbIslandCharImg2").src = idleFile;
+  
+  const imgMain = document.getElementById("mbCharImg");
+  if (imgMain) {
+    imgMain.src = idleFile;
+    imgMain.style.transform = "scaleX(1)";
+  }
+  const imgIsland1 = document.getElementById("mbIslandCharImg1");
+  if (imgIsland1) {
+    imgIsland1.src = idleFile;
+    imgIsland1.style.transform = "scaleX(1)";
+  }
+  const imgIsland2 = document.getElementById("mbIslandCharImg2");
+  if (imgIsland2) {
+    imgIsland2.src = idleFile;
+    imgIsland2.style.transform = "scaleX(1)";
+  }
 
   let tile;
   let tilesContainerId = "mbTiles";

@@ -12497,6 +12497,9 @@ body.is-iphone {
 }
 
 /* ── Tiles ── */
+#mbTiles {
+  display: contents;
+}
 .mb-tile {
   position: relative; border-radius: 6px;
   border: 2.5px solid #000;
