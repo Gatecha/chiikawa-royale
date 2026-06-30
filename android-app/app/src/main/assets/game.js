@@ -1,4 +1,4 @@
-// =================================================================
+﻿// =================================================================
 // DEBUG LOG SYSTEM — intercepts errors and console.error/warn
 // =================================================================
 (function() {
@@ -618,7 +618,7 @@ let lastMenuDrawTime = 0;
 
 function getVideoSrc(baseSrc, forceHighQuality = false) {
   if (!baseSrc) return "";
-  if (window.electronAPI?.isElectron) return baseSrc;
+  if (window.electronAPI?.isElectron) forceHighQuality = true;
   if (graphicsQuality === "high" || forceHighQuality) {
     return baseSrc.replace(".mp4", "_high.mp4");
   }
@@ -847,10 +847,10 @@ const emoteSymbols = {
 
 // Progression State
 let crownCount = 0;
-let gemsCount = 2830;
-let seasonLevel = 4;
-let seasonXp = 609;
-let seasonXpToNext = 800;
+let gemsCount = 0;
+let seasonLevel = 1;
+let seasonXp = 0;
+let seasonXpToNext = 100;
 
 // Rank System State (RP = Ranking Points)
 let rankRp = 0;        // Current RP total
@@ -1310,6 +1310,50 @@ document.querySelectorAll(".character-card video").forEach((video) => {
   playMutedLoop(video);
 });
 
+function getUnlockedCharacters() {
+  let unlocked = localStorage.getItem("unlocked_characters");
+  if (!unlocked) {
+    // If not set, unlock the currently equipped character!
+    const equipped = localStorage.getItem("equipped_character") || "chiikawa";
+    unlocked = [equipped];
+    localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+  } else {
+    try {
+      unlocked = JSON.parse(unlocked);
+      if (!Array.isArray(unlocked)) unlocked = ["chiikawa"];
+    } catch {
+      unlocked = ["chiikawa"];
+    }
+  }
+  return unlocked;
+}
+
+function refreshWardrobeLocks() {
+  const unlocked = getUnlockedCharacters();
+  const characterCards = document.querySelectorAll(".character-card");
+  characterCards.forEach((card) => {
+    const kind = card.getAttribute("data-kind");
+    if (!kind) return;
+    const isUnlocked = unlocked.includes(kind);
+    
+    let lockIndicator = card.querySelector(".card-lock-indicator");
+    if (!isUnlocked) {
+      card.classList.add("locked");
+      if (!lockIndicator) {
+        lockIndicator = document.createElement("span");
+        lockIndicator.className = "card-lock-indicator";
+        lockIndicator.textContent = "🔒 UNLOCK";
+        card.appendChild(lockIndicator);
+      }
+    } else {
+      card.classList.remove("locked");
+      if (lockIndicator) {
+        lockIndicator.remove();
+      }
+    }
+  });
+}
+
 function syncCharacterSelectPreview(kind) {
   const bombSelectPreviewImg = document.getElementById("bombSelectPreviewImg");
   const characterSelectCanvas = document.getElementById("characterSelectCanvas");
@@ -1318,11 +1362,28 @@ function syncCharacterSelectPreview(kind) {
     bombSelectPreviewImg.style.display = "none";
   }
 
-  if (characterSelectName) {
-    characterSelectName.textContent = characterStyle[kind]?.label || kind;
-  }
-  if (characterSelectState) {
-    characterSelectState.textContent = kind === selectedCharacter ? "Selected" : "Ready to select";
+  // Locked/Unlocked state check for the selection button
+  const unlocked = getUnlockedCharacters();
+  const isUnlocked = unlocked.includes(kind);
+  const copyBtn = document.querySelector("#confirmCharacterBtn .select-button-copy");
+  
+  if (!isUnlocked) {
+    if (copyBtn) copyBtn.textContent = "UNLOCK";
+    if (characterSelectName) {
+      characterSelectName.textContent = "5000 COINS";
+    }
+    if (characterSelectState) {
+      const name = characterStyle[kind]?.label || kind;
+      characterSelectState.textContent = `Unlock ${name}`;
+    }
+  } else {
+    if (copyBtn) copyBtn.textContent = "SELECT";
+    if (characterSelectName) {
+      characterSelectName.textContent = characterStyle[kind]?.label || kind;
+    }
+    if (characterSelectState) {
+      characterSelectState.textContent = kind === selectedCharacter ? "Selected" : "Ready to select";
+    }
   }
 
   if (characterSelectVideo && characterSelectVideos[kind]) {
@@ -1399,7 +1460,42 @@ function confirmCharacterSelection() {
     return;
   }
 
+  // Character unlocking / selection logic
+  const unlocked = getUnlockedCharacters();
+  const isUnlocked = unlocked.includes(previewCharacter);
+
+  if (!isUnlocked) {
+    if (crownCount >= 5000) {
+      crownCount -= 5000;
+      unlocked.push(previewCharacter);
+      localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+      
+      saveProgression();
+      updateProgressionUI();
+      refreshWardrobeLocks();
+      
+      const charName = characterStyle[previewCharacter]?.label || previewCharacter;
+      showToastMsg(`Unlocked ${charName} for 5000 Coins!`);
+      
+      // Equip unlocked character automatically
+      selectedCharacter = previewCharacter;
+      localStorage.setItem("equipped_character", selectedCharacter);
+      
+      syncCharacterSelectPreview(selectedCharacter);
+      syncLobbySpotlightVideo(selectedCharacter);
+      syncSquadLobbyVideo(selectedCharacter);
+      syncSquadLobbyInterface();
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        sendServerMessage("select_character", { kind: selectedCharacter });
+      }
+    } else {
+      showToastMsg(`Not enough coins! You need 5000 coins to unlock this character.`);
+    }
+    return;
+  }
+
   selectedCharacter = previewCharacter;
+  localStorage.setItem("equipped_character", selectedCharacter);
   syncCharacterSelectPreview(selectedCharacter);
   syncLobbySpotlightVideo(selectedCharacter);
   syncSquadLobbyVideo(selectedCharacter);
@@ -1415,6 +1511,7 @@ syncCharacterSelectPreview(selectedCharacter);
 syncLobbySpotlightVideo(selectedCharacter);
 syncSquadLobbyVideo(selectedCharacter);
 syncSquadLobbyInterface();
+refreshWardrobeLocks();
 
 // Setup wardrobe character selection click handlers
 const characterCards = document.querySelectorAll(".character-card");
@@ -1467,6 +1564,7 @@ wardrobeTabs.forEach((tab) => {
       
       if (mode === "characters") {
         if (typeof syncCharacterSelectPreview === "function") syncCharacterSelectPreview(previewCharacter);
+        refreshWardrobeLocks();
       }
     }
   });
@@ -2147,11 +2245,11 @@ function handleServerMessage(msg) {
         collector.activeBombType = data.playerStats.activeBombType || "normal";
 
         if (data.playerId === localPlayerId) {
-          let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
-          localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+          let collected = parseInt(questGet("quest_pickups_progress") || "0");
+          questSet("quest_pickups_progress", Math.min(3, collected + 1).toString());
           
-          let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
-          localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
+          let lifetimePickups = parseInt(questGet("lifetime_pickups_collected") || "0");
+          questSet("lifetime_pickups_collected", (lifetimePickups + 1).toString());
         }
 
         burstSparkles(collector.x, collector.y);
@@ -2184,26 +2282,31 @@ function handleServerMessage(msg) {
       if (data.teams) currentTeams = data.teams;
 
       // Progress daily match quest
-      localStorage.setItem("quest_match_completed", "true");
+      questSet("quest_match_completed", "true");
 
       // Give progression rewards
       const isWinner = data.winnerId === localPlayerId;
       if (isWinner) {
         // Progress weekly win quest
-        let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
-        localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+        let wins = parseInt(questGet("quest_win3_progress") || "0");
+        questSet("quest_win3_progress", Math.min(3, wins + 1).toString());
         totalWins += 1; // Increment totalWins for online victory
+      }
 
-        if (data.tournamentFinished) {
-          crownCount += 2; gemsCount += 5;
-          addChatMessage("System", "TOURNAMENT VICTORY! You earned 5 gems and 2 crowns! 👑🏆", true);
+      if (data.tournamentFinished) {
+        const coinsEarned = isWinner ? 500 : 100;
+        crownCount += coinsEarned;
+        if (isWinner) {
+          gemsCount += 5;
+          addChatMessage("System", `TOURNAMENT VICTORY! You earned 5 gems and 500 coins! 🪙🏆`, true);
         } else {
-          crownCount += 1; gemsCount += 5;
-          addChatMessage("System", "ROUND VICTORY! You earned 5 gems and 1 crown! 👑", true);
+          addChatMessage("System", `TOURNAMENT FINISHED! You earned 100 coins! 🪙`, true);
         }
       } else {
-        if (data.tournamentFinished) {
-          addChatMessage("System", "Tournament Finished! 🏆", true);
+        if (isWinner) {
+          crownCount += 100; // Let's give 100 coins for a round victory
+          gemsCount += 5;
+          addChatMessage("System", "ROUND VICTORY! You earned 5 gems and 100 coins! 🪙", true);
         } else {
           addChatMessage("System", "Round Finished! 🏁", true);
         }
@@ -2558,6 +2661,10 @@ function switchScreen(targetScreen) {
     document.getElementById("ingameChatToggleBtn")?.classList.add("hidden");
     const gameMicBtn = document.getElementById("gameMicBtn");
     if (gameMicBtn) gameMicBtn.style.display = "none";
+    const fsOverlay = document.getElementById('fullscreenCountdownOverlay');
+    if (fsOverlay) fsOverlay.classList.add('hidden');
+    startCountdownTimer = 0;
+    startCountdownState = "";
   } else {
     const chatBox = document.getElementById("ingameChatBox");
     const chatMsgs = document.getElementById("ingameChatMessages");
@@ -3409,11 +3516,11 @@ function localPlaceBomb(player) {
   const effectColor = (player.id === localPlayerId) ? (localStorage.getItem("equipped_effect") || "default") : "default";
 
   if (player.id === localPlayerId) {
-    let bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
-    localStorage.setItem("quest_bombs_progress", Math.min(10, bombsPlaced + 1).toString());
+    let bombsPlaced = parseInt(questGet("quest_bombs_progress") || "0");
+    questSet("quest_bombs_progress", Math.min(10, bombsPlaced + 1).toString());
     
-    let lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
-    localStorage.setItem("lifetime_bombs_placed", (lifetimeBombs + 1).toString());
+    let lifetimeBombs = parseInt(questGet("lifetime_bombs_placed") || "0");
+    questSet("lifetime_bombs_placed", (lifetimeBombs + 1).toString());
   }
 
   bombs.push({
@@ -3488,11 +3595,11 @@ function localTriggerExplosion(bomb) {
           const hpBefore = p.hp;
           damageLocalPlayerFromBomb(p, 60);
           if (p.hp <= 0 && hpBefore > 0 && p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
-            let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
-            localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            let kills = parseInt(questGet("quest_kills_progress") || "0");
+            questSet("quest_kills_progress", Math.min(5, kills + 1).toString());
             
-            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
-            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
+            let lifetimeKills = parseInt(questGet("lifetime_kills") || "0");
+            questSet("lifetime_kills", (lifetimeKills + 1).toString());
           }
         } else {
           p.alive = false;
@@ -3500,11 +3607,11 @@ function localTriggerExplosion(bomb) {
           p.moveFrom = null;
           p.moveDir = null;
           if (p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
-            let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
-            localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            let kills = parseInt(questGet("quest_kills_progress") || "0");
+            questSet("quest_kills_progress", Math.min(5, kills + 1).toString());
             
-            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
-            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
+            let lifetimeKills = parseInt(questGet("lifetime_kills") || "0");
+            questSet("lifetime_kills", (lifetimeKills + 1).toString());
           }
         }
       }
@@ -3534,11 +3641,11 @@ function localCheckPickup(player) {
   else if (pickup.type === "energy_drink") player.energyDrinkCount = (player.energyDrinkCount || 0) + 1;
 
   if (player.id === localPlayerId) {
-    let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
-    localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+    let collected = parseInt(questGet("quest_pickups_progress") || "0");
+    questSet("quest_pickups_progress", Math.min(3, collected + 1).toString());
     
-    let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
-    localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
+    let lifetimePickups = parseInt(questGet("lifetime_pickups_collected") || "0");
+    questSet("lifetime_pickups_collected", (lifetimePickups + 1).toString());
   }
 
   burstSparkles(player.x, player.y);
@@ -3585,19 +3692,20 @@ function awardLocalMatchProgress(playerWon) {
   localMatchRewarded = true;
 
   // Progress daily match quest
-  localStorage.setItem("quest_match_completed", "true");
+  questSet("quest_match_completed", "true");
 
   // Progress weekly win quest
   if (playerWon) {
-    let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
-    localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+    let wins = parseInt(questGet("quest_win3_progress") || "0");
+    questSet("quest_win3_progress", Math.min(3, wins + 1).toString());
   }
 
   const gainedXp = playerWon ? 120 : 45;
-  const gainedGems = playerWon ? 5 : 0;
+  const gainedGems = playerWon ? 10 : 0;
+  const gainedCoins = playerWon ? 500 : 100;
   seasonXp += gainedXp;
   gemsCount += gainedGems;
-  if (playerWon) crownCount += 1;
+  crownCount += gainedCoins;
 
   // RP gain/loss — Bronze I is floor (RP never goes below 0)
   const rpGain = playerWon ? 50 : -15;
@@ -3610,6 +3718,7 @@ function awardLocalMatchProgress(playerWon) {
     seasonLevel += 1;
     seasonXpToNext += 100;
     gemsCount += 50;
+    crownCount += 100; // +100 coins per level!
   }
 
   saveProgression();
@@ -3756,7 +3865,7 @@ async function loadProgression() {
 
     const { data, error } = await supabaseClient
       .from('profiles')
-      .select('crown_count, gems_count, season_level, season_xp')
+      .select('crown_count, gems_count, season_level, season_xp, rank_rp, total_wins, total_matches')
       .eq('id', user.id)
       .single();
 
@@ -7205,6 +7314,7 @@ leaveLobbyBtn?.addEventListener("click", () => {
 
 // Exit Match
 leaveGameBtn?.addEventListener("click", () => {
+  if (startCountdownTimer > 0) return;
   if (!localMode && running && socket && socket.readyState === WebSocket.OPEN) {
     if (isTeamMode(currentRoomMode)) {
       sendServerMessage("request_surrender");
@@ -7257,7 +7367,7 @@ surrenderNoBtn?.addEventListener("click", () => {
 });
 
 // Return to Lobby after Victory
-document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
+document.getElementById("victoryReturnBtn")?.addEventListener("click", () => {
   players = [];
   document.getElementById("tournamentOverlay").classList.add("hidden");
   stopConfetti();
@@ -7278,6 +7388,7 @@ document.getElementById("victoryLobbyBtn")?.addEventListener("click", () => {
     resetCouchControls();
     resetLobbyMapSelectToNormal();
     switchScreen(menuScreen);
+    document.querySelector('.tab-btn[data-tab="play"]')?.click();
   } else {
     switchScreen(menuScreen);
     document.querySelector('.tab-btn[data-tab="squad"]')?.click();
@@ -8160,12 +8271,14 @@ function normalizeInputKey(event) {
 }
 
 function triggerPlayerBomb(player) {
+  if (startCountdownTimer > 0) return;
   if (!player || !player.alive) return;
   if (localMode) localPlaceBomb(player);
   else sendServerMessage("place_bomb");
 }
 
 function triggerPlayerPunch(player) {
+  if (startCountdownTimer > 0) return;
   if (!player || !player.alive) return;
   if (localMode) {
     triggerLocalPunch(player);
@@ -9063,15 +9176,38 @@ function showTournamentResults(playersList, winnerId, tournamentFinished, trophy
         winnerMsgEl.textContent = `${winnerName} wins the Tournament! 🏆`;
       }
 
-      // Play Victory Video
-      if (victoryVideo) {
-        const targetSrc = getVideoSrc("hachiware-lobby.mp4");
-        if (!victoryVideo.src.endsWith(targetSrc)) {
-          victoryVideo.src = targetSrc;
-          victoryVideo.load();
+      // Update ZZZ title, badge and coins reward dynamically based on won/lost
+      const isWinner = grandWinner && grandWinner.id === localPlayerId;
+      const vTitle = document.getElementById("victoryTitle");
+      const vBadge = document.getElementById("victoryBadge");
+      const vCoinsReward = document.getElementById("victoryRewardAmount");
+
+      if (isWinner) {
+        if (vTitle) {
+          vTitle.textContent = "VICTORY";
+          vTitle.style.color = "#ffffff";
+          vTitle.style.textShadow = "5px 5px 0px #000";
         }
-        victoryVideo.currentTime = 0;
-        playMutedLoop(victoryVideo);
+        if (vBadge) {
+          vBadge.textContent = "MISSION ACCOMPLISHED";
+          vBadge.style.color = "#83cf00";
+          vBadge.style.background = "rgba(131, 207, 0, 0.1)";
+          vBadge.style.borderColor = "rgba(131, 207, 0, 0.35)";
+        }
+        if (vCoinsReward) vCoinsReward.textContent = "+500";
+      } else {
+        if (vTitle) {
+          vTitle.textContent = "DEFEAT";
+          vTitle.style.color = "#ffffff";
+          vTitle.style.textShadow = "5px 5px 0px #ff3377";
+        }
+        if (vBadge) {
+          vBadge.textContent = "MISSION FAILED";
+          vBadge.style.color = "#ff3377";
+          vBadge.style.background = "rgba(255, 51, 153, 0.1)";
+          vBadge.style.borderColor = "rgba(255, 51, 153, 0.35)";
+        }
+        if (vCoinsReward) vCoinsReward.textContent = "+100";
       }
 
       // Start confetti particle physics
@@ -9423,6 +9559,7 @@ async function handleAuthenticatedUser(user) {
       // User has a username, proceed to main menu
       finishStartup();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
     } else {
       // No username, show intro registration screen
@@ -9624,6 +9761,7 @@ if (btnGuestLogin) {
       
       finishStartup();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
     }
   });
@@ -9749,6 +9887,7 @@ if (usernameForm) {
 
       stopIntroVideo();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
 
       if (pendingLocalConnect) {
@@ -9823,6 +9962,7 @@ if (usernameForm) {
 
       stopIntroVideo();
       switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
       tryPlayMusic();
     } catch (err) {
       console.error("Username registration error:", err);
@@ -9869,14 +10009,34 @@ if (btnLogoutAccount) {
     
     // Reset progression locally
     crownCount = 0;
-    gemsCount = 100;
+    gemsCount = 0;
     seasonLevel = 1;
     seasonXp = 0;
+    seasonXpToNext = 100;
     currentSocialUsername = "";
     localStorage.removeItem("local_username");
+    localStorage.removeItem("chiikawaProgress");
+    localStorage.removeItem("tutorial_status");
     if (usernameInput) usernameInput.value = "Friend";
     if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = "Friend";
     updateProgressionUI();
+
+    // Reset console navigation active states back to 'play' (lobby) tab
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const tabContents = document.querySelectorAll(".tab-content");
+    tabButtons.forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-tab") === "play");
+    });
+    tabContents.forEach((c) => {
+      c.classList.toggle("active", c.id === "tabContent_play");
+    });
+    const consoleTitle = document.querySelector(".console-title");
+    if (consoleTitle) consoleTitle.textContent = "LOBBY";
+    const consoleEl = document.querySelector(".yellow-console");
+    if (consoleEl) {
+      consoleEl.classList.remove("squad-lobby-active");
+      consoleEl.classList.remove("character-select-active");
+    }
 
     // Go back to login screen
     switchScreen(loginScreen);
@@ -10718,17 +10878,27 @@ function showToastMsg(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-function showGemClaimRewardModal(amount, description) {
+function showGemClaimRewardModal(amount, description, coinAmount = 0) {
   const modal = document.getElementById("gemRewardModal");
   if (!modal) return;
   
   const subEl = document.getElementById("gemRewardSub");
   if (subEl) {
     const gemIcon = '<svg class="inline-gem-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12l4 6-10 14L2 8z" fill="#b16cff"/></svg>';
+    const coinIcon = '<svg class="inline-gem-icon" viewBox="0 0 24 24" fill="#ffd86f" style="vertical-align: middle; margin-right: 4px; display: inline-block; width: 18px; height: 18px;"><circle cx="12" cy="12" r="10" stroke="#000" stroke-width="2"/><path d="M12 7v10M10 9h3.5a1.5 1.5 0 0 1 0 3H12h-1.5a1.5 1.5 0 0 0 0 3H14" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none"/></svg>';
+    
+    let rewardText = "";
+    if (amount > 0) {
+      rewardText += `<span class="gem-reward-amount" style="margin-right: 12px;">${gemIcon} +${amount} Gems</span>`;
+    }
+    if (coinAmount > 0) {
+      rewardText += `<span class="gem-reward-amount" style="color: #ffd86f;">${coinIcon} +${coinAmount} Coins</span>`;
+    }
+    
     if (description) {
-      subEl.innerHTML = `${description}<br><span class="gem-reward-amount">${gemIcon} +${amount} Gems</span>`;
+      subEl.innerHTML = `${description}<br><span style="display: flex; align-items: center; justify-content: center; margin-top: 10px;">${rewardText}</span>`;
     } else {
-      subEl.innerHTML = `<span class="gem-reward-amount">${gemIcon} +${amount} Gems</span>`;
+      subEl.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; margin-top: 10px;">${rewardText}</span>`;
     }
   }
   
@@ -11164,6 +11334,7 @@ function addBRPing(ping) {
 }
 
 function useHealingItemLocal(itemType) {
+  if (startCountdownTimer > 0) return;
   const localPlayer = players.find(p => p.id === localPlayerId);
   if (!localPlayer || !localPlayer.alive || localPlayer.knocked) return;
   
@@ -12980,6 +13151,14 @@ const gachaPool = [
 ];
 
 function getGachaItemImageHtml(item, size = 44) {
+  if (item.type === "coins") {
+    const coinSize = Math.floor(size * 1.0);
+    return `
+      <div style="font-size: ${coinSize}px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+        🪙
+      </div>
+    `;
+  }
   if (item.isSvgMarkup) {
     let outerColor = "#ff6f4f";
     let innerColor = "#fff06d";
@@ -13534,39 +13713,39 @@ function initQuestsSystem() {
   });
 
   // Automatically mark login quest as completed on load
-  localStorage.setItem("quest_login_completed", "true");
+  questSet("quest_login_completed", "true");
 
   // Bind quest card action buttons (Claim buttons)
-  bindQuestClaimButton("qbtn_login", "quest_login_completed", "quest_login_claimed", 100);
-  bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100, () => {
+  bindQuestClaimButton("qbtn_login", "quest_login_completed", "quest_login_claimed", 100, 100);
+  bindQuestClaimButton("qbtn_match", "quest_match_completed", "quest_match_claimed", 100, 200, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", 100, () => {
+  bindQuestClaimButton("qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", 100, 300, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100, () => {
+  bindQuestClaimButton("qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", 100, 500, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
 
 
-  bindWeeklyQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_win3", "quest_win3_completed", "quest_win3_claimed", 100, 300, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindWeeklyQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", 100, 200, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
   });
-  bindWeeklyQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_kills", "quest_kills_completed", "quest_kills_claimed", 100, 300, () => {
     document.querySelector('.tab-btn[data-tab="play"]')?.click();
   });
-  bindWeeklyQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, () => {
+  bindWeeklyQuestClaimButton("qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", 100, 500, () => {
     document.querySelector('.tab-btn[data-tab="shop"]')?.click();
   });
 
   // Bind Weekly progress milestones
-  bindWeeklyMilestoneNode("weekly_chk_100", 100);
-  bindWeeklyMilestoneNode("weekly_chk_200", 200);
-  bindWeeklyMilestoneNode("weekly_chk_300", 300);
-  bindWeeklyMilestoneNode("weekly_chk_400", 400);
+  bindWeeklyMilestoneNode("weekly_chk_100", 100, 100);
+  bindWeeklyMilestoneNode("weekly_chk_200", 200, 120);
+  bindWeeklyMilestoneNode("weekly_chk_300", 300, 130);
+  bindWeeklyMilestoneNode("weekly_chk_400", 400, 150);
 
   // Bind gameplay milestone quests (awarding direct gems)
   bindGameplayQuestClaimButton("qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", 15, () => {
@@ -13583,32 +13762,38 @@ function initQuestsSystem() {
   });
 
   // Bind engagement progress milestones
-  bindMilestoneNode("chk_100", 100);
-  bindMilestoneNode("chk_200", 200);
-  bindMilestoneNode("chk_300", 300);
-  bindMilestoneNode("chk_400", 400);
+  bindMilestoneNode("chk_100", 100, 50);
+  bindMilestoneNode("chk_200", 200, 70);
+  bindMilestoneNode("chk_300", 300, 80);
+  bindMilestoneNode("chk_400", 400, 100);
 
   syncQuestsUI();
   syncLevelTabUI();
 }
 
-function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
+function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, coinVal, goAction) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   
   btn.addEventListener("click", () => {
-    const completed = localStorage.getItem(compKey) === "true";
-    const claimed = localStorage.getItem(claimKey) === "true";
+    const completed = questGet(compKey) === "true";
+    const claimed = questGet(claimKey) === "true";
     
     if (completed && !claimed) {
-      localStorage.setItem(claimKey, "true");
+      questSet(claimKey, "true");
       
       // Add engagement points
-      let engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
+      let engagement = parseInt(questGet("daily_engagement") || "0");
       engagement = Math.min(400, engagement + pointsVal);
-      localStorage.setItem("daily_engagement", engagement.toString());
+      questSet("daily_engagement", engagement.toString());
       
-      showToastMsg(`Claimed ${pointsVal} Engagement Points!`);
+      // Add coins
+      crownCount += coinVal;
+      const crownEl = document.getElementById("crownCount");
+      if (crownEl) crownEl.textContent = crownCount;
+      saveProgression();
+      
+      showToastMsg(`Claimed ${pointsVal} Engagement & ${coinVal} Coins!`);
       syncQuestsUI();
     } else if (!completed && !claimed && typeof goAction === "function") {
       goAction();
@@ -13621,11 +13806,11 @@ function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goActio
   if (!btn) return;
   
   btn.addEventListener("click", () => {
-    const completed = localStorage.getItem(compKey) === "true";
-    const claimed = localStorage.getItem(claimKey) === "true";
+    const completed = questGet(compKey) === "true";
+    const claimed = questGet(claimKey) === "true";
     
     if (completed && !claimed) {
-      localStorage.setItem(claimKey, "true");
+      questSet(claimKey, "true");
       
       // Add gems directly
       gemsCount += gemsVal;
@@ -13642,23 +13827,29 @@ function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goActio
   });
 }
 
-function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, goAction) {
+function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, coinVal, goAction) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   
   btn.addEventListener("click", () => {
-    const completed = localStorage.getItem(compKey) === "true";
-    const claimed = localStorage.getItem(claimKey) === "true";
+    const completed = questGet(compKey) === "true";
+    const claimed = questGet(claimKey) === "true";
     
     if (completed && !claimed) {
-      localStorage.setItem(claimKey, "true");
+      questSet(claimKey, "true");
       
       // Add weekly engagement points
-      let engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+      let engagement = parseInt(questGet("weekly_engagement") || "0");
       engagement = Math.min(400, engagement + pointsVal);
-      localStorage.setItem("weekly_engagement", engagement.toString());
+      questSet("weekly_engagement", engagement.toString());
       
-      showToastMsg(`Claimed ${pointsVal} Weekly Engagement Points!`);
+      // Add coins
+      crownCount += coinVal;
+      const crownEl = document.getElementById("crownCount");
+      if (crownEl) crownEl.textContent = crownCount;
+      saveProgression();
+      
+      showToastMsg(`Claimed ${pointsVal} Weekly Engagement & ${coinVal} Coins!`);
       syncQuestsUI();
     } else if (!completed && !claimed && typeof goAction === "function") {
       goAction();
@@ -13666,57 +13857,73 @@ function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, goActio
   });
 }
 
-function bindWeeklyMilestoneNode(nodeId, milestoneVal) {
+function bindWeeklyMilestoneNode(nodeId, milestoneVal, coinVal) {
   const node = document.getElementById(nodeId);
   if (!node) return;
   
   node.addEventListener("click", () => {
-    const engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
-    const claimed = localStorage.getItem(`claimed_weekly_milestone_${milestoneVal}`) === "true";
+    const engagement = parseInt(questGet("weekly_engagement") || "0");
+    const claimed = questGet(`claimed_weekly_milestone_${milestoneVal}`) === "true";
     
     if (engagement >= milestoneVal && !claimed) {
-      localStorage.setItem(`claimed_weekly_milestone_${milestoneVal}`, "true");
+      questSet(`claimed_weekly_milestone_${milestoneVal}`, "true");
       
-      // Grant reward of 20 gems
+      // Grant reward of 20 gems + coins
       gemsCount += 20;
+      crownCount += coinVal;
       const gemsEl = document.getElementById("gemsCount");
+      const crownEl = document.getElementById("crownCount");
       if (gemsEl) gemsEl.textContent = gemsCount;
+      if (crownEl) crownEl.textContent = crownCount;
       updateShopWalletDisplay();
       saveProgression();
       
-      showGemClaimRewardModal(20, "Weekly Milestone Claimed!");
+      showGemClaimRewardModal(20, "Weekly Milestone Claimed!", coinVal);
       syncQuestsUI();
     }
   });
 }
 
-function bindMilestoneNode(nodeId, milestoneVal) {
+function bindMilestoneNode(nodeId, milestoneVal, coinVal) {
   const node = document.getElementById(nodeId);
   if (!node) return;
   
   node.addEventListener("click", () => {
-    const engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
-    const claimed = localStorage.getItem(`claimed_milestone_${milestoneVal}`) === "true";
+    const engagement = parseInt(questGet("daily_engagement") || "0");
+    const claimed = questGet(`claimed_milestone_${milestoneVal}`) === "true";
     
     if (engagement >= milestoneVal && !claimed) {
-      localStorage.setItem(`claimed_milestone_${milestoneVal}`, "true");
+      questSet(`claimed_milestone_${milestoneVal}`, "true");
       
-      // Grant reward of 10 gems
+      // Grant reward of 10 gems + coins
       gemsCount += 10;
+      crownCount += coinVal;
       const gemsEl = document.getElementById("gemsCount");
+      const crownEl = document.getElementById("crownCount");
       if (gemsEl) gemsEl.textContent = gemsCount;
+      if (crownEl) crownEl.textContent = crownCount;
       updateShopWalletDisplay();
       saveProgression();
       
-      showGemClaimRewardModal(10, "Milestone Reward Claimed!");
+      showGemClaimRewardModal(10, "Milestone Reward Claimed!", coinVal);
       syncQuestsUI();
     }
   });
 }
+
+// ── Per-account quest key namespacing ────────────────────────────────────────
+// All quest/errand progress is stored under a per-user prefix so different
+// accounts on the same device never share quest state.
+function questKey(key) {
+  const user = localStorage.getItem('local_username') || '__guest__';
+  return `q_${user}_${key}`;
+}
+function questGet(key) { return localStorage.getItem(questKey(key)); }
+function questSet(key, value) { localStorage.setItem(questKey(key), value); }
 
 function syncQuestsUI() {
   // Sync daily engagement
-  const engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
+  const engagement = parseInt(questGet("daily_engagement") || "0");
   const currentValEl = document.getElementById("currentEngagementVal");
   if (currentValEl) currentValEl.textContent = engagement;
   
@@ -13733,7 +13940,7 @@ function syncQuestsUI() {
   updateMilestoneNode("chk_400", 400, engagement);
 
   // Sync weekly engagement
-  const weeklyEngagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+  const weeklyEngagement = parseInt(questGet("weekly_engagement") || "0");
   const weeklyValEl = document.getElementById("currentWeeklyEngagementVal");
   if (weeklyValEl) weeklyValEl.textContent = weeklyEngagement;
   
@@ -13753,58 +13960,58 @@ function syncQuestsUI() {
   updateQuestCardUI("qprog_login", "qbtn_login", "quest_login_completed", "quest_login_claimed", 1, 1);
   
   // Sync Card 2: Match
-  const matchCompleted = localStorage.getItem("quest_match_completed") === "true";
+  const matchCompleted = questGet("quest_match_completed") === "true";
   updateQuestCardUI("qprog_match", "qbtn_match", "quest_match_completed", "quest_match_claimed", matchCompleted ? 1 : 0, 1);
   
   // Sync Card 3: Pickups collected
-  const pickupsCollected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
-  if (pickupsCollected >= 3) localStorage.setItem("quest_pickups_completed", "true");
+  const pickupsCollected = parseInt(questGet("quest_pickups_progress") || "0");
+  if (pickupsCollected >= 3) questSet("quest_pickups_completed", "true");
   updateQuestCardUI("qprog_pickups", "qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", pickupsCollected, 3);
   
   // Sync Card 4: Bombs placed
-  const bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
-  if (bombsPlaced >= 10) localStorage.setItem("quest_bombs_completed", "true");
+  const bombsPlaced = parseInt(questGet("quest_bombs_progress") || "0");
+  if (bombsPlaced >= 10) questSet("quest_bombs_completed", "true");
   updateQuestCardUI("qprog_bombs", "qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", bombsPlaced, 10);
 
   // Sync Weekly Quests
   // Weekly 1: Win 3
-  const wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
-  if (wins >= 3) localStorage.setItem("quest_win3_completed", "true");
+  const wins = parseInt(questGet("quest_win3_progress") || "0");
+  if (wins >= 3) questSet("quest_win3_completed", "true");
   updateQuestCardUI("qprog_win3", "qbtn_win3", "quest_win3_completed", "quest_win3_claimed", wins, 3);
 
   // Weekly 2: Spin 3
-  const spins = parseInt(localStorage.getItem("quest_spin3_progress") || "0");
-  if (spins >= 3) localStorage.setItem("quest_spin3_completed", "true");
+  const spins = parseInt(questGet("quest_spin3_progress") || "0");
+  if (spins >= 3) questSet("quest_spin3_completed", "true");
   updateQuestCardUI("qprog_spin3", "qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", spins, 3);
 
   // Weekly 3: Kills
-  const kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
-  if (kills >= 5) localStorage.setItem("quest_kills_completed", "true");
+  const kills = parseInt(questGet("quest_kills_progress") || "0");
+  if (kills >= 5) questSet("quest_kills_completed", "true");
   updateQuestCardUI("qprog_kills", "qbtn_kills", "quest_kills_completed", "quest_kills_claimed", kills, 5);
 
   // Weekly 4: Spend 1000
-  const spend = parseInt(localStorage.getItem("quest_spend1000_progress") || "0");
-  if (spend >= 1000) localStorage.setItem("quest_spend1000_completed", "true");
+  const spend = parseInt(questGet("quest_spend1000_progress") || "0");
+  if (spend >= 1000) questSet("quest_spend1000_completed", "true");
   updateQuestCardUI("qprog_spend1000", "qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", spend, 1000);
 
   // Sync Gameplay Quests
   // 1. Place 100 Bombs
-  const lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
-  if (lifetimeBombs >= 100) localStorage.setItem("quest_total_bombs_completed", "true");
+  const lifetimeBombs = parseInt(questGet("lifetime_bombs_placed") || "0");
+  if (lifetimeBombs >= 100) questSet("quest_total_bombs_completed", "true");
   updateQuestCardUI("qprog_total_bombs", "qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", lifetimeBombs, 100);
 
   // 2. Win 5 Matches
-  if (totalWins >= 5) localStorage.setItem("quest_win5_completed", "true");
+  if (totalWins >= 5) questSet("quest_win5_completed", "true");
   updateQuestCardUI("qprog_win5", "qbtn_win5", "quest_win5_completed", "quest_win5_claimed", totalWins, 5);
 
   // 3. Collect 15 Power-ups
-  const lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
-  if (lifetimePickups >= 15) localStorage.setItem("quest_total_pickups_completed", "true");
+  const lifetimePickups = parseInt(questGet("lifetime_pickups_collected") || "0");
+  if (lifetimePickups >= 15) questSet("quest_total_pickups_completed", "true");
   updateQuestCardUI("qprog_total_pickups", "qbtn_total_pickups", "quest_total_pickups_completed", "quest_total_pickups_claimed", lifetimePickups, 15);
 
   // 4. Defeat 15 Enemies
-  const lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
-  if (lifetimeKills >= 15) localStorage.setItem("quest_total_kills_completed", "true");
+  const lifetimeKills = parseInt(questGet("lifetime_kills") || "0");
+  if (lifetimeKills >= 15) questSet("quest_total_kills_completed", "true");
   updateQuestCardUI("qprog_total_kills", "qbtn_total_kills", "quest_total_kills_completed", "quest_total_kills_claimed", lifetimeKills, 15);
 }
 
@@ -13814,7 +14021,7 @@ function updateMilestoneNode(nodeId, milestoneVal, currentEngagement) {
   
   const isWeekly = nodeId.startsWith("weekly_");
   const key = isWeekly ? `claimed_weekly_milestone_${milestoneVal}` : `claimed_milestone_${milestoneVal}`;
-  const claimed = localStorage.getItem(key) === "true";
+  const claimed = questGet(key) === "true";
   
   node.className = "checkpoint-node";
   if (claimed) {
@@ -13831,8 +14038,8 @@ function updateQuestCardUI(progElId, btnId, compKey, claimKey, currentVal, targe
   
   progEl.textContent = `${currentVal}/${targetVal}`;
   
-  const completed = localStorage.getItem(compKey) === "true";
-  const claimed = localStorage.getItem(claimKey) === "true";
+  const completed = questGet(compKey) === "true";
+  const claimed = questGet(claimKey) === "true";
 
   // Set card sub-footer text
   const card = btn.closest(".quest-card");
@@ -13910,8 +14117,11 @@ function syncLevelTabUI() {
       </div>
       
       <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-family: var(--font); font-size: 12px; color: #b16cff; font-weight: 900; display: flex; align-items: center; gap: 3px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#b16cff" style="display: inline-block; vertical-align: middle;"><path d="M6 2h12l4 6-10 14L2 8z"/></svg> 5
+        </span>
         <span style="font-family: var(--font); font-size: 12px; color: #ffd86f; font-weight: 900; display: flex; align-items: center; gap: 3px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="#ffd86f" style="display: inline-block; vertical-align: middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> 5
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#ffd86f" style="display: inline-block; vertical-align: middle;"><circle cx="12" cy="12" r="10" stroke="#000" stroke-width="2"/><path d="M12 7v10M10 9h3.5a1.5 1.5 0 0 1 0 3H12h-1.5a1.5 1.5 0 0 0 0 3H14" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none"/></svg> 100
         </span>
         
         <button class="level-claim-btn" data-level-milestone="${lvl}" type="button" style="padding: 4px 12px; font-family: var(--font); font-size: 11px; font-weight: 900; text-transform: uppercase; border-radius: 8px; border: 2.5px solid #000; box-shadow: 1.5px 1.5px 0 #000; cursor: pointer; transition: transform 0.1s;"></button>
@@ -13937,14 +14147,17 @@ function syncLevelTabUI() {
       btn.addEventListener("click", () => {
         localStorage.setItem(`level_reward_claimed_${lvl}`, "true");
         
-        // Grant 5 gems
+        // Grant 5 gems and 100 coins
         gemsCount += 5;
+        crownCount += 100;
         const gemsEl = document.getElementById("gemsCount");
+        const crownEl = document.getElementById("crownCount");
         if (gemsEl) gemsEl.textContent = gemsCount;
+        if (crownEl) crownEl.textContent = crownCount;
         updateShopWalletDisplay();
         saveProgression();
         
-        showGemClaimRewardModal(5, `Level ${lvl} Reward Claimed!`);
+        showGemClaimRewardModal(5, `Level ${lvl} Reward Claimed!`, 100);
         syncLevelTabUI();
       });
     } else {
@@ -14369,3 +14582,1631 @@ document.getElementById("btnPlayOnlineMultiplayer")?.addEventListener("click", (
     removeLobbyPulseOverlay();
   }
 });
+
+// ================================================================
+// MONOPOLY GACHA BOARD SYSTEM
+// ================================================================
+
+let mbCurrentBoard = 'main'; // 'main', 'island1', 'island2'
+let mbMainIndex = parseInt(localStorage.getItem('mb_main_index') || '0');
+let mbIsland1Index = 0;
+let mbIsland2Index = 0;
+let mbFreePulls = parseInt(localStorage.getItem('mb_free_pulls') || '0');
+let mbRolling = false;
+let mbMoving = false;
+let mbRollQueue = 0;
+let mbSpeedMultiplier = 1;
+let mbWalkTimeout = null;
+let mbRoll10Results = [];
+let mbSummaryQueueType = 1;
+let mbBoardModActive = false; // true when pity 49 reached – board shows all S-Class
+
+// Pity system
+let mbTotalRolls = parseInt(localStorage.getItem('mb_rolls_total') || '0');
+let mbPityA = parseInt(localStorage.getItem('mb_rolls_pity_a') || '0');
+let mbPityS = parseInt(localStorage.getItem('mb_rolls_pity_s') || '0');
+let mbPityMod = parseInt(localStorage.getItem('mb_rolls_pity_mod') || '0');
+
+// Categorize gachaPool items into ranks
+const mbItemRanks = {
+  // S-Class
+  'gold-bomb': 'S',
+  'gold-effect': 'S',
+  'purple-bomb': 'S',
+  'purple-effect': 'S',
+  // A-Class
+  'blue-bomb': 'A',
+  'blue-effect': 'A',
+  'green-bomb': 'A',
+  'green-effect': 'A',
+  // B-Class
+  'pink-bomb': 'B',
+  'pink-effect': 'B'
+};
+
+// Main board tile definition
+const mbMainTilesConfig = [
+  { type: 'start', label: 'START', emoji: '🏁' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'portal1', label: 'SECRET', emoji: '🌀' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'corner', label: 'REST', emoji: '☕' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'corner', label: 'REST', emoji: '⭐' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'portal2', label: 'SECRET', emoji: '🌀' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'corner', label: 'REST', emoji: '☕' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'dice', label: 'DICE +1', emoji: '🎲' },
+  { type: 'common', label: 'CRATE', emoji: '📦' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' }
+];
+
+const mbMainBoardLayout = [
+  { col: 0, row: 6 }, // 0
+  { col: 0, row: 5 }, // 1
+  { col: 0, row: 4 }, // 2
+  { col: 0, row: 3 }, // 3
+  { col: 0, row: 2 }, // 4 (Portal 1)
+  { col: 0, row: 1 }, // 5
+  { col: 0, row: 0 }, // 6 (Corner 1)
+  { col: 1, row: 0 }, // 7
+  { col: 2, row: 0 }, // 8
+  { col: 3, row: 0 }, // 9
+  { col: 4, row: 0 }, // 10
+  { col: 5, row: 0 }, // 11
+  { col: 6, row: 0 }, // 12
+  { col: 7, row: 0 }, // 13
+  { col: 8, row: 0 }, // 14 (Corner 2)
+  { col: 8, row: 1 }, // 15
+  { col: 8, row: 2 }, // 16 (Portal 2)
+  { col: 8, row: 3 }, // 17
+  { col: 8, row: 4 }, // 18
+  { col: 8, row: 5 }, // 19
+  { col: 8, row: 6 }, // 20 (Corner 3)
+  { col: 7, row: 6 }, // 21
+  { col: 6, row: 6 }, // 22
+  { col: 5, row: 6 }, // 23
+  { col: 4, row: 6 }, // 24
+  { col: 3, row: 6 }, // 25
+  { col: 2, row: 6 }, // 26
+  { col: 1, row: 6 }  // 27
+];
+
+// Island layouts (3 columns x 2 rows serpentine path)
+const mbIslandBoardLayout = [
+  { col: 0, row: 0 },
+  { col: 1, row: 0 },
+  { col: 2, row: 0 },
+  { col: 2, row: 1 },
+  { col: 1, row: 1 },
+  { col: 0, row: 1 }
+];
+
+const mbIsland1TilesConfig = [
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'pullx1', label: 'FREE ROLL', emoji: '🎫' },
+  { type: 'rare', label: 'RARE', emoji: '🎁' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' }
+];
+
+const mbIsland2TilesConfig = [
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'pullx2', label: '2 ROLLS', emoji: '🎟️' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' },
+  { type: 'sclass', label: 'S-CLASS', emoji: '👑' }
+];
+
+// Coordinate helper for main board
+function getTileCoordsMain(index) {
+  const layout = mbMainBoardLayout[index];
+  const padding = 8;
+  const tileSize = 60;
+  const gap = 2;
+  const charWidth = 44;
+  const charHeight = 60;
+
+  const left = padding + layout.col * (tileSize + gap) + (tileSize - charWidth) / 2;
+  const top = padding + layout.row * (tileSize + gap) + (tileSize - charHeight) / 2;
+  return { left, top };
+}
+
+// Coordinate helper for islands
+function getTileCoordsIsland(index) {
+  const layout = mbIslandBoardLayout[index];
+  const padding = 20;
+  const tileSize = 80;
+  const gap = 4;
+  const charWidth = 44;
+  const charHeight = 60;
+
+  const left = padding + layout.col * (tileSize + gap) + (tileSize - charWidth) / 2;
+  const top = padding + layout.row * (tileSize + gap) + (tileSize - charHeight) / 2;
+  return { left, top };
+}
+
+// Global hook to open Monopoly board instead of old slot gacha
+openGachaModal = function() {
+  openMonopolyBoard();
+};
+
+function openMonopolyBoard() {
+  const overlay = document.getElementById("tabTransitionOverlay");
+  if (overlay) overlay.classList.add("animate-swipe");
+
+  // Reset speed controls state
+  mbSpeedMultiplier = 1;
+  const speedBtn = document.getElementById("mbSpeedBtn");
+  if (speedBtn) speedBtn.textContent = ">> 1x";
+  document.getElementById("mbGachaControls")?.classList.add("hidden");
+  document.getElementById("mbSummaryPopup")?.classList.add("hidden");
+  // Bug fix: reset board-mod flag on every open so stale state doesn't persist
+  mbBoardModActive = false;
+  mbRoll10Results = [];
+  mbSummaryQueueType = 1;
+
+  setTimeout(() => {
+    const mbOverlay = document.getElementById("monopolyBoardOverlay");
+    if (mbOverlay) {
+      mbOverlay.classList.remove("hidden");
+    }
+    initMonopolyBoardUI();
+    if (!localStorage.getItem("mb_tutorial_completed")) { setTimeout(function(){ if (typeof startMonopolyTutorial === "function") startMonopolyTutorial(); }, 600); }
+  }, 300);
+
+  setTimeout(() => {
+    if (overlay) overlay.classList.remove("animate-swipe");
+  }, 800);
+}
+
+function closeMonopolyBoard() {
+  if (mbRolling || mbMoving) {
+    showToastMsg("Cannot close while rolling or moving!");
+    return;
+  }
+  const overlay = document.getElementById("tabTransitionOverlay");
+  if (overlay) overlay.classList.add("animate-swipe");
+
+  setTimeout(() => {
+    const mbOverlay = document.getElementById("monopolyBoardOverlay");
+    if (mbOverlay) mbOverlay.classList.add("hidden");
+  }, 300);
+
+  setTimeout(() => {
+    if (overlay) overlay.classList.remove("animate-swipe");
+  }, 800);
+}
+
+function getTileIconSvg(type) {
+  switch (type) {
+    case 'start':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#ffd86f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" fill="rgba(255,216,111,0.15)"/>
+          <line x1="4" y1="22" x2="4" y2="15"/>
+        </svg>
+      `;
+    case 'common':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <rect x="3" y="8" width="18" height="12" rx="2" fill="rgba(167,139,250,0.15)"/>
+          <path d="M3 8l9 4 9-4"/>
+          <circle cx="12" cy="14" r="1.5" fill="#a78bfa"/>
+        </svg>
+      `;
+    case 'rare':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <rect x="3" y="8" width="18" height="12" rx="2" fill="rgba(249,115,22,0.15)"/>
+          <path d="M12 8V20M3 14h18M8 8s1-3 4-3 4 3 4 3"/>
+        </svg>
+      `;
+    case 'sclass':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#ff5e97" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));">
+          <path d="M2 4l4 12h12l4-12-5 6-3-8-3 8z" fill="rgba(255,94,151,0.2)"/>
+          <circle cx="12" cy="20" r="2" fill="#ff5e97"/>
+        </svg>
+      `;
+    case 'portal1':
+    case 'portal2':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#c084fc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); animation: mbWheelSpin 6s linear infinite;">
+          <path d="M12 2a10 10 0 1 0 10 10M12 6a6 6 0 1 0 6 6M12 10a2 2 0 1 0 2 2"/>
+        </svg>
+      `;
+    case 'dice':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#4fc3f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <rect x="3" y="3" width="18" height="18" rx="4" fill="rgba(79,195,247,0.15)"/>
+          <circle cx="8" cy="8" r="1.5" fill="#4fc3f7"/>
+          <circle cx="16" cy="16" r="1.5" fill="#4fc3f7"/>
+          <circle cx="12" cy="12" r="1.5" fill="#4fc3f7"/>
+        </svg>
+      `;
+    case 'pullx1':
+    case 'pullx2':
+      return `
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#1be6cc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+          <path d="M2 9a3 3 0 0 1 0-6h20a3 3 0 0 1 0 6M2 15a3 3 0 0 0 0 6h20a3 3 0 0 0 0-6" fill="rgba(27,230,204,0.15)"/>
+          <line x1="12" y1="3" x2="12" y2="21" stroke-dasharray="3 3"/>
+        </svg>
+      `;
+    case 'corner':
+    default:
+      return `
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffcce0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block; flex-shrink:0;">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="rgba(255,200,225,0.15)"/>
+          <circle cx="19" cy="5" r="0.8" fill="#ffcce0" stroke="none"/>
+          <circle cx="21" cy="9" r="0.8" fill="#ffcce0" stroke="none"/>
+          <circle cx="20" cy="7" r="0.5" fill="#ffcce0" stroke="none"/>
+        </svg>
+      `;
+  }
+}
+
+function initMonopolyBoardUI() {
+  // Render main board tiles
+  const tilesContainer = document.getElementById("mbTiles");
+  if (tilesContainer) {
+    tilesContainer.innerHTML = "";
+    mbMainTilesConfig.forEach((tile, index) => {
+      const tileDiv = document.createElement("div");
+      tileDiv.className = `mb-tile ${getTileClass(tile.type)}`;
+      const layout = mbMainBoardLayout[index];
+      tileDiv.style.gridColumnStart = layout.col + 1;
+      tileDiv.style.gridRowStart = layout.row + 1;
+      tileDiv.innerHTML = `
+        ${getTileIconSvg(tile.type)}
+        <span class="mb-tile-label">${tile.label}</span>
+        <span class="mb-tile-stepnum">${index}</span>
+      `;
+      tilesContainer.appendChild(tileDiv);
+    });
+  }
+
+  // Render Island 1 tiles
+  const island1Container = document.getElementById("mbIsland1Tiles");
+  if (island1Container) {
+    island1Container.innerHTML = "";
+    mbIsland1TilesConfig.forEach((tile, index) => {
+      const tileDiv = document.createElement("div");
+      tileDiv.className = `mb-tile ${getTileClass(tile.type)}`;
+      tileDiv.style.width = "80px";
+      tileDiv.style.height = "80px";
+      const layout = mbIslandBoardLayout[index];
+      tileDiv.style.gridColumnStart = layout.col + 1;
+      tileDiv.style.gridRowStart = layout.row + 1;
+      tileDiv.innerHTML = `
+        ${getTileIconSvg(tile.type)}
+        <span class="mb-tile-label">${tile.label}</span>
+      `;
+      island1Container.appendChild(tileDiv);
+    });
+  }
+
+  // Render Island 2 tiles
+  const island2Container = document.getElementById("mbIsland2Tiles");
+  if (island2Container) {
+    island2Container.innerHTML = "";
+    mbIsland2TilesConfig.forEach((tile, index) => {
+      const tileDiv = document.createElement("div");
+      tileDiv.className = `mb-tile ${getTileClass(tile.type)}`;
+      tileDiv.style.width = "80px";
+      tileDiv.style.height = "80px";
+      const layout = mbIslandBoardLayout[index];
+      tileDiv.style.gridColumnStart = layout.col + 1;
+      tileDiv.style.gridRowStart = layout.row + 1;
+      tileDiv.innerHTML = `
+        ${getTileIconSvg(tile.type)}
+        <span class="mb-tile-label">${tile.label}</span>
+      `;
+      island2Container.appendChild(tileDiv);
+    });
+  }
+
+  // Set character sprites
+  updateCharacterSprite();
+
+  // Reset indices and views
+  mbCurrentBoard = 'main';
+  document.getElementById("mbMainView").classList.remove("hidden");
+  document.getElementById("mbIslandView1").classList.add("hidden");
+  document.getElementById("mbIslandView2").classList.add("hidden");
+  document.getElementById("mbIslandChar1").classList.add("hidden");
+  document.getElementById("mbIslandChar2").classList.add("hidden");
+
+  // Sync wallet and stats
+  syncMonopolyStats();
+
+  // Position character at starting tile
+  positionCharacterAt(mbMainIndex);
+}
+
+function getTileClass(type) {
+  switch (type) {
+    case 'start': return 'mb-tile-start';
+    case 'common': return 'mb-tile-common';
+    case 'rare': return 'mb-tile-rare';
+    case 'sclass': return 'mb-tile-sclass';
+    case 'portal1': return 'mb-tile-portal1';
+    case 'portal2': return 'mb-tile-portal2';
+    case 'dice': return 'mb-tile-dice';
+    case 'corner': return 'mb-tile-corner';
+    case 'pullx1': return 'mb-tile-pullx1';
+    case 'pullx2': return 'mb-tile-pullx2';
+    default: return 'mb-tile-common';
+  }
+}
+
+function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
+  let dir = 'down';
+  if (board === 'main') {
+    if (index >= 1 && index <= 6) dir = 'up';
+    else if (index >= 7 && index <= 14) dir = 'right';
+    else if (index >= 15 && index <= 20) dir = 'down';
+    else dir = 'left'; // 21..27 and 0
+  } else {
+    // Islands serpentine
+    if (index >= 0 && index < 2) dir = 'right';
+    else if (index === 2) dir = 'down';
+    else dir = 'left';
+  }
+
+  const suffix = stepNum === 1 ? '1' : '2';
+  let src = '';
+  let transform = 'scaleX(1)';
+
+  if (dir === 'up') {
+    src = `assets/${char}/${char}_walk_back${suffix}.png`;
+  } else if (dir === 'down') {
+    src = `assets/${char}/${char}_walk_front${suffix}.png`;
+  } else { // 'left' or 'right'
+    if (char === 'chiikawa' && suffix === '2') {
+      src = `assets/${char}/${char}_walk_sid2.png`;
+    } else {
+      src = `assets/${char}/${char}_walk_side${suffix}.png`;
+    }
+
+    if (dir === 'right') {
+      transform = 'scaleX(-1)';
+    }
+  }
+
+  return { src, transform };
+}
+
+function updateCharacterSprite() {
+  const char = selectedCharacter || "chiikawa";
+  const idleFile = `assets/${char}/${char}_idle.png`;
+
+  const mainCharImg = document.getElementById("mbCharImg");
+  if (mainCharImg) {
+    mainCharImg.src = idleFile;
+    mainCharImg.style.transform = "scaleX(1)";
+  }
+
+  const island1CharImg = document.getElementById("mbIslandCharImg1");
+  if (island1CharImg) {
+    island1CharImg.src = idleFile;
+    island1CharImg.style.transform = "scaleX(1)";
+  }
+
+  const island2CharImg = document.getElementById("mbIslandCharImg2");
+  if (island2CharImg) {
+    island2CharImg.src = idleFile;
+    island2CharImg.style.transform = "scaleX(1)";
+  }
+}
+
+function positionCharacterAt(index) {
+  const piece = document.getElementById("mbCharPiece");
+  if (!piece) return;
+
+  const coords = getTileCoordsMain(index);
+  piece.style.left = `${coords.left}px`;
+  piece.style.top = `${coords.top}px`;
+  piece.classList.remove("hidden");
+}
+
+function positionCharacterAtIsland(islandId, index) {
+  const piece = document.getElementById(`mbIslandChar${islandId}`);
+  if (!piece) return;
+
+  const coords = getTileCoordsIsland(index);
+  piece.style.left = `${coords.left}px`;
+  piece.style.top = `${coords.top}px`;
+  piece.classList.remove("hidden");
+}
+
+function syncMonopolyStats() {
+  // Sync gems and coins wallet
+  const hCoins = document.getElementById("mbHeaderCoins");
+  if (hCoins) hCoins.textContent = crownCount.toLocaleString();
+  const hGems = document.getElementById("mbHeaderGems");
+  if (hGems) hGems.textContent = gemsCount.toLocaleString();
+  const fGems = document.getElementById("mbFooterGems");
+  if (fGems) fGems.textContent = gemsCount.toLocaleString();
+
+  // Sync Pity
+  const fillA = document.getElementById("mbFillA");
+  const valA = document.getElementById("mbValA");
+  if (fillA && valA) {
+    fillA.style.width = `${Math.min(100, (mbPityA / 5) * 100)}%`;
+    valA.textContent = `${mbPityA}/5`;
+  }
+
+  const fillS = document.getElementById("mbFillS");
+  const valS = document.getElementById("mbValS");
+  if (fillS && valS) {
+    fillS.style.width = `${Math.min(100, (mbPityS / 10) * 100)}%`;
+    valS.textContent = `${mbPityS}/10`;
+  }
+
+  const fillB = document.getElementById("mbFillB");
+  const valB = document.getElementById("mbValB");
+  if (fillB && valB) {
+    fillB.style.width = `${Math.min(100, (mbPityMod / 50) * 100)}%`;
+    valB.textContent = `${mbPityMod}/50`;
+  }
+
+  // Free pull indicator
+  const freeBadge = document.getElementById("mbFreeRollBadge");
+  const freeRoll1Btn = document.getElementById("mbRoll1Btn");
+  if (freeBadge && freeRoll1Btn) {
+    if (mbFreePulls > 0) {
+      freeBadge.classList.remove("hidden");
+      document.getElementById("mbFreeRollCnt").textContent = `×${mbFreePulls}`;
+      freeRoll1Btn.querySelector(".mb-roll-cost-bar").innerHTML = `<span style="color:#ffd86f; font-weight:900;">FREE ROLL</span>`;
+    } else {
+      freeBadge.classList.add("hidden");
+      freeRoll1Btn.querySelector(".mb-roll-cost-bar").innerHTML = `
+        <svg viewBox="0 0 24 24" width="9" height="9" fill="#ff6b6b"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+        <span>×300</span>
+      `;
+    }
+  }
+}
+
+// Bind click handlers for Monopoly Gacha Board
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("monopolyCloseBtn")?.addEventListener("click", closeMonopolyBoard);
+
+  document.getElementById("mbRoll1Btn")?.addEventListener("click", () => handleMonopolyRoll(1));
+  document.getElementById("mbRoll10Btn")?.addEventListener("click", () => handleMonopolyRoll(10));
+
+  // Claim button close handlers
+  document.getElementById("mbCrateClaimBtn")?.addEventListener("click", claimMonopolyReward);
+  document.getElementById("mbFreePullOk")?.addEventListener("click", closeFreePullPopup);
+
+  // Speed, Skip & Summary close handlers
+  document.getElementById("mbSpeedBtn")?.addEventListener("click", toggleGachaSpeed);
+  document.getElementById("mbSkipBtn")?.addEventListener("click", triggerMonopolySkip);
+  document.getElementById("mbSummaryCloseBtn")?.addEventListener("click", closeRoll10Summary);
+  document.getElementById("mbSummaryClickaway")?.addEventListener("click", closeRoll10Summary);
+  document.getElementById("mbTutNext")?.addEventListener("click", advanceMbTutorial);
+  document.getElementById("mbTutSkipAll")?.addEventListener("click", finishMbTutorial);
+});
+
+async function handleMonopolyRoll(count) {
+  if (mbRolling || mbMoving) return;
+
+  // Bug fix: always clear results array for both Roll 1 and Roll 10
+  mbRoll10Results = [];
+  mbSummaryQueueType = count;
+
+  if (count === 1) {
+    // Check cost
+    if (mbFreePulls > 0) {
+      mbFreePulls--;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+    } else {
+      if (gemsCount < 300) {
+        showToastMsg("Not enough gems!");
+        return;
+      }
+      gemsCount -= 300;
+      updateShopWalletDisplay();
+    }
+    mbRollQueue = 1;
+  } else if (count === 10) {
+    if (gemsCount < 2700) {
+      showToastMsg("Not enough gems!");
+      return;
+    }
+    gemsCount -= 2700;
+    updateShopWalletDisplay();
+    mbRollQueue = 10;
+  }
+
+  saveProgression();
+  syncMonopolyStats();
+
+  // Show speed & skip controls during active drawing
+  document.getElementById("mbGachaControls")?.classList.remove("hidden");
+
+  triggerDiceRollSequence();
+}
+
+function triggerDiceRollSequence() {
+  mbRolling = true;
+
+  // Dice Overlay view
+  const diceOverlay = document.getElementById("mbDiceOverlay");
+  const dice3d = document.getElementById("mbDice3d");
+  const diceResult = document.getElementById("mbDiceResult");
+
+  diceOverlay.classList.remove("hidden");
+  dice3d.classList.remove("hidden");
+  
+  // Set dice animation speed – drive via CSS custom property so the keyframe picks it up
+  const diceDuration = 1.4 / mbSpeedMultiplier;
+  dice3d.style.setProperty('--dice-spin-dur', `${diceDuration}s`);
+  dice3d.style.animationDuration = `${diceDuration}s`;
+  dice3d.classList.add("rolling");
+  diceResult.classList.add("hidden");
+
+  // Roll result
+  const steps = Math.floor(Math.random() * 6) + 1;
+
+  // 3D rotations config for final face
+  const rotMap = {
+    1: 'rotateX(0deg) rotateY(0deg)',
+    2: 'rotateX(180deg) rotateY(0deg)',
+    3: 'rotateX(0deg) rotateY(-90deg)',
+    4: 'rotateX(0deg) rotateY(90deg)',
+    5: 'rotateX(-90deg) rotateY(0deg)',
+    6: 'rotateX(90deg) rotateY(0deg)'
+  };
+
+  dice3d.style.setProperty('--dice-final-rot', rotMap[steps]);
+
+  // Construct dots inside face helper (accurate mapping)
+  const faces = ['front', 'back', 'right', 'left', 'top', 'bot'];
+  const dotCounts = [1, 2, 3, 4, 5, 6]; // match faces configurations accurately
+  faces.forEach((f, idx) => {
+    const el = dice3d.querySelector(`.mb-dface-${f}`);
+    if (el) {
+      const cnt = dotCounts[idx];
+      let dotsHtml = `<div class="mb-dots-${cnt}">`;
+      for(let d=0; d<cnt; d++) dotsHtml += `<div class="mb-dot"></div>`;
+      dotsHtml += `</div>`;
+      el.innerHTML = dotsHtml;
+    }
+  });
+
+  setTimeout(() => {
+    // Snap dice to correct rotation and hide spin animation
+    dice3d.classList.remove("rolling");
+    dice3d.style.transform = rotMap[steps];
+
+    setTimeout(() => {
+      // Reveal result number
+      dice3d.classList.add("hidden");
+      diceResult.classList.remove("hidden");
+      document.getElementById("mbDiceNum").textContent = steps;
+
+      setTimeout(() => {
+        // Close overlay and walk character
+        diceOverlay.classList.add("hidden");
+        mbRolling = false;
+        animateCharacterWalk(steps);
+      }, 1100 / mbSpeedMultiplier);
+
+    }, 500 / mbSpeedMultiplier);
+
+  }, 1400 / mbSpeedMultiplier);
+}
+
+function animateCharacterWalk(steps) {
+  mbMoving = true;
+  let remaining = steps;
+
+  // Initialize camera tracking zoom
+  updateCameraZoom(true, mbMainIndex);
+
+  const char = selectedCharacter || "chiikawa";
+  const idle = `assets/${char}/${char}_idle.png`;
+
+  let frameTick = false;
+
+  function takeStep() {
+    if (remaining <= 0) {
+      mbMoving = false;
+      // Landing action
+      handleTileLanding();
+      return;
+    }
+
+    remaining--;
+
+    // Update indices and coordinate mapping
+    let coords;
+    if (mbCurrentBoard === 'main') {
+      mbMainIndex = (mbMainIndex + 1) % 28;
+      localStorage.setItem('mb_main_index', mbMainIndex.toString());
+      coords = getTileCoordsMain(mbMainIndex);
+
+      // Highlight active tile
+      document.querySelectorAll(".mb-tile").forEach(t => t.classList.remove("mb-tile-highlight"));
+      const allTiles = document.getElementById("mbTiles").children;
+      if (allTiles && allTiles[mbMainIndex]) {
+        allTiles[mbMainIndex].classList.add("mb-tile-highlight");
+      }
+
+      // Move piece
+      const piece = document.getElementById("mbCharPiece");
+      piece.style.left = `${coords.left}px`;
+      piece.style.top = `${coords.top}px`;
+      const hopWrap = document.getElementById("mbCharHopWrap");
+      if (hopWrap) {
+        hopWrap.classList.remove("mb-char-hop");
+        void hopWrap.offsetWidth;
+        hopWrap.classList.add("mb-char-hop");
+      }
+
+      // Alternate walk frames & directions
+      const walkInfo = getCharacterSpriteWalkInfo(char, 'main', mbMainIndex, frameTick ? 1 : 2);
+      const img = document.getElementById("mbCharImg");
+      img.src = walkInfo.src;
+      img.style.transform = walkInfo.transform;
+
+      // Update camera follow center
+      updateCameraZoom(true, mbMainIndex);
+
+    } else if (mbCurrentBoard === 'island1' || mbCurrentBoard === 'island2') {
+      const isId = mbCurrentBoard === 'island1' ? 1 : 2;
+      let curIdx = mbCurrentBoard === 'island1' ? mbIsland1Index : mbIsland2Index;
+
+      curIdx++;
+      if (curIdx >= 6) {
+        // Return to main board Portal tile!
+        mbCurrentBoard = 'main';
+        const img = document.getElementById("mbCharImg");
+        img.src = idle;
+        img.style.transform = "scaleX(1)";
+
+        // Bridge retraction cinematic (carries remaining steps back to main board)
+        playBridgeRetractCinematic(isId, remaining);
+        return;
+      }
+
+      if (mbCurrentBoard === 'island1') {
+        mbIsland1Index = curIdx;
+      } else {
+        mbIsland2Index = curIdx;
+      }
+
+      coords = getTileCoordsIsland(curIdx);
+      const piece = document.getElementById(`mbIslandChar${isId}`);
+      piece.style.left = `${coords.left}px`;
+      piece.style.top = `${coords.top}px`;
+      const hopWrap = document.getElementById(`mbIslandCharHopWrap${isId}`);
+      if (hopWrap) {
+        hopWrap.classList.remove("mb-char-hop");
+        void hopWrap.offsetWidth;
+        hopWrap.classList.add("mb-char-hop");
+      }
+
+      // Alternate walk frames & directions
+      const walkInfo = getCharacterSpriteWalkInfo(char, mbCurrentBoard, curIdx, frameTick ? 1 : 2);
+      const img = document.getElementById(`mbIslandCharImg${isId}`);
+      img.src = walkInfo.src;
+      img.style.transform = walkInfo.transform;
+
+      // Update camera follow center on island platform
+      updateCameraZoom(true);
+    }
+
+    frameTick = !frameTick;
+
+    // Beep sound
+    if (typeof playSound === "function") playSound("tutorial_beep");
+
+    mbWalkTimeout = setTimeout(takeStep, 350 / mbSpeedMultiplier);
+  }
+
+  takeStep();
+}
+
+function handleTileLanding() {
+  // Zoom out camera
+  updateCameraZoom(false);
+
+  // Set character back to idle image and default rotation
+  const char = selectedCharacter || "chiikawa";
+  const idleFile = `assets/${char}/${char}_idle.png`;
+  
+  const imgMain = document.getElementById("mbCharImg");
+  if (imgMain) {
+    imgMain.src = idleFile;
+    imgMain.style.transform = "scaleX(1)";
+  }
+  const imgIsland1 = document.getElementById("mbIslandCharImg1");
+  if (imgIsland1) {
+    imgIsland1.src = idleFile;
+    imgIsland1.style.transform = "scaleX(1)";
+  }
+  const imgIsland2 = document.getElementById("mbIslandCharImg2");
+  if (imgIsland2) {
+    imgIsland2.src = idleFile;
+    imgIsland2.style.transform = "scaleX(1)";
+  }
+
+  let tile;
+  let tilesContainerId = "mbTiles";
+  let curIdx = mbMainIndex;
+
+  if (mbCurrentBoard === 'main') {
+    tile = mbMainTilesConfig[mbMainIndex];
+    tilesContainerId = "mbTiles";
+    curIdx = mbMainIndex;
+  } else if (mbCurrentBoard === 'island1') {
+    tile = mbIsland1TilesConfig[mbIsland1Index];
+    tilesContainerId = "mbIsland1Tiles";
+    curIdx = mbIsland1Index;
+  } else if (mbCurrentBoard === 'island2') {
+    tile = mbIsland2TilesConfig[mbIsland2Index];
+    tilesContainerId = "mbIsland2Tiles";
+    curIdx = mbIsland2Index;
+  }
+
+  // Highlight landing tile
+  const container = document.getElementById(tilesContainerId);
+  const tileDiv = container?.children[curIdx];
+  if (tileDiv) {
+    tileDiv.classList.add("mb-tile-highlight");
+  }
+
+  // Act on tile type
+  switch (tile.type) {
+    case 'common':
+    case 'rare':
+    case 'sclass':
+      triggerCrateOpenAnimation(tileDiv, tile.type);
+      break;
+
+    case 'portal1':
+      triggerBridgeTravelSequence(1);
+      break;
+
+    case 'portal2':
+      triggerBridgeTravelSequence(2);
+      break;
+
+    case 'dice':
+      // Award free roll
+      mbFreePulls++;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+      syncMonopolyStats();
+      showFreePullPopup(1);
+      break;
+
+    case 'pullx1':
+      mbFreePulls += 1;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+      syncMonopolyStats();
+      showFreePullPopup(1);
+      break;
+
+    case 'pullx2':
+      mbFreePulls += 2;
+      localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+      syncMonopolyStats();
+      showFreePullPopup(2);
+      break;
+
+    case 'start':
+      // Pass start reward
+      gemsCount += 100;
+      updateShopWalletDisplay();
+      syncMonopolyStats();
+      showToastMsg("START: Bonus +100 Gems!");
+      checkQueueOrUnlockRoll();
+      break;
+
+    case 'corner':
+    default:
+      // Rest spot, no reward
+      checkQueueOrUnlockRoll();
+      break;
+  }
+}
+
+// Crate open sequence — Bug fix: scale timeouts by mbSpeedMultiplier
+function triggerCrateOpenAnimation(tileDiv, rarity) {
+  if (tileDiv) {
+    tileDiv.classList.add("mb-tile-shaking");
+  }
+
+  setTimeout(() => {
+    if (tileDiv) {
+      tileDiv.classList.remove("mb-tile-shaking");
+      tileDiv.classList.add("mb-tile-opening");
+    }
+
+    setTimeout(() => {
+      if (tileDiv) tileDiv.classList.remove("mb-tile-opening");
+      drawMonopolyReward(rarity);
+    }, 600 / mbSpeedMultiplier);
+
+  }, 500 / mbSpeedMultiplier);
+}
+
+function triggerClassRevealSequence(rank, callback) {
+  const reveal = document.getElementById("mbClassReveal");
+  if (!reveal) {
+    if (callback) callback();
+    return;
+  }
+
+  const badge = document.getElementById("mbCrBadge");
+  const label = document.getElementById("mbCrLabel");
+
+  badge.textContent = rank;
+  if (rank === 'S') {
+    reveal.style.setProperty('--badge-color', '#ffd86f');
+    reveal.style.setProperty('--glow-color', '#ff9900');
+    label.textContent = "S-Class Item Reward";
+  } else {
+    reveal.style.setProperty('--badge-color', '#1be6cc');
+    reveal.style.setProperty('--glow-color', '#00bbfb');
+    label.textContent = "A-Class Coin Reward";
+  }
+
+  reveal.classList.remove("hidden");
+
+  if (typeof playSound === "function") playSound("tutorial_beep");
+
+  setTimeout(() => {
+    reveal.classList.add("hidden");
+    if (callback) callback();
+  }, 2000 / mbSpeedMultiplier);
+}
+
+// Shared helpers to pick items
+// Shared helper to pick S-Class items (forced = true guarantees an S-Class item even if duplicate)
+// Shared helper to pick S-Class items (always returns an item, never coins fallback)
+function _pickSItem() {
+  var allS = gachaPool.filter(function(x) { return (mbItemRanks[x.id] || 'B') === 'S'; });
+  var unowned = allS.filter(function(x) {
+    var k = x.type === "effect" ? "owned_effect_" + x.color : "owned_bomb_" + x.color;
+    return localStorage.getItem(k) !== "true";
+  });
+  // Fall back to picking any S-Class item if all are owned (triggers duplicate logic)
+  var pool = unowned.length > 0 ? unowned : allS;
+  if (pool.length === 0) return null;
+  var chosen = pool[Math.floor(Math.random() * pool.length)];
+  var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
+  var isDup = localStorage.getItem(oKey) === "true";
+  if (!isDup) {
+    localStorage.setItem(oKey, "true");
+    var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
+    localStorage.setItem(nKey, "true");
+  }
+  return { item: chosen, isDuplicate: isDup };
+}
+
+function drawMonopolyReward(rarity) {
+  mbTotalRolls++;
+  mbPityA++;
+  mbPityS++;
+  mbPityMod++;
+
+  var forceSClassItem = false;
+  if (mbPityMod >= 50) {
+    mbPityMod = 0;
+    forceSClassItem = true;
+    mbBoardModActive = false;
+    setTimeout(revertBoardModTiles, 3000);
+  }
+
+  if (mbPityMod === 49 && !mbBoardModActive) {
+    mbBoardModActive = true;
+    triggerBoardModAnimation();
+  }
+
+  localStorage.setItem('mb_rolls_total', mbTotalRolls.toString());
+  localStorage.setItem('mb_rolls_pity_a', mbPityA.toString());
+  localStorage.setItem('mb_rolls_pity_s', mbPityS.toString());
+  localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
+
+  var rank = 'A';
+
+  if (forceSClassItem) {
+    rank = 'S';
+  } else if (mbPityS >= 10) {
+    rank = 'S';
+  } else if (mbPityA >= 5) {
+    rank = 'A';
+  } else {
+    if (rarity === 'common') {
+      rank = 'A'; // Purple crates NEVER contain S-Class
+    } else if (rarity === 'rare') {
+      // Rare (orange) crates contain S-Class with a low chance (10%)
+      rank = Math.random() < 0.10 ? 'S' : 'A';
+    } else if (rarity === 'sclass') {
+      rank = 'S'; // S-Class tiles always contain S-Class
+    }
+  }
+
+  var finalItem = null;
+  var isDuplicate = false;
+
+  if (rank === 'S') {
+    // S-Class is strictly skins/effects, never coins
+    var picked = _pickSItem();
+    if (picked) {
+      finalItem = picked.item;
+      isDuplicate = picked.isDuplicate;
+      if (isDuplicate) {
+        crownCount += 500;
+        document.getElementById("crownCount").textContent = crownCount;
+        if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+      }
+    } else {
+      finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
+      crownCount += 1000;
+      document.getElementById("crownCount").textContent = crownCount;
+      if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+    }
+    mbPityS = 0;
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_s', '0');
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  } else {
+    // A-Class is strictly coins
+    var coinsAmount = 300;
+    if (rarity === 'common') {
+      coinsAmount = Math.floor(Math.random() * 201) + 300;
+    } else if (rarity === 'rare') {
+      coinsAmount = Math.floor(Math.random() * 501) + 500;
+    } else {
+      coinsAmount = 1000;
+    }
+    crownCount += coinsAmount;
+    document.getElementById("crownCount").textContent = crownCount;
+    if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+    finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  }
+
+  mbRoll10Results.push({ item: finalItem, rank: rank });
+
+  saveProgression();
+  syncMonopolyStats();
+
+  if (typeof updateWardrobeTabBadges === "function") updateWardrobeTabBadges();
+  if (typeof syncBombWardrobe === "function") syncBombWardrobe();
+  if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
+
+  triggerClassRevealSequence(rank, function() {
+    showCrateRewardPopup(finalItem, rank, isDuplicate);
+  });
+}
+
+function drawMonopolyRewardSilently(rarity) {
+  mbTotalRolls++;
+  mbPityA++;
+  mbPityS++;
+  mbPityMod++;
+
+  var forceSClassItem = false;
+  if (mbPityMod >= 50) {
+    mbPityMod = 0;
+    forceSClassItem = true;
+  }
+
+  localStorage.setItem('mb_rolls_total', mbTotalRolls.toString());
+  localStorage.setItem('mb_rolls_pity_a', mbPityA.toString());
+  localStorage.setItem('mb_rolls_pity_s', mbPityS.toString());
+  localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
+
+  var rank = 'A';
+
+  if (forceSClassItem) {
+    rank = 'S';
+  } else if (mbPityS >= 10) {
+    rank = 'S';
+  } else if (mbPityA >= 5) {
+    rank = 'A';
+  } else {
+    if (rarity === 'common') {
+      rank = 'A';
+    } else if (rarity === 'rare') {
+      rank = Math.random() < 0.10 ? 'S' : 'A';
+    } else if (rarity === 'sclass') {
+      rank = 'S';
+    }
+  }
+
+  var finalItem = null;
+  var isDuplicate = false;
+
+  if (rank === 'S') {
+    var picked = _pickSItem();
+    if (picked) {
+      finalItem = picked.item;
+      isDuplicate = picked.isDuplicate;
+      if (isDuplicate) crownCount += 500;
+    } else {
+      finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
+      crownCount += 1000;
+    }
+    mbPityS = 0;
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_s', '0');
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  } else {
+    var coinsAmount = 300;
+    if (rarity === 'common') coinsAmount = Math.floor(Math.random() * 201) + 300;
+    else if (rarity === 'rare') coinsAmount = Math.floor(Math.random() * 501) + 500;
+    else coinsAmount = 1000;
+    crownCount += coinsAmount;
+    finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
+    mbPityA = 0;
+    localStorage.setItem('mb_rolls_pity_a', '0');
+  }
+
+  var crownEl = document.getElementById("crownCount");
+  if (crownEl) crownEl.textContent = crownCount;
+  var statEl = document.getElementById("statCrowns");
+  if (statEl) statEl.textContent = crownCount;
+
+  mbRoll10Results.push({ item: finalItem, rank: rank });
+  saveProgression();
+}
+
+function toggleGachaSpeed() {
+  mbSpeedMultiplier = mbSpeedMultiplier === 1 ? 2 : mbSpeedMultiplier === 2 ? 3 : 1;
+  const speedBtn = document.getElementById("mbSpeedBtn");
+  if (speedBtn) speedBtn.textContent = `>> ${mbSpeedMultiplier}x`;
+
+  const dice3d = document.getElementById("mbDice3d");
+  if (dice3d) {
+    dice3d.style.animationDuration = `${1.4 / mbSpeedMultiplier}s`;
+  }
+}
+
+function triggerMonopolySkip() {
+  if (!mbRolling && !mbMoving && mbRollQueue === 0) return;
+
+  // Cancel any pending walk timeouts
+  if (mbWalkTimeout) { clearTimeout(mbWalkTimeout); mbWalkTimeout = null; }
+
+  // Draw silently for ALL remaining rolls in queue (including the current in-flight one
+  // which may not have landed yet — we simulate it here and block its landing callback).
+  const toSimulate = Math.max(0, mbRollQueue);
+  const wasQueueType = mbSummaryQueueType;
+
+  // Lock everything so in-flight callbacks no-op when they fire
+  mbRollQueue = 0;
+  mbRolling = false;
+  mbMoving = false;
+
+  // Simulate all remaining steps + draw
+  for (let i = 0; i < toSimulate; i++) {
+    const steps = Math.floor(Math.random() * 6) + 1;
+    mbMainIndex = (mbMainIndex + steps) % 28;
+    localStorage.setItem('mb_main_index', mbMainIndex.toString());
+    const tile = mbMainTilesConfig[mbMainIndex];
+    let rarity = "common";
+    if (tile.type === "rare") rarity = "rare";
+    else if (tile.type === "sclass") rarity = "sclass";
+    else if (tile.type === "portal1" || tile.type === "portal2") rarity = "rare";
+    drawMonopolyRewardSilently(rarity);
+  }
+
+  // Hide ALL gacha overlays and controls
+  ["mbDiceOverlay","mbClassReveal","mbCratePopup","mbGachaControls","mbDice3d"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+
+  updateCameraZoom(false);
+  positionCharacterAt(mbMainIndex);
+  syncMonopolyStats();
+
+  // Show appropriate summary
+  if (wasQueueType === 10) {
+    // Ensure exactly 10 results (pad if we skipped mid-way)
+    while (mbRoll10Results.length < 10) {
+      mbRoll10Results.push(mbRoll10Results[mbRoll10Results.length - 1] || { item: { id:"coins", name:"Coins", color:"gold", type:"coins" }, rank:"A" });
+    }
+    showRoll10SummaryOverlay();
+  } else {
+    // 1x pull: show last result popup ONCE with claim button
+    const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
+    if (lastResult) {
+      mbSummaryQueueType = 0; // sentinel so claimMonopolyReward won't re-trigger summary
+      const popup = document.getElementById("mbCratePopup");
+      const itemDisplay = document.getElementById("mbCrateItemDisplay");
+      const claimBtn = document.getElementById("mbCrateClaimBtn");
+      if (popup && itemDisplay) {
+        itemDisplay.innerHTML = getGachaItemImageHtml(lastResult.item, 90);
+        document.getElementById("mbCrateItemName").textContent = lastResult.item.name;
+        var typeText = lastResult.item.type === "effect" ? "BLAST EFFECT" : lastResult.item.type === "coins" ? "COINS" : "BOMB SKIN";
+        document.getElementById("mbCrateItemType").textContent = typeText;
+        var rankEl = document.getElementById("mbCrateRank");
+        if (rankEl) { rankEl.className = "mb-popup-rank rank-" + lastResult.rank.toLowerCase(); rankEl.innerHTML = lastResult.rank + "<br><small>RANK</small>"; }
+        var gemsBonus = document.getElementById("mbCrateGemsBonus");
+        if (gemsBonus) gemsBonus.classList.add("hidden");
+        if (claimBtn) claimBtn.style.display = "";
+        popup.classList.remove("hidden");
+      }
+    }
+  }
+}
+
+function showRoll10SummaryOverlay() {
+  const popup = document.getElementById("mbSummaryPopup");
+  if (!popup) return;
+
+  // Guard: hide crate popup first so it doesn't show under the summary
+  var cratePopup = document.getElementById("mbCratePopup");
+  if (cratePopup) cratePopup.classList.add("hidden");
+
+  const grid = document.getElementById("mbSummaryGrid");
+  grid.innerHTML = "";
+
+  mbRoll10Results.forEach((res, i) => {
+    const card = document.createElement("div");
+    card.className = `mb-summary-card rank-${res.rank.toLowerCase()}`;
+    card.style.setProperty('--card-delay', `${i * 80}ms`);
+    let iconHtml = getGachaItemImageHtml(res.item, 52);
+    const isS = res.rank === 'S';
+    card.innerHTML = `
+      <div class="mb-sc-shine"></div>
+      <div class="mb-sc-rank-badge rank-${res.rank.toLowerCase()}">${res.rank}</div>
+      <div class="mb-sc-icon-wrap">${iconHtml}</div>
+      <div class="mb-sc-name">${res.item.name}</div>
+      ${isS ? '<div class="mb-sc-sparkle">✦</div>' : ''}
+    `;
+    grid.appendChild(card);
+  });
+
+  popup.classList.remove("hidden");
+  if (typeof playSound === "function") playSound("victory_royale");
+}
+
+function closeRoll10Summary() {
+  const popup = document.getElementById("mbSummaryPopup");
+  if (popup) popup.classList.add("hidden");
+  // Clear results so they can't re-fire
+  mbRoll10Results = [];
+  mbSummaryQueueType = 1;
+  syncMonopolyStats();
+}
+
+function showCrateRewardPopup(item, rank, isDuplicate) {
+  const popup = document.getElementById("mbCratePopup");
+  if (!popup) return;
+
+  const itemDisplay = document.getElementById("mbCrateItemDisplay");
+  itemDisplay.innerHTML = getGachaItemImageHtml(item, 90);
+
+  document.getElementById("mbCrateItemName").textContent = item.name;
+  let typeText = "BOMB SKIN";
+  if (item.type === "effect") typeText = "BLAST EFFECT";
+  else if (item.type === "coins") typeText = "COINS";
+  document.getElementById("mbCrateItemType").textContent = typeText;
+
+  const rankEl = document.getElementById("mbCrateRank");
+  rankEl.className = `mb-popup-rank rank-${rank.toLowerCase()}`;
+  rankEl.innerHTML = `${rank}<br><small>RANK</small>`;
+
+  const gemsBonus = document.getElementById("mbCrateGemsBonus");
+  if (isDuplicate) {
+    gemsBonus.classList.remove("hidden");
+  } else {
+    gemsBonus.classList.add("hidden");
+  }
+
+  // Bug fix: during 10x pulls auto-advance as long as there are more rolls left
+  // mbRollQueue > 1 means this is NOT the last roll, so auto-close and continue.
+  const claimBtn = document.getElementById("mbCrateClaimBtn");
+  if (mbSummaryQueueType === 10 && mbRollQueue > 1) {
+    if (claimBtn) claimBtn.style.display = "none";
+    popup.classList.remove("hidden");
+    if (typeof playSound === "function") playSound("tutorial_beep");
+    // Auto close after brief flash then advance queue
+    setTimeout(() => {
+      popup.classList.add("hidden");
+      if (claimBtn) claimBtn.style.display = "";
+      checkQueueOrUnlockRoll();
+    }, 900 / mbSpeedMultiplier);
+  } else {
+    // Last roll of 10x or Roll 1: show CLAIM button normally
+    if (claimBtn) claimBtn.style.display = "";
+    popup.classList.remove("hidden");
+    if (typeof playSound === "function") playSound("victory_royale");
+  }
+}
+
+function claimMonopolyReward() {
+  var popup = document.getElementById("mbCratePopup");
+  if (popup) popup.classList.add("hidden");
+  // Sentinel 0 = skipped 1x pull - just close, do not trigger further rolls or 10x summary
+  if (mbSummaryQueueType === 0) { mbRoll10Results = []; mbSummaryQueueType = 1; syncMonopolyStats(); return; }
+  checkQueueOrUnlockRoll();
+}
+
+function checkQueueOrUnlockRoll() {
+  if (mbRollQueue > 1) {
+    mbRollQueue--;
+    setTimeout(function() { triggerDiceRollSequence(); }, 500 / mbSpeedMultiplier);
+  } else {
+    mbRollQueue = 0;
+    var ctrl = document.getElementById("mbGachaControls");
+    if (ctrl) ctrl.classList.add("hidden");
+    syncMonopolyStats();
+    if (mbSummaryQueueType === 10) {
+      showRoll10SummaryOverlay();
+    }
+  }
+}
+
+// Secret Islands travel
+function triggerBridgeTravelSequence(islandId) {
+  mbMoving = true;
+
+  const destLabel = islandId === 1 ? "Golden Vault" : "Star Sanctum";
+  document.getElementById("mbBridgeDestLabel").textContent = destLabel;
+  document.getElementById("mbBridgeDestLabel").className = `mb-bridge-dest-label ${islandId === 2 ? 'mb-island-title-purple' : ''}`;
+
+  const cinematic = document.getElementById("mbBridgeCinematic");
+  cinematic.classList.remove("hidden");
+
+  // Plank animation reset/trigger
+  const planks = document.getElementById("mbBridgePlanks");
+  planks.innerHTML = "";
+  for(let i=0; i<8; i++) {
+    const p = document.createElement("div");
+    p.className = "mb-bridge-plank";
+    p.style.setProperty("--di", i.toString());
+    planks.appendChild(p);
+  }
+
+  // Bug fix: scale bridge cinematic duration by speed multiplier
+  const bridgeDur = Math.round(1900 / mbSpeedMultiplier);
+  setTimeout(() => {
+    // Transition views
+    cinematic.classList.add("hidden");
+
+    document.getElementById("mbMainView").classList.add("hidden");
+    document.getElementById(`mbIslandView${islandId}`).classList.remove("hidden");
+
+    mbCurrentBoard = `island${islandId}`;
+    if (islandId === 1) {
+      mbIsland1Index = 0;
+      positionCharacterAtIsland(1, 0);
+    } else {
+      mbIsland2Index = 0;
+      positionCharacterAtIsland(2, 0);
+    }
+
+    mbMoving = false;
+
+    showToastMsg(`Welcome to the ${destLabel}!`);
+
+    checkQueueOrUnlockRoll();
+
+  }, bridgeDur);
+}
+
+function playBridgeRetractCinematic(islandId, remainingSteps = 0) {
+  mbMoving = true;
+  // Zoom out camera zoom on retract start
+  updateCameraZoom(false);
+
+  const destLabel = "Returning to Main Board";
+  document.getElementById("mbBridgeDestLabel").textContent = destLabel;
+  document.getElementById("mbBridgeDestLabel").className = "mb-bridge-dest-label";
+
+  const cinematic = document.getElementById("mbBridgeCinematic");
+  cinematic.classList.remove("hidden");
+
+  // Bridge retract has same visual planks
+  const planks = document.getElementById("mbBridgePlanks");
+  planks.innerHTML = "";
+  for(let i=7; i>=0; i--) {
+    const p = document.createElement("div");
+    p.className = "mb-bridge-plank";
+    p.style.setProperty("--di", (7 - i).toString());
+    planks.appendChild(p);
+  }
+
+  // Portal tile mappings: Island 1 -> portal at index 4, Island 2 -> portal at index 16
+  const portalIndex = islandId === 1 ? 4 : 16;
+  mbMainIndex = portalIndex;
+  localStorage.setItem('mb_main_index', mbMainIndex.toString());
+
+  // Bug fix: scale retract cinematic duration by speed multiplier
+  const retractDur = Math.round(1900 / mbSpeedMultiplier);
+  setTimeout(() => {
+    cinematic.classList.add("hidden");
+
+    document.getElementById(`mbIslandView${islandId}`).classList.add("hidden");
+    document.getElementById(`mbIslandChar${islandId}`).classList.add("hidden");
+    document.getElementById("mbMainView").classList.remove("hidden");
+
+    mbCurrentBoard = 'main';
+    positionCharacterAt(mbMainIndex);
+
+    if (remainingSteps > 0) {
+      // Continue walking remaining steps on main board
+      animateCharacterWalk(remainingSteps);
+    } else {
+      mbMoving = false;
+      handleTileLanding();
+    }
+  }, retractDur);
+}
+
+// Free pull popup handlers
+function showFreePullPopup(amount) {
+  const popup = document.getElementById("mbFreePullPopup");
+  if (!popup) return;
+
+  document.getElementById("mbFpIcon").textContent = `×${amount}`;
+  document.getElementById("mbFpTitle").textContent = `FREE ROLL ×${amount}`;
+  document.getElementById("mbFreePullPopup").classList.remove("hidden");
+
+  if (typeof playSound === "function") playSound("quest_complete");
+}
+
+function closeFreePullPopup() {
+  document.getElementById("mbFreePullPopup").classList.add("hidden");
+  checkQueueOrUnlockRoll();
+}
+
+// Camera tracking zoom helper
+function updateCameraZoom(zoomIn, index) {
+  const mainContainer = document.getElementById("mbBoardContainer");
+  if (!mainContainer) return;
+  
+  if (zoomIn) {
+    let coords;
+    if (mbCurrentBoard === 'main') {
+      coords = getTileCoordsMain(index !== undefined ? index : mbMainIndex);
+      const x = coords.left + 16;
+      const y = coords.top + 24;
+      mainContainer.style.transition = "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
+      mainContainer.style.transformOrigin = `${x}px ${y}px`;
+      mainContainer.style.transform = "perspective(1000px) rotateX(8deg) scale(1.6)";
+    } else {
+      const isId = mbCurrentBoard === 'island1' ? 1 : 2;
+      const plat = document.querySelector(`.mb-island-plat-${isId === 1 ? 'gold' : 'purple'}`);
+      if (plat) {
+        const idx = mbCurrentBoard === 'island1' ? mbIsland1Index : mbIsland2Index;
+        coords = getTileCoordsIsland(idx);
+        const x = coords.left + 16;
+        const y = coords.top + 24;
+        plat.style.transition = "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
+        plat.style.transformOrigin = `${x}px ${y}px`;
+        plat.style.transform = "scale(1.4)";
+      }
+    }
+  } else {
+    // Reset main board container
+    mainContainer.style.transition = "transform 0.5s ease, transform-origin 0.5s ease";
+    mainContainer.style.transform = "perspective(1000px) rotateX(8deg) scale(1)";
+    mainContainer.style.transformOrigin = "center top";
+    
+    // Reset island platforms
+    document.querySelectorAll(".mb-island-platform").forEach(plat => {
+      plat.style.transition = "transform 0.5s ease, transform-origin 0.5s ease";
+      plat.style.transform = "scale(1)";
+      plat.style.transformOrigin = "center center";
+    });
+  }
+}
+
+// 3D Parallax Tilt Hover effect
+document.addEventListener("DOMContentLoaded", () => {
+  const world = document.getElementById("mbBoardWorld");
+  if (world) {
+    world.style.transformStyle = "preserve-3d";
+    world.addEventListener("mousemove", (e) => {
+      if (mbMoving || mbRolling) return; // disable during active moves/rolls
+      if (mbCurrentBoard !== "main") { world.style.transform = "none"; return; } // no tilt on islands
+      const rect = world.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const normX = (x / rect.width) - 0.5;
+      const normY = (y / rect.height) - 0.5;
+      
+      const tiltX = -normY * 12; // tilt up to 12 degrees
+      const tiltY = normX * 12;  // tilt up to 12 degrees
+      
+      world.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+      world.style.transition = "transform 0.1s ease";
+    });
+    
+    world.addEventListener("mouseleave", () => {
+      world.style.transform = "none";
+      world.style.transition = "transform 0.5s ease";
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Board Modification Animation  (triggered at pity roll 49)
+// ─────────────────────────────────────────────────────────────────────────────
+function triggerBoardModAnimation() {
+  showToastMsg("BOARD MODIFICATION INCOMING! Next pull guaranteed S-Class!");
+  const tilesContainer = document.getElementById("mbTiles");
+  if (!tilesContainer) return;
+  const allTiles = Array.from(tilesContainer.children);
+
+  // Phase 1: glitch flicker all tiles
+  allTiles.forEach(function(t) { t.classList.add("mb-tile-board-glitch"); });
+
+  // Phase 2: replace every non-start tile icon + label with S-CLASS (including corner/REST tiles)
+  setTimeout(function() {
+    var sclassSvg = getTileIconSvg('sclass');
+    allTiles.forEach(function(t, i) {
+      t.classList.remove("mb-tile-board-glitch");
+      var cfg = mbMainTilesConfig[i];
+      if (cfg && cfg.type !== 'start') {
+        t.classList.remove('mb-tile-common','mb-tile-rare','mb-tile-rest','mb-tile-dice','mb-tile-portal','mb-tile-secret');
+        t.classList.add('mb-tile-sclass','mb-tile-board-mod-s');
+        t.innerHTML = sclassSvg + '<span class="mb-tile-label">S-CLASS</span><span class="mb-tile-stepnum">' + i + '</span>';
+      }
+    });
+  }, 900);
+}
+
+function revertBoardModTiles() {
+  var tilesContainer = document.getElementById("mbTiles");
+  if (!tilesContainer) return;
+  var allTiles = Array.from(tilesContainer.children);
+  allTiles.forEach(function(t, i) {
+    t.classList.remove("mb-tile-board-mod-s");
+    var cfg = mbMainTilesConfig[i];
+    if (cfg && cfg.type !== 'start') {
+      t.classList.remove('mb-tile-sclass');
+      t.className = 'mb-tile ' + getTileClass(cfg.type);
+      t.innerHTML = getTileIconSvg(cfg.type) + '<span class="mb-tile-label">' + cfg.label + '</span><span class="mb-tile-stepnum">' + i + '</span>';
+    }
+  });
+}
+
+// =============================================================================
+// Monopoly Gacha Tutorial - shown ONCE to brand-new players only
+// =============================================================================
+var mbTutorialStep = 0;
+
+function startMonopolyTutorial() {
+  if (localStorage.getItem("mb_tutorial_completed") === "true") return;
+  // Gift 1 free pull
+  mbFreePulls = Math.max(mbFreePulls, 1);
+  localStorage.setItem('mb_free_pulls', mbFreePulls.toString());
+  syncMonopolyStats();
+  var overlay = document.getElementById("mbTutorialOverlay");
+  if (overlay) overlay.classList.remove("hidden");
+  showMbTutStep(0);
+}
+
+var _mbTutSteps = [
+  { id:"mbBoardContainer", title:"Welcome to the Draw Board!", body:"Roll the dice, land on crates and win bomb skins, blast effects & coins.", gift:true  },
+  { id:"mbPityCol",        title:"Pity Guarantee Tracks",      body:"A-Class guaranteed every 5 rolls, S-Class every 10. Hit 50 pity and every tile becomes S-Class!", gift:false },
+  { id:"mbCharPiece",      title:"Your Avatar Piece",          body:"Your character walks across the board based on the dice roll.", gift:false },
+  { id:"mbHeaderGems",     title:"Gems & Coins",               body:"1 roll = 300 gems, 10x = 2700 gems. Coins from rewards can be spent in the wardrobe shop!", gift:false },
+  { id:"mbRoll1Btn",       title:"You're All Set!",            body:"We've given you 1 FREE ROLL to kick things off. Good luck!", gift:false }
+];
+
+function _getMbTutIconSvg(step) {
+  switch (step) {
+    case 0:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5" fill="#ffd86f"/><circle cx="15.5" cy="15.5" r="1.5" fill="#ffd86f"/></svg>';
+    case 1:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
+    case 2:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    case 3:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>';
+    case 4:
+      return '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+    default:
+      return '';
+  }
+}
+
+function showMbTutStep(step) {
+  mbTutorialStep = step;
+  var data = _mbTutSteps[step];
+  if (!data) { finishMbTutorial(); return; }
+  var gel = function(id) { return document.getElementById(id); };
+  if (gel("mbTutBadge"))    gel("mbTutBadge").textContent    = (step+1) + " / " + _mbTutSteps.length;
+  if (gel("mbTutTitle"))    gel("mbTutTitle").textContent    = data.title;
+  if (gel("mbTutDesc"))     gel("mbTutDesc").textContent     = data.body;
+  if (gel("mbTutIcon"))     gel("mbTutIcon").innerHTML       = _getMbTutIconSvg(step);
+  if (gel("mbTutGift"))     gel("mbTutGift").classList.toggle("hidden", !data.gift);
+  if (gel("mbTutNextLabel"))gel("mbTutNextLabel").textContent = step === _mbTutSteps.length - 1 ? "Start Rolling!" : "Next";
+
+  document.querySelectorAll(".mb-tut-target-glow").forEach(function(e){ e.classList.remove("mb-tut-target-glow"); });
+  var target = gel(data.id);
+  if (target) target.classList.add("mb-tut-target-glow");
+
+  // Position spotlight
+  var spotlight = gel("mbTutSpotlight");
+  var ring      = gel("mbTutHighlightRing");
+  var card      = gel("mbTutCard");
+  var overlayEl = gel("mbTutorialOverlay");
+  if (target && spotlight && overlayEl) {
+    var r  = target.getBoundingClientRect();
+    var or = overlayEl.getBoundingClientRect();
+    var pad = 8;
+    var l  = r.left - or.left - pad;
+    var t2 = r.top  - or.top  - pad;
+    var w  = r.width  + pad*2;
+    var h  = r.height + pad*2;
+    
+    if (step === 0) {
+      // First step: No spotlight transparent hole, card in the exact center of overlay
+      spotlight.style.cssText = "display:none;";
+      if (ring) ring.style.cssText = "display:none;";
+      if (card) {
+        setTimeout(function(){
+          var cw = card.offsetWidth  || 300;
+          var ch = card.offsetHeight || 220;
+          var cl = (or.width - cw) / 2;
+          var ct = (or.height - ch) / 2;
+          card.style.cssText = "left:" + cl + "px;top:" + ct + "px;";
+        }, 30);
+      }
+    } else {
+      // Other steps: Normal spotlight cutout and relative card positioning
+      spotlight.style.cssText = "display:block;left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
+      if (ring) ring.style.cssText = "display:block;left:"+l+"px;top:"+t2+"px;width:"+w+"px;height:"+h+"px;";
+      if (card) {
+        setTimeout(function(){
+          var cw = card.offsetWidth  || 300;
+          var ch = card.offsetHeight || 200;
+          var cl = l + w/2 - cw/2;
+          cl = Math.max(10, Math.min(cl, or.width - cw - 10));
+          var below = or.height - (t2 + h);
+          var ct = below > ch + 20 ? t2 + h + 14 : t2 - ch - 14;
+          card.style.cssText = "left:"+cl+"px;top:"+ct+"px;";
+        }, 30);
+      }
+    }
+  }
+}
+
+function advanceMbTutorial() {
+  if (mbTutorialStep < _mbTutSteps.length - 1) {
+    showMbTutStep(mbTutorialStep + 1);
+  } else {
+    finishMbTutorial();
+  }
+}
+
+function finishMbTutorial() {
+  localStorage.setItem("mb_tutorial_completed", "true");
+  var overlay = document.getElementById("mbTutorialOverlay");
+  if (overlay) overlay.classList.add("hidden");
+  document.querySelectorAll(".mb-tut-target-glow").forEach(function(e){ e.classList.remove("mb-tut-target-glow"); });
+}
+

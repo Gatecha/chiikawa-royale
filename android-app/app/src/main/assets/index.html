@@ -339,8 +339,8 @@
             <!-- Stats (Visible in both headers) -->
             <div class="console-stats">
               <div class="stat-badge crown-badge">
-                <svg viewBox="0 0 24 24" class="svg-stat-icon"><path d="M5 16h14L21 6l-4 3-5-6-5 6-4-3 2 10z" fill="#ffd84a"/></svg>
-                <strong>crown</strong> <span id="crownCount">1</span>
+                <svg viewBox="0 0 24 24" class="svg-stat-icon" fill="#ffd86f" style="vertical-align: middle; margin-right: 4px; display: inline-block; width: 14px; height: 14px;"><circle cx="12" cy="12" r="10" stroke="#000" stroke-width="2"/><path d="M12 7v10M10 9h3.5a1.5 1.5 0 0 1 0 3H12h-1.5a1.5 1.5 0 0 0 0 3H14" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+                <strong>coins</strong> <span id="crownCount">1</span>
               </div>
               <div class="stat-badge gem-badge">
                 <svg viewBox="0 0 24 24" class="svg-stat-icon"><path d="M6 2h12l4 6-10 14L2 8z" fill="#b16cff"/></svg>
@@ -523,7 +523,7 @@
                   </div>
                   <div class="select-main-video-wrap">
                     <video id="characterSelectVideo" class="select-main-video-source" src="assets/chiikawa/chiikawa_character_animation.mp4" muted loop playsinline preload="auto"></video>
-                    <canvas id="characterSelectCanvas" class="select-main-video" width="580" height="580"></canvas>
+                    <canvas id="characterSelectCanvas" class="select-main-video" width="1160" height="1160"></canvas>
                     <img id="bombSelectPreviewImg" class="select-main-video" src="" alt="Bomb Preview" style="width: 100%; height: 100%; object-fit: contain; transform: scale(0.7); display: none; margin: auto;" />
                     <div id="effectSelectPreviewContainer" class="select-main-video" style="width: 100%; height: 100%; display: none; align-items: center; justify-content: center; margin: auto;"></div>
                   </div>
@@ -1097,7 +1097,7 @@
                           <div class="quest-card-desc">Log in to the game</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 100</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_login" type="button">Claim</button>
@@ -1117,7 +1117,7 @@
                           <div class="quest-card-desc">Play 1 practice or online match</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 200</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_match" type="button">Claim</button>
@@ -1137,7 +1137,7 @@
                           <div class="quest-card-desc">Collect 3 power-ups in matches</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 300</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_pickups" type="button">Claim</button>
@@ -1157,7 +1157,7 @@
                           <div class="quest-card-desc">Place 10 bombs in matches</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 500</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_bombs" type="button">Claim</button>
@@ -1247,7 +1247,7 @@
                           <div class="quest-card-desc">Win 3 matches in total</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 300</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_win3" type="button">Claim</button>
@@ -1267,7 +1267,7 @@
                           <div class="quest-card-desc">Draw from Gacha shop 3 times</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 200</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_spin3" type="button">Claim</button>
@@ -1287,7 +1287,7 @@
                           <div class="quest-card-desc">Defeat 5 players or bots</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 300</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_kills" type="button">Claim</button>
@@ -1307,7 +1307,7 @@
                           <div class="quest-card-desc">Spend 1000 total Gems</div>
                           <div class="quest-card-footer">
                             <div class="quest-card-reward-box">
-                              <div class="quest-card-reward">🔥 100</div>
+                              <div class="quest-card-reward">🔥 100 + <span style="color:#ffd86f;">🪙 500</span></div>
                               <div class="quest-card-barcode">▰▰▰▰▰▰▰▰▰</div>
                             </div>
                             <button class="quest-card-action-btn" id="qbtn_spend1000" type="button">Claim</button>
@@ -2124,14 +2124,22 @@
       </div>
 
       <!-- Grand Tournament Victory Card -->
-      <div id="grandVictoryCard" class="victory-card glass pop-in hidden">
-        <div class="sparkles-container"></div>
-        <h1 class="victory-title" style="display: flex; align-items: center; justify-content: center; gap: 8px;"><svg class="victory-svg-icon" viewBox="0 0 24 24" width="32" height="32" fill="white"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg> VICTORY! <svg class="victory-svg-icon" viewBox="0 0 24 24" width="32" height="32" fill="white"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v3c0 2.21 1.79 4 4 4h1.09c.72 1.86 2.32 3.18 4.29 3.44V19H9v2h6v-2h-3.38v-2.56c1.97-.26 3.57-1.58 4.29-3.44H17c2.21 0 4-1.79 4-4V7c0-1.1-.9-2-2-2zM5 10V7h2v3H5zm14 0h-2V7h2v3z"/></svg></h1>
-        <div id="grandWinnerMessage" class="winner-msg">Hachiware wins the Tournament!</div>
+      <div id="grandVictoryCard" class="victory-card zzz-victory-card pop-in hidden">
+        <!-- ZZZ warning stripes header -->
+        <div class="zzz-hazard-bar" style="height: 12px; background: repeating-linear-gradient(45deg, #ffd86f, #ffd86f 10px, #000 10px, #000 20px); border-bottom: 3.5px solid #000; margin: -45px -55px 20px -55px; width: calc(100% + 110px); border-top-left-radius: 16px; border-top-right-radius: 16px;"></div>
         
-        <div class="victory-video-wrapper">
-          <video id="victoryVideo" src="hachiware-lobby.mp4" loop muted playsinline style="display: none;"></video>
-          <canvas id="victoryVideoCanvas" width="480" height="480" class="victory-video"></canvas>
+        <span class="zzz-victory-badge" id="victoryBadge">MISSION ACCOMPLISHED</span>
+        <h1 class="victory-title zzz-victory-title" id="victoryTitle">VICTORY</h1>
+        <div id="grandWinnerMessage" class="winner-msg zzz-winner-msg">Hachiware wins the Tournament!</div>
+        
+        <!-- Rewards Display Panel -->
+        <div class="zzz-victory-rewards-panel">
+          <span class="zzz-rewards-label">COMMISSION REWARDS</span>
+          <div class="zzz-reward-row">
+            <svg viewBox="0 0 24 24" class="reward-coin-icon" style="width: 22px; height: 22px;"><circle cx="12" cy="12" r="10" fill="#ffd86f"/><path d="M12 7v10M10 9h3.5a1.5 1.5 0 0 1 0 3H12h-1.5a1.5 1.5 0 0 0 0 3H14" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            <span id="victoryRewardAmount" class="reward-amount">+500</span>
+            <span class="reward-currency">COINS</span>
+          </div>
         </div>
         
         <button id="victoryLobbyBtn" class="btn-match-play btn-victory-lobby" type="button">Return to Lobby</button>
@@ -2740,6 +2748,382 @@
     <div id="fullscreenCountdownOverlay" class="fullscreen-countdown-overlay hidden">
       <div id="fullscreenCountdownNum" class="fullscreen-countdown-num">3</div>
     </div>
+
+    <!-- ================================================================ -->
+    <!-- MONOPOLY GACHA BOARD OVERLAY -->
+    <!-- ================================================================ -->
+    <div id="monopolyBoardOverlay" class="mb-overlay hidden">
+
+      <!-- Detailed background elements -->
+      <div class="mb-background-deco">
+        <div class="mb-bg-nebula nb-1"></div>
+        <div class="mb-bg-nebula nb-2"></div>
+        <div class="mb-bg-grid"></div>
+        <div class="mb-bg-star fstar-1">✦</div>
+        <div class="mb-bg-star fstar-2">✦</div>
+        <div class="mb-bg-star fstar-3">✦</div>
+        <div class="mb-bg-star fstar-4">✦</div>
+        <div class="mb-bg-star fstar-5">✦</div>
+        <div class="mb-bg-star fstar-6">✦</div>
+        <div class="mb-bg-star fstar-7">✦</div>
+        <div class="mb-bg-star fstar-8">✦</div>
+      </div>
+
+      <!-- ZZZ hazard header -->
+      <div class="mb-header">
+        <div class="mb-hazard-stripe"></div>
+        <div class="mb-header-inner">
+          <div class="mb-pity-col" id="mbPityCol">
+            <div class="mb-pity-row">
+              <span class="mb-pity-lbl">Guaranteed <em class="pity-a">A-Class</em> Item within roll <em class="pity-a">×5</em></span>
+              <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-a" id="mbFillA" style="width:0%"></div></div>
+              <span class="mb-pity-val" id="mbValA">0/5</span>
+            </div>
+            <div class="mb-pity-row">
+              <span class="mb-pity-lbl">Get <em class="pity-s">S-Class</em> Item within roll <em class="pity-s">×10</em></span>
+              <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-s" id="mbFillS" style="width:0%"></div></div>
+              <span class="mb-pity-val" id="mbValS">0/10</span>
+            </div>
+            <div class="mb-pity-row">
+              <span class="mb-pity-lbl">Triggers <em class="pity-b">Board Modification</em> after roll <em class="pity-b">×50</em></span>
+              <div class="mb-pity-track"><div class="mb-pity-fill mb-pf-b" id="mbFillB" style="width:0%"></div></div>
+              <span class="mb-pity-val" id="mbValB">0/50</span>
+            </div>
+          </div>
+          <div class="mb-header-right">
+            <div class="mb-coin-pill">
+              <span style="font-size: 11px; margin-right: 3px;">🪙</span>
+              <span id="mbHeaderCoins">0</span>
+            </div>
+            <div class="mb-gem-pill">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="#b16cff"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+              <span id="mbHeaderGems">0</span>
+            </div>
+            <button id="monopolyCloseBtn" class="mb-x-btn" type="button">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene area: board + islands -->
+      <div class="mb-scene-area">
+
+        <!-- Board + Island wrapper (Side decos removed for cleaner ZZZ style layout) -->
+        <div class="mb-board-world" id="mbBoardWorld">
+
+          <!-- MAIN BOARD VIEW -->
+          <div class="mb-main-view" id="mbMainView">
+            <div class="mb-board-container" id="mbBoardContainer">
+              <!-- Floor deco -->
+              <div class="mb-floor">
+                <div class="mb-wheel">
+                  <div class="mb-wheel-ring mwr-1"></div>
+                  <div class="mb-wheel-ring mwr-2"></div>
+                  <div class="mb-wheel-ring mwr-3"></div>
+                  <div class="mb-wheel-center">✦</div>
+                </div>
+                <div class="mb-floor-brand">MAGICAL CHIIKAWA</div>
+                <div class="mb-floor-star fstar-tl">⭐</div>
+                <div class="mb-floor-star fstar-tr">⭐</div>
+                <div class="mb-floor-star fstar-bl">⭐</div>
+                <div class="mb-floor-star fstar-br">⭐</div>
+              </div>
+              <!-- Tiles injected by JS -->
+              <div id="mbTiles"></div>
+              <!-- Character piece -->
+              <div id="mbCharPiece" class="mb-char-piece">
+                <div class="mb-char-hop-wrap" id="mbCharHopWrap">
+                  <img id="mbCharImg" src="" alt="" class="mb-char-sprite" />
+                  <div class="mb-char-shadow"></div>
+                  <div class="mb-char-glow"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ISLAND VIEW 1: Golden Vault -->
+          <div class="mb-island-view mb-island-view-1 hidden" id="mbIslandView1">
+            <!-- Rainbow deco background matching main board style -->
+            <div class="mb-island-bg mb-island-bg-gold">
+              <div class="mb-isl-nebula isl-nb-1"></div>
+              <div class="mb-isl-nebula isl-nb-2"></div>
+              <div class="mb-isl-nebula isl-nb-3"></div>
+              <div class="mb-isl-nebula isl-nb-4"></div>
+              <div class="mb-isl-nebula isl-nb-5"></div>
+              <div class="mb-isl-nebula isl-nb-6"></div>
+              <div class="mb-bg-grid mb-isl-grid"></div>
+              <div class="mb-isl-particle isl-p-1">✦</div>
+              <div class="mb-isl-particle isl-p-2">✦</div>
+              <div class="mb-isl-particle isl-p-3">✦</div>
+              <div class="mb-isl-particle isl-p-4">✦</div>
+              <div class="mb-isl-particle isl-p-5">✦</div>
+              <div class="mb-isl-particle isl-p-6">✦</div>
+              <div class="mb-isl-particle isl-p-7">✦</div>
+              <div class="mb-isl-particle isl-p-8">✦</div>
+              <div class="mb-isl-rainbow-beam isb-1"></div>
+              <div class="mb-isl-rainbow-beam isb-2"></div>
+              <div class="mb-isl-rainbow-beam isb-3"></div>
+            </div>
+            <div class="mb-island-content">
+              <div class="mb-island-header-banner mb-island-gold-banner">
+                <div class="mb-island-crown-anim">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="#ffd86f" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />
+                    <line x1="12" y1="2" x2="12" y2="22" />
+                    <circle cx="12" cy="12" r="3" fill="#ffd86f" />
+                  </svg>
+                </div>
+                <div class="mb-island-title-wrap">
+                  <h2 class="mb-island-big-title">Golden Vault</h2>
+                  <span class="mb-island-subtitle">High-Chance Rare Zone — Rare Crates &amp; Free Pulls!</span>
+                </div>
+              </div>
+              <div class="mb-island-platform mb-island-plat-gold">
+                <div class="mb-island-plat-light"></div>
+                <div class="mb-island-plat-light mb-ipl-2"></div>
+                <div id="mbIsland1Tiles" class="mb-island-tiles"></div>
+                <div id="mbIslandChar1" class="mb-char-piece mb-island-char hidden">
+                  <div class="mb-char-hop-wrap" id="mbIslandCharHopWrap1">
+                    <img id="mbIslandCharImg1" src="" alt="" class="mb-char-sprite" />
+                    <div class="mb-char-shadow"></div>
+                    <div class="mb-char-glow"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ISLAND VIEW 2: Star Sanctum -->
+          <div class="mb-island-view mb-island-view-2 hidden" id="mbIslandView2">
+            <div class="mb-island-bg mb-island-bg-purple"></div>
+            <div class="mb-island-content">
+              <div class="mb-island-header-banner mb-island-purple-banner">
+                <div class="mb-island-crown-anim">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="#c084fc" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                    <polygon points="12 2 2 12 12 22 22 12" />
+                    <line x1="12" y1="2" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                  </svg>
+                </div>
+                <div class="mb-island-title-wrap">
+                  <h2 class="mb-island-big-title mb-island-title-purple">Star Sanctum</h2>
+                  <span class="mb-island-subtitle">Ultra-Rare Zone — S-Class Crates &amp; ×2 Pulls!</span>
+                </div>
+              </div>
+              <div class="mb-island-platform mb-island-plat-purple">
+                <div class="mb-island-plat-light mb-ipl-purple"></div>
+                <div class="mb-island-plat-light mb-ipl-purple mb-ipl-2"></div>
+                <div id="mbIsland2Tiles" class="mb-island-tiles"></div>
+                <div id="mbIslandChar2" class="mb-char-piece mb-island-char hidden">
+                  <div class="mb-char-hop-wrap" id="mbIslandCharHopWrap2">
+                    <img id="mbIslandCharImg2" src="" alt="" class="mb-char-sprite" />
+                    <div class="mb-char-shadow"></div>
+                    <div class="mb-char-glow"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bridge cinematic overlay -->
+          <div class="mb-bridge-cinematic hidden" id="mbBridgeCinematic">
+            <div class="mb-bridge-bg"></div>
+            <div class="mb-bridge-scene">
+              <div class="mb-bridge-label" id="mbBridgeLabel">Building Bridge...</div>
+              <div class="mb-bridge-track-wrap">
+                <div class="mb-bridge-rail mb-bridge-rail-top"></div>
+                <div class="mb-bridge-planks" id="mbBridgePlanks">
+                  <div class="mb-bridge-plank" style="--di:0"></div>
+                  <div class="mb-bridge-plank" style="--di:1"></div>
+                  <div class="mb-bridge-plank" style="--di:2"></div>
+                  <div class="mb-bridge-plank" style="--di:3"></div>
+                  <div class="mb-bridge-plank" style="--di:4"></div>
+                  <div class="mb-bridge-plank" style="--di:5"></div>
+                  <div class="mb-bridge-plank" style="--di:6"></div>
+                  <div class="mb-bridge-plank" style="--di:7"></div>
+                </div>
+                <div class="mb-bridge-rail mb-bridge-rail-bot"></div>
+              </div>
+              <div class="mb-bridge-dest-label" id="mbBridgeDestLabel">Golden Vault</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div><!-- /mb-scene-area -->
+
+      <!-- Footer -->
+      <div class="mb-footer">
+        <div class="mb-footer-left">
+          <div id="mbFreeRollBadge" class="mb-free-badge hidden">🎲 FREE ROLL <span id="mbFreeRollCnt">×1</span></div>
+        </div>
+        <div class="mb-roll-buttons">
+          <button class="mb-roll-btn mb-roll-single" id="mbRoll1Btn" type="button">
+            <div class="mb-roll-cost-bar mb-rcb-red">
+              <svg viewBox="0 0 24 24" width="9" height="9" fill="#ff6b6b"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+              <span>×300</span>
+            </div>
+            <div class="mb-roll-body">
+              <span class="mb-roll-num">1</span>
+              <span class="mb-roll-lbl">Roll 1 ×</span>
+            </div>
+          </button>
+          <button class="mb-roll-btn mb-roll-ten" id="mbRoll10Btn" type="button">
+            <div class="mb-roll-cost-bar mb-rcb-blue">
+              <svg viewBox="0 0 24 24" width="9" height="9" fill="#4fc3f7"><path d="M6 2h12l4 6-10 14L2 8z"/></svg>
+              <span class="mb-cost-blue">×2,700</span>
+            </div>
+            <div class="mb-roll-body">
+              <span class="mb-roll-num">10</span>
+              <span class="mb-roll-lbl">Roll 10 ×</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- DICE OVERLAY -->
+      <div id="mbDiceOverlay" class="mb-dice-overlay hidden">
+        <div class="mb-dice-blur"></div>
+        <div class="mb-dice-stage">
+          <div class="mb-dice-3d" id="mbDice3d">
+            <div class="mb-dface mb-dface-front"></div>
+            <div class="mb-dface mb-dface-back"></div>
+            <div class="mb-dface mb-dface-right"></div>
+            <div class="mb-dface mb-dface-left"></div>
+            <div class="mb-dface mb-dface-top"></div>
+            <div class="mb-dface mb-dface-bot"></div>
+          </div>
+          <div class="mb-dice-result hidden" id="mbDiceResult">
+            <div class="mb-dice-result-glow"></div>
+            <div class="mb-dice-big-num" id="mbDiceNum">3</div>
+            <div class="mb-dice-steps-lbl">STEPS</div>
+          </div>
+          <div class="mb-dice-ground-shadow"></div>
+        </div>
+      </div>
+
+      <!-- CRATE REWARD POPUP -->
+      <div id="mbCratePopup" class="mb-popup-overlay hidden">
+        <div class="mb-popup-clickaway" id="mbPopupClickaway"></div>
+        <div class="mb-popup-wrap">
+          <div class="mb-popup-halo"><div class="mb-popup-halo-ring"></div></div>
+          <div class="mb-popup-phone">
+            <div class="mb-phone-top">
+              <div class="mb-phone-conn mb-phone-conn-l"></div>
+              <div class="mb-phone-conn mb-phone-conn-r"></div>
+            </div>
+            <div class="mb-phone-screen">
+              <div class="mb-phone-item" id="mbCrateItemDisplay"></div>
+              <div class="mb-phone-spin"></div>
+            </div>
+            <div class="mb-popup-rank" id="mbCrateRank">B<br><small>RANK</small></div>
+          </div>
+          <div class="mb-popup-name" id="mbCrateItemName">Pink Bomb</div>
+          <div class="mb-popup-type" id="mbCrateItemType">BOMB SKIN</div>
+          <div class="mb-popup-gems-bonus hidden" id="mbCrateGemsBonus">+100 💎 gems bonus</div>
+          <button class="mb-claim-btn" id="mbCrateClaimBtn" type="button">
+            <span>CLAIM</span>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="#000"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          </button>
+          <p class="mb-popup-hint">Press empty area to close</p>
+        </div>
+      </div>
+
+      <!-- FREE PULL POPUP -->
+      <div id="mbFreePullPopup" class="mb-popup-overlay hidden">
+        <div class="mb-popup-clickaway" id="mbFreePullClickaway"></div>
+        <div class="mb-fp-card">
+          <div class="mb-fp-rays"></div>
+          <div class="mb-fp-icon" id="mbFpIcon">×1</div>
+          <div class="mb-fp-title" id="mbFpTitle">FREE PULL ×1</div>
+          <div class="mb-fp-sub">Granted! Next roll is on the house.</div>
+          <button class="mb-claim-btn mb-fp-ok" id="mbFreePullOk" type="button">SWEET! ✨</button>
+        </div>
+      </div>
+
+      <!-- CLASS REVEAL OVERLAY -->
+      <div id="mbClassReveal" class="mb-class-reveal hidden">
+        <div class="mb-cr-glow" id="mbCrGlow"></div>
+        <div class="mb-cr-badge" id="mbCrBadge">S</div>
+        <div class="mb-cr-label" id="mbCrLabel">S-CLASS REWARD</div>
+      </div>
+
+      <!-- GACHA CONTROLS (SPEED & SKIP) -->
+      <div id="mbGachaControls" class="mb-gacha-controls hidden">
+        <button id="mbSpeedBtn" class="mb-control-btn speed-btn" type="button">>> 1x</button>
+        <button id="mbSkipBtn" class="mb-control-btn skip-btn" type="button">> SKIP</button>
+      </div>
+
+      <!-- ROLL 10 SUMMARY POPUP -->
+      <div id="mbSummaryPopup" class="mb-popup-overlay hidden">
+        <div class="mb-popup-clickaway" id="mbSummaryClickaway"></div>
+        <div class="mb-popup-wrap summary-wrap">
+          <h2 class="mb-summary-title">Draw Results</h2>
+          <div class="mb-summary-grid" id="mbSummaryGrid">
+            <!-- 10 items will be injected here -->
+          </div>
+          <button class="mb-claim-btn summary-btn" id="mbSummaryCloseBtn" type="button">
+            <span>CLAIM ALL</span>
+          </button>
+        </div>
+      </div>
+
+
+      <!-- ═══════════════════════════════════════════════════
+           GACHA TUTORIAL OVERLAY
+      ════════════════════════════════════════════════════════ -->
+      <div id="mbTutorialOverlay" class="mb-tutorial-overlay hidden">
+
+        <!-- Spotlight cutout -->
+        <div id="mbTutSpotlight" class="mb-tut-spotlight"></div>
+
+        <!-- Floating tooltip card -->
+        <div id="mbTutCard" class="mb-tut-card">
+          <div class="mb-tut-card-glow"></div>
+          <div class="mb-tut-step-badge" id="mbTutBadge">1 / 5</div>
+          <div class="mb-tut-icon" id="mbTutIcon">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l7.5 4.5v9L12 20l-7.5-4.5v-9L12 2z" />
+              <path d="M12 22V12" />
+              <path d="M12 12l7.5-4.5" />
+              <path d="M12 12l-7.5-4.5" />
+            </svg>
+          </div>
+          <h3 class="mb-tut-title" id="mbTutTitle">Welcome to the Draw Board!</h3>
+          <p class="mb-tut-desc" id="mbTutDesc">Spin the dice, walk across the board and land on crates to win bomb skins, blast effects, and coins.</p>
+
+          <!-- Free pull gift banner (only step 0) -->
+          <div class="mb-tut-gift" id="mbTutGift">
+            <div class="mb-tut-gift-inner">
+              <span class="mb-tut-gift-icon" style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ffd86f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 12 20 22 4 22 4 12"/>
+                  <rect x="2" y="7" width="20" height="5"/>
+                  <line x1="12" y1="22" x2="12" y2="7"/>
+                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                </svg>
+              </span>
+              <div>
+                <div class="mb-tut-gift-title">Welcome Gift!</div>
+                <div class="mb-tut-gift-sub">You have received <strong>1 Free Roll</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-tut-nav">
+            <button class="mb-tut-btn-skip" id="mbTutSkipAll" type="button">Skip Tutorial</button>
+            <button class="mb-tut-btn-next" id="mbTutNext" type="button">
+              <span id="mbTutNextLabel">Let's Go →</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pulsing ring that highlights the target element -->
+        <div id="mbTutHighlightRing" class="mb-tut-ring hidden"></div>
+      </div>
+
+    </div><!-- /monopolyBoardOverlay -->
+
 
   </body>
 </html>
