@@ -15484,13 +15484,15 @@ function triggerClassRevealSequence(rank, callback) {
 
 // Shared helpers to pick items
 // Shared helper to pick S-Class items (forced = true guarantees an S-Class item even if duplicate)
-function _pickSItem(forced) {
+// Shared helper to pick S-Class items (always returns an item, never coins fallback)
+function _pickSItem() {
   var allS = gachaPool.filter(function(x) { return (mbItemRanks[x.id] || 'B') === 'S'; });
   var unowned = allS.filter(function(x) {
     var k = x.type === "effect" ? "owned_effect_" + x.color : "owned_bomb_" + x.color;
     return localStorage.getItem(k) !== "true";
   });
-  var pool = unowned.length > 0 ? unowned : (forced ? allS : []);
+  // Fall back to picking any S-Class item if all are owned (triggers duplicate logic)
+  var pool = unowned.length > 0 ? unowned : allS;
   if (pool.length === 0) return null;
   var chosen = pool[Math.floor(Math.random() * pool.length)];
   var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
@@ -15528,45 +15530,21 @@ function drawMonopolyReward(rarity) {
   localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
 
   var rank = 'A';
-  var isItem = false;
 
   if (forceSClassItem) {
     rank = 'S';
-    isItem = true;
   } else if (mbPityS >= 10) {
     rank = 'S';
-    isItem = true;
   } else if (mbPityA >= 5) {
     rank = 'A';
-    isItem = false; // A-class is strictly coins
   } else {
-    var roll = Math.random();
     if (rarity === 'common') {
-      if (roll < 0.15) {
-        rank = 'S';
-        // 35% chance of S-Class Item, 65% chance of 1,000 Coins
-        isItem = Math.random() < 0.35;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      rank = 'A'; // Purple crates NEVER contain S-Class
     } else if (rarity === 'rare') {
-      if (roll < 0.30) {
-        rank = 'S';
-        // 60% chance of S-Class Item, 40% chance of 1,000 Coins
-        isItem = Math.random() < 0.60;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      // Rare (orange) crates contain S-Class with a low chance (10%)
+      rank = Math.random() < 0.10 ? 'S' : 'A';
     } else if (rarity === 'sclass') {
-      if (roll < 0.90) {
-        rank = 'S';
-        isItem = true;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      rank = 'S'; // S-Class tiles always contain S-Class
     }
   }
 
@@ -15574,19 +15552,13 @@ function drawMonopolyReward(rarity) {
   var isDuplicate = false;
 
   if (rank === 'S') {
-    if (isItem) {
-      var picked = _pickSItem(forceSClassItem);
-      if (picked) {
-        finalItem = picked.item;
-        isDuplicate = picked.isDuplicate;
-        if (isDuplicate) {
-          crownCount += 500;
-          document.getElementById("crownCount").textContent = crownCount;
-          if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-        }
-      } else {
-        finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
-        crownCount += 1000;
+    // S-Class is strictly skins/effects, never coins
+    var picked = _pickSItem();
+    if (picked) {
+      finalItem = picked.item;
+      isDuplicate = picked.isDuplicate;
+      if (isDuplicate) {
+        crownCount += 500;
         document.getElementById("crownCount").textContent = crownCount;
         if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
       }
@@ -15601,7 +15573,7 @@ function drawMonopolyReward(rarity) {
     localStorage.setItem('mb_rolls_pity_s', '0');
     localStorage.setItem('mb_rolls_pity_a', '0');
   } else {
-    // A-Class Coins
+    // A-Class is strictly coins
     var coinsAmount = 300;
     if (rarity === 'common') {
       coinsAmount = Math.floor(Math.random() * 201) + 300;
@@ -15650,43 +15622,20 @@ function drawMonopolyRewardSilently(rarity) {
   localStorage.setItem('mb_rolls_pity_mod', mbPityMod.toString());
 
   var rank = 'A';
-  var isItem = false;
 
   if (forceSClassItem) {
     rank = 'S';
-    isItem = true;
   } else if (mbPityS >= 10) {
     rank = 'S';
-    isItem = true;
   } else if (mbPityA >= 5) {
     rank = 'A';
-    isItem = false;
   } else {
-    var roll = Math.random();
     if (rarity === 'common') {
-      if (roll < 0.15) {
-        rank = 'S';
-        isItem = Math.random() < 0.35;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      rank = 'A';
     } else if (rarity === 'rare') {
-      if (roll < 0.30) {
-        rank = 'S';
-        isItem = Math.random() < 0.60;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      rank = Math.random() < 0.10 ? 'S' : 'A';
     } else if (rarity === 'sclass') {
-      if (roll < 0.90) {
-        rank = 'S';
-        isItem = true;
-      } else {
-        rank = 'A';
-        isItem = false;
-      }
+      rank = 'S';
     }
   }
 
@@ -15694,16 +15643,11 @@ function drawMonopolyRewardSilently(rarity) {
   var isDuplicate = false;
 
   if (rank === 'S') {
-    if (isItem) {
-      var picked = _pickSItem(forceSClassItem);
-      if (picked) {
-        finalItem = picked.item;
-        isDuplicate = picked.isDuplicate;
-        if (isDuplicate) crownCount += 500;
-      } else {
-        finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
-        crownCount += 1000;
-      }
+    var picked = _pickSItem();
+    if (picked) {
+      finalItem = picked.item;
+      isDuplicate = picked.isDuplicate;
+      if (isDuplicate) crownCount += 500;
     } else {
       finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
       crownCount += 1000;
