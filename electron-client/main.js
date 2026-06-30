@@ -460,11 +460,74 @@ ipcMain.handle('repair-game-files', async () => {
     if (path.basename(runtimeDir).toLowerCase() === 'launcher') {
       pruneOldRootRuntimeFiles(path.dirname(runtimeDir));
     }
+
+    // Check if game files are outdated vs GitHub
+    const local = readLocalVersion();
+    let latestCommit = null;
+    try {
+      const resp = await httpsGet(GITHUB_API);
+      if (resp.statusCode === 200) {
+        const data = JSON.parse(resp.body);
+        latestCommit = data.sha;
+      }
+    } catch (_) {}
+
+    if (latestCommit && local.commit && local.commit !== latestCommit) {
+      // Files are outdated — report update needed
+      return { success: true, needsUpdate: true, latestCommit, currentCommit: local.commit };
+    }
+
     pruneGameDirectory(getGameDir());
     hideInstalledGameAssets(getGameDir());
-    return { success: true };
+    return { success: true, needsUpdate: false };
   } catch (err) {
     return { success: false, error: err.message };
+  }
+});
+
+// ── IPC: check if launcher exe was changed in latest commit ───────────────────
+ipcMain.handle('check-launcher-exe-update', async () => {
+  const local = readLocalVersion();
+  try {
+    const resp = await httpsGet(GITHUB_API);
+    if (resp.statusCode !== 200) throw new Error(`HTTP ${resp.statusCode}`);
+    const data = JSON.parse(resp.body);
+    const latestCommit = data.sha;
+    if (!local.commit || local.commit === latestCommit) {
+      return { hasUpdate: false, latestCommit, currentCommit: local.commit };
+    }
+
+    // Check if Chiikawa_Royale.exe is in the changed files
+    let exeChanged = false;
+    try {
+      const compareUrl = `https://api.github.com/repos/Gatecha/chiikawa-royale/compare/${local.commit}...${latestCommit}`;
+      const compareResp = await httpsGet(compareUrl);
+      if (compareResp.statusCode === 200) {
+        const compareData = JSON.parse(compareResp.body);
+        exeChanged = (compareData.files || []).some(f => f.filename === 'Chiikawa_Royale.exe');
+      }
+    } catch (_) {
+      // On compare failure, conservatively say exe changed if any update exists
+      exeChanged = true;
+    }
+
+    const remotePkg = await httpsGet('https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/electron-client/package.json');
+    const remoteVersion = remotePkg.statusCode === 200 ? JSON.parse(remotePkg.body).version : null;
+    const localVersion = app.getVersion();
+    const versionChanged = remoteVersion ? isVersionGreater(remoteVersion, localVersion) : false;
+
+    return {
+      hasUpdate: exeChanged || versionChanged,
+      exeChanged,
+      versionChanged,
+      latestVersion: remoteVersion,
+      currentVersion: localVersion,
+      latestCommit,
+      currentCommit: local.commit
+    };
+  } catch (err) {
+    console.error('Error checking launcher exe update:', err);
+    return { hasUpdate: false, error: err.message };
   }
 });
 

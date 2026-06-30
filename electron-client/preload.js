@@ -27,7 +27,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-update');
   },
-  checkLauncherUpdate:    () => ipcRenderer.invoke('check-launcher-update'),
+  checkLauncherUpdate:       () => ipcRenderer.invoke('check-launcher-update'),
+  checkLauncherExeUpdate:    () => ipcRenderer.invoke('check-launcher-exe-update'),
   downloadLauncherUpdate: (onProgress) => {
     ipcRenderer.on('launcher-update-progress', (_e, data) => onProgress(data));
     return ipcRenderer.invoke('download-launcher-update');

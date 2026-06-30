@@ -954,20 +954,22 @@ function isVersionGreater(v1, v2) {
 }
 
 async function checkLauncherUpdate() {
-  if (!isElectron || !api.checkLauncherUpdate) return;
+  if (!isElectron || !api.checkLauncherExeUpdate) return;
   try {
-    const res = await api.checkLauncherUpdate();
+    const res = await api.checkLauncherExeUpdate();
     if (res && res.hasUpdate) {
+      const verLabel = res.latestVersion ? `v${res.latestVersion}` : 'latest version';
+      const curLabel = res.currentVersion ? `v${res.currentVersion}` : 'current version';
       showConfirm(
         'LAUNCHER UPDATE AVAILABLE',
-        `There is a new update for the PC launcher (v${res.latestVersion}).<br>Your current version: v${res.currentVersion}.<br><br>Would you like to update the launcher to the latest version now?`,
+        `There's a new launcher update available (${verLabel}).<br>Your current version: ${curLabel}.<br><br>Would you like to update your launcher now?`,
         async () => {
           startLauncherUpdate();
         }
       );
     }
   } catch (err) {
-    console.warn('Error checking launcher update:', err);
+    console.warn('Error checking launcher exe update:', err);
   }
 }
 
@@ -1018,40 +1020,83 @@ async function startLauncherUpdate() {
   // Bind repair files button
   $id('repairBtn').addEventListener('click', async () => {
     if (!isElectron) {
-      showAlert('REPAIR CLIENT', 'Launcher update is only available in PC client mode.');
+      showAlert('REPAIR CLIENT', 'Repair is only available in PC client mode.');
       return;
     }
+    // First, check if there's a launcher exe update
     try {
-      const res = await api.checkLauncherUpdate();
-      if (res && res.hasUpdate) {
+      const launcherRes = await api.checkLauncherExeUpdate();
+      if (launcherRes && launcherRes.hasUpdate) {
+        const verLabel = launcherRes.latestVersion
+          ? `v${launcherRes.latestVersion}` : 'latest version';
+        const curLabel = launcherRes.currentVersion
+          ? `v${launcherRes.currentVersion}` : 'current version';
         showConfirm(
           'LAUNCHER UPDATE AVAILABLE',
-          `There is a new update for the PC launcher (v${res.latestVersion}).<br>Your current version: v${res.currentVersion}.<br><br>Would you like to update the launcher to the latest version now?`,
-          async () => {
-            startLauncherUpdate();
-          }
+          `A new launcher update is available (${verLabel}).<br>Your current version: ${curLabel}.<br><br>Would you like to update your launcher now?`,
+          async () => { startLauncherUpdate(); }
         );
-      } else {
-        if (api.repairGameFiles) {
-          const result = await api.repairGameFiles();
-          if (!result.success) {
-            showAlert('FILE REPAIR', result.error || 'Could not repair local files.');
-            return;
-          }
-        }
-        showAlert('FILE REPAIR', 'Local game files cleaned and verified (100%). No issues found.');
+        return;
       }
-    } catch (err) {
-      console.warn('Error checking launcher update during repair:', err);
+    } catch (_) {}
+
+    // Then check if game files are outdated
+    try {
       if (api.repairGameFiles) {
         const result = await api.repairGameFiles();
         if (!result.success) {
           showAlert('FILE REPAIR', result.error || 'Could not repair local files.');
           return;
         }
+        if (result.needsUpdate) {
+          showConfirm(
+            'GAME UPDATE AVAILABLE',
+            'Your game files are outdated.<br><br>Would you like to download and install the latest update now?',
+            async () => {
+              // Trigger the game file update flow (same as clicking UPDATE)
+              isUpdating = true;
+              playBtn.disabled = true;
+              updDot.style.display = 'none';
+              updWrap.classList.add('on');
+              updFill.style.width = '0%';
+              updLbl.textContent = 'Starting update...';
+              if (api.downloadUpdate) {
+                const upd = await api.downloadUpdate((p) => {
+                  updFill.style.width = p.pct + '%';
+                  updLbl.textContent = p.label || '';
+                  if (p.stage === 'done') {
+                    playBtn.textContent = 'PLAY';
+                    playBtn.disabled = false;
+                    playBtn.classList.remove('upd');
+                    updateAvailable = false;
+                    isUpdating = false;
+                    updWrap.classList.remove('on');
+                    checkForUpdates();
+                    showAlert('UPDATE COMPLETE', 'Game files updated successfully. You can click PLAY now.');
+                  }
+                  if (p.stage === 'error') {
+                    isUpdating = false;
+                    playBtn.disabled = false;
+                    updWrap.classList.remove('on');
+                    showAlert('UPDATE FAILED', p.label || 'Something went wrong.');
+                  }
+                });
+                if (!upd.success) {
+                  isUpdating = false;
+                  playBtn.disabled = false;
+                  updWrap.classList.remove('on');
+                  showAlert('UPDATE FAILED', upd.error || 'Download failed. Check your connection.');
+                }
+              }
+            }
+          );
+          return;
+        }
       }
-      showAlert('FILE REPAIR', 'Local game files cleaned and verified (100%). No issues found.');
+    } catch (err) {
+      console.warn('Error during repair/update check:', err);
     }
+    showAlert('FILE REPAIR', 'Local game files cleaned and verified (100%). No issues found.');
   });
 
   if (!isElectron) {
