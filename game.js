@@ -13981,6 +13981,19 @@ function startInteractiveCutscene() {
   let tutorialState = 0;
   const characterKeys = ["usagi", "chiikawa", "hachiware"];
   let introPhaseActive = true; // true = playing full intro, false = yoyo mode
+  let segmentLoopRAF = null;
+  let activeSegmentToken = 0;
+
+  if (video) {
+    video.muted = true;
+    video.loop = false;
+    video.style.opacity = "1";
+    video.style.zIndex = "1";
+    video.style.backgroundColor = "#000";
+  }
+  if (canvas) {
+    canvas.style.display = "none";
+  }
 
   // --- Phase 1: Draw the video live on canvas (intro plays through) ---
   let liveDrawRAF = null;
@@ -13998,15 +14011,28 @@ function startInteractiveCutscene() {
   }
 
   function startYoyo(charKey) {
-    if (_capturedFrames[charKey]) {
-      if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
-      _startYoyoCanvas(canvas, charKey);
-    } else {
-      _captureCharacterFrames(charKey).then(() => {
-        if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
-        _startYoyoCanvas(canvas, charKey);
-      });
+    if (!video) return;
+    if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
+    if (segmentLoopRAF) { cancelAnimationFrame(segmentLoopRAF); segmentLoopRAF = null; }
+    _stopYoyoCanvas();
+
+    const segment = CHARACTER_SEGMENTS[charKey] || CHARACTER_SEGMENTS.usagi;
+    const token = ++activeSegmentToken;
+
+    video.pause();
+    video.style.opacity = "1";
+    video.currentTime = segment.min;
+    video.play().catch(e => console.warn("Cutscene segment play blocked:", e));
+
+    function loopSegment() {
+      if (token !== activeSegmentToken) return;
+      if (video.readyState >= 2 && video.currentTime >= segment.max) {
+        video.currentTime = segment.min;
+        video.play().catch(() => {});
+      }
+      segmentLoopRAF = requestAnimationFrame(loopSegment);
     }
+    segmentLoopRAF = requestAnimationFrame(loopSegment);
   }
 
   function updateNavButtons() {
@@ -14040,13 +14066,14 @@ function startInteractiveCutscene() {
     cutsceneAnimationFrameId = null;
   }
   _stopYoyoCanvas();
+  if (segmentLoopRAF) {
+    cancelAnimationFrame(segmentLoopRAF);
+    segmentLoopRAF = null;
+  }
 
   // --- Play video from beginning (intro cutscene) ---
   video.currentTime = 0;
   video.play().catch(e => console.warn("Cutscene play blocked:", e));
-
-  // Start drawing video frames to canvas
-  drawVideoToCanvas();
 
   // Watch for when intro reaches Usagi section (~0.9s) → switch to yoyo
   const CHAR_START = 0.9;
@@ -14107,6 +14134,8 @@ function startInteractiveCutscene() {
       localStorage.setItem("tutorial_status", "vs_screen");
 
       _stopYoyoCanvas();
+      activeSegmentToken++;
+      if (segmentLoopRAF) { cancelAnimationFrame(segmentLoopRAF); segmentLoopRAF = null; }
       if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
       startUsernameIntroFlowAfterCutscene();
     });
