@@ -60,25 +60,67 @@ const CHARACTER_SEGMENTS = {
   chiikawa:  { min: 2.2,  max: 2.6 },
   hachiware: { min: 2.8,  max: 4.5 }
 };
-const YOYO_FPS = 18;
+const YOYO_FPS = 12;
 const _capturedFrames = {};   // { usagi: ImageBitmap[], chiikawa: [...], hachiware: [...] }
 let _framesReady = false;
 let _captureInProgress = false;
+let _characterFrameCapturePromise = null;
+const _characterFrameCapturePromises = {};
 
 // Active yoyo ticker state (one at a time)
 let _yoyoRAF = null;
 const _yoyoState = { frameIndex: 0, direction: 1, lastTime: 0 };
 
 async function _captureAllCharacterFrames() {
-  if (_captureInProgress || _framesReady) return;
+  if (_framesReady) return _capturedFrames;
+  if (_characterFrameCapturePromise) return _characterFrameCapturePromise;
+
+  _characterFrameCapturePromise = Promise.all(
+    Object.keys(CHARACTER_SEGMENTS).map((character) => _captureCharacterFrames(character))
+  ).then(() => {
+    _framesReady = true;
+    return _capturedFrames;
+  }).finally(() => {
+    _characterFrameCapturePromise = null;
+  });
+  return _characterFrameCapturePromise;
+}
+
+async function _captureCharacterFrames(character) {
+  if (_capturedFrames[character]) return _capturedFrames[character];
+  if (_characterFrameCapturePromises[character]) return _characterFrameCapturePromises[character];
+
+  _characterFrameCapturePromises[character] = _captureCharacterFramesImpl(character).finally(() => {
+    delete _characterFrameCapturePromises[character];
+  });
+  return _characterFrameCapturePromises[character];
+}
+
+async function _captureCharacterFramesImpl(character) {
+  const seg = CHARACTER_SEGMENTS[character];
+  if (!seg) return null;
   _captureInProgress = true;
 
-  const video = document.getElementById('tutorialCutsceneVideo');
-  if (!video || !video.src) { _captureInProgress = false; return; }
+  const sourceVideo = document.getElementById('tutorialCutsceneVideo');
+  const sourceSrc = sourceVideo ? (sourceVideo.currentSrc || sourceVideo.src) : "";
+  if (!sourceSrc) {
+    _captureInProgress = false;
+    return _capturedFrames;
+  }
+
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.src = sourceSrc;
+  video.load();
 
   // Ensure video is loaded enough to seek
   if (video.readyState < 1) {
-    await new Promise(r => video.addEventListener('loadedmetadata', r, { once: true }));
+    await new Promise(resolve => {
+      video.addEventListener('loadedmetadata', resolve, { once: true });
+      video.addEventListener('error', resolve, { once: true });
+    });
   }
 
   const W = video.videoWidth  || 640;
@@ -97,29 +139,27 @@ async function _captureAllCharacterFrames() {
     });
   }
 
-  for (const [key, seg] of Object.entries(CHARACTER_SEGMENTS)) {
-    const frames = [];
-    const duration = seg.max - seg.min;
-    const count    = Math.max(2, Math.ceil(duration * YOYO_FPS));
-    for (let i = 0; i < count; i++) {
-      const t = seg.min + (i / YOYO_FPS);
-      await seekTo(t);
-      offCtx.drawImage(video, 0, 0, W, H);
-      try {
-        const bmp = await createImageBitmap(offCanvas);
-        frames.push(bmp);
-      } catch(e) {
-        // createImageBitmap not supported (old WebView) — store ImageData instead
-        frames.push(offCtx.getImageData(0, 0, W, H));
-      }
+  const frames = [];
+  const duration = seg.max - seg.min;
+  const count    = Math.max(2, Math.ceil(duration * YOYO_FPS));
+  for (let i = 0; i < count; i++) {
+    const t = seg.min + (i / YOYO_FPS);
+    await seekTo(t);
+    offCtx.drawImage(video, 0, 0, W, H);
+    try {
+      const bmp = await createImageBitmap(offCanvas);
+      frames.push(bmp);
+    } catch(e) {
+      // createImageBitmap not supported (old WebView) - store ImageData instead
+      frames.push(offCtx.getImageData(0, 0, W, H));
     }
-    _capturedFrames[key] = { frames, W, H };
-    console.warn(`[YoyoCapture] ${key}: ${frames.length} frames captured`);
   }
 
-  _framesReady = true;
+  _capturedFrames[character] = { frames, W, H };
+  _framesReady = Object.keys(CHARACTER_SEGMENTS).every((key) => _capturedFrames[key]);
   _captureInProgress = false;
-  console.warn('[YoyoCapture] All character frames ready.');
+  console.warn(`[YoyoCapture] ${character}: ${frames.length} frames captured`);
+  return _capturedFrames[character];
 }
 
 function _startYoyoCanvas(canvasEl, character) {
@@ -13950,19 +13990,20 @@ function startInteractiveCutscene() {
       canvas.width  = video.videoWidth  || 640;
       canvas.height = video.videoHeight || 360;
     }
-    const ctx2 = canvas.getContext("2d");
-    ctx2.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if (video.readyState >= 2) {
+      const ctx2 = canvas.getContext("2d");
+      ctx2.drawImage(video, 0, 0, canvas.width, canvas.height);
+    }
     liveDrawRAF = requestAnimationFrame(drawVideoToCanvas);
   }
 
   function startYoyo(charKey) {
-    // Stop live draw
-    if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
-
-    if (_framesReady) {
+    if (_capturedFrames[charKey]) {
+      if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
       _startYoyoCanvas(canvas, charKey);
     } else {
-      _captureAllCharacterFrames().then(() => {
+      _captureCharacterFrames(charKey).then(() => {
+        if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
         _startYoyoCanvas(canvas, charKey);
       });
     }
@@ -14006,9 +14047,6 @@ function startInteractiveCutscene() {
 
   // Start drawing video frames to canvas
   drawVideoToCanvas();
-
-  // Start capturing frames in background immediately (while intro plays)
-  _captureAllCharacterFrames();
 
   // Watch for when intro reaches Usagi section (~0.9s) → switch to yoyo
   const CHAR_START = 0.9;

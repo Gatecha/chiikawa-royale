@@ -36,21 +36,43 @@ function copyDirSync(src, dest) {
   }
 }
 
+function syncNewerDirSync(src, dest) {
+  if (!fs.existsSync(src)) return;
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const sp = path.join(src, entry.name), dp = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      syncNewerDirSync(sp, dp);
+      continue;
+    }
+
+    let shouldCopy = !fs.existsSync(dp);
+    if (!shouldCopy) {
+      const srcStats = fs.statSync(sp);
+      const destStats = fs.statSync(dp);
+      shouldCopy = srcStats.mtimeMs > destStats.mtimeMs + 1000;
+    }
+    if (shouldCopy) fs.copyFileSync(sp, dp);
+  }
+}
+
 function getGameDir() {
   if (!app.isPackaged) {
     return path.join(__dirname, '..');
   }
   const persistentDir = path.join(app.getPath('userData'), 'game');
-  if (!fs.existsSync(persistentDir)) {
-    try {
-      const bundleDir = path.join(process.resourcesPath, 'game');
-      if (fs.existsSync(bundleDir)) {
+  try {
+    const bundleDir = path.join(process.resourcesPath, 'game');
+    if (fs.existsSync(bundleDir)) {
+      if (!fs.existsSync(persistentDir)) {
         fs.mkdirSync(persistentDir, { recursive: true });
         copyDirSync(bundleDir, persistentDir);
+      } else {
+        syncNewerDirSync(bundleDir, persistentDir);
       }
-    } catch (err) {
-      console.error('Failed to copy bundled game files to persistent directory:', err);
     }
+  } catch (err) {
+    console.error('Failed to sync bundled game files to persistent directory:', err);
   }
   return persistentDir;
 }
