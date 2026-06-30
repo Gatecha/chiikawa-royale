@@ -2245,11 +2245,11 @@ function handleServerMessage(msg) {
         collector.activeBombType = data.playerStats.activeBombType || "normal";
 
         if (data.playerId === localPlayerId) {
-          let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
-          localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+          let collected = parseInt(questGet("quest_pickups_progress") || "0");
+          questSet("quest_pickups_progress", Math.min(3, collected + 1).toString());
           
-          let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
-          localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
+          let lifetimePickups = parseInt(questGet("lifetime_pickups_collected") || "0");
+          questSet("lifetime_pickups_collected", (lifetimePickups + 1).toString());
         }
 
         burstSparkles(collector.x, collector.y);
@@ -2282,14 +2282,14 @@ function handleServerMessage(msg) {
       if (data.teams) currentTeams = data.teams;
 
       // Progress daily match quest
-      localStorage.setItem("quest_match_completed", "true");
+      questSet("quest_match_completed", "true");
 
       // Give progression rewards
       const isWinner = data.winnerId === localPlayerId;
       if (isWinner) {
         // Progress weekly win quest
-        let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
-        localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+        let wins = parseInt(questGet("quest_win3_progress") || "0");
+        questSet("quest_win3_progress", Math.min(3, wins + 1).toString());
         totalWins += 1; // Increment totalWins for online victory
       }
 
@@ -3516,11 +3516,11 @@ function localPlaceBomb(player) {
   const effectColor = (player.id === localPlayerId) ? (localStorage.getItem("equipped_effect") || "default") : "default";
 
   if (player.id === localPlayerId) {
-    let bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
-    localStorage.setItem("quest_bombs_progress", Math.min(10, bombsPlaced + 1).toString());
+    let bombsPlaced = parseInt(questGet("quest_bombs_progress") || "0");
+    questSet("quest_bombs_progress", Math.min(10, bombsPlaced + 1).toString());
     
-    let lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
-    localStorage.setItem("lifetime_bombs_placed", (lifetimeBombs + 1).toString());
+    let lifetimeBombs = parseInt(questGet("lifetime_bombs_placed") || "0");
+    questSet("lifetime_bombs_placed", (lifetimeBombs + 1).toString());
   }
 
   bombs.push({
@@ -3595,11 +3595,11 @@ function localTriggerExplosion(bomb) {
           const hpBefore = p.hp;
           damageLocalPlayerFromBomb(p, 60);
           if (p.hp <= 0 && hpBefore > 0 && p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
-            let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
-            localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            let kills = parseInt(questGet("quest_kills_progress") || "0");
+            questSet("quest_kills_progress", Math.min(5, kills + 1).toString());
             
-            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
-            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
+            let lifetimeKills = parseInt(questGet("lifetime_kills") || "0");
+            questSet("lifetime_kills", (lifetimeKills + 1).toString());
           }
         } else {
           p.alive = false;
@@ -3607,11 +3607,11 @@ function localTriggerExplosion(bomb) {
           p.moveFrom = null;
           p.moveDir = null;
           if (p.id !== localPlayerId && bomb.ownerId === localPlayerId) {
-            let kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
-            localStorage.setItem("quest_kills_progress", Math.min(5, kills + 1).toString());
+            let kills = parseInt(questGet("quest_kills_progress") || "0");
+            questSet("quest_kills_progress", Math.min(5, kills + 1).toString());
             
-            let lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
-            localStorage.setItem("lifetime_kills", (lifetimeKills + 1).toString());
+            let lifetimeKills = parseInt(questGet("lifetime_kills") || "0");
+            questSet("lifetime_kills", (lifetimeKills + 1).toString());
           }
         }
       }
@@ -3641,11 +3641,11 @@ function localCheckPickup(player) {
   else if (pickup.type === "energy_drink") player.energyDrinkCount = (player.energyDrinkCount || 0) + 1;
 
   if (player.id === localPlayerId) {
-    let collected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
-    localStorage.setItem("quest_pickups_progress", Math.min(3, collected + 1).toString());
+    let collected = parseInt(questGet("quest_pickups_progress") || "0");
+    questSet("quest_pickups_progress", Math.min(3, collected + 1).toString());
     
-    let lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
-    localStorage.setItem("lifetime_pickups_collected", (lifetimePickups + 1).toString());
+    let lifetimePickups = parseInt(questGet("lifetime_pickups_collected") || "0");
+    questSet("lifetime_pickups_collected", (lifetimePickups + 1).toString());
   }
 
   burstSparkles(player.x, player.y);
@@ -3692,12 +3692,12 @@ function awardLocalMatchProgress(playerWon) {
   localMatchRewarded = true;
 
   // Progress daily match quest
-  localStorage.setItem("quest_match_completed", "true");
+  questSet("quest_match_completed", "true");
 
   // Progress weekly win quest
   if (playerWon) {
-    let wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
-    localStorage.setItem("quest_win3_progress", Math.min(3, wins + 1).toString());
+    let wins = parseInt(questGet("quest_win3_progress") || "0");
+    questSet("quest_win3_progress", Math.min(3, wins + 1).toString());
   }
 
   const gainedXp = playerWon ? 120 : 45;
@@ -13705,7 +13705,7 @@ function initQuestsSystem() {
   });
 
   // Automatically mark login quest as completed on load
-  localStorage.setItem("quest_login_completed", "true");
+  questSet("quest_login_completed", "true");
 
   // Bind quest card action buttons (Claim buttons)
   bindQuestClaimButton("qbtn_login", "quest_login_completed", "quest_login_claimed", 100, 100);
@@ -13768,16 +13768,16 @@ function bindQuestClaimButton(btnId, compKey, claimKey, pointsVal, coinVal, goAc
   if (!btn) return;
   
   btn.addEventListener("click", () => {
-    const completed = localStorage.getItem(compKey) === "true";
-    const claimed = localStorage.getItem(claimKey) === "true";
+    const completed = questGet(compKey) === "true";
+    const claimed = questGet(claimKey) === "true";
     
     if (completed && !claimed) {
-      localStorage.setItem(claimKey, "true");
+      questSet(claimKey, "true");
       
       // Add engagement points
-      let engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
+      let engagement = parseInt(questGet("daily_engagement") || "0");
       engagement = Math.min(400, engagement + pointsVal);
-      localStorage.setItem("daily_engagement", engagement.toString());
+      questSet("daily_engagement", engagement.toString());
       
       // Add coins
       crownCount += coinVal;
@@ -13798,11 +13798,11 @@ function bindGameplayQuestClaimButton(btnId, compKey, claimKey, gemsVal, goActio
   if (!btn) return;
   
   btn.addEventListener("click", () => {
-    const completed = localStorage.getItem(compKey) === "true";
-    const claimed = localStorage.getItem(claimKey) === "true";
+    const completed = questGet(compKey) === "true";
+    const claimed = questGet(claimKey) === "true";
     
     if (completed && !claimed) {
-      localStorage.setItem(claimKey, "true");
+      questSet(claimKey, "true");
       
       // Add gems directly
       gemsCount += gemsVal;
@@ -13824,16 +13824,16 @@ function bindWeeklyQuestClaimButton(btnId, compKey, claimKey, pointsVal, coinVal
   if (!btn) return;
   
   btn.addEventListener("click", () => {
-    const completed = localStorage.getItem(compKey) === "true";
-    const claimed = localStorage.getItem(claimKey) === "true";
+    const completed = questGet(compKey) === "true";
+    const claimed = questGet(claimKey) === "true";
     
     if (completed && !claimed) {
-      localStorage.setItem(claimKey, "true");
+      questSet(claimKey, "true");
       
       // Add weekly engagement points
-      let engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+      let engagement = parseInt(questGet("weekly_engagement") || "0");
       engagement = Math.min(400, engagement + pointsVal);
-      localStorage.setItem("weekly_engagement", engagement.toString());
+      questSet("weekly_engagement", engagement.toString());
       
       // Add coins
       crownCount += coinVal;
@@ -13854,11 +13854,11 @@ function bindWeeklyMilestoneNode(nodeId, milestoneVal, coinVal) {
   if (!node) return;
   
   node.addEventListener("click", () => {
-    const engagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
-    const claimed = localStorage.getItem(`claimed_weekly_milestone_${milestoneVal}`) === "true";
+    const engagement = parseInt(questGet("weekly_engagement") || "0");
+    const claimed = questGet(`claimed_weekly_milestone_${milestoneVal}`) === "true";
     
     if (engagement >= milestoneVal && !claimed) {
-      localStorage.setItem(`claimed_weekly_milestone_${milestoneVal}`, "true");
+      questSet(`claimed_weekly_milestone_${milestoneVal}`, "true");
       
       // Grant reward of 20 gems + coins
       gemsCount += 20;
@@ -13881,11 +13881,11 @@ function bindMilestoneNode(nodeId, milestoneVal, coinVal) {
   if (!node) return;
   
   node.addEventListener("click", () => {
-    const engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
-    const claimed = localStorage.getItem(`claimed_milestone_${milestoneVal}`) === "true";
+    const engagement = parseInt(questGet("daily_engagement") || "0");
+    const claimed = questGet(`claimed_milestone_${milestoneVal}`) === "true";
     
     if (engagement >= milestoneVal && !claimed) {
-      localStorage.setItem(`claimed_milestone_${milestoneVal}`, "true");
+      questSet(`claimed_milestone_${milestoneVal}`, "true");
       
       // Grant reward of 10 gems + coins
       gemsCount += 10;
@@ -13903,9 +13903,19 @@ function bindMilestoneNode(nodeId, milestoneVal, coinVal) {
   });
 }
 
+// ── Per-account quest key namespacing ────────────────────────────────────────
+// All quest/errand progress is stored under a per-user prefix so different
+// accounts on the same device never share quest state.
+function questKey(key) {
+  const user = localStorage.getItem('local_username') || '__guest__';
+  return `q_${user}_${key}`;
+}
+function questGet(key) { return localStorage.getItem(questKey(key)); }
+function questSet(key, value) { localStorage.setItem(questKey(key), value); }
+
 function syncQuestsUI() {
   // Sync daily engagement
-  const engagement = parseInt(localStorage.getItem("daily_engagement") || "0");
+  const engagement = parseInt(questGet("daily_engagement") || "0");
   const currentValEl = document.getElementById("currentEngagementVal");
   if (currentValEl) currentValEl.textContent = engagement;
   
@@ -13922,7 +13932,7 @@ function syncQuestsUI() {
   updateMilestoneNode("chk_400", 400, engagement);
 
   // Sync weekly engagement
-  const weeklyEngagement = parseInt(localStorage.getItem("weekly_engagement") || "0");
+  const weeklyEngagement = parseInt(questGet("weekly_engagement") || "0");
   const weeklyValEl = document.getElementById("currentWeeklyEngagementVal");
   if (weeklyValEl) weeklyValEl.textContent = weeklyEngagement;
   
@@ -13942,58 +13952,58 @@ function syncQuestsUI() {
   updateQuestCardUI("qprog_login", "qbtn_login", "quest_login_completed", "quest_login_claimed", 1, 1);
   
   // Sync Card 2: Match
-  const matchCompleted = localStorage.getItem("quest_match_completed") === "true";
+  const matchCompleted = questGet("quest_match_completed") === "true";
   updateQuestCardUI("qprog_match", "qbtn_match", "quest_match_completed", "quest_match_claimed", matchCompleted ? 1 : 0, 1);
   
   // Sync Card 3: Pickups collected
-  const pickupsCollected = parseInt(localStorage.getItem("quest_pickups_progress") || "0");
-  if (pickupsCollected >= 3) localStorage.setItem("quest_pickups_completed", "true");
+  const pickupsCollected = parseInt(questGet("quest_pickups_progress") || "0");
+  if (pickupsCollected >= 3) questSet("quest_pickups_completed", "true");
   updateQuestCardUI("qprog_pickups", "qbtn_pickups", "quest_pickups_completed", "quest_pickups_claimed", pickupsCollected, 3);
   
   // Sync Card 4: Bombs placed
-  const bombsPlaced = parseInt(localStorage.getItem("quest_bombs_progress") || "0");
-  if (bombsPlaced >= 10) localStorage.setItem("quest_bombs_completed", "true");
+  const bombsPlaced = parseInt(questGet("quest_bombs_progress") || "0");
+  if (bombsPlaced >= 10) questSet("quest_bombs_completed", "true");
   updateQuestCardUI("qprog_bombs", "qbtn_bombs", "quest_bombs_completed", "quest_bombs_claimed", bombsPlaced, 10);
 
   // Sync Weekly Quests
   // Weekly 1: Win 3
-  const wins = parseInt(localStorage.getItem("quest_win3_progress") || "0");
-  if (wins >= 3) localStorage.setItem("quest_win3_completed", "true");
+  const wins = parseInt(questGet("quest_win3_progress") || "0");
+  if (wins >= 3) questSet("quest_win3_completed", "true");
   updateQuestCardUI("qprog_win3", "qbtn_win3", "quest_win3_completed", "quest_win3_claimed", wins, 3);
 
   // Weekly 2: Spin 3
-  const spins = parseInt(localStorage.getItem("quest_spin3_progress") || "0");
-  if (spins >= 3) localStorage.setItem("quest_spin3_completed", "true");
+  const spins = parseInt(questGet("quest_spin3_progress") || "0");
+  if (spins >= 3) questSet("quest_spin3_completed", "true");
   updateQuestCardUI("qprog_spin3", "qbtn_spin3", "quest_spin3_completed", "quest_spin3_claimed", spins, 3);
 
   // Weekly 3: Kills
-  const kills = parseInt(localStorage.getItem("quest_kills_progress") || "0");
-  if (kills >= 5) localStorage.setItem("quest_kills_completed", "true");
+  const kills = parseInt(questGet("quest_kills_progress") || "0");
+  if (kills >= 5) questSet("quest_kills_completed", "true");
   updateQuestCardUI("qprog_kills", "qbtn_kills", "quest_kills_completed", "quest_kills_claimed", kills, 5);
 
   // Weekly 4: Spend 1000
-  const spend = parseInt(localStorage.getItem("quest_spend1000_progress") || "0");
-  if (spend >= 1000) localStorage.setItem("quest_spend1000_completed", "true");
+  const spend = parseInt(questGet("quest_spend1000_progress") || "0");
+  if (spend >= 1000) questSet("quest_spend1000_completed", "true");
   updateQuestCardUI("qprog_spend1000", "qbtn_spend1000", "quest_spend1000_completed", "quest_spend1000_claimed", spend, 1000);
 
   // Sync Gameplay Quests
   // 1. Place 100 Bombs
-  const lifetimeBombs = parseInt(localStorage.getItem("lifetime_bombs_placed") || "0");
-  if (lifetimeBombs >= 100) localStorage.setItem("quest_total_bombs_completed", "true");
+  const lifetimeBombs = parseInt(questGet("lifetime_bombs_placed") || "0");
+  if (lifetimeBombs >= 100) questSet("quest_total_bombs_completed", "true");
   updateQuestCardUI("qprog_total_bombs", "qbtn_total_bombs", "quest_total_bombs_completed", "quest_total_bombs_claimed", lifetimeBombs, 100);
 
   // 2. Win 5 Matches
-  if (totalWins >= 5) localStorage.setItem("quest_win5_completed", "true");
+  if (totalWins >= 5) questSet("quest_win5_completed", "true");
   updateQuestCardUI("qprog_win5", "qbtn_win5", "quest_win5_completed", "quest_win5_claimed", totalWins, 5);
 
   // 3. Collect 15 Power-ups
-  const lifetimePickups = parseInt(localStorage.getItem("lifetime_pickups_collected") || "0");
-  if (lifetimePickups >= 15) localStorage.setItem("quest_total_pickups_completed", "true");
+  const lifetimePickups = parseInt(questGet("lifetime_pickups_collected") || "0");
+  if (lifetimePickups >= 15) questSet("quest_total_pickups_completed", "true");
   updateQuestCardUI("qprog_total_pickups", "qbtn_total_pickups", "quest_total_pickups_completed", "quest_total_pickups_claimed", lifetimePickups, 15);
 
   // 4. Defeat 15 Enemies
-  const lifetimeKills = parseInt(localStorage.getItem("lifetime_kills") || "0");
-  if (lifetimeKills >= 15) localStorage.setItem("quest_total_kills_completed", "true");
+  const lifetimeKills = parseInt(questGet("lifetime_kills") || "0");
+  if (lifetimeKills >= 15) questSet("quest_total_kills_completed", "true");
   updateQuestCardUI("qprog_total_kills", "qbtn_total_kills", "quest_total_kills_completed", "quest_total_kills_claimed", lifetimeKills, 15);
 }
 
@@ -14003,7 +14013,7 @@ function updateMilestoneNode(nodeId, milestoneVal, currentEngagement) {
   
   const isWeekly = nodeId.startsWith("weekly_");
   const key = isWeekly ? `claimed_weekly_milestone_${milestoneVal}` : `claimed_milestone_${milestoneVal}`;
-  const claimed = localStorage.getItem(key) === "true";
+  const claimed = questGet(key) === "true";
   
   node.className = "checkpoint-node";
   if (claimed) {
@@ -14020,8 +14030,8 @@ function updateQuestCardUI(progElId, btnId, compKey, claimKey, currentVal, targe
   
   progEl.textContent = `${currentVal}/${targetVal}`;
   
-  const completed = localStorage.getItem(compKey) === "true";
-  const claimed = localStorage.getItem(claimKey) === "true";
+  const completed = questGet(compKey) === "true";
+  const claimed = questGet(claimKey) === "true";
 
   // Set card sub-footer text
   const card = btn.closest(".quest-card");
