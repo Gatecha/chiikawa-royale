@@ -536,6 +536,46 @@ const characterSelectVideos = {
   magical_hachiware: "assets/character skins/character animation wardrobe/magical hachiware.mp4",
   magical_usagi: "assets/character skins/character animation wardrobe/magical usagi.mp4",
 };
+
+function getCharacterCardPath(kind) {
+  let base = kind || "chiikawa";
+  if (base.startsWith("magical_")) {
+    base = base.replace("magical_", "");
+  }
+  return `assets/lobby cards/${base} character card.png`;
+}
+
+function getCharacterSpritePath(kind, pose, frameNum = 1) {
+  let char = kind || "chiikawa";
+  
+  if (char === "magical_chiikawa" || char === "magical_hachiware" || char === "magical_usagi") {
+    let namePart = char.replace("magical_", "");
+    if (pose === "idle") {
+      return `assets/character skins/in game animations/magical ${namePart} idle.png`;
+    } else if (pose === "back") {
+      return `assets/character skins/in game animations/magical ${namePart} walk backward.png`;
+    } else if (pose === "side") {
+      return `assets/character skins/in game animations/magical ${namePart} walk sideward.png`;
+    } else {
+      return `assets/character skins/in game animations/magical ${namePart} walk forward.png`;
+    }
+  }
+  
+  let suffix = frameNum;
+  if (pose === "idle") {
+    return `assets/${char}/${char}_idle.png`;
+  } else if (pose === "back") {
+    return `assets/${char}/${char}_walk_back${suffix}.png`;
+  } else if (pose === "side") {
+    if (char === "chiikawa" && frameNum === 2) {
+      return `assets/${char}/${char}_walk_sid2.png`;
+    }
+    return `assets/${char}/${char}_walk_side${suffix}.png`;
+  } else {
+    return `assets/${char}/${char}_walk_front${suffix}.png`;
+  }
+}
+
 let selectedCharacter = localStorage.getItem("equipped_character") || "chiikawa";
 let previewCharacter = selectedCharacter;
 let brmVideoEl = null;
