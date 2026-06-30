@@ -2831,9 +2831,11 @@
               <div id="mbTiles"></div>
               <!-- Character piece -->
               <div id="mbCharPiece" class="mb-char-piece">
-                <img id="mbCharImg" src="" alt="" class="mb-char-sprite" />
-                <div class="mb-char-shadow"></div>
-                <div class="mb-char-glow"></div>
+                <div class="mb-char-hop-wrap" id="mbCharHopWrap">
+                  <img id="mbCharImg" src="" alt="" class="mb-char-sprite" />
+                  <div class="mb-char-shadow"></div>
+                  <div class="mb-char-glow"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -2854,9 +2856,11 @@
                 <div class="mb-island-plat-light mb-ipl-2"></div>
                 <div id="mbIsland1Tiles" class="mb-island-tiles"></div>
                 <div id="mbIslandChar1" class="mb-char-piece mb-island-char hidden">
-                  <img id="mbIslandCharImg1" src="" alt="" class="mb-char-sprite" />
-                  <div class="mb-char-shadow"></div>
-                  <div class="mb-char-glow"></div>
+                  <div class="mb-char-hop-wrap" id="mbIslandCharHopWrap1">
+                    <img id="mbIslandCharImg1" src="" alt="" class="mb-char-sprite" />
+                    <div class="mb-char-shadow"></div>
+                    <div class="mb-char-glow"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2878,9 +2882,11 @@
                 <div class="mb-island-plat-light mb-ipl-purple mb-ipl-2"></div>
                 <div id="mbIsland2Tiles" class="mb-island-tiles"></div>
                 <div id="mbIslandChar2" class="mb-char-piece mb-island-char hidden">
-                  <img id="mbIslandCharImg2" src="" alt="" class="mb-char-sprite" />
-                  <div class="mb-char-shadow"></div>
-                  <div class="mb-char-glow"></div>
+                  <div class="mb-char-hop-wrap" id="mbIslandCharHopWrap2">
+                    <img id="mbIslandCharImg2" src="" alt="" class="mb-char-sprite" />
+                    <div class="mb-char-shadow"></div>
+                    <div class="mb-char-glow"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3007,6 +3013,26 @@
         <div class="mb-cr-glow" id="mbCrGlow"></div>
         <div class="mb-cr-badge" id="mbCrBadge">S</div>
         <div class="mb-cr-label" id="mbCrLabel">S-CLASS REWARD</div>
+      </div>
+
+      <!-- GACHA CONTROLS (SPEED & SKIP) -->
+      <div id="mbGachaControls" class="mb-gacha-controls hidden">
+        <button id="mbSpeedBtn" class="mb-control-btn speed-btn" type="button">>> 1x</button>
+        <button id="mbSkipBtn" class="mb-control-btn skip-btn" type="button">> SKIP</button>
+      </div>
+
+      <!-- ROLL 10 SUMMARY POPUP -->
+      <div id="mbSummaryPopup" class="mb-popup-overlay hidden">
+        <div class="mb-popup-clickaway" id="mbSummaryClickaway"></div>
+        <div class="mb-popup-wrap summary-wrap">
+          <h2 class="mb-summary-title">Draw Results</h2>
+          <div class="mb-summary-grid" id="mbSummaryGrid">
+            <!-- 10 items will be injected here -->
+          </div>
+          <button class="mb-claim-btn summary-btn" id="mbSummaryCloseBtn" type="button">
+            <span>CLAIM ALL</span>
+          </button>
+        </div>
       </div>
 
     </div><!-- /monopolyBoardOverlay -->

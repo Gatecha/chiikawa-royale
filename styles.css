@@ -12618,18 +12618,21 @@ body.is-iphone {
   pointer-events: none;
 }
 .mb-char-sprite {
-  width: 100%; height: 100%;
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  width: 100%;
+  height: 48px;
   object-fit: contain;
   image-rendering: pixelated;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
-  animation: mbSpriteJiggle 1.2s ease-in-out infinite alternate;
-  transform-origin: bottom center;
 }
 .mb-char-shadow {
-  position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
   width: 32px; height: 6px;
   background: radial-gradient(ellipse, rgba(0,0,0,0.5), transparent);
   border-radius: 50%;
+  z-index: -1;
 }
 .mb-char-glow {
   position: absolute; inset: 0;
@@ -13290,5 +13293,99 @@ body.is-iphone {
   85% { opacity: 0.5; }
   100% { transform: translateY(-80px) rotate(360deg) scale(1.2); opacity: 0; }
 }
+
+/* ── Gacha Speed and Skip Controls ── */
+.mb-gacha-controls {
+  position: absolute; top: 72px; right: 20px; z-index: 1000;
+  display: flex; gap: 8px;
+}
+.mb-gacha-controls.hidden { display: none; }
+.mb-control-btn {
+  font-family: var(--font, 'Outfit', sans-serif);
+  font-size: 13px; font-weight: 900;
+  color: #fff; background: rgba(0,0,0,0.8);
+  border: 3.5px solid #000; border-radius: 12px;
+  padding: 6px 16px; cursor: pointer;
+  box-shadow: 3px 3px 0 #000;
+  transition: transform 0.1s, background-color 0.15s;
+}
+.mb-control-btn:hover { transform: scale(1.05); background: #222; }
+.mb-control-btn:active { transform: scale(0.95); }
+.speed-btn { border-color: #ffd86f; color: #ffd86f; }
+.skip-btn { border-color: #ff3366; color: #ff3366; }
+
+/* ── Roll Summary Overlay ── */
+.summary-wrap {
+  max-width: 680px !important;
+  width: 90% !important;
+  background: radial-gradient(ellipse at center, #1b0c02 0%, #0c0400 100%) !important;
+  border: 4px solid #b8860b !important;
+  box-shadow: 0 0 40px rgba(0,0,0,0.9), inset 0 0 20px rgba(0,0,0,0.6) !important;
+}
+.mb-summary-title {
+  font-family: var(--font, 'Outfit', sans-serif);
+  font-size: 26px; font-weight: 900; color: #ffd86f;
+  text-transform: uppercase; letter-spacing: 2px;
+  text-shadow: 2px 2px 0 #000; margin-bottom: 20px;
+  text-align: center;
+}
+.mb-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px; margin-bottom: 25px;
+  width: 100%;
+}
+.mb-summary-card {
+  background: rgba(0,0,0,0.7);
+  border: 3px solid #333; border-radius: 12px;
+  padding: 12px 4px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  position: relative; overflow: hidden;
+  aspect-ratio: 0.78;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+  transition: transform 0.2s;
+}
+.mb-summary-card:hover { transform: translateY(-3px); }
+.mb-summary-card.rank-s {
+  border-color: #ffd86f;
+  box-shadow: 0 0 10px rgba(255,216,111,0.25), inset 0 0 8px rgba(0,0,0,0.5);
+}
+.mb-summary-card.rank-a {
+  border-color: #1be6cc;
+}
+.mb-sc-icon {
+  width: 48px; height: 48px; display: flex;
+  align-items: center; justify-content: center;
+  margin: auto;
+}
+.mb-sc-name {
+  font-size: 9px; font-weight: 800; color: #eee;
+  text-align: center; text-transform: uppercase;
+  line-height: 1.2; font-family: var(--font-clean, 'Inter', sans-serif);
+}
+.mb-sc-rank {
+  position: absolute; top: 6px; left: 8px;
+  font-size: 11px; font-weight: 900;
+  font-family: var(--font, 'Outfit', sans-serif);
+}
+.mb-sc-rank.rank-s { color: #ffd86f; text-shadow: 0 0 6px rgba(255,216,111,0.5); }
+.mb-sc-rank.rank-a { color: #1be6cc; }
+.summary-btn {
+  background: linear-gradient(135deg, #ffd86f, #ff9900) !important;
+  color: #000 !important; font-weight: 900 !important;
+  border-color: #000 !important;
+}
+
+/* ── Character Hop Wrap ── */
+.mb-char-hop-wrap {
+  width: 100%; height: 100%;
+  position: relative;
+  animation: mbSpriteJiggle 1.2s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+.mb-char-hop-wrap.mb-char-hop {
+  animation: mbCharHop 0.25s ease-out, mbSpriteJiggle 1.2s ease-in-out infinite alternate;
+}
+
 
 

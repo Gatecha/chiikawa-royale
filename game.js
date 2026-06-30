@@ -13152,8 +13152,9 @@ const gachaPool = [
 
 function getGachaItemImageHtml(item, size = 44) {
   if (item.type === "coins") {
+    const coinSize = Math.floor(size * 1.0);
     return `
-      <div style="font-size: 70px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); animation: mbFreeBadgePulse 1s ease-in-out infinite alternate;">
+      <div style="font-size: ${coinSize}px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
         🪙
       </div>
     `;
@@ -14594,6 +14595,10 @@ let mbFreePulls = parseInt(localStorage.getItem('mb_free_pulls') || '0');
 let mbRolling = false;
 let mbMoving = false;
 let mbRollQueue = 0;
+let mbSpeedMultiplier = 1;
+let mbWalkTimeout = null;
+let mbRoll10Results = [];
+let mbSummaryQueueType = 1;
 
 // Pity system
 let mbTotalRolls = parseInt(localStorage.getItem('mb_rolls_total') || '0');
@@ -14745,6 +14750,13 @@ openGachaModal = function() {
 function openMonopolyBoard() {
   const overlay = document.getElementById("tabTransitionOverlay");
   if (overlay) overlay.classList.add("animate-swipe");
+
+  // Reset speed controls state
+  mbSpeedMultiplier = 1;
+  const speedBtn = document.getElementById("mbSpeedBtn");
+  if (speedBtn) speedBtn.textContent = ">> 1x";
+  document.getElementById("mbGachaControls")?.classList.add("hidden");
+  document.getElementById("mbSummaryPopup")?.classList.add("hidden");
 
   setTimeout(() => {
     const mbOverlay = document.getElementById("monopolyBoardOverlay");
@@ -14939,10 +14951,10 @@ function getTileClass(type) {
 function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
   let dir = 'down';
   if (board === 'main') {
-    if (index >= 0 && index < 6) dir = 'up';
-    else if (index >= 6 && index < 14) dir = 'right';
-    else if (index >= 14 && index < 20) dir = 'down';
-    else dir = 'left';
+    if (index >= 1 && index <= 6) dir = 'up';
+    else if (index >= 7 && index <= 14) dir = 'right';
+    else if (index >= 15 && index <= 20) dir = 'down';
+    else dir = 'left'; // 21..27 and 0
   } else {
     // Islands serpentine
     if (index >= 0 && index < 2) dir = 'right';
@@ -15080,6 +15092,11 @@ document.addEventListener("DOMContentLoaded", () => {
 async function handleMonopolyRoll(count) {
   if (mbRolling || mbMoving) return;
 
+  mbSummaryQueueType = count;
+  if (count === 10) {
+    mbRoll10Results = [];
+  }
+
   if (count === 1) {
     // Check cost
     if (mbFreePulls > 0) {
@@ -15107,6 +15124,9 @@ async function handleMonopolyRoll(count) {
   saveProgression();
   syncMonopolyStats();
 
+  // Show speed & skip controls during active drawing
+  document.getElementById("mbGachaControls")?.classList.remove("hidden");
+
   triggerDiceRollSequence();
 }
 
@@ -15120,6 +15140,9 @@ function triggerDiceRollSequence() {
 
   diceOverlay.classList.remove("hidden");
   dice3d.classList.remove("hidden");
+  
+  // Set dice animation speed
+  dice3d.style.animationDuration = `${1.4 / mbSpeedMultiplier}s`;
   dice3d.classList.add("rolling");
   diceResult.classList.add("hidden");
 
@@ -15168,11 +15191,11 @@ function triggerDiceRollSequence() {
         diceOverlay.classList.add("hidden");
         mbRolling = false;
         animateCharacterWalk(steps);
-      }, 1100);
+      }, 1100 / mbSpeedMultiplier);
 
-    }, 500);
+    }, 500 / mbSpeedMultiplier);
 
-  }, 1400);
+  }, 1400 / mbSpeedMultiplier);
 }
 
 function animateCharacterWalk(steps) {
@@ -15215,9 +15238,12 @@ function animateCharacterWalk(steps) {
       const piece = document.getElementById("mbCharPiece");
       piece.style.left = `${coords.left}px`;
       piece.style.top = `${coords.top}px`;
-      piece.classList.remove("mb-char-hop");
-      void piece.offsetWidth;
-      piece.classList.add("mb-char-hop");
+      const hopWrap = document.getElementById("mbCharHopWrap");
+      if (hopWrap) {
+        hopWrap.classList.remove("mb-char-hop");
+        void hopWrap.offsetWidth;
+        hopWrap.classList.add("mb-char-hop");
+      }
 
       // Alternate walk frames & directions
       const walkInfo = getCharacterSpriteWalkInfo(char, 'main', mbMainIndex, frameTick ? 1 : 2);
@@ -15255,9 +15281,12 @@ function animateCharacterWalk(steps) {
       const piece = document.getElementById(`mbIslandChar${isId}`);
       piece.style.left = `${coords.left}px`;
       piece.style.top = `${coords.top}px`;
-      piece.classList.remove("mb-char-hop");
-      void piece.offsetWidth;
-      piece.classList.add("mb-char-hop");
+      const hopWrap = document.getElementById(`mbIslandCharHopWrap${isId}`);
+      if (hopWrap) {
+        hopWrap.classList.remove("mb-char-hop");
+        void hopWrap.offsetWidth;
+        hopWrap.classList.add("mb-char-hop");
+      }
 
       // Alternate walk frames & directions
       const walkInfo = getCharacterSpriteWalkInfo(char, mbCurrentBoard, curIdx, frameTick ? 1 : 2);
@@ -15274,7 +15303,7 @@ function animateCharacterWalk(steps) {
     // Beep sound
     if (typeof playSound === "function") playSound("tutorial_beep");
 
-    setTimeout(takeStep, 350);
+    mbWalkTimeout = setTimeout(takeStep, 350 / mbSpeedMultiplier);
   }
 
   takeStep();
@@ -15432,7 +15461,7 @@ function triggerClassRevealSequence(rank, callback) {
   setTimeout(() => {
     reveal.classList.add("hidden");
     if (callback) callback();
-  }, 2000);
+  }, 2000 / mbSpeedMultiplier);
 }
 
 function drawMonopolyReward(rarity) {
@@ -15441,9 +15470,11 @@ function drawMonopolyReward(rarity) {
   mbPityS++;
   mbPityMod++;
 
+  let forceSClassItem = false;
   if (mbPityMod >= 50) {
     mbPityMod = 0;
-    showToastMsg("Board Modified!");
+    forceSClassItem = true;
+    showToastMsg("Board Modified! Guaranteed S-Class Item!");
   }
 
   localStorage.setItem('mb_rolls_total', mbTotalRolls.toString());
@@ -15454,39 +15485,46 @@ function drawMonopolyReward(rarity) {
   let rank = 'A';
   let isItem = false;
 
-  // S-Class Pity (10 pulls)
-  if (mbPityS >= 10) {
+  // 1. Force S-Class item if board modified (50 pity)
+  if (forceSClassItem) {
     rank = 'S';
     isItem = true;
   }
-  // A-Class Pity (5 pulls)
+  // 2. Force S-Class item if S pity hit (10 rolls)
+  else if (mbPityS >= 10) {
+    rank = 'S';
+    isItem = true;
+  }
+  // 3. Force A-Class if A pity hit (5 rolls)
   else if (mbPityA >= 5) {
     rank = 'A';
     isItem = false;
   }
-  // Rates check based on landed crate type
+  // 4. Normal rates check
   else {
     const roll = Math.random();
     if (rarity === 'common') {
-      // 85% A-Class (Coins), 15% S-Class (Item)
+      // 85% A-Class, 15% S-Class
       if (roll < 0.15) {
         rank = 'S';
-        isItem = true;
+        // Common crate: 10% S-class item, 90% S-class 1000 Coins
+        isItem = Math.random() < 0.10;
       } else {
         rank = 'A';
         isItem = false;
       }
     } else if (rarity === 'rare') {
-      // 70% A-Class (Coins), 30% S-Class (Item)
+      // 70% A-Class, 30% S-Class
       if (roll < 0.30) {
         rank = 'S';
-        isItem = true;
+        // Rare crate: 20% S-class item, 80% S-class 1000 Coins
+        isItem = Math.random() < 0.20;
       } else {
         rank = 'A';
         isItem = false;
       }
     } else if (rarity === 'sclass') {
-      // 90% S-Class (Item), 10% A-Class (Coins)
+      // 90% S-Class item, 10% A-Class coins
       if (roll < 0.90) {
         rank = 'S';
         isItem = true;
@@ -15497,11 +15535,11 @@ function drawMonopolyReward(rarity) {
     }
   }
 
-  // Intermediate Reveal sequence then show reward
-  triggerClassRevealSequence(rank, () => {
+  let finalItem = null;
+
+  if (rank === 'S') {
     if (isItem) {
-      // Award S-Class Item!
-      // Filter unowned S-class items in gachaPool
+      // Award S-Class Item (Bomb Skin or Blast Effect)
       let unownedS = gachaPool.filter(item => {
         const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
         const owned = localStorage.getItem(ownedKey) === "true";
@@ -15510,75 +15548,24 @@ function drawMonopolyReward(rarity) {
       });
 
       if (unownedS.length > 0) {
-        // Draw unowned S-class item
-        const winnerItem = unownedS[Math.floor(Math.random() * unownedS.length)];
-        const ownedKey = winnerItem.type === "effect" ? `owned_effect_${winnerItem.color}` : `owned_bomb_${winnerItem.color}`;
+        finalItem = unownedS[Math.floor(Math.random() * unownedS.length)];
+        const ownedKey = finalItem.type === "effect" ? `owned_effect_${finalItem.color}` : `owned_bomb_${finalItem.color}`;
         localStorage.setItem(ownedKey, "true");
-
-        const newKey = winnerItem.type === "effect" ? `new_effect_${winnerItem.color}` : `new_bomb_${winnerItem.color}`;
+        const newKey = finalItem.type === "effect" ? `new_effect_${finalItem.color}` : `new_bomb_${finalItem.color}`;
         localStorage.setItem(newKey, "true");
-
-        // Reset Pities since we drew an S-class item
-        mbPityS = 0;
-        mbPityA = 0;
-        localStorage.setItem('mb_rolls_pity_s', '0');
-        localStorage.setItem('mb_rolls_pity_a', '0');
-
-        saveProgression();
-        syncMonopolyStats();
-
-        // Refresh wardrobes
-        if (typeof updateWardrobeTabBadges === "function") updateWardrobeTabBadges();
-        if (typeof syncBombWardrobe === "function") syncBombWardrobe();
-        if (typeof syncEffectWardrobe === "function") syncEffectWardrobe();
-
-        showCrateRewardPopup(winnerItem, 'S', false);
       } else {
-        // All S-class items owned! Award S-Class fallback: 1000 Coins!
-        const coinsAmount = 1000;
-        crownCount += coinsAmount;
+        // Fallback: 1000 Coins
+        finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
+        crownCount += 1000;
         document.getElementById("crownCount").textContent = crownCount;
         if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-
-        // Reset pities
-        mbPityS = 0;
-        mbPityA = 0;
-        localStorage.setItem('mb_rolls_pity_s', '0');
-        localStorage.setItem('mb_rolls_pity_a', '0');
-
-        saveProgression();
-        syncMonopolyStats();
-
-        const fallbackCoinItem = {
-          id: "coins",
-          name: "1,000 Coins",
-          color: "gold",
-          type: "coins"
-        };
-        showCrateRewardPopup(fallbackCoinItem, 'S', false);
       }
     } else {
-      // Award A-Class Coins!
-      let coinsAmount = 300;
-      if (rarity === 'common') {
-        // Purple crate: 300 - 500 coins
-        coinsAmount = Math.floor(Math.random() * 201) + 300;
-      } else if (rarity === 'rare') {
-        // Orange crate: 500 - 1000 coins
-        coinsAmount = Math.floor(Math.random() * 501) + 500;
-      } else {
-        // Sclass: 1000 coins fallback
-        coinsAmount = 1000;
-      }
-
-      crownCount += coinsAmount;
+      // S-Class Coins
+      finalItem = { id: "coins", name: "1,000 Coins", color: "gold", type: "coins" };
+      crownCount += 1000;
       document.getElementById("crownCount").textContent = crownCount;
       if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-
-      // Reset only A-class pity
-      mbPityA = 0;
-      localStorage.setItem('mb_rolls_pity_a', '0');
-
       saveProgression();
       syncMonopolyStats();
 
