@@ -12611,8 +12611,6 @@ body.is-iphone {
 .mb-char-piece {
   position: absolute;
   width: 44px; height: 60px;
-  grid-column: 1 / -1;
-  grid-row: 1 / -1;
   z-index: 10;
   transition: left 0.32s cubic-bezier(0.4,0,0.2,1), top 0.32s cubic-bezier(0.4,0,0.2,1);
   pointer-events: none;

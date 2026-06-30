@@ -15087,6 +15087,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // Claim button close handlers
   document.getElementById("mbCrateClaimBtn")?.addEventListener("click", claimMonopolyReward);
   document.getElementById("mbFreePullOk")?.addEventListener("click", closeFreePullPopup);
+
+  // Speed, Skip & Summary close handlers
+  document.getElementById("mbSpeedBtn")?.addEventListener("click", toggleGachaSpeed);
+  document.getElementById("mbSkipBtn")?.addEventListener("click", triggerMonopolySkip);
+  document.getElementById("mbSummaryCloseBtn")?.addEventListener("click", closeRoll10Summary);
+  document.getElementById("mbSummaryClickaway")?.addEventListener("click", closeRoll10Summary);
 });
 
 async function handleMonopolyRoll(count) {
