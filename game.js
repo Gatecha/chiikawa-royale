@@ -15483,6 +15483,7 @@ function triggerClassRevealSequence(rank, callback) {
 }
 
 // Shared helpers to pick items
+// Shared helper to pick S-Class items (forced = true guarantees an S-Class item even if duplicate)
 function _pickSItem(forced) {
   var allS = gachaPool.filter(function(x) { return (mbItemRanks[x.id] || 'B') === 'S'; });
   var unowned = allS.filter(function(x) {
@@ -15490,28 +15491,6 @@ function _pickSItem(forced) {
     return localStorage.getItem(k) !== "true";
   });
   var pool = unowned.length > 0 ? unowned : (forced ? allS : []);
-  if (pool.length === 0) return null;
-  var chosen = pool[Math.floor(Math.random() * pool.length)];
-  var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
-  var isDup = localStorage.getItem(oKey) === "true";
-  if (!isDup) {
-    localStorage.setItem(oKey, "true");
-    var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
-    localStorage.setItem(nKey, "true");
-  }
-  return { item: chosen, isDuplicate: isDup };
-}
-
-function _pickABItem(forced) {
-  var allAB = gachaPool.filter(function(x) {
-    var r = mbItemRanks[x.id] || 'B';
-    return r === 'A' || r === 'B';
-  });
-  var unowned = allAB.filter(function(x) {
-    var k = x.type === "effect" ? "owned_effect_" + x.color : "owned_bomb_" + x.color;
-    return localStorage.getItem(k) !== "true";
-  });
-  var pool = unowned.length > 0 ? unowned : (forced ? allAB : []);
   if (pool.length === 0) return null;
   var chosen = pool[Math.floor(Math.random() * pool.length)];
   var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
@@ -15559,24 +15538,26 @@ function drawMonopolyReward(rarity) {
     isItem = true;
   } else if (mbPityA >= 5) {
     rank = 'A';
-    isItem = true;
+    isItem = false; // A-class is strictly coins
   } else {
     var roll = Math.random();
     if (rarity === 'common') {
       if (roll < 0.15) {
         rank = 'S';
+        // 35% chance of S-Class Item, 65% chance of 1,000 Coins
         isItem = Math.random() < 0.35;
       } else {
         rank = 'A';
-        isItem = Math.random() < 0.12;
+        isItem = false;
       }
     } else if (rarity === 'rare') {
       if (roll < 0.30) {
         rank = 'S';
+        // 60% chance of S-Class Item, 40% chance of 1,000 Coins
         isItem = Math.random() < 0.60;
       } else {
         rank = 'A';
-        isItem = Math.random() < 0.30;
+        isItem = false;
       }
     } else if (rarity === 'sclass') {
       if (roll < 0.90) {
@@ -15584,7 +15565,7 @@ function drawMonopolyReward(rarity) {
         isItem = true;
       } else {
         rank = 'A';
-        isItem = true;
+        isItem = false;
       }
     }
   }
@@ -15620,45 +15601,19 @@ function drawMonopolyReward(rarity) {
     localStorage.setItem('mb_rolls_pity_s', '0');
     localStorage.setItem('mb_rolls_pity_a', '0');
   } else {
-    if (isItem) {
-      var picked = _pickABItem(mbPityA >= 5);
-      if (picked) {
-        finalItem = picked.item;
-        isDuplicate = picked.isDuplicate;
-        rank = mbItemRanks[finalItem.id] || 'A';
-        if (isDuplicate) {
-          crownCount += 250;
-          document.getElementById("crownCount").textContent = crownCount;
-          if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-        }
-      } else {
-        var coinsAmount = 300;
-        if (rarity === 'common') {
-          coinsAmount = Math.floor(Math.random() * 201) + 300;
-        } else if (rarity === 'rare') {
-          coinsAmount = Math.floor(Math.random() * 501) + 500;
-        } else {
-          coinsAmount = 1000;
-        }
-        crownCount += coinsAmount;
-        document.getElementById("crownCount").textContent = crownCount;
-        if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-        finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
-      }
+    // A-Class Coins
+    var coinsAmount = 300;
+    if (rarity === 'common') {
+      coinsAmount = Math.floor(Math.random() * 201) + 300;
+    } else if (rarity === 'rare') {
+      coinsAmount = Math.floor(Math.random() * 501) + 500;
     } else {
-      var coinsAmount = 300;
-      if (rarity === 'common') {
-        coinsAmount = Math.floor(Math.random() * 201) + 300;
-      } else if (rarity === 'rare') {
-        coinsAmount = Math.floor(Math.random() * 501) + 500;
-      } else {
-        coinsAmount = 1000;
-      }
-      crownCount += coinsAmount;
-      document.getElementById("crownCount").textContent = crownCount;
-      if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
-      finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
+      coinsAmount = 1000;
     }
+    crownCount += coinsAmount;
+    document.getElementById("crownCount").textContent = crownCount;
+    if (document.getElementById("statCrowns")) document.getElementById("statCrowns").textContent = crownCount;
+    finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
     mbPityA = 0;
     localStorage.setItem('mb_rolls_pity_a', '0');
   }
@@ -15705,7 +15660,7 @@ function drawMonopolyRewardSilently(rarity) {
     isItem = true;
   } else if (mbPityA >= 5) {
     rank = 'A';
-    isItem = true;
+    isItem = false;
   } else {
     var roll = Math.random();
     if (rarity === 'common') {
@@ -15714,7 +15669,7 @@ function drawMonopolyRewardSilently(rarity) {
         isItem = Math.random() < 0.35;
       } else {
         rank = 'A';
-        isItem = Math.random() < 0.12;
+        isItem = false;
       }
     } else if (rarity === 'rare') {
       if (roll < 0.30) {
@@ -15722,7 +15677,7 @@ function drawMonopolyRewardSilently(rarity) {
         isItem = Math.random() < 0.60;
       } else {
         rank = 'A';
-        isItem = Math.random() < 0.30;
+        isItem = false;
       }
     } else if (rarity === 'sclass') {
       if (roll < 0.90) {
@@ -15730,7 +15685,7 @@ function drawMonopolyRewardSilently(rarity) {
         isItem = true;
       } else {
         rank = 'A';
-        isItem = true;
+        isItem = false;
       }
     }
   }
@@ -15758,29 +15713,12 @@ function drawMonopolyRewardSilently(rarity) {
     localStorage.setItem('mb_rolls_pity_s', '0');
     localStorage.setItem('mb_rolls_pity_a', '0');
   } else {
-    if (isItem) {
-      var picked = _pickABItem(mbPityA >= 5);
-      if (picked) {
-        finalItem = picked.item;
-        isDuplicate = picked.isDuplicate;
-        rank = mbItemRanks[finalItem.id] || 'A';
-        if (isDuplicate) crownCount += 250;
-      } else {
-        var coinsAmount = 300;
-        if (rarity === 'common') coinsAmount = Math.floor(Math.random() * 201) + 300;
-        else if (rarity === 'rare') coinsAmount = Math.floor(Math.random() * 501) + 500;
-        else coinsAmount = 1000;
-        crownCount += coinsAmount;
-        finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
-      }
-    } else {
-      var coinsAmount = 300;
-      if (rarity === 'common') coinsAmount = Math.floor(Math.random() * 201) + 300;
-      else if (rarity === 'rare') coinsAmount = Math.floor(Math.random() * 501) + 500;
-      else coinsAmount = 1000;
-      crownCount += coinsAmount;
-      finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
-    }
+    var coinsAmount = 300;
+    if (rarity === 'common') coinsAmount = Math.floor(Math.random() * 201) + 300;
+    else if (rarity === 'rare') coinsAmount = Math.floor(Math.random() * 501) + 500;
+    else coinsAmount = 1000;
+    crownCount += coinsAmount;
+    finalItem = { id: "coins", name: coinsAmount + " Coins", color: "gold", type: "coins" };
     mbPityA = 0;
     localStorage.setItem('mb_rolls_pity_a', '0');
   }
