@@ -539,8 +539,12 @@ const characterSelectVideos = {
 
 function getCharacterCardPath(kind) {
   let base = kind || "chiikawa";
-  if (base.startsWith("magical_")) {
-    base = base.replace("magical_", "");
+  if (base === "magical_chiikawa") {
+    return "assets/character skins/wardrobe cards/magical chiikawa.png";
+  } else if (base === "magical_hachiware") {
+    return "assets/character skins/wardrobe cards/magical hachiware.png";
+  } else if (base === "magical_usagi") {
+    return "assets/character skins/wardrobe cards/magical usagi.png";
   }
   return `assets/lobby cards/${base} character card.png`;
 }
