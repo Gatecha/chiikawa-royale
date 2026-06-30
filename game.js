@@ -18,14 +18,19 @@
   const _origError = console.error.bind(console);
   const _origWarn  = console.warn.bind(console);
 
-  console.error = function() { _origError.apply(console, arguments); _pushLog('ERR', arguments); };
+  console.error = function() { _origError.apply(console, arguments); _pushLog('ERR', arguments); const dbgBtn = document.getElementById('debugBtnFloat'); if (dbgBtn) dbgBtn.style.display = 'block'; };
   console.warn  = function() { _origWarn.apply(console, arguments);  _pushLog('WRN', arguments); };
 
   window.onerror = function(msg, src, line, col, err) {
     _pushLog('UNCAUGHT', [msg, `${src}:${line}:${col}`]);
+    // Show debug button on first error
+    const dbgBtn = document.getElementById('debugBtnFloat');
+    if (dbgBtn) dbgBtn.style.display = 'block';
   };
   window.onunhandledrejection = function(e) {
     _pushLog('PROMISE', [e.reason]);
+    const dbgBtn = document.getElementById('debugBtnFloat');
+    if (dbgBtn) dbgBtn.style.display = 'block';
   };
 })();
 
@@ -3494,10 +3499,12 @@ function localCheckGameEnd() {
     winner.trophies = (winner.trophies || 0) + 1;
   }
   
-  const grandWinner = players.find((p) => (p.trophies || 0) >= 8);
+  const winThreshold = window._tutorialMatchMode ? 3 : 8;
+  const grandWinner = players.find((p) => (p.trophies || 0) >= winThreshold);
   const tournamentFinished = !!grandWinner;
   
   if (tournamentFinished && grandWinner) {
+    window._tutorialMatchMode = false; // reset after match ends
     stateEl.textContent = `${grandWinner.name} wins the Match! 🏆`;
   }
   
@@ -13922,25 +13929,45 @@ function startInteractiveCutscene() {
   let chooseBtn = document.getElementById("tutorialChooseBtn");
   let prevBtn   = document.getElementById("tutorialPrevBtn");
   let nextBtn   = document.getElementById("tutorialNextBtn");
-  
+
   if (!cutsceneScreen) {
     localStorage.setItem("tutorial_status", "vs_screen");
     startUsernameIntroFlow();
     return;
   }
-  
+
   switchScreen(cutsceneScreen);
-  
+
   let tutorialState = 0;
   const characterKeys = ["usagi", "chiikawa", "hachiware"];
-  
-  function showUI() {
-    if (title) title.classList.add("visible");
-    if (chooseBtn) chooseBtn.classList.add("visible");
-    updateNavButtons();
+  let introPhaseActive = true; // true = playing full intro, false = yoyo mode
+
+  // --- Phase 1: Draw the video live on canvas (intro plays through) ---
+  let liveDrawRAF = null;
+  function drawVideoToCanvas() {
+    if (!canvas || !video) return;
+    if (canvas.width === 0 || canvas.height === 0) {
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 360;
+    }
+    const ctx2 = canvas.getContext("2d");
+    ctx2.drawImage(video, 0, 0, canvas.width, canvas.height);
+    liveDrawRAF = requestAnimationFrame(drawVideoToCanvas);
   }
-  showUI();
-  
+
+  function startYoyo(charKey) {
+    // Stop live draw
+    if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
+
+    if (_framesReady) {
+      _startYoyoCanvas(canvas, charKey);
+    } else {
+      _captureAllCharacterFrames().then(() => {
+        _startYoyoCanvas(canvas, charKey);
+      });
+    }
+  }
+
   function updateNavButtons() {
     if (tutorialState === 0) {
       if (prevBtn) { prevBtn.classList.remove("visible"); prevBtn.disabled = true; }
@@ -13960,69 +13987,89 @@ function startInteractiveCutscene() {
     }
   }
 
-  // Start canvas yoyo for current character
-  function startCharacterYoyo(charKey) {
-    if (_framesReady) {
-      _startYoyoCanvas(canvas, charKey);
-    } else {
-      // Frames not ready yet — capture then start
-      _captureAllCharacterFrames().then(() => {
-        _startYoyoCanvas(canvas, charKey);
-      });
-    }
+  function showSelectionUI() {
+    if (title) title.classList.add("visible");
+    if (chooseBtn) chooseBtn.classList.add("visible");
+    updateNavButtons();
   }
 
-  // Kick off frame capture and start yoyo
-  startCharacterYoyo(characterKeys[tutorialState]);
-
-  // Stop old animation loops
+  // Stop old loops
   if (cutsceneAnimationFrameId) {
     cancelAnimationFrame(cutsceneAnimationFrameId);
     cutsceneAnimationFrameId = null;
   }
+  _stopYoyoCanvas();
 
+  // --- Play video from beginning (intro cutscene) ---
+  video.currentTime = 0;
+  video.play().catch(e => console.warn("Cutscene play blocked:", e));
+
+  // Start drawing video frames to canvas
+  drawVideoToCanvas();
+
+  // Start capturing frames in background immediately (while intro plays)
+  _captureAllCharacterFrames();
+
+  // Watch for when intro reaches Usagi section (~0.9s) → switch to yoyo
+  const CHAR_START = 0.9;
+  function introWatcher() {
+    if (!introPhaseActive) return;
+    if (video.currentTime >= CHAR_START) {
+      introPhaseActive = false;
+      video.pause();
+      // Transition to yoyo
+      startYoyo(characterKeys[tutorialState]);
+      showSelectionUI();
+    } else {
+      requestAnimationFrame(introWatcher);
+    }
+  }
+  requestAnimationFrame(introWatcher);
+
+  // --- Wire up buttons ---
   if (prevBtn && nextBtn && chooseBtn) {
     const newPrev   = prevBtn.cloneNode(true);
     const newNext   = nextBtn.cloneNode(true);
     const newChoose = chooseBtn.cloneNode(true);
-    
+
     prevBtn.parentNode.replaceChild(newPrev, prevBtn);
     nextBtn.parentNode.replaceChild(newNext, nextBtn);
     chooseBtn.parentNode.replaceChild(newChoose, chooseBtn);
-    
+
     prevBtn   = newPrev;
     nextBtn   = newNext;
     chooseBtn = newChoose;
-    
+
     newPrev.addEventListener("click", () => {
       if (tutorialState > 0) {
         tutorialState--;
-        startCharacterYoyo(characterKeys[tutorialState]);
+        startYoyo(characterKeys[tutorialState]);
         updateNavButtons();
       }
     });
-    
+
     newNext.addEventListener("click", () => {
       if (tutorialState < 2) {
         tutorialState++;
-        startCharacterYoyo(characterKeys[tutorialState]);
+        startYoyo(characterKeys[tutorialState]);
         updateNavButtons();
       }
     });
-    
+
     newChoose.addEventListener("click", () => {
       selectedCharacter = characterKeys[tutorialState];
       previewCharacter  = selectedCharacter;
       localStorage.setItem("equipped_character", selectedCharacter);
-      
+
       syncCharacterSelectPreview(selectedCharacter);
       syncLobbySpotlightVideo(selectedCharacter);
       syncSquadLobbyVideo(selectedCharacter);
       syncSquadLobbyInterface();
-      
+
       localStorage.setItem("tutorial_status", "vs_screen");
-      
+
       _stopYoyoCanvas();
+      if (liveDrawRAF) { cancelAnimationFrame(liveDrawRAF); liveDrawRAF = null; }
       startUsernameIntroFlowAfterCutscene();
     });
   }
@@ -14059,8 +14106,12 @@ function startUsernameIntroFlowAfterCutscene() {
 }
 
 
+// Flag so win condition knows tutorial is 3-round mode
+window._tutorialMatchMode = false;
+
 function startTutorialLocalMatch() {
   const playerName = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
+  window._tutorialMatchMode = true;
   showVsLoadingScreen([
     { id: "local_player", name: playerName, kind: selectedCharacter },
     { id: "cpu_1", name: "Usagi CPU", kind: "usagi" },

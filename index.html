@@ -206,7 +206,7 @@
       <!-- 00. TUTORIAL INTERACTIVE CUTSCENE SCREEN -->
       <section id="tutorialCutsceneScreen" class="screen">
         <div class="tutorial-cutscene-container">
-          <video id="tutorialCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline style="display:none;"></video>
+          <video id="tutorialCutsceneVideo" src="assets/launcher background/chiikawa royale launcher animation background.mp4" muted playsinline style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0;pointer-events:none;z-index:0;"></video>
           <canvas id="tutorialCutsceneCanvas"></canvas>
           <div id="tutorialCutsceneTitle" class="tutorial-cutscene-title">choose your starter character</div>
           <div id="tutorialCutsceneCharName" class="tutorial-cutscene-charname">USAGI</div>
@@ -2730,7 +2730,7 @@
     </div>
 
     <!-- Debug Popup -->
-    <div id="debugBtnFloat" style="position:fixed;bottom:18px;left:18px;z-index:2147483646;">
+    <div id="debugBtnFloat" style="position:fixed;bottom:18px;left:18px;z-index:2147483646;display:none;">
       <button onclick="document.getElementById('debugPopupOverlay').classList.toggle('dbg-show')" style="background:#0e0e1a;border:1px solid rgba(255,80,80,0.5);color:#ff5050;font-size:10px;font-weight:700;letter-spacing:2px;padding:6px 12px;border-radius:2px;cursor:pointer;font-family:monospace;">DEBUG</button>
     </div>
     <div id="debugPopupOverlay" style="position:fixed;inset:0;background:rgba(4,4,12,0.85);backdrop-filter:blur(6px);z-index:2147483647;display:none;flex-direction:column;justify-content:center;align-items:center;">
