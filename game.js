@@ -7286,7 +7286,8 @@ function syncSquadLobbyInterface() {
   }
   const squadLobbyRankIcon = document.getElementById("squadLobbyRankIcon");
   if (squadLobbyRankIcon) {
-    squadLobbyRankIcon.innerHTML = getRankIconSvg(rank.id);
+    const currentRank = getRankForRp(rankRp);
+    squadLobbyRankIcon.innerHTML = getRankIconSvg(currentRank.id);
   }
   const squadLobbyLevelNum = document.getElementById("squadLobbyLevelNum");
   if (squadLobbyLevelNum) {
