@@ -1,4 +1,4 @@
-﻿// =================================================================
+// =================================================================
 // DEBUG LOG SYSTEM — intercepts errors and console.error/warn
 // =================================================================
 (function() {
@@ -532,6 +532,9 @@ const characterSelectVideos = {
   hachiware: "hachiware-lobby.mp4",
   usagi: "assets/usagi/usagi_character_animation.mp4",
   momonga: "assets/momonga/momonga_character_animation.mp4",
+  magical_chiikawa: "assets/character skins/character animation wardrobe/magical chiikawa.mp4",
+  magical_hachiware: "assets/character skins/character animation wardrobe/magical hachiware.mp4",
+  magical_usagi: "assets/character skins/character animation wardrobe/magical usagi.mp4",
 };
 let selectedCharacter = localStorage.getItem("equipped_character") || "chiikawa";
 let previewCharacter = selectedCharacter;
@@ -761,6 +764,9 @@ const characterStyle = {
   chiikawa: { body: "#ffffff", accent: "#ff8ab1", blush: "#ffb6c9", label: "Chiikawa" },
   momonga: { body: "#f6fbff", accent: "#b9def2", blush: "#ffb3c5", label: "Momonga" },
   shisa: { body: "#fff2ce", accent: "#ffac79", blush: "#ffafc2", label: "Shisa" },
+  magical_chiikawa: { body: "#ffffff", accent: "#ff8ab1", blush: "#ffb6c9", label: "Magical Chiikawa" },
+  magical_hachiware: { body: "#ffffff", accent: "#80b2c9", blush: "#ffb5c6", label: "Magical Hachiware" },
+  magical_usagi: { body: "#fff1bc", accent: "#ff9d57", blush: "#ffaac1", label: "Magical Usagi" },
 };
 
 // Load Hachiware Images
@@ -835,6 +841,67 @@ momongaImages.walk_back2.src = "assets/momonga/momonga_walk_back2.png";
 momongaImages.walk_side1.src = "assets/momonga/momonga_walk_side1.png";
 momongaImages.walk_side2.src = "assets/momonga/momonga_walk_side2.png";
 
+// Load Magical Chiikawa Images
+const magical_chiikawaImages = {
+  idle: new Image(),
+  walk_front1: new Image(),
+  walk_front2: new Image(),
+  walk_back1: new Image(),
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
+};
+magical_chiikawaImages.idle.src = "assets/character skins/in game animations/magical chiikawa idle.png";
+magical_chiikawaImages.walk_front1.src = "assets/character skins/in game animations/magical chiikawa walk forward.png";
+magical_chiikawaImages.walk_front2.src = "assets/character skins/in game animations/magical chiikawa walk forward.png";
+magical_chiikawaImages.walk_back1.src = "assets/character skins/in game animations/magical chiikawa walk backward.png";
+magical_chiikawaImages.walk_back2.src = "assets/character skins/in game animations/magical chiikawa walk backward.png";
+magical_chiikawaImages.walk_side1.src = "assets/character skins/in game animations/magical chiikawa walk sideward.png";
+magical_chiikawaImages.walk_side2.src = "assets/character skins/in game animations/magical chiikawa walk sideward.png";
+
+// Load Magical Hachiware Images
+const magical_hachiwareImages = {
+  idle: new Image(),
+  walk_front1: new Image(),
+  walk_front2: new Image(),
+  walk_back1: new Image(),
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
+};
+magical_hachiwareImages.idle.src = "assets/character skins/in game animations/magical hachiware idle.png";
+magical_hachiwareImages.walk_front1.src = "assets/character skins/in game animations/magical hachiware walk forward.png";
+magical_hachiwareImages.walk_front2.src = "assets/character skins/in game animations/magical hachiware walk forward.png";
+magical_hachiwareImages.walk_back1.src = "assets/character skins/in game animations/magical hachiware walk backward.png";
+magical_hachiwareImages.walk_back2.src = "assets/character skins/in game animations/magical hachiware walk backward.png";
+magical_hachiwareImages.walk_side1.src = "assets/character skins/in game animations/magical hachiware walk sideward.png";
+magical_hachiwareImages.walk_side2.src = "assets/character skins/in game animations/magical hachiware walk sideward.png";
+
+// Load Magical Usagi Images
+const magical_usagiImages = {
+  idle: new Image(),
+  walk_front1: new Image(),
+  walk_front2: new Image(),
+  walk_back1: new Image(),
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
+};
+magical_usagiImages.idle.src = "assets/character skins/in game animations/magical usagi idle.png";
+magical_usagiImages.walk_front1.src = "assets/character skins/in game animations/magical usagi walk forward.png";
+magical_usagiImages.walk_front2.src = "assets/character skins/in game animations/magical usagi walk forward.png";
+magical_usagiImages.walk_back1.src = "assets/character skins/in game animations/magical usagi walk backward.png";
+magical_usagiImages.walk_back2.src = "assets/character skins/in game animations/magical usagi walk backward.png";
+magical_usagiImages.walk_side1.src = "assets/character skins/in game animations/magical usagi walk sideward.png";
+magical_usagiImages.walk_side2.src = "assets/character skins/in game animations/magical usagi walk sideward.png";
+
+// Load Custom Bomb Skins
+const magicalChiikawaBombImg = new Image();
+magicalChiikawaBombImg.src = "assets/character skins/bomb skins/magical chiikawa bomb skin.png";
+const magicalHachiwareBombImg = new Image();
+magicalHachiwareBombImg.src = "assets/character skins/bomb skins/magical hachiware bomb skin.png";
+const magicalUsagiBombImg = new Image();
+magicalUsagiBombImg.src = "assets/character skins/bomb skins/magical usagi bomb skin.png";
 
 // Emote symbols
 const emoteSymbols = {
@@ -1465,6 +1532,10 @@ function confirmCharacterSelection() {
   const isUnlocked = unlocked.includes(previewCharacter);
 
   if (!isUnlocked) {
+    if (previewCharacter.startsWith("magical_")) {
+      showToastMsg("Unlock this exclusive skin in the Gacha Shop!");
+      return;
+    }
     if (crownCount >= 5000) {
       crownCount -= 5000;
       unlocked.push(previewCharacter);
@@ -2195,12 +2266,14 @@ function handleServerMessage(msg) {
     case "bomb_exploded":
       const explBomb = bombs.find((b) => b.id === data.bombId);
       const explColor = explBomb ? (explBomb.effectColor || "default") : "default";
+      const explIsMagical = explBomb && (explBomb.color === "magical_chiikawa" || explBomb.color === "magical_hachiware" || explBomb.color === "magical_usagi");
       bombs = bombs.filter((b) => b.id !== data.bombId);
       blasts.push({
         cells: data.cells,
         timer: 0.48,
         age: 0,
         color: explColor,
+        isMagical: explIsMagical
       });
 
       data.destroyedCrates.forEach((crate) => {
@@ -3581,7 +3654,8 @@ function localTriggerExplosion(bomb) {
     }
   });
 
-  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.effectColor || "default" });
+  const explIsMagical = bomb.color === "magical_chiikawa" || bomb.color === "magical_hachiware" || bomb.color === "magical_usagi";
+  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.effectColor || "default", isMagical: explIsMagical });
   // In BR mode only shake for MY own bomb; in classic mode always shake
   if (!isBattleRoyale(currentRoomMode) || bomb.ownerId === localPlayerId) {
     shakeTimer = 0.35;
@@ -5099,10 +5173,16 @@ function burstSparkles(px, py) {
 // ----------------------------------------------------------------
 
 function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0, dy = 1, tilesWalked = 0, walkDistance = 0) {
-  if (kind === "hachiware" || kind === "usagi" || kind === "chiikawa" || kind === "momonga") {
+  if (kind === "hachiware" || kind === "usagi" || kind === "chiikawa" || kind === "momonga" || kind === "magical_chiikawa" || kind === "magical_hachiware" || kind === "magical_usagi") {
     actx.save();
     
-    const spriteSet = kind === "momonga" ? momongaImages : (kind === "chiikawa" ? chiikawaImages : (kind === "usagi" ? usagiImages : hachiwareImages));
+    let spriteSet = hachiwareImages;
+    if (kind === "momonga") spriteSet = momongaImages;
+    else if (kind === "chiikawa") spriteSet = chiikawaImages;
+    else if (kind === "usagi") spriteSet = usagiImages;
+    else if (kind === "magical_chiikawa") spriteSet = magical_chiikawaImages;
+    else if (kind === "magical_hachiware") spriteSet = magical_hachiwareImages;
+    else if (kind === "magical_usagi") spriteSet = magical_usagiImages;
     
     // Determine the image to draw and orientation
     let img = spriteSet.idle;
@@ -5905,10 +5985,32 @@ function drawBomb(bomb) {
   const by = (bomb.slideY !== undefined) ? bomb.slideY : bomb.y;
   if (!isTileVisible(bx, by)) return;
   const c = centerOf(bx, by);
-  const scale = 1 + Math.sin(bomb.pulse) * 0.08;
+  
+  let scale = 1 + Math.sin(bomb.pulse) * 0.08;
+  const isMagical = bomb.color === "magical_chiikawa" || bomb.color === "magical_hachiware" || bomb.color === "magical_usagi";
+  if (isMagical) {
+    const timeLeft = bomb.timer !== undefined ? bomb.timer : 1.5;
+    const speedMultiplier = timeLeft > 0 ? (1.6 / Math.max(0.18, timeLeft)) : 1;
+    const pulseVal = Math.sin(bomb.pulse * speedMultiplier);
+    const pulseFactor = pulseVal > 0 ? 0.16 * Math.pow(pulseVal, 2) : 0.07 * pulseVal;
+    scale = 1.04 + pulseFactor;
+  }
+  
   ctx.save();
   ctx.translate(c.x, c.y);
   ctx.scale(scale, scale);
+  
+  if (isMagical) {
+    let img = magicalChiikawaBombImg;
+    if (bomb.color === "magical_hachiware") img = magicalHachiwareBombImg;
+    else if (bomb.color === "magical_usagi") img = magicalUsagiBombImg;
+    
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, -18, -18, 36, 36);
+      ctx.restore();
+      return;
+    }
+  }
   
   // Custom bomb skin colors
   let bombColor = "#25212a";
@@ -5950,6 +6052,29 @@ function drawBomb(bomb) {
   ctx.restore();
 }
 
+function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+  let rot = (Math.PI / 2) * 3;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+}
+
 function drawBlast(blast) {
   const alpha = Math.max(0, blast.timer / 0.48);
   
@@ -5981,14 +6106,28 @@ function drawBlast(blast) {
     ctx.fillStyle = innerColor;
     ctx.strokeStyle = outerColor;
     ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, 23 + Math.sin(blast.age * 38) * 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.86)";
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, 11, 0, Math.PI * 2);
-    ctx.fill();
+    
+    if (blast.isMagical) {
+      const outerRad = 24 + Math.sin(blast.age * 38) * 3;
+      const innerRad = outerRad * 0.45;
+      drawStar(ctx, c.x, c.y, 5, outerRad, innerRad);
+      ctx.fill();
+      ctx.stroke();
+      
+      ctx.fillStyle = "rgba(255,255,255,0.86)";
+      ctx.beginPath();
+      drawStar(ctx, c.x, c.y, 5, 12, 5.4);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 23 + Math.sin(blast.age * 38) * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.86)";
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 11, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   });
 }
@@ -6118,7 +6257,20 @@ function drawParticle(p) {
   ctx.save();
   ctx.globalAlpha = Math.min(1, p.life * 2.4);
   ctx.fillStyle = p.color;
-  ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  
+  if (p.isSparkle) {
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - p.size);
+    ctx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+    ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+    ctx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+    ctx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+    ctx.fill();
+  } else {
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  }
   ctx.restore();
 }
 
@@ -6621,12 +6773,54 @@ function update(dt) {
     blasts.forEach((blast) => {
       blast.age += dt;
       blast.timer -= dt;
+      
+      if (blast.isMagical) {
+        blast.cells.forEach(cell => {
+          if (Math.random() < 0.12) {
+            const c = centerOf(cell.x, cell.y);
+            const px = c.x + (Math.random() - 0.5) * 36;
+            const py = c.y + (Math.random() - 0.5) * 36;
+            particles.push({
+              x: px,
+              y: py,
+              vx: (Math.random() - 0.5) * 80,
+              vy: (Math.random() - 0.5) * 80,
+              life: 0.3 + Math.random() * 0.3,
+              color: ["#ffd86f", "#ff9ebb", "#18baff", "#39d98a", "#ffffff"][Math.floor(Math.random() * 5)],
+              size: 5 + Math.random() * 5,
+              isSparkle: true
+            });
+          }
+        });
+      }
     });
     blasts = blasts.filter((blast) => blast.timer > 0);
 
     bombs.forEach((bomb) => {
       bomb.pulse += dt * 8;
       bomb.timer = Math.max(0, bomb.timer - dt);
+
+      const isMagical = bomb.color === "magical_chiikawa" || bomb.color === "magical_hachiware" || bomb.color === "magical_usagi";
+      if (isMagical) {
+        if (Math.random() < 0.18) {
+          const c = centerOf(bomb.x, bomb.y);
+          const angle = Math.random() * Math.PI * 2;
+          const radius = Math.random() * 14;
+          const px = c.x + Math.cos(angle) * radius;
+          const py = c.y + Math.sin(angle) * radius - 2;
+          
+          particles.push({
+            x: px,
+            y: py,
+            vx: (Math.random() - 0.5) * 15,
+            vy: -Math.random() * 20 - 5,
+            life: 0.4 + Math.random() * 0.3,
+            color: ["#ffd86f", "#ff9ebb", "#18baff", "#39d98a", "#ffffff"][Math.floor(Math.random() * 5)],
+            size: 4 + Math.random() * 4,
+            isSparkle: true
+          });
+        }
+      }
 
       if (bomb.passableFor) {
         players.forEach((player) => {
@@ -13138,16 +13332,26 @@ if (document.readyState === "complete" || document.readyState === "interactive")
 // =================================================================
 
 const gachaPool = [
-  { id: "pink-bomb", name: "Pink Bomb", color: "pink", type: "bomb", file: "assets/shop/pink-bomb.svg", chance: "10% Chance" },
-  { id: "blue-bomb", name: "Blue Bomb", color: "blue", type: "bomb", file: "assets/shop/blue-bomb.svg", chance: "10% Chance" },
-  { id: "green-bomb", name: "Green Bomb", color: "green", type: "bomb", file: "assets/shop/green-bomb.svg", chance: "10% Chance" },
-  { id: "gold-bomb", name: "Gold Bomb", color: "gold", type: "bomb", file: "assets/shop/gold-bomb.svg", chance: "10% Chance" },
-  { id: "purple-bomb", name: "Purple Bomb", color: "purple", type: "bomb", file: "assets/shop/purple-bomb.svg", chance: "10% Chance" },
-  { id: "pink-effect", name: "Pink Flame", color: "pink", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "blue-effect", name: "Blue Flame", color: "blue", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "green-effect", name: "Green Flame", color: "green", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "gold-effect", name: "Golden Blast", color: "gold", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "purple-effect", name: "Shadow Blast", color: "purple", type: "effect", isSvgMarkup: true, chance: "10% Chance" }
+  { id: "pink-bomb", name: "Pink Bomb", color: "pink", type: "bomb", file: "assets/shop/pink-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "blue-bomb", name: "Blue Bomb", color: "blue", type: "bomb", file: "assets/shop/blue-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "green-bomb", name: "Green Bomb", color: "green", type: "bomb", file: "assets/shop/green-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "gold-bomb", name: "Gold Bomb", color: "gold", type: "bomb", file: "assets/shop/gold-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "purple-bomb", name: "Purple Bomb", color: "purple", type: "bomb", file: "assets/shop/purple-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "pink-effect", name: "Pink Flame", color: "pink", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "blue-effect", name: "Blue Flame", color: "blue", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "green-effect", name: "Green Flame", color: "green", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "gold-effect", name: "Golden Blast", color: "gold", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "purple-effect", name: "Shadow Blast", color: "purple", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  
+  // Magical Bombs (Rare)
+  { id: "magical_chiikawa_bomb", name: "Magical Chiikawa Bomb", color: "magical_chiikawa", type: "bomb", file: "assets/character skins/bomb skins/magical chiikawa bomb skin.png", chance: "Rare (1.4%)", weight: 1.5, rarity: "rare" },
+  { id: "magical_hachiware_bomb", name: "Magical Hachiware Bomb", color: "magical_hachiware", type: "bomb", file: "assets/character skins/bomb skins/magical hachiware bomb skin.png", chance: "Rare (1.4%)", weight: 1.5, rarity: "rare" },
+  { id: "magical_usagi_bomb", name: "Magical Usagi Bomb", color: "magical_usagi", type: "bomb", file: "assets/character skins/bomb skins/magical usagi bomb skin.png", chance: "Rare (1.4%)", weight: 1.5, rarity: "rare" },
+  
+  // Magical Characters (Legendary)
+  { id: "magical_chiikawa", name: "Magical Chiikawa", color: "magical_chiikawa", type: "character", file: "assets/character skins/wardrobe cards/magical chiikawa.png", chance: "Legendary (0.5%)", weight: 0.5, rarity: "legendary" },
+  { id: "magical_hachiware", name: "Magical Hachiware", color: "magical_hachiware", type: "character", file: "assets/character skins/wardrobe cards/magical hachiware.png", chance: "Legendary (0.5%)", weight: 0.5, rarity: "legendary" },
+  { id: "magical_usagi", name: "Magical Usagi", color: "magical_usagi", type: "character", file: "assets/character skins/wardrobe cards/magical usagi.png", chance: "Legendary (0.5%)", weight: 0.5, rarity: "legendary" }
 ];
 
 function getGachaItemImageHtml(item, size = 44) {
@@ -13191,6 +13395,9 @@ function syncBombSelectPreview(color) {
     green: "Green Bomb",
     gold: "Gold Bomb",
     purple: "Purple Bomb",
+    magical_chiikawa: "Magical Chiikawa Bomb",
+    magical_hachiware: "Magical Hachiware Bomb",
+    magical_usagi: "Magical Usagi Bomb",
   };
   
   if (characterSelectName) {
@@ -13209,7 +13416,13 @@ function syncBombSelectPreview(color) {
     characterSelectCanvas.style.display = "none";
     effectSelectPreviewContainer.style.display = "none";
     bombSelectPreviewImg.style.display = "block";
-    bombSelectPreviewImg.src = `assets/shop/${color}-bomb.svg`;
+    
+    if (color.startsWith("magical_")) {
+      const cleanColor = color.replace("_", " ");
+      bombSelectPreviewImg.src = `assets/character skins/bomb skins/${cleanColor} bomb skin.png`;
+    } else {
+      bombSelectPreviewImg.src = `assets/shop/${color}-bomb.svg`;
+    }
     
     // Trigger bounce pop & floating reflow
     bombSelectPreviewImg.classList.remove("active-preview");
@@ -13219,7 +13432,7 @@ function syncBombSelectPreview(color) {
 }
 
 function updateWardrobeTabBadges() {
-  const bombColors = ["pink", "blue", "green", "gold", "purple"];
+  const bombColors = ["pink", "blue", "green", "gold", "purple", "magical_chiikawa", "magical_hachiware", "magical_usagi"];
   const hasNewBomb = bombColors.some(color => localStorage.getItem("new_bomb_" + color) === "true");
   
   const effectColors = ["pink", "blue", "green", "gold", "purple"];
@@ -13251,6 +13464,9 @@ function syncBombWardrobe() {
     green: localStorage.getItem("owned_bomb_green") === "true",
     gold: localStorage.getItem("owned_bomb_gold") === "true",
     purple: localStorage.getItem("owned_bomb_purple") === "true",
+    magical_chiikawa: localStorage.getItem("owned_bomb_magical_chiikawa") === "true",
+    magical_hachiware: localStorage.getItem("owned_bomb_magical_hachiware") === "true",
+    magical_usagi: localStorage.getItem("owned_bomb_magical_usagi") === "true",
   };
   
   const bombCards = document.querySelectorAll(".bomb-card");
@@ -13375,6 +13591,7 @@ function initGachaShop() {
       winIndicator.style.opacity = "0";
       setTimeout(() => winIndicator.classList.add("hidden"), 300);
     }
+    stopGachaWinAnimation();
   });
 
   // Phone sub-tab click listeners
@@ -13499,8 +13716,8 @@ function handleGachaDraw() {
   
   // Find unowned pool items
   const unowned = gachaPool.filter(item => {
-    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
-    return localStorage.getItem(ownedKey) !== "true";
+    const owned = item.type === "character" ? getUnlockedCharacters().includes(item.id) : (item.type === "effect" ? localStorage.getItem(`owned_effect_${item.color}`) === "true" : localStorage.getItem(`owned_bomb_${item.color}`) === "true");
+    return !owned;
   });
   if (unowned.length === 0) {
     showToastMsg("You own all rewards!");
@@ -13531,8 +13748,18 @@ function handleGachaDraw() {
   document.getElementById("gachaDrawBtn").disabled = true;
   document.getElementById("closeGachaModalBtn").disabled = true;
   
-  // Select a random unowned item as the winner
-  const winner = unowned[Math.floor(Math.random() * unowned.length)];
+  // Select a weighted random unowned item as the winner
+  const totalWeight = unowned.reduce((sum, item) => sum + (item.weight || 10), 0);
+  let randomValue = Math.random() * totalWeight;
+  let winner = unowned[unowned.length - 1]; // Fallback
+  for (const item of unowned) {
+    const w = item.weight || 10;
+    if (randomValue < w) {
+      winner = item;
+      break;
+    }
+    randomValue -= w;
+  }
   
   // Construct the gacha reel items list:
   // We want to generate around 40 items. The winner goes at index 32.
@@ -13556,7 +13783,7 @@ function handleGachaDraw() {
     generatedReelItems.push(item);
     
     const tile = document.createElement("div");
-    tile.className = `gacha-reel-tile ${i === winnerIndex ? "is-result" : ""}`;
+    tile.className = `gacha-reel-tile ${i === winnerIndex ? "is-result" : ""} ${item.rarity || "normal"}`;
     tile.innerHTML = getGachaItemImageHtml(item, 44);
     reel.appendChild(tile);
   }
@@ -13584,11 +13811,19 @@ function handleGachaDraw() {
     document.getElementById("closeGachaModalBtn").disabled = false;
     
     // Save to owned
-    const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
-    localStorage.setItem(ownedKey, "true");
+    if (winner.type === "character") {
+      const unlocked = getUnlockedCharacters();
+      if (!unlocked.includes(winner.id)) {
+        unlocked.push(winner.id);
+        localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+      }
+    } else {
+      const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
+      localStorage.setItem(ownedKey, "true");
+    }
     
     // Mark as new / untried
-    const newKey = winner.type === "effect" ? `new_effect_${winner.color}` : `new_bomb_${winner.color}`;
+    const newKey = winner.type === "character" ? `new_character_${winner.id}` : (winner.type === "effect" ? `new_effect_${winner.color}` : `new_bomb_${winner.color}`);
     localStorage.setItem(newKey, "true");
     updateWardrobeTabBadges();
     
@@ -13596,22 +13831,189 @@ function handleGachaDraw() {
     renderGachaPool();
     syncBombWardrobe();
     syncEffectWardrobe();
+    if (typeof refreshWardrobeLocks === "function") refreshWardrobeLocks();
     
-    // Show win indicator
-    const winItemAvatar = document.getElementById("gachaWinItemAvatar");
-    winItemAvatar.innerHTML = getGachaItemImageHtml(winner, 52);
-    
-    document.getElementById("gachaWinItemName").textContent = winner.name;
-    const winIndicator = document.getElementById("gachaWinIndicator");
-    if (winIndicator) {
-      winIndicator.classList.remove("hidden");
-      // Trigger smooth fade in
-      winIndicator.style.opacity = "0";
-      setTimeout(() => winIndicator.style.opacity = "1", 50);
-    }
+    // Show win indicator and animation
+    startGachaWinAnimation(winner);
     
     showToastMsg(`You unlocked the ${winner.name}!`);
   }, 5200);
+}
+
+// =================================================================
+// GACHA WIN REVEAL PREMIUM ANIMATION
+// =================================================================
+let gachaWinAnimationActive = false;
+let gachaWinAnimationRAF = null;
+let gachaWinParticles = [];
+
+function startGachaWinAnimation(winner) {
+  const canvas = document.getElementById("gachaWinPremiumCanvas");
+  const avatar = document.getElementById("gachaWinItemAvatar");
+  const winVideo = document.getElementById("gachaWinVideo");
+  const nameLabel = document.getElementById("gachaWinItemName");
+  const congratText = document.getElementById("gachaWinCongratText");
+  const indicator = document.getElementById("gachaWinIndicator");
+  
+  if (!canvas || !avatar || !winVideo || !nameLabel || !congratText || !indicator) return;
+  
+  const isPremium = (winner.type === "character");
+  
+  // Show indicators
+  indicator.classList.remove("hidden");
+  indicator.style.opacity = "0";
+  setTimeout(() => indicator.style.opacity = "1", 50);
+  
+  nameLabel.textContent = winner.name;
+  
+  if (isPremium) {
+    avatar.style.display = "none";
+    canvas.style.display = "block";
+    
+    // Set premium styles
+    indicator.style.background = "radial-gradient(circle, #2a2012 0%, #0d0b07 100%)";
+    nameLabel.style.color = "#ffd86f";
+    nameLabel.style.textShadow = "0 0 10px #ffb330, 0 0 20px #ff7700";
+    congratText.textContent = "★ LEGENDARY UNLOCK ★";
+    congratText.style.color = "#ffd86f";
+    congratText.style.textShadow = "0 0 8px rgba(255, 216, 111, 0.8)";
+    
+    // Load character video
+    const videoSrc = characterSelectVideos[winner.id];
+    if (videoSrc) {
+      winVideo.src = videoSrc;
+      winVideo.load();
+      winVideo.play().catch(e => console.warn("Win video play blocked:", e));
+      winVideo.loop = true;
+    }
+    
+    // Initialize particles
+    gachaWinParticles = [];
+    for (let i = 0; i < 60; i++) {
+      gachaWinParticles.push(createGachaParticle(canvas.width / 2, canvas.height / 2, true));
+    }
+    
+    gachaWinAnimationActive = true;
+    gachaWinAnimationLoop(canvas, winVideo);
+  } else {
+    // Normal item
+    canvas.style.display = "none";
+    avatar.style.display = "flex";
+    avatar.innerHTML = getGachaItemImageHtml(winner, 52);
+    
+    indicator.style.background = "rgba(0, 0, 0, 0.9)";
+    nameLabel.style.color = "#fff";
+    nameLabel.style.textShadow = "none";
+    congratText.textContent = "Congratulations!";
+    congratText.style.color = "#ffd86f";
+    congratText.style.textShadow = "none";
+    
+    winVideo.pause();
+    winVideo.src = "";
+  }
+}
+
+function stopGachaWinAnimation() {
+  gachaWinAnimationActive = false;
+  if (gachaWinAnimationRAF) {
+    cancelAnimationFrame(gachaWinAnimationRAF);
+    gachaWinAnimationRAF = null;
+  }
+  const winVideo = document.getElementById("gachaWinVideo");
+  if (winVideo) {
+    winVideo.pause();
+    winVideo.src = "";
+  }
+}
+
+function createGachaParticle(x, y, initial = false) {
+  const angle = Math.random() * Math.PI * 2;
+  const speed = initial ? (Math.random() * 4 + 2) : (Math.random() * 2 + 1);
+  return {
+    x: x,
+    y: y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed - (initial ? 0 : 0.5), // Float upwards slightly
+    size: Math.random() * 4 + 2,
+    color: ["#ffd86f", "#ff9ebb", "#18baff", "#39d98a", "#ffffff"][Math.floor(Math.random() * 5)],
+    life: Math.random() * 0.5 + 0.5,
+    maxLife: 1.0
+  };
+}
+
+function gachaWinAnimationLoop(canvas, video) {
+  if (!gachaWinAnimationActive) return;
+  
+  const ctx2 = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  ctx2.clearRect(0, 0, w, h);
+  
+  // 1. Draw rotating rays (Sunburst background)
+  ctx2.save();
+  ctx2.translate(w / 2, h / 2);
+  const time = performance.now() * 0.001;
+  ctx2.rotate(time * 0.2);
+  
+  const numRays = 16;
+  const rayAngle = (Math.PI * 2) / numRays;
+  ctx2.fillStyle = "rgba(255, 216, 111, 0.12)";
+  for (let i = 0; i < numRays; i++) {
+    ctx2.beginPath();
+    ctx2.moveTo(0, 0);
+    ctx2.arc(0, 0, w * 1.5, i * rayAngle, i * rayAngle + rayAngle / 2);
+    ctx2.closePath();
+    ctx2.fill();
+  }
+  ctx2.restore();
+  
+  // 2. Draw character video (chroma-keyed)
+  if (video.readyState >= 2) {
+    ctx2.save();
+    // Center character and crop appropriately
+    const scale = Math.min(w / video.videoWidth, h / video.videoHeight) * 1.5;
+    const drawW = video.videoWidth * scale;
+    const drawH = video.videoHeight * scale;
+    const drawX = (w - drawW) / 2;
+    const drawY = h - drawH * 1.05;
+    
+    ctx2.drawImage(video, drawX, drawY, drawW, drawH);
+    if (typeof removeGreenScreenFromCanvas === "function") {
+      removeGreenScreenFromCanvas(ctx2, w, h);
+    }
+    ctx2.restore();
+  }
+  
+  // 3. Update & Draw Particles
+  // Spawn a few new particles from the center/bottom
+  if (Math.random() < 0.4) {
+    gachaWinParticles.push(createGachaParticle(w / 2, h * 0.65));
+  }
+  
+  for (let i = gachaWinParticles.length - 1; i >= 0; i--) {
+    const p = gachaWinParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.016; // Approx 60 FPS
+    
+    if (p.life <= 0) {
+      gachaWinParticles.splice(i, 1);
+      continue;
+    }
+    
+    ctx2.save();
+    ctx2.globalAlpha = p.life;
+    ctx2.fillStyle = p.color;
+    ctx2.shadowColor = p.color;
+    ctx2.shadowBlur = 8;
+    ctx2.beginPath();
+    ctx2.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx2.fill();
+    ctx2.restore();
+  }
+  
+  gachaWinAnimationRAF = requestAnimationFrame(() => gachaWinAnimationLoop(canvas, video));
 }
 
 // Bind bomb skin wardrobe clicks and gacha init on page load
