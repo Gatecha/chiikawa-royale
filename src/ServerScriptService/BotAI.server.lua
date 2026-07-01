@@ -22,13 +22,7 @@ local BOMB_FUSE   = 3.0    -- Seconds before a bomb explodes (match BombManager)
 local THINK_DELAY = 0.35   -- Seconds between AI ticks
 local BOMB_RANGE  = 2      -- Default bot bomb range
 
--- ── BindableEvent handshake with GameManager ───────────────────────────────
-local BotStartEvent = ReplicatedStorage:FindFirstChild("BotStartEvent")
-if not BotStartEvent then
-    BotStartEvent = Instance.new("BindableEvent")
-    BotStartEvent.Name = "BotStartEvent"
-    BotStartEvent.Parent = ReplicatedStorage
-end
+
 
 -- ── Helper: Snap world position to grid center ─────────────────────────────
 local function snapToGrid(pos)
@@ -140,6 +134,32 @@ local function countEscapeRoutes(fromPos, botCurrentGrid)
     return count
 end
 
+-- Wait until no players/bots are overlapping the bomb, then enable collision
+local function setupBombCollision(bomb)
+    bomb.CanCollide = false
+    task.spawn(function()
+        while bomb and bomb.Parent do
+            local overlap = false
+            local parts = workspace:GetPartBoundsInBox(
+                CFrame.new(bomb.Position),
+                bomb.Size - Vector3.new(0.2, 0.2, 0.2)
+            )
+            for _, part in ipairs(parts) do
+                local char = part:FindFirstAncestorOfClass("Model")
+                if char and char:FindFirstChildOfClass("Humanoid") then
+                    overlap = true
+                    break
+                end
+            end
+            if not overlap then
+                bomb.CanCollide = true
+                break
+            end
+            task.wait(0.1)
+        end
+    end)
+end
+
 -- ── Place bomb (server-side direct since this IS a server script) ──────────
 local function botPlaceBomb(botModel, range)
     local rootPart = botModel:FindFirstChild("HumanoidRootPart")
@@ -159,7 +179,7 @@ local function botPlaceBomb(botModel, range)
     bomb.Color = Color3.fromRGB(100, 50, 50)
     bomb.Material = Enum.Material.SmoothPlastic
     bomb.Anchored = true
-    bomb.CanCollide = true
+    setupBombCollision(bomb)
 
     local att = Instance.new("Attachment")
     att.Position = Vector3.new(0, 1.5, 0)
@@ -349,9 +369,20 @@ local function runBot(botModel)
     end
 end
 
--- ── Listen for GameManager's start signal ──────────────────────────────────
-BotStartEvent.Event:Connect(function(botModel)
-    if botModel and botModel:IsA("Model") and botModel:GetAttribute("IsBot") then
-        task.spawn(runBot, botModel)
+-- ── Decoupled Bot Activation ───────────────────────────────────────────────
+-- Automatically detects bots spawned in workspace and starts runBot when AIActive is true.
+local function handleNewChild(child)
+    if child:IsA("Model") and child:GetAttribute("IsBot") then
+        task.spawn(function()
+            if not child:GetAttribute("AIActive") then
+                child:GetAttributeChangedSignal("AIActive"):Wait()
+            end
+            runBot(child)
+        end)
     end
-end)
+end
+
+workspace.ChildAdded:Connect(handleNewChild)
+for _, child in ipairs(workspace:GetChildren()) do
+    handleNewChild(child)
+end

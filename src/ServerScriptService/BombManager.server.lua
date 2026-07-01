@@ -64,6 +64,32 @@ local function checkTile(position)
     return parts
 end
 
+-- Wait until no players/bots are overlapping the bomb, then enable collision
+local function setupBombCollision(bomb)
+    bomb.CanCollide = false
+    task.spawn(function()
+        while bomb and bomb.Parent do
+            local overlap = false
+            local parts = workspace:GetPartBoundsInBox(
+                CFrame.new(bomb.Position),
+                bomb.Size - Vector3.new(0.2, 0.2, 0.2)
+            )
+            for _, part in ipairs(parts) do
+                local char = part:FindFirstAncestorOfClass("Model")
+                if char and char:FindFirstChildOfClass("Humanoid") then
+                    overlap = true
+                    break
+                end
+            end
+            if not overlap then
+                bomb.CanCollide = true
+                break
+            end
+            task.wait(0.1)
+        end
+    end)
+end
+
 -- Spawns a floating powerup part
 local function spawnPowerup(position)
     local roll = math.random()
@@ -279,7 +305,7 @@ PlaceBombEvent.OnServerEvent:Connect(function(player, characterPosition)
     bomb.Color = Color3.fromRGB(44, 41, 51)
     bomb.Material = Enum.Material.SmoothPlastic
     bomb.Anchored = true
-    bomb.CanCollide = true
+    setupBombCollision(bomb)
     
     -- Add details to represent fuse
     local attachment = Instance.new("Attachment")

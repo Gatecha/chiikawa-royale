@@ -9,15 +9,14 @@ local MAP_HEIGHT = 13 -- must be odd
 local WALL_HEIGHT = 5
 
 -- Game configurations
-local REQUIRED_PLAYERS = 1 -- Minimum players needed to START matchmaking countdown
-local MAX_PLAYERS = 4      -- Total slots (filled with bots if not enough humans)
+local REQUIRED_PLAYERS = 1  -- Minimum humans needed to start matchmaking
+local MAX_PLAYERS = 4       -- Total slots (filled with bots if not enough humans)
 local MATCHMAKING_WAIT = 20 -- Seconds to wait for players before filling with bots
-local INTERMISSION_DURATION = 5 -- Short intermission after matchmaking fills
+local INTERMISSION_DURATION = 5
 local ROUND_MAX_DURATION = 120
 
 -- Bot tracking
-local activeBotModels = {} -- {model, humanoid, controller thread}
-local BotAI = nil -- Will be required after BotAI script registers itself
+local activeBotModels = {} -- { model = Model }
 
 -- Game State Enum
 local GameState = {
@@ -36,24 +35,21 @@ local activeMapFolder = nil
 
 -- Define Corner Spawn coordinates (Grid indices)
 local spawnCorners = {
-    Vector3.new(2, 0, 2),                   -- Top-Left
+    Vector3.new(2, 0, 2),                        -- Top-Left
     Vector3.new(MAP_WIDTH - 1, 0, MAP_HEIGHT - 1), -- Bottom-Right
-    Vector3.new(MAP_WIDTH - 1, 0, 2),       -- Top-Right
-    Vector3.new(2, 0, MAP_HEIGHT - 1)       -- Bottom-Left
+    Vector3.new(MAP_WIDTH - 1, 0, 2),            -- Top-Right
+    Vector3.new(2, 0, MAP_HEIGHT - 1)            -- Bottom-Left
 }
 
 -- Checks if a grid index is within player spawn safety zones
 local function isSpawnSafetyZone(x, z)
     local safetyOffsets = {
-        {0, 0}, {1, 0}, {0, 1}, -- Corner tile + adjacent steps
+        {0, 0}, {1, 0}, {0, 1},
         {-1, 0}, {0, -1}
     }
-    
     for _, corner in ipairs(spawnCorners) do
         for _, offset in ipairs(safetyOffsets) do
-            local safeX = corner.X + offset[1]
-            local safeZ = corner.Z + offset[2]
-            if x == safeX and z == safeZ then
+            if x == corner.X + offset[1] and z == corner.Z + offset[2] then
                 return true
             end
         end
@@ -66,49 +62,46 @@ local function generateMap()
     if activeMapFolder then
         activeMapFolder:Destroy()
     end
-    
+
     activeMapFolder = Instance.new("Folder")
     activeMapFolder.Name = "ActiveMap"
     activeMapFolder.Parent = workspace
-    
+
     local mapWidthStuds = MAP_WIDTH * TILE_SIZE
     local mapHeightStuds = MAP_HEIGHT * TILE_SIZE
-    
-    -- 1. Create Baseplate
+
+    -- Baseplate
     local baseplate = Instance.new("Part")
     baseplate.Name = "Baseplate"
     baseplate.Size = Vector3.new(mapWidthStuds, 2, mapHeightStuds)
     baseplate.Position = Vector3.new(mapWidthStuds / 2, -1, mapHeightStuds / 2)
-    baseplate.Color = Color3.fromRGB(244, 216, 111) -- retro yellow console color
+    baseplate.Color = Color3.fromRGB(244, 216, 111)
     baseplate.Material = Enum.Material.SmoothPlastic
     baseplate.Anchored = true
     baseplate.Parent = activeMapFolder
-    
-    -- 2. Build Border Walls
+
+    -- Border Walls
     local function createBorderWall(position, size)
         local wall = Instance.new("Part")
         wall.Name = "SolidWall"
         wall.Size = size
         wall.Position = position
-        wall.Color = Color3.fromRGB(34, 31, 37) -- dark border ink
+        wall.Color = Color3.fromRGB(34, 31, 37)
         wall.Material = Enum.Material.Concrete
         wall.Anchored = true
         wall.CanCollide = true
         wall.Parent = activeMapFolder
     end
-    
-    -- Border positions
-    createBorderWall(Vector3.new(mapWidthStuds/2, WALL_HEIGHT/2, TILE_SIZE/2), Vector3.new(mapWidthStuds, WALL_HEIGHT, TILE_SIZE)) -- North
-    createBorderWall(Vector3.new(mapWidthStuds/2, WALL_HEIGHT/2, mapHeightStuds - TILE_SIZE/2), Vector3.new(mapWidthStuds, WALL_HEIGHT, TILE_SIZE)) -- South
-    createBorderWall(Vector3.new(TILE_SIZE/2, WALL_HEIGHT/2, mapHeightStuds/2), Vector3.new(TILE_SIZE, WALL_HEIGHT, mapHeightStuds - (TILE_SIZE * 2))) -- West
-    createBorderWall(Vector3.new(mapWidthStuds - TILE_SIZE/2, WALL_HEIGHT/2, mapHeightStuds/2), Vector3.new(TILE_SIZE, WALL_HEIGHT, mapHeightStuds - (TILE_SIZE * 2))) -- East
 
-    -- 3. Populate Grid Blocks
+    createBorderWall(Vector3.new(mapWidthStuds/2, WALL_HEIGHT/2, TILE_SIZE/2),                          Vector3.new(mapWidthStuds, WALL_HEIGHT, TILE_SIZE))
+    createBorderWall(Vector3.new(mapWidthStuds/2, WALL_HEIGHT/2, mapHeightStuds - TILE_SIZE/2),         Vector3.new(mapWidthStuds, WALL_HEIGHT, TILE_SIZE))
+    createBorderWall(Vector3.new(TILE_SIZE/2, WALL_HEIGHT/2, mapHeightStuds/2),                         Vector3.new(TILE_SIZE, WALL_HEIGHT, mapHeightStuds - (TILE_SIZE * 2)))
+    createBorderWall(Vector3.new(mapWidthStuds - TILE_SIZE/2, WALL_HEIGHT/2, mapHeightStuds/2),         Vector3.new(TILE_SIZE, WALL_HEIGHT, mapHeightStuds - (TILE_SIZE * 2)))
+
+    -- Grid Blocks
     for x = 2, MAP_WIDTH - 1 do
         for z = 2, MAP_HEIGHT - 1 do
             local tilePos = Vector3.new(x * TILE_SIZE, WALL_HEIGHT/2, z * TILE_SIZE)
-            
-            -- Solid Pillars (Every second index)
             if x % 2 == 0 and z % 2 == 0 then
                 local pillar = Instance.new("Part")
                 pillar.Name = "SolidWall"
@@ -120,14 +113,13 @@ local function generateMap()
                 pillar.CanCollide = true
                 pillar.Parent = activeMapFolder
             else
-                -- Breakable Block generation with 75% fill rate, avoiding spawn points
                 if not isSpawnSafetyZone(x, z) then
                     if math.random() <= 0.75 then
                         local block = Instance.new("Part")
                         block.Name = "BreakableWall"
                         block.Size = Vector3.new(TILE_SIZE, WALL_HEIGHT, TILE_SIZE)
                         block.Position = tilePos
-                        block.Color = Color3.fromRGB(255, 114, 114) -- Pastel red destructible
+                        block.Color = Color3.fromRGB(255, 114, 114)
                         block.Material = Enum.Material.Wood
                         block.Anchored = true
                         block.CanCollide = true
@@ -139,76 +131,211 @@ local function generateMap()
     end
 end
 
--- Spawns a bot NPC model at a given world position
-local function spawnBot(spawnWorldPos, botName)
-    -- Create a simple NPC model
+-- ── Build a proper R6 bot NPC with Motor6D joints + walk animation ──────────
+local function spawnBot(spawnWorldPos, botName, torsoColor)
+    local color = torsoColor or BrickColor.new("Carnation pink")
+
     local model = Instance.new("Model")
     model.Name = botName or "Bot"
     model:SetAttribute("IsBot", true)
-    
-    -- Root part (HumanoidRootPart)
-    local rootPart = Instance.new("Part")
-    rootPart.Name = "HumanoidRootPart"
-    rootPart.Size = Vector3.new(2, 2, 1)
-    rootPart.Position = spawnWorldPos
-    rootPart.Transparency = 1
-    rootPart.CanCollide = false
-    rootPart.Parent = model
-    
+    model:SetAttribute("AIActive", false) -- BotAI watches this; set true when match starts
+
+    -- HumanoidRootPart (physics root, invisible)
+    local hrp = Instance.new("Part")
+    hrp.Name = "HumanoidRootPart"
+    hrp.Size = Vector3.new(2, 2, 1)
+    hrp.CFrame = CFrame.new(spawnWorldPos)
+    hrp.Transparency = 1
+    hrp.CanCollide = false
+    hrp.Parent = model
+
     -- Torso
     local torso = Instance.new("Part")
     torso.Name = "Torso"
     torso.Size = Vector3.new(2, 2, 1)
-    torso.Position = spawnWorldPos
-    torso.Color = Color3.fromRGB(255, 120, 120) -- Bot color
+    torso.CFrame = CFrame.new(spawnWorldPos)
+    torso.BrickColor = color
     torso.Material = Enum.Material.SmoothPlastic
     torso.Parent = model
-    
+
+    -- RootJoint: HRP → Torso (REQUIRED for Humanoid to control position)
+    local rootJoint = Instance.new("Motor6D")
+    rootJoint.Name = "RootJoint"
+    rootJoint.Part0 = hrp
+    rootJoint.Part1 = torso
+    rootJoint.C0 = CFrame.new(0, -1, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0)
+    rootJoint.C1 = CFrame.new(0, -1, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0)
+    rootJoint.Parent = hrp
+
     -- Head
     local head = Instance.new("Part")
     head.Name = "Head"
     head.Size = Vector3.new(2, 1, 1)
-    head.Position = spawnWorldPos + Vector3.new(0, 1.5, 0)
-    head.Color = Color3.fromRGB(255, 200, 160)
+    head.BrickColor = BrickColor.new("Wheat")
     head.Material = Enum.Material.SmoothPlastic
     head.Parent = model
-    
-    -- Bot name tag
-    local nameTag = Instance.new("BillboardGui")
-    nameTag.Size = UDim2.new(0, 100, 0, 30)
-    nameTag.StudsOffset = Vector3.new(0, 2, 0)
-    nameTag.AlwaysOnTop = false
-    nameTag.Parent = head
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = botName or "Bot"
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.Font = Enum.Font.FredokaOne
-    nameLabel.TextSize = 16
-    nameLabel.Parent = nameTag
-    
-    -- Humanoid
+
+    local neck = Instance.new("Motor6D")
+    neck.Name = "Neck"
+    neck.Part0 = torso
+    neck.Part1 = head
+    neck.C0 = CFrame.new(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0)
+    neck.C1 = CFrame.new(0, -0.5, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0)
+    neck.Parent = torso
+
+    -- Left Arm
+    local leftArm = Instance.new("Part")
+    leftArm.Name = "Left Arm"
+    leftArm.Size = Vector3.new(1, 2, 1)
+    leftArm.BrickColor = BrickColor.new("Wheat")
+    leftArm.Material = Enum.Material.SmoothPlastic
+    leftArm.Parent = model
+
+    local leftShoulder = Instance.new("Motor6D")
+    leftShoulder.Name = "Left Shoulder"
+    leftShoulder.Part0 = torso
+    leftShoulder.Part1 = leftArm
+    leftShoulder.C0 = CFrame.new(-1, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+    leftShoulder.C1 = CFrame.new(0.5, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+    leftShoulder.Parent = torso
+
+    -- Right Arm
+    local rightArm = Instance.new("Part")
+    rightArm.Name = "Right Arm"
+    rightArm.Size = Vector3.new(1, 2, 1)
+    rightArm.BrickColor = BrickColor.new("Wheat")
+    rightArm.Material = Enum.Material.SmoothPlastic
+    rightArm.Parent = model
+
+    local rightShoulder = Instance.new("Motor6D")
+    rightShoulder.Name = "Right Shoulder"
+    rightShoulder.Part0 = torso
+    rightShoulder.Part1 = rightArm
+    rightShoulder.C0 = CFrame.new(1, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0)
+    rightShoulder.C1 = CFrame.new(-0.5, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0)
+    rightShoulder.Parent = torso
+
+    -- Left Leg
+    local leftLeg = Instance.new("Part")
+    leftLeg.Name = "Left Leg"
+    leftLeg.Size = Vector3.new(1, 2, 1)
+    leftLeg.BrickColor = color
+    leftLeg.Material = Enum.Material.SmoothPlastic
+    leftLeg.Parent = model
+
+    local leftHip = Instance.new("Motor6D")
+    leftHip.Name = "Left Hip"
+    leftHip.Part0 = torso
+    leftHip.Part1 = leftLeg
+    leftHip.C0 = CFrame.new(-1, -1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+    leftHip.C1 = CFrame.new(-0.5, 1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+    leftHip.Parent = torso
+
+    -- Right Leg
+    local rightLeg = Instance.new("Part")
+    rightLeg.Name = "Right Leg"
+    rightLeg.Size = Vector3.new(1, 2, 1)
+    rightLeg.BrickColor = color
+    rightLeg.Material = Enum.Material.SmoothPlastic
+    rightLeg.Parent = model
+
+    local rightHip = Instance.new("Motor6D")
+    rightHip.Name = "Right Hip"
+    rightHip.Part0 = torso
+    rightHip.Part1 = rightLeg
+    rightHip.C0 = CFrame.new(1, -1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0)
+    rightHip.C1 = CFrame.new(0.5, 1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0)
+    rightHip.Parent = torso
+
+    -- Humanoid (R6 rig type so joints work correctly)
     local humanoid = Instance.new("Humanoid")
-    humanoid.WalkSpeed = 0 -- Frozen until match starts
+    humanoid.RigType = Enum.HumanoidRigType.R6
+    humanoid.WalkSpeed = 0
     humanoid.JumpHeight = 0
     humanoid.MaxHealth = 100
     humanoid.Health = 100
     humanoid.Parent = model
-    
-    model.PrimaryPart = rootPart
+
+    -- Animator (required for LoadAnimation to work)
+    local animator = Instance.new("Animator")
+    animator.Parent = humanoid
+
+    -- Name tag
+    local nameTag = Instance.new("BillboardGui")
+    nameTag.Size = UDim2.new(0, 120, 0, 30)
+    nameTag.StudsOffset = Vector3.new(0, 3, 0)
+    nameTag.AlwaysOnTop = false
+    nameTag.Parent = head
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "🤖 " .. (botName or "Bot")
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.Font = Enum.Font.FredokaOne
+    nameLabel.TextSize = 14
+    nameLabel.Parent = nameTag
+
+    -- Animate Script — handles walk/idle/run animations using Roblox default R6 anim IDs
+    -- This runs as a server Script so it drives animations server-side (replicated to all clients)
+    local animScript = Instance.new("Script")
+    animScript.Source = [[
+local model    = script.Parent
+local humanoid = model:WaitForChild("Humanoid")
+local animator = humanoid:WaitForChild("Animator")
+
+local function makeAnim(id)
+    local a = Instance.new("Animation")
+    a.AnimationId = "rbxassetid://" .. id
+    return a
+end
+
+-- Roblox default R6 animation IDs
+local tracks = {
+    idle = animator:LoadAnimation(makeAnim("507766666")),
+    walk = animator:LoadAnimation(makeAnim("507777826")),
+    run  = animator:LoadAnimation(makeAnim("507767714")),
+}
+tracks.idle.Looped = true
+tracks.walk.Looped = true
+tracks.run.Looped  = true
+
+local current = nil
+local function play(name)
+    if current == name then return end
+    for k, t in pairs(tracks) do
+        if k ~= name and t.IsPlaying then t:Stop(0.15) end
+    end
+    if not tracks[name].IsPlaying then
+        tracks[name]:Play(0.15)
+    end
+    current = name
+end
+
+play("idle")
+
+humanoid.Running:Connect(function(speed)
+    if speed > 14 then
+        play("run")
+    elseif speed > 0.5 then
+        play("walk")
+    else
+        play("idle")
+    end
+end)
+    ]]
+    animScript.Parent = model
+
+    model.PrimaryPart = hrp
     model.Parent = workspace
-    
+
     return model
 end
 
 -- Cleans up all active bot models
 local function cleanupBots()
     for _, botData in ipairs(activeBotModels) do
-        if botData.thread then
-            task.cancel(botData.thread)
-        end
         if botData.model and botData.model.Parent then
             botData.model:Destroy()
         end
@@ -216,43 +343,47 @@ local function cleanupBots()
     activeBotModels = {}
 end
 
--- Teleports players to corners and freezes them for countdown
--- Also spawns bots for any empty slots
+-- Teleports players to corners, freezes them, spawns bots for empty slots
 local function setupPlayersForMatch()
     local activePlayers = Players:GetPlayers()
     local slotIndex = 1
-    
-    -- Place human players first
+
     for _, player in ipairs(activePlayers) do
         local character = player.Character
         if character and character:FindFirstChild("HumanoidRootPart") then
             local targetCorner = spawnCorners[slotIndex]
             local targetWorldPos = Vector3.new(targetCorner.X * TILE_SIZE, 3, targetCorner.Z * TILE_SIZE)
-            character.HumanoidRootPart.Position = targetWorldPos
+            character.HumanoidRootPart.CFrame = CFrame.new(targetWorldPos)
             character.Humanoid.WalkSpeed = 0
             character.Humanoid.JumpHeight = 0
             character.Humanoid.Health = character.Humanoid.MaxHealth
             slotIndex = slotIndex + 1
         end
     end
-    
-    -- Spawn bots for remaining slots
-    local botNames = {"Chiikawa-Bot", "Usagi-Bot", "Hachiware-Bot"}
-    local botNameIndex = 1
+
+    -- Bot color palette (cute pastel colors)
+    local botDefs = {
+        { name = "Chiikawa-Bot",  color = BrickColor.new("Carnation pink") },
+        { name = "Usagi-Bot",     color = BrickColor.new("Pastel blue")    },
+        { name = "Hachiware-Bot", color = BrickColor.new("Mint")            },
+    }
+    local botDefIdx = 1
     while slotIndex <= MAX_PLAYERS do
-        local targetCorner = spawnCorners[slotIndex]
+        local targetCorner   = spawnCorners[slotIndex]
         local targetWorldPos = Vector3.new(targetCorner.X * TILE_SIZE, 3, targetCorner.Z * TILE_SIZE)
-        local botName = botNames[botNameIndex] or ("Bot" .. slotIndex)
-        local botModel = spawnBot(targetWorldPos, botName)
-        table.insert(activeBotModels, {model = botModel, thread = nil})
-        botNameIndex = botNameIndex + 1
-        slotIndex = slotIndex + 1
+        local def            = botDefs[botDefIdx] or { name = "Bot" .. slotIndex, color = BrickColor.new("Bright red") }
+        local botModel       = spawnBot(targetWorldPos, def.name, def.color)
+        table.insert(activeBotModels, { model = botModel })
+        botDefIdx  = botDefIdx + 1
+        slotIndex  = slotIndex + 1
     end
 end
 
--- Release players to start moving, and launch bot AI threads
+-- Release players, then activate bots with a 2-second grace period
+-- The grace period ensures clients have received the "FIGHT!" status update
+-- before bots begin moving (prevents the "bots ahead of countdown" issue)
 local function releasePlayers()
-    -- Release human players
+    -- Release human players immediately
     for _, player in ipairs(Players:GetPlayers()) do
         local character = player.Character
         if character and character:FindFirstChild("Humanoid") then
@@ -260,18 +391,18 @@ local function releasePlayers()
             character.Humanoid.JumpHeight = 7.2
         end
     end
-    
-    -- Activate bot AI controllers
-    -- Signal the BotAI module via a BindableEvent
-    local botStartEvent = ReplicatedStorage:FindFirstChild("BotStartEvent")
-    if botStartEvent then
-        for i, botData in ipairs(activeBotModels) do
-            botStartEvent:Fire(botData.model)
+
+    -- Activate bots after a 2s delay so clients are fully synced before bots start
+    task.delay(2, function()
+        for _, botData in ipairs(activeBotModels) do
+            if botData.model and botData.model.Parent then
+                botData.model:SetAttribute("AIActive", true)
+            end
         end
-    end
+    end)
 end
 
--- Count survivors
+-- Count living human survivors
 local function getSurvivors()
     local survivors = {}
     for _, player in ipairs(Players:GetPlayers()) do
@@ -283,7 +414,7 @@ local function getSurvivors()
     return survivors
 end
 
--- Count alive bots
+-- Count living bots
 local function getAliveBots()
     local count = 0
     for _, botData in ipairs(activeBotModels) do
@@ -298,106 +429,95 @@ local function getAliveBots()
     return count
 end
 
--- Main Game loop runs continuously
+-- Main Game Loop
 task.spawn(function()
     while true do
-        -- Clean up any leftover bots from last round
+        -- Clean up leftover bots
         cleanupBots()
-        
+
         -- Phase 1: Wait for at least 1 human player
         currentStatus.Value = "Waiting for players..."
         while #Players:GetPlayers() < REQUIRED_PLAYERS do
             task.wait(1)
         end
-        
+
         -- Phase 2: Matchmaking countdown (20 seconds)
-        -- Fill with bots when timer runs out if server isn't full
-        currentStatus.Value = "Matchmaking... (players joining)"
         local matchmakingTimer = MATCHMAKING_WAIT
         while matchmakingTimer > 0 do
             local humanCount = #Players:GetPlayers()
-            if humanCount >= MAX_PLAYERS then
-                break -- Server full, start immediately
-            end
+            if humanCount >= MAX_PLAYERS then break end
             currentStatus.Value = "Matchmaking... " .. matchmakingTimer .. "s (" .. humanCount .. "/" .. MAX_PLAYERS .. " players)"
             task.wait(1)
             matchmakingTimer = matchmakingTimer - 1
         end
-        
-        -- Phase 3: Short intermission then generate match
+
+        -- Phase 3: Short intermission
         for i = INTERMISSION_DURATION, 1, -1 do
             currentStatus.Value = "Match starting in " .. i .. "s"
             task.wait(1)
         end
-        
-        -- Start Round Setup
+
+        -- Generate map and place players/bots
         currentStatus.Value = "Generating map..."
         generateMap()
         setupPlayersForMatch()
         task.wait(1)
-        
-        -- Start Match countdown
+
+        -- 3-2-1 countdown
         for countdown = 3, 1, -1 do
             currentStatus.Value = tostring(countdown) .. "..."
             task.wait(1)
         end
         currentStatus.Value = "FIGHT!"
-        releasePlayers()
+        releasePlayers() -- Humans released now; bots activate 2s later
         task.wait(1)
-        
-        -- Match loop active
+
+        -- Active match loop
         local timeRemaining = ROUND_MAX_DURATION
         local matchWinner = nil
-        
+
         while timeRemaining > 0 do
             timeRemaining = timeRemaining - 1
             currentStatus.Value = "Time Left: " .. timeRemaining .. "s"
-            
+
             local humanSurvivors = getSurvivors()
-            local aliveBotCount = getAliveBots()
-            local totalAlive = #humanSurvivors + aliveBotCount
-            
-            -- Match ends when only 1 entity remains
+            local aliveBotCount  = getAliveBots()
+            local totalAlive     = #humanSurvivors + aliveBotCount
+
             if totalAlive <= 1 then
                 if #humanSurvivors == 1 then
                     matchWinner = humanSurvivors[1]
                 end
                 break
             end
-            
+
             task.wait(1)
         end
-        
-        -- Round Over / Award Prizes
+
+        -- Round over
         if matchWinner then
             currentStatus.Value = matchWinner.Name .. " Wins the Round!"
-            
-            -- Reward Coins and Win point
             local leaderstats = matchWinner:FindFirstChild("leaderstats")
             if leaderstats then
                 local coinsVal = leaderstats:FindFirstChild("Coins")
-                local winsVal = leaderstats:FindFirstChild("Wins")
+                local winsVal  = leaderstats:FindFirstChild("Wins")
                 if coinsVal then coinsVal.Value = coinsVal.Value + 50 end
-                if winsVal then winsVal.Value = winsVal.Value + 1 end
+                if winsVal  then winsVal.Value  = winsVal.Value  + 1  end
             end
         else
             currentStatus.Value = "Draw! No survivors."
         end
-        
-        task.wait(4) -- Display winner screen for 4 seconds
-        
-        -- Clean up bots from this round
+
+        task.wait(4)
+
+        -- Cleanup and reset
         cleanupBots()
-        
-        -- Teleport survivors back to lobby / clean up map
-        if activeMapFolder then
-            activeMapFolder:Destroy()
-        end
-        
+        if activeMapFolder then activeMapFolder:Destroy() end
+
         for _, player in ipairs(Players:GetPlayers()) do
-            player:LoadCharacter() -- Respawns them safely at default spawn points
+            player:LoadCharacter()
         end
-        
+
         task.wait(2)
     end
 end)
