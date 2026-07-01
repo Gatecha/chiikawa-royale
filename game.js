@@ -3264,7 +3264,7 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
       <div class="card-inner-skew">
         <button class="local-four-remove" type="button" aria-label="Remove P${index + 1}" ${index === 0 ? "hidden" : ""}>x</button>
         <div class="squad-card-image-container">
-          <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" ${slot.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
+          <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" />
         </div>
       </div>
       <div class="card-footer-bar">
@@ -4194,11 +4194,7 @@ function updateProgressionUI() {
     if (!playCardImg.src.endsWith(cardPath)) {
       playCardImg.src = cardPath;
     }
-    if (selectedCharacter === "magical_usagi") {
-      playCardImg.style.transform = "translateX(24px) scale(1.05)";
-    } else {
-      playCardImg.style.transform = "";
-    }
+    playCardImg.style.transform = "";
   }
   const playCharName = document.getElementById("playCharName");
   if (playCharName) {
@@ -7757,11 +7753,7 @@ function syncSquadLobbyInterface() {
     if (!img.src.endsWith(cardPath)) {
       img.src = cardPath;
     }
-    if (selectedCharacter === "magical_usagi") {
-      img.style.transform = "translateX(24px) scale(1.05)";
-    } else {
-      img.style.transform = "";
-    }
+    img.style.transform = "";
   }
   const squadLobbyRankIcon = document.getElementById("squadLobbyRankIcon");
   if (squadLobbyRankIcon) {
@@ -7790,7 +7782,7 @@ function syncSquadLobbyInterface() {
       leftCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
           </div>
         </div>
         <div class="card-footer-bar">
@@ -7834,7 +7826,7 @@ function syncSquadLobbyInterface() {
       rightCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
           </div>
         </div>
         <div class="card-footer-bar">
@@ -7879,7 +7871,7 @@ function syncSquadLobbyInterface() {
         fourthCard.innerHTML = `
           <div class="card-inner-skew">
             <div class="squad-card-image-container">
-              <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
+              <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" />
             </div>
           </div>
           <div class="card-footer-bar">
