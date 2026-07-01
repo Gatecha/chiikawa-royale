@@ -70,15 +70,27 @@ local function setupBombCollision(bomb)
     task.spawn(function()
         while bomb and bomb.Parent do
             local overlap = false
-            local parts = workspace:GetPartBoundsInBox(
-                CFrame.new(bomb.Position),
-                bomb.Size - Vector3.new(0.2, 0.2, 0.2)
-            )
-            for _, part in ipairs(parts) do
-                local char = part:FindFirstAncestorOfClass("Model")
-                if char and char:FindFirstChildOfClass("Humanoid") then
-                    overlap = true
-                    break
+            -- Check players
+            for _, player in ipairs(Players:GetPlayers()) do
+                local char = player.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local dist = (char.HumanoidRootPart.Position - bomb.Position).Magnitude
+                    if dist < 3.5 then
+                        overlap = true
+                        break
+                    end
+                end
+            end
+            -- Check bots
+            if not overlap then
+                for _, child in ipairs(workspace:GetChildren()) do
+                    if child:IsA("Model") and child:GetAttribute("IsBot") and child:FindFirstChild("HumanoidRootPart") then
+                        local dist = (child.HumanoidRootPart.Position - bomb.Position).Magnitude
+                        if dist < 3.5 then
+                            overlap = true
+                            break
+                        end
+                    end
                 end
             end
             if not overlap then
@@ -89,6 +101,7 @@ local function setupBombCollision(bomb)
         end
     end)
 end
+
 
 -- Spawns a floating powerup part
 local function spawnPowerup(position)
