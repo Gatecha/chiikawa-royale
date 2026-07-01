@@ -6878,8 +6878,8 @@ function drawCharacterSelectPreview() {
   const drawW = characterSelectVideo.videoWidth * scale;
   const drawH = characterSelectVideo.videoHeight * scale;
   const drawX = (width - drawW) / 2;
-  // Center vertically with a slight downward nudge, but clamp so top is never clipped
-  const rawDrawY = (height - drawH) / 2 + height * 0.04;
+  // Shift character toward top — negative offset moves it above center
+  const rawDrawY = (height - drawH) / 2 - height * 0.14;
   const drawY = Math.max(0, rawDrawY);
 
   characterSelectCtx.drawImage(characterSelectVideo, drawX, drawY, drawW, drawH);
@@ -16936,8 +16936,8 @@ function startGachaMagicalReveal(characterKind) {
       const drawW = video.videoWidth * scale;
       const drawH = video.videoHeight * scale;
       const drawX = (width - drawW) / 2;
-      // Center vertically with slight downward nudge, clamped so top is never clipped
-      const rawDrawY = (height - drawH) / 2 + height * 0.04;
+      // Shift character toward top — negative offset moves it above center
+      const rawDrawY = (height - drawH) / 2 - height * 0.14;
       const drawY = Math.max(0, rawDrawY);
 
       // Draw centered frame to canvas
