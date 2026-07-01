@@ -14074,3 +14074,246 @@ body.is-iphone {
   transform: translateY(2px) scale(0.98);
   box-shadow: 2px 2px 0 #000;
 }
+
+/* Outfit Upgrade Interface */
+#outfitUpgradeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+#outfitUpgradeOverlay.hidden {
+  display: none !important;
+}
+
+#outfitUpgradeOverlay button, 
+#outfitUpgradeOverlay .gmu-node-item, 
+#outfitUpgradeOverlay .gmu-details-panel {
+  pointer-events: auto;
+}
+
+/* Constellation Nodes orbit on the right */
+.gmu-nodes-container {
+  position: absolute;
+  right: 320px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 5;
+  width: 100px;
+  height: 300px;
+  animation: gmu-fade-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.gmu-node-wire {
+  position: absolute;
+  width: 3px;
+  height: 260px;
+  background: linear-gradient(to bottom, transparent, rgba(167, 139, 250, 0.4) 20%, rgba(167, 139, 250, 0.4) 80%, transparent);
+  border-radius: 50%;
+  left: 50%;
+  transform: translateX(-50%) rotate(-10deg);
+  z-index: 1;
+}
+
+.gmu-node-item {
+  position: absolute;
+  top: calc(50% + var(--y-offset));
+  left: calc(50% + var(--x-offset));
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.gmu-node-item:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.gmu-node-diamond {
+  width: 38px;
+  height: 38px;
+  background: #181a1d;
+  border: 3.5px solid #000;
+  transform: rotate(45deg);
+  box-shadow: 2px 2px 0 #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.gmu-node-item.active .gmu-node-diamond {
+  color: #ffd86f;
+  background: radial-gradient(circle, #fffbcf 0%, #3b9dfb 100%);
+  border-color: #ffd86f;
+  box-shadow: 0 0 15px rgba(255, 216, 111, 0.6), 2px 2px 0 #000;
+}
+
+.gmu-node-item.selected .gmu-node-diamond {
+  border-color: #83cf00 !important;
+  transform: rotate(45deg) scale(1.1);
+}
+
+.gmu-node-level {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: bold;
+  color: #888;
+  margin-top: 4px;
+}
+
+.gmu-node-item.active .gmu-node-level {
+  color: #fff;
+}
+
+/* Detail Panel on the far right */
+.gmu-details-panel {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 260px;
+  background: rgba(20, 21, 24, 0.94);
+  border: 4.5px solid #000;
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 6px 6px 0 #000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+  animation: gmu-fade-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes gmu-fade-in-right {
+  0% { opacity: 0; transform: translateY(-50%) translateX(40px); }
+  100% { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.gmu-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3.5px solid #000;
+  padding-bottom: 8px;
+}
+
+.gmu-details-header h3 {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 16px;
+  color: #fff;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.gmu-badge {
+  font-family: var(--font-clean);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 2px solid #000;
+  text-transform: uppercase;
+}
+
+.gmu-badge.unlocked {
+  background: #83cf00;
+  color: #000;
+}
+
+.gmu-badge.locked {
+  background: #ff2f73;
+  color: #fff;
+}
+
+#gmuNodeDesc {
+  font-family: var(--font-clean);
+  font-size: 12px;
+  color: #ccc;
+  line-height: 1.4;
+  margin: 0;
+  min-height: 50px;
+}
+
+.gmu-details-footer {
+  margin-top: 10px;
+  border-top: 3.5px solid #000;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gmu-duplicate-counter {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: bold;
+  color: #888;
+}
+
+#gmuActivateBtn {
+  background: #a78bfa;
+  color: #000;
+  border: 3.5px solid #000;
+  border-radius: 14px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 8px 0;
+  width: 100%;
+  box-shadow: 2px 2px 0 #000;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+#gmuActivateBtn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 4px 4px 0 #000;
+}
+
+#gmuActivateBtn:disabled {
+  background: #333;
+  color: #666;
+  border-color: #111;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Screen Transitions */
+.character-select-screen .select-card-grid {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
+.character-select-screen.upgrade-active .select-card-grid {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.character-select-screen .select-main-video-wrap {
+  transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.character-select-screen.upgrade-active .select-main-video-wrap {
+  left: 45% !important;
+  transform: translateX(-50%) translateY(-2%) scale(1.2) !important;
+}
+
+/* Hide select buttons in upgrade screen */
+.character-select-screen.upgrade-active #confirmCharacterBtn,
+.character-select-screen.upgrade-active #upgradeClothesBtn {
+  display: none !important;
+}

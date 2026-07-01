@@ -1505,6 +1505,16 @@ function syncCharacterSelectPreview(kind) {
     }
   }
 
+  // Show Upgrade button only for magical character skins
+  const upgradeBtn = document.getElementById("upgradeClothesBtn");
+  if (upgradeBtn) {
+    if (kind.startsWith("magical_")) {
+      upgradeBtn.classList.remove("hidden");
+    } else {
+      upgradeBtn.classList.add("hidden");
+    }
+  }
+
   if (characterSelectVideo && characterSelectVideos[kind]) {
     installVideoFallback(characterSelectVideo, characterSelectVideos[kind]);
     const targetSrc = getVideoSrc(characterSelectVideos[kind], true); // Force high quality for wardrobe
@@ -1692,6 +1702,213 @@ wardrobeTabs.forEach((tab) => {
     }
   });
 });
+
+// Outfit Upgrade System & Constellation Logic
+let selectedUpgradeLevel = 1;
+let activeUpgradeCharacter = "";
+
+function getOutfitUpgradeLevel(kind) {
+  try {
+    const saved = localStorage.getItem("outfit_upgrade_levels");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed[kind] || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function setOutfitUpgradeLevel(kind, level) {
+  try {
+    let parsed = {};
+    const saved = localStorage.getItem("outfit_upgrade_levels");
+    if (saved) parsed = JSON.parse(saved);
+    parsed[kind] = level;
+    localStorage.setItem("outfit_upgrade_levels", JSON.stringify(parsed));
+  } catch (e) {}
+}
+
+function getOutfitDuplicates(kind) {
+  try {
+    const saved = localStorage.getItem("outfit_duplicates");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed[kind] || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function setOutfitDuplicates(kind, val) {
+  try {
+    let parsed = {};
+    const saved = localStorage.getItem("outfit_duplicates");
+    if (saved) parsed = JSON.parse(saved);
+    parsed[kind] = val;
+    localStorage.setItem("outfit_duplicates", JSON.stringify(parsed));
+  } catch (e) {}
+}
+
+const OUTFIT_UPGRADE_BENEFITS = {
+  1: {
+    name: "Golden Sparks",
+    desc: "Unlocks floating golden cross star sparkles around your avatar in game play and wardrobe!",
+    color: "#ffd86f"
+  },
+  2: {
+    name: "Cherry Bubbles",
+    desc: "Upgrades sparkles to cherry pink rings and circular bubble dust effects!",
+    color: "#ff8da1"
+  },
+  3: {
+    name: "Frost Flares",
+    desc: "Upgrades sparkles to bright diamond-flares and icy teal star points!",
+    color: "#6fedff"
+  },
+  4: {
+    name: "Nebula Diamonds",
+    desc: "Upgrades sparkles to deep purple diamond stars and glowing cosmic dust!",
+    color: "#c36fff"
+  },
+  5: {
+    name: "Rainbow Hyperglow",
+    desc: "Enables all colored sparkle shapes at once in a hyper-glow rainbow pattern! Equips instantly in multiplayer gameplay!",
+    color: "#ff3cfc"
+  }
+};
+
+function selectUpgradeNode(level) {
+  selectedUpgradeLevel = level;
+  
+  // Highlight node in UI
+  document.querySelectorAll(".gmu-node-item").forEach(node => {
+    const nodeLevel = parseInt(node.getAttribute("data-level"));
+    node.classList.toggle("selected", nodeLevel === level);
+  });
+  
+  // Sync Details Panel
+  const benefit = OUTFIT_UPGRADE_BENEFITS[level];
+  const nodeNameEl = document.getElementById("gmuNodeName");
+  const nodeDescEl = document.getElementById("gmuNodeDesc");
+  const nodeStatusEl = document.getElementById("gmuNodeStatus");
+  const dupCountEl = document.getElementById("gmuDupCount");
+  const activateBtn = document.getElementById("gmuActivateBtn");
+  
+  if (benefit && nodeNameEl && nodeDescEl && nodeStatusEl && dupCountEl && activateBtn) {
+    nodeNameEl.textContent = benefit.name;
+    nodeDescEl.textContent = benefit.desc;
+    
+    const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+    const duplicatesOwned = getOutfitDuplicates(activeUpgradeCharacter);
+    dupCountEl.textContent = duplicatesOwned;
+    
+    if (level <= currentLevel) {
+      nodeStatusEl.className = "gmu-badge unlocked";
+      nodeStatusEl.textContent = "Unlocked";
+      activateBtn.disabled = true;
+      activateBtn.textContent = "Activated";
+    } else {
+      nodeStatusEl.className = "gmu-badge locked";
+      nodeStatusEl.textContent = "Locked";
+      
+      // Can only unlock next sequential level
+      if (level === currentLevel + 1) {
+        if (duplicatesOwned >= 1) {
+          activateBtn.disabled = false;
+          activateBtn.textContent = "Activate Node";
+        } else {
+          activateBtn.disabled = true;
+          activateBtn.textContent = "Need 1 Duplicate";
+        }
+      } else {
+        activateBtn.disabled = true;
+        activateBtn.textContent = `Unlock Node ${level - 1} First`;
+      }
+    }
+  }
+}
+
+function syncConstellationNodes() {
+  const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+  document.querySelectorAll(".gmu-node-item").forEach(node => {
+    const nodeLevel = parseInt(node.getAttribute("data-level"));
+    node.classList.toggle("active", nodeLevel <= currentLevel);
+  });
+}
+
+function initOutfitUpgradeSystem() {
+  const upgradeBtn = document.getElementById("upgradeClothesBtn");
+  const closeUpgradeBtn = document.getElementById("closeOutfitUpgradeBtn");
+  const activateBtn = document.getElementById("gmuActivateBtn");
+  const screen = document.querySelector(".character-select-screen");
+  
+  if (upgradeBtn) {
+    upgradeBtn.onclick = () => {
+      if (!previewCharacter) return;
+      activeUpgradeCharacter = previewCharacter;
+      
+      if (screen) screen.classList.add("upgrade-active");
+      const overlay = document.getElementById("outfitUpgradeOverlay");
+      if (overlay) overlay.classList.remove("hidden");
+      
+      // Update Nodes
+      syncConstellationNodes();
+      
+      // Select first node or next locked node
+      const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+      const nextSelect = Math.min(5, currentLevel + 1);
+      selectUpgradeNode(nextSelect);
+      
+      if (typeof playSound === "function") playSound("tutorial_beep");
+    };
+  }
+  
+  if (closeUpgradeBtn) {
+    closeUpgradeBtn.onclick = () => {
+      if (screen) screen.classList.remove("upgrade-active");
+      const overlay = document.getElementById("outfitUpgradeOverlay");
+      if (overlay) overlay.classList.add("hidden");
+      if (typeof playSound === "function") playSound("swipe");
+    };
+  }
+  
+  // Constellation Node click events
+  document.querySelectorAll(".gmu-node-item").forEach(node => {
+    node.onclick = () => {
+      const level = parseInt(node.getAttribute("data-level"));
+      selectUpgradeNode(level);
+      if (typeof playSound === "function") playSound("button_hover");
+    };
+  });
+  
+  if (activateBtn) {
+    activateBtn.onclick = () => {
+      const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+      const targetLevel = currentLevel + 1;
+      const duplicatesOwned = getOutfitDuplicates(activeUpgradeCharacter);
+      
+      if (duplicatesOwned >= 1) {
+        // Spend 1 duplicate
+        setOutfitDuplicates(activeUpgradeCharacter, duplicatesOwned - 1);
+        // Level up!
+        setOutfitUpgradeLevel(activeUpgradeCharacter, targetLevel);
+        
+        // Visual effects flash and sound
+        if (typeof playSound === "function") playSound("victory_royale");
+        
+        // Show success visual feedback
+        syncConstellationNodes();
+        selectUpgradeNode(selectedUpgradeLevel);
+        
+        // Show toast
+        showToastMsg(`Outfit Skin Upgraded to Level ${targetLevel}!`);
+      }
+    };
+  }
+}
+
+// Call init on startup
+setTimeout(initOutfitUpgradeSystem, 500);
 
 
 // ----------------------------------------------------------------
@@ -6202,23 +6419,49 @@ function drawPlayer(player) {
     return;
   }
 
-  // Spawn magical sparkle particles for magical character skins
+  // Spawn magical sparkle particles for magical character skins depending on outfit upgrade level
   if (player.alive && (player.kind === "magical_chiikawa" || player.kind === "magical_hachiware" || player.kind === "magical_usagi")) {
-    if (Math.random() < 0.08) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = Math.random() * 18;
-      const px = player.x + Math.cos(angle) * dist;
-      const py = player.y + Math.sin(angle) * dist - 8;
-      particles.push({
-        x: px,
-        y: py,
-        vx: (Math.random() - 0.5) * 12,
-        vy: -15 - Math.random() * 20,
-        life: 0.45 + Math.random() * 0.35,
-        color: ["#fffbcf", "#ffd1fb", "#d1f6ff", "#ffffff", "#fcd9ff"][Math.floor(Math.random() * 5)],
-        size: 3.5 + Math.random() * 3.5,
-        isSparkle: true
-      });
+    const upgradeLevel = getOutfitUpgradeLevel(player.kind);
+    if (upgradeLevel >= 1) {
+      if (Math.random() < 0.08) {
+        let sparkleColor = "#ffd86f";
+        let sparkleShape = "cross";
+        
+        if (upgradeLevel === 1) {
+          sparkleColor = ["#ffd86f", "#ffeaa7", "#fff9db"][Math.floor(Math.random() * 3)];
+          sparkleShape = "cross";
+        } else if (upgradeLevel === 2) {
+          sparkleColor = ["#ff8da1", "#ff788f", "#ffb3c1"][Math.floor(Math.random() * 3)];
+          sparkleShape = "circle";
+        } else if (upgradeLevel === 3) {
+          sparkleColor = ["#6fedff", "#a0effa", "#e0faff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "flare";
+        } else if (upgradeLevel === 4) {
+          sparkleColor = ["#c36fff", "#d69cff", "#f5e6ff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "diamond";
+        } else if (upgradeLevel === 5) {
+          const colors = ["#ff3cfc", "#6fedff", "#ffd86f", "#ff8da1", "#c36fff"];
+          sparkleColor = colors[Math.floor(Math.random() * colors.length)];
+          const shapes = ["cross", "circle", "flare", "diamond"];
+          sparkleShape = shapes[Math.floor(Math.random() * shapes.length)];
+        }
+        
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * 18;
+        const px = player.x + Math.cos(angle) * dist;
+        const py = player.y + Math.sin(angle) * dist - 8;
+        particles.push({
+          x: px,
+          y: py,
+          vx: (Math.random() - 0.5) * 12,
+          vy: -15 - Math.random() * 20,
+          life: 0.45 + Math.random() * 0.35,
+          color: sparkleColor,
+          size: 3.5 + Math.random() * 3.5,
+          isSparkle: true,
+          sparkleShape: sparkleShape
+        });
+      }
     }
   }
 
@@ -6343,13 +6586,56 @@ function drawParticle(p) {
   if (p.isSparkle) {
     ctx.shadowColor = p.color;
     ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y - p.size);
-    ctx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
-    ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
-    ctx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
-    ctx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
-    ctx.fill();
+    
+    if (p.sparkleShape === "circle") {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw outer thin ring
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 1.3, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (p.sparkleShape === "flare") {
+      // 8-point star flare
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+      ctx.fill();
+      
+      // Diagonals
+      const diag = p.size * 0.65;
+      ctx.beginPath();
+      ctx.moveTo(p.x - diag, p.y - diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y - diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y + diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y + diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y - diag);
+      ctx.fill();
+    } else if (p.sparkleShape === "diamond") {
+      // Diamond
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.size * 1.2);
+      ctx.lineTo(p.x + p.size * 0.8, p.y);
+      ctx.lineTo(p.x, p.y + p.size * 1.2);
+      ctx.lineTo(p.x - p.size * 0.8, p.y);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Default 4-point cross star
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+      ctx.fill();
+    }
   } else {
     ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
   }
@@ -6562,6 +6848,116 @@ function drawCharacterSelectPreview() {
 
   characterSelectCtx.drawImage(characterSelectVideo, drawX, drawY, drawW, drawH);
   removeGreenScreenFromCanvas(characterSelectCtx, width, height);
+
+  // Render sparkles corresponding to the wardrobe character upgrade level
+  const isMagical = previewCharacter && previewCharacter.startsWith("magical_");
+  if (isMagical) {
+    const upgradeLevel = getOutfitUpgradeLevel(previewCharacter);
+    if (upgradeLevel >= 1) {
+      if (!window.wardrobeSparkles) window.wardrobeSparkles = [];
+      
+      // Spawn new sparkles
+      if (Math.random() < 0.16) {
+        let sparkleColor = "#ffd86f";
+        let sparkleShape = "cross";
+        
+        if (upgradeLevel === 1) {
+          sparkleColor = ["#ffd86f", "#ffeaa7", "#fff9db"][Math.floor(Math.random() * 3)];
+          sparkleShape = "cross";
+        } else if (upgradeLevel === 2) {
+          sparkleColor = ["#ff8da1", "#ff788f", "#ffb3c1"][Math.floor(Math.random() * 3)];
+          sparkleShape = "circle";
+        } else if (upgradeLevel === 3) {
+          sparkleColor = ["#6fedff", "#a0effa", "#e0faff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "flare";
+        } else if (upgradeLevel === 4) {
+          sparkleColor = ["#c36fff", "#d69cff", "#f5e6ff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "diamond";
+        } else if (upgradeLevel === 5) {
+          const colors = ["#ff3cfc", "#6fedff", "#ffd86f", "#ff8da1", "#c36fff"];
+          sparkleColor = colors[Math.floor(Math.random() * colors.length)];
+          const shapes = ["cross", "circle", "flare", "diamond"];
+          sparkleShape = shapes[Math.floor(Math.random() * shapes.length)];
+        }
+        
+        window.wardrobeSparkles.push({
+          x: width / 2 + (Math.random() - 0.5) * 450,
+          y: height / 2 + (Math.random() - 0.5) * 450,
+          vx: (Math.random() - 0.5) * 3,
+          vy: -3 - Math.random() * 5,
+          life: 0.8 + Math.random() * 0.6,
+          color: sparkleColor,
+          size: 8 + Math.random() * 12,
+          sparkleShape: sparkleShape
+        });
+      }
+      
+      // Update and draw wardrobe sparkles
+      characterSelectCtx.save();
+      for (let i = window.wardrobeSparkles.length - 1; i >= 0; i--) {
+        const p = window.wardrobeSparkles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.016;
+        
+        if (p.life <= 0) {
+          window.wardrobeSparkles.splice(i, 1);
+          continue;
+        }
+        
+        characterSelectCtx.globalAlpha = Math.min(1, p.life * 2.2);
+        characterSelectCtx.shadowColor = p.color;
+        characterSelectCtx.shadowBlur = 10;
+        characterSelectCtx.fillStyle = p.color;
+        
+        if (p.sparkleShape === "circle") {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          characterSelectCtx.fill();
+          
+          characterSelectCtx.strokeStyle = p.color;
+          characterSelectCtx.lineWidth = 2.5;
+          characterSelectCtx.beginPath();
+          characterSelectCtx.arc(p.x, p.y, p.size * 1.6, 0, Math.PI * 2);
+          characterSelectCtx.stroke();
+        } else if (p.sparkleShape === "flare") {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x, p.y - p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+          characterSelectCtx.fill();
+          
+          const diag = p.size * 0.65;
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x - diag, p.y - diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y - diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y + diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y + diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y - diag);
+          characterSelectCtx.fill();
+        } else if (p.sparkleShape === "diamond") {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x, p.y - p.size * 1.2);
+          characterSelectCtx.lineTo(p.x + p.size * 0.8, p.y);
+          characterSelectCtx.lineTo(p.x, p.y + p.size * 1.2);
+          characterSelectCtx.lineTo(p.x - p.size * 0.8, p.y);
+          characterSelectCtx.closePath();
+          characterSelectCtx.fill();
+        } else {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x, p.y - p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+          characterSelectCtx.fill();
+        }
+      }
+      characterSelectCtx.restore();
+    }
+  }
 }
 
 function drawSquadLobbyCharacter() {
@@ -7682,33 +8078,45 @@ surrenderNoBtn?.addEventListener("click", () => {
 });
 
 // Return to Lobby after Victory
-document.getElementById("victoryReturnBtn")?.addEventListener("click", () => {
-  players = [];
-  document.getElementById("tournamentOverlay").classList.add("hidden");
-  stopConfetti();
-  const vVideo = document.getElementById("victoryVideo");
-  if (vVideo) {
-    vVideo.pause();
-  }
-  if (roundCountdownInterval) {
-    clearInterval(roundCountdownInterval);
-    roundCountdownInterval = null;
-  }
+const victoryLobbyBtn = document.getElementById("victoryLobbyBtn");
+if (victoryLobbyBtn) {
+  victoryLobbyBtn.addEventListener("click", () => {
+    // Clear auto-lobby timer if active
+    if (window.victoryLobbyCountdownInterval) {
+      clearInterval(window.victoryLobbyCountdownInterval);
+      window.victoryLobbyCountdownInterval = null;
+    }
+    
+    // Restore default text
+    victoryLobbyBtn.textContent = "Return to Lobby";
 
-  if (localMode) {
-    roomCode = null;
-    localPlayerId = null;
-    hostId = null;
-    localMode = false;
-    resetCouchControls();
-    resetLobbyMapSelectToNormal();
-    switchScreen(menuScreen);
-    document.querySelector('.tab-btn[data-tab="play"]')?.click();
-  } else {
-    switchScreen(menuScreen);
-    document.querySelector('.tab-btn[data-tab="squad"]')?.click();
-  }
-});
+    players = [];
+    document.getElementById("tournamentOverlay").classList.add("hidden");
+    stopConfetti();
+    const vVideo = document.getElementById("victoryVideo");
+    if (vVideo) {
+      vVideo.pause();
+    }
+    if (roundCountdownInterval) {
+      clearInterval(roundCountdownInterval);
+      roundCountdownInterval = null;
+    }
+
+    if (localMode) {
+      roomCode = null;
+      localPlayerId = null;
+      hostId = null;
+      localMode = false;
+      resetCouchControls();
+      resetLobbyMapSelectToNormal();
+      switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
+    } else {
+      switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+    }
+  });
+}
 
 // Squad Lobby Private Room Bot Button
 document.getElementById("squadAddBotBtn")?.addEventListener("click", () => {
@@ -9486,6 +9894,27 @@ function showTournamentResults(playersList, winnerId, tournamentFinished, trophy
         clearInterval(roundCountdownInterval);
         roundCountdownInterval = null;
       }
+
+      // Start 10-second automatic return-to-lobby countdown
+      let victoryTimeLeft = 10;
+      const vLobbyBtn = document.getElementById("victoryLobbyBtn");
+      if (vLobbyBtn) {
+        vLobbyBtn.textContent = `Return to Lobby (${victoryTimeLeft}s)`;
+      }
+      if (window.victoryLobbyCountdownInterval) {
+        clearInterval(window.victoryLobbyCountdownInterval);
+      }
+      window.victoryLobbyCountdownInterval = setInterval(() => {
+        victoryTimeLeft--;
+        if (vLobbyBtn) {
+          vLobbyBtn.textContent = `Return to Lobby (${victoryTimeLeft}s)`;
+        }
+        if (victoryTimeLeft <= 0) {
+          clearInterval(window.victoryLobbyCountdownInterval);
+          window.victoryLobbyCountdownInterval = null;
+          if (vLobbyBtn) vLobbyBtn.click();
+        }
+      }, 1000);
 
       // Identify grand winner
       const grandWinner = players.find(p => p.id === winnerId || (p.trophies || 0) >= trophyGoal);
@@ -16071,7 +16500,17 @@ function _pickSItem(isFiftyPity) {
   var isDup = false;
   if (chosen.type === "character") {
     isDup = getUnlockedCharacters().includes(chosen.id);
-    if (!isDup) {
+    if (isDup) {
+      if (chosen.id.startsWith("magical_")) {
+        let dups = {};
+        try {
+          const saved = localStorage.getItem("outfit_duplicates");
+          if (saved) dups = JSON.parse(saved);
+        } catch (e) {}
+        dups[chosen.id] = (dups[chosen.id] || 0) + 1;
+        localStorage.setItem("outfit_duplicates", JSON.stringify(dups));
+      }
+    } else {
       var unlocked = getUnlockedCharacters();
       unlocked.push(chosen.id);
       localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
@@ -16413,6 +16852,7 @@ function startGachaMagicalReveal(characterKind) {
   
   // Set video source and play
   const videoName = characterSelectVideos[characterKind] || `assets/character skins/character animation wardrobe/${characterKind.replace("_", " ")}.mp4`;
+  installVideoFallback(video, videoName);
   const targetSrc = getVideoSrc(videoName);
   video.src = targetSrc;
   video.load();
@@ -16433,7 +16873,10 @@ function startGachaMagicalReveal(characterKind) {
       // Draw frame to canvas
       ctx.drawImage(video, 0, 0, width, height);
       
-      // Apply white silhouette blend
+      // Chromakey out the green screen background first
+      removeGreenScreenFromCanvas(ctx, width, height);
+      
+      // Apply white silhouette blend only to remaining visible character pixels
       if (elapsed < silhouetteDuration + fadeDuration) {
         const imgData = ctx.getImageData(0, 0, width, height);
         const data = imgData.data;
@@ -16446,7 +16889,7 @@ function startGachaMagicalReveal(characterKind) {
         
         for (let i = 0; i < data.length; i += 4) {
           const alpha = data[i+3];
-          if (alpha > 5) {
+          if (alpha > 10) { // Only character body pixels
             data[i]   = Math.round(data[i]   * mix + 255 * (1 - mix));
             data[i+1] = Math.round(data[i+1] * mix + 255 * (1 - mix));
             data[i+2] = Math.round(data[i+2] * mix + 255 * (1 - mix));
@@ -16454,9 +16897,6 @@ function startGachaMagicalReveal(characterKind) {
         }
         ctx.putImageData(imgData, 0, 0);
       }
-      
-      // Chromakey out the green screen background
-      removeGreenScreenFromCanvas(ctx, width, height);
     }
     
     // Spawn and draw sparkle particles on top!

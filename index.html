@@ -537,7 +537,66 @@
                       <span id="characterSelectState">Selected</span>
                     </div>
                   </button>
+                  <button id="upgradeClothesBtn" class="select-nameplate hidden" type="button" style="bottom: 108px;">
+                    <div class="select-paw-badge" aria-hidden="true" style="background: #a78bfa; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.15), 0 3px 0 #000;">
+                      <span style="background:#fff;"></span><span style="background:#fff;"></span><span style="background:#fff;"></span><span style="background:#fff;"></span>
+                    </div>
+                    <span class="select-button-copy" style="color: #a78bfa;">Upgrade</span>
+                    <strong style="color: #fff;">Outfit Skin</strong>
+                  </button>
                 </section>
+
+                <!-- Outfit Upgrade Overlay Screen (hidden by default) -->
+                <div id="outfitUpgradeOverlay" class="hidden">
+                  <!-- Close button in top-left of overlay -->
+                  <button id="closeOutfitUpgradeBtn" class="select-back-btn" type="button" aria-label="Exit Upgrade" style="position: absolute; left: 22px; top: 22px; z-index: 205;">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M19 17a5 5 0 0 0-5-5H5" />
+                      <path d="M9 17l-5-5 5-5" />
+                    </svg>
+                  </button>
+                  
+                  <!-- Constellation Node list (arc on the right side) -->
+                  <div class="gmu-nodes-container">
+                    <div class="gmu-node-wire"></div>
+                    <div class="gmu-node-item active selected" data-level="1" style="--y-offset: -100px; --x-offset: -12px;">
+                      <div class="gmu-node-diamond">✦</div>
+                      <span class="gmu-node-level">1</span>
+                    </div>
+                    <div class="gmu-node-item" data-level="2" style="--y-offset: -50px; --x-offset: 8px;">
+                      <div class="gmu-node-diamond">✦</div>
+                      <span class="gmu-node-level">2</span>
+                    </div>
+                    <div class="gmu-node-item" data-level="3" style="--y-offset: 0px; --x-offset: 15px;">
+                      <div class="gmu-node-diamond">✦</div>
+                      <span class="gmu-node-level">3</span>
+                    </div>
+                    <div class="gmu-node-item" data-level="4" style="--y-offset: 50px; --x-offset: 8px;">
+                      <div class="gmu-node-diamond">✦</div>
+                      <span class="gmu-node-level">4</span>
+                    </div>
+                    <div class="gmu-node-item" data-level="5" style="--y-offset: 100px; --x-offset: -12px;">
+                      <div class="gmu-node-diamond">✦</div>
+                      <span class="gmu-node-level">5</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Description Panel on the right side -->
+                  <div class="gmu-details-panel">
+                    <div class="gmu-details-header">
+                      <h3 id="gmuNodeName">Sparkle upgrade</h3>
+                      <span id="gmuNodeStatus" class="gmu-badge unlocked">UNLOCKED</span>
+                    </div>
+                    <p id="gmuNodeDesc">Unlocks magical star sparkles in-game for this outfit skin!</p>
+                    
+                    <div class="gmu-details-footer">
+                      <div class="gmu-duplicate-counter">
+                        Duplicates Owned: <span id="gmuDupCount" style="color: #ffd86f;">0</span>
+                      </div>
+                      <button id="gmuActivateBtn" type="button">Activate Node</button>
+                    </div>
+                  </div>
+                </div>
 
                 <section class="select-card-panel" aria-label="Character cards">
                   <div id="selectCardGrid" class="select-card-grid" data-mode="characters">
@@ -1022,43 +1081,50 @@
 
                   <!-- OUTFITS SUB-TAB CONTENT -->
                   <div id="shopSubTabContent_outfits" class="shop-subtab-content" style="display: none; height: 100%; width: 100%;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 18px; width: 100%; box-sizing: border-box; padding: 10px;">
-                      <!-- Magical Chiikawa Outfit Card -->
-                      <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                        <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #f4307a; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Legendary</span>
-                        <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                          <img src="assets/character skins/wardrobe cards/magical chiikawa.png" alt="Magical Chiikawa" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.1); transition: transform 0.2s;" />
-                        </div>
-                        <div class="shop-item-info" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1;">
-                          <div style="font-weight: 900; font-size: 14px; color: #fff; text-transform: uppercase;">M. Chiikawa</div>
-                          <div style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold; line-height: 1.2;">Magical Girl skin with custom effects and animations!</div>
-                          <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3.5px solid #000; border-radius: 12px; font-size: 12px; font-weight: 900; padding: 6px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
-                        </div>
+                    <div class="shop-panel-container" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; height: 100%; min-height: 380px; width: 100%; box-sizing: border-box; padding: 20px; overflow-y: auto;">
+                      
+                      <div class="shop-grid-title" style="font-family: var(--font); color: #ffd86f; font-size: 14px; text-transform: uppercase; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 15px; border-bottom: 3.5px solid #000; padding-bottom: 8px;">
+                        👕 Featured outfit skins
                       </div>
                       
-                      <!-- Magical Hachiware Outfit Card -->
-                      <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                        <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #3b9dfb; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Legendary</span>
-                        <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                          <img src="assets/character skins/wardrobe cards/magical hachiware.png" alt="Magical Hachiware" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.1); transition: transform 0.2s;" />
+                      <div class="shop-grid-items" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 18px; width: 100%;">
+                        <!-- Magical Chiikawa Outfit Card -->
+                        <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease; height: 260px;">
+                          <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #f4307a; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Legendary</span>
+                          <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); height: 130px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <img src="assets/character skins/wardrobe cards/magical chiikawa.png" alt="Magical Chiikawa" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.1); transition: transform 0.2s;" />
+                          </div>
+                          <div class="shop-item-info" style="padding: 10px; display: flex; flex-direction: column; gap: 4px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1; height: 120px;">
+                            <div style="font-weight: 900; font-size: 12px; color: #fff; text-transform: uppercase;">M. Chiikawa</div>
+                            <div style="font-family: var(--font-clean); font-size: 10px; color: #888; font-weight: bold; line-height: 1.2;">Magical Girl skin with custom effects!</div>
+                            <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3px solid #000; border-radius: 10px; font-size: 11px; font-weight: 900; padding: 4px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                          </div>
                         </div>
-                        <div class="shop-item-info" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1;">
-                          <div style="font-weight: 900; font-size: 14px; color: #fff; text-transform: uppercase;">M. Hachiware</div>
-                          <div style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold; line-height: 1.2;">Magical Hachiware outfit with custom staff and winks!</div>
-                          <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3.5px solid #000; border-radius: 12px; font-size: 12px; font-weight: 900; padding: 6px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                        
+                        <!-- Magical Hachiware Outfit Card -->
+                        <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease; height: 260px;">
+                          <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #3b9dfb; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Legendary</span>
+                          <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); height: 130px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <img src="assets/character skins/wardrobe cards/magical hachiware.png" alt="Magical Hachiware" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.1); transition: transform 0.2s;" />
+                          </div>
+                          <div class="shop-item-info" style="padding: 10px; display: flex; flex-direction: column; gap: 4px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1; height: 120px;">
+                            <div style="font-weight: 900; font-size: 12px; color: #fff; text-transform: uppercase;">M. Hachiware</div>
+                            <div style="font-family: var(--font-clean); font-size: 10px; color: #888; font-weight: bold; line-height: 1.2;">Magical Hachiware outfit with staff!</div>
+                            <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3px solid #000; border-radius: 10px; font-size: 11px; font-weight: 900; padding: 4px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <!-- Magical Usagi Outfit Card -->
-                      <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                        <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #fdb612; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Legendary</span>
-                        <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                          <img src="assets/character skins/wardrobe cards/magical usagi.png" alt="Magical Usagi" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.1); transition: transform 0.2s;" />
-                        </div>
-                        <div class="shop-item-info" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1;">
-                          <div style="font-weight: 900; font-size: 14px; color: #fff; text-transform: uppercase;">M. Usagi</div>
-                          <div style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold; line-height: 1.2;">Magical Usagi with golden cape and magical staff!</div>
-                          <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3.5px solid #000; border-radius: 12px; font-size: 12px; font-weight: 900; padding: 6px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                        
+                        <!-- Magical Usagi Outfit Card -->
+                        <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease; height: 260px;">
+                          <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #fdb612; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Legendary</span>
+                          <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); height: 130px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <img src="assets/character skins/wardrobe cards/magical usagi.png" alt="Magical Usagi" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.1); transition: transform 0.2s;" />
+                          </div>
+                          <div class="shop-item-info" style="padding: 10px; display: flex; flex-direction: column; gap: 4px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1; height: 120px;">
+                            <div style="font-weight: 900; font-size: 12px; color: #fff; text-transform: uppercase;">M. Usagi</div>
+                            <div style="font-family: var(--font-clean); font-size: 10px; color: #888; font-weight: bold; line-height: 1.2;">Magical Usagi with golden cape!</div>
+                            <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3px solid #000; border-radius: 10px; font-size: 11px; font-weight: 900; padding: 4px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1066,43 +1132,50 @@
 
                   <!-- BOMBS SUB-TAB CONTENT -->
                   <div id="shopSubTabContent_bombs" class="shop-subtab-content" style="display: none; height: 100%; width: 100%;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 18px; width: 100%; box-sizing: border-box; padding: 10px;">
-                      <!-- Magical Chiikawa Bomb Card -->
-                      <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                        <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #e74c3c; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Rare</span>
-                        <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                          <img src="assets/character skins/bomb skins/magical chiikawa bomb skin.png" alt="Magical Chiikawa Bomb" style="width: 76%; height: 76%; object-fit: contain; transform: scale(1.0); transition: transform 0.2s;" />
-                        </div>
-                        <div class="shop-item-info" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1;">
-                          <div style="font-weight: 900; font-size: 14px; color: #fff; text-transform: uppercase;">M. Chiikawa Bomb</div>
-                          <div style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold; line-height: 1.2;">Custom star magical bomb skin with pink explosion sparks!</div>
-                          <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3.5px solid #000; border-radius: 12px; font-size: 12px; font-weight: 900; padding: 6px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
-                        </div>
+                    <div class="shop-panel-container" style="border: 4.5px solid #000; border-radius: 20px; background: #0f1012; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; height: 100%; min-height: 380px; width: 100%; box-sizing: border-box; padding: 20px; overflow-y: auto;">
+                      
+                      <div class="shop-grid-title" style="font-family: var(--font); color: #ffd86f; font-size: 14px; text-transform: uppercase; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 15px; border-bottom: 3.5px solid #000; padding-bottom: 8px;">
+                        💣 Featured bomb skins
                       </div>
                       
-                      <!-- Magical Hachiware Bomb Card -->
-                      <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                        <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #e74c3c; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Rare</span>
-                        <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                          <img src="assets/character skins/bomb skins/magical hachiware bomb skin.png" alt="Magical Hachiware Bomb" style="width: 76%; height: 76%; object-fit: contain; transform: scale(1.0); transition: transform 0.2s;" />
+                      <div class="shop-grid-items" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 18px; width: 100%;">
+                        <!-- Magical Chiikawa Bomb Card -->
+                        <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease; height: 260px;">
+                          <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #e74c3c; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Rare</span>
+                          <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); height: 130px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <img src="assets/character skins/bomb skins/magical chiikawa bomb skin.png" alt="Magical Chiikawa Bomb" style="width: 70%; height: 70%; object-fit: contain; transform: scale(1.0); transition: transform 0.2s;" />
+                          </div>
+                          <div class="shop-item-info" style="padding: 10px; display: flex; flex-direction: column; gap: 4px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1; height: 120px;">
+                            <div style="font-weight: 900; font-size: 12px; color: #fff; text-transform: uppercase;">M. Chiikawa Bomb</div>
+                            <div style="font-family: var(--font-clean); font-size: 10px; color: #888; font-weight: bold; line-height: 1.2;">Custom bomb with pink explosion sparks!</div>
+                            <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3px solid #000; border-radius: 10px; font-size: 11px; font-weight: 900; padding: 4px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                          </div>
                         </div>
-                        <div class="shop-item-info" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1;">
-                          <div style="font-weight: 900; font-size: 14px; color: #fff; text-transform: uppercase;">M. Hachiware Bomb</div>
-                          <div style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold; line-height: 1.2;">Magical blue ribbon bomb skin with custom details!</div>
-                          <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3.5px solid #000; border-radius: 12px; font-size: 12px; font-weight: 900; padding: 6px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                        
+                        <!-- Magical Hachiware Bomb Card -->
+                        <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease; height: 260px;">
+                          <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #e74c3c; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Rare</span>
+                          <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); height: 130px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <img src="assets/character skins/bomb skins/magical hachiware bomb skin.png" alt="Magical Hachiware Bomb" style="width: 70%; height: 70%; object-fit: contain; transform: scale(1.0); transition: transform 0.2s;" />
+                          </div>
+                          <div class="shop-item-info" style="padding: 10px; display: flex; flex-direction: column; gap: 4px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1; height: 120px;">
+                            <div style="font-weight: 900; font-size: 12px; color: #fff; text-transform: uppercase;">M. Hachiware Bomb</div>
+                            <div style="font-family: var(--font-clean); font-size: 10px; color: #888; font-weight: bold; line-height: 1.2;">Magical blue ribbon bomb skin!</div>
+                            <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3px solid #000; border-radius: 10px; font-size: 11px; font-weight: 900; padding: 4px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <!-- Magical Usagi Bomb Card -->
-                      <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                        <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #e74c3c; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Rare</span>
-                        <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                          <img src="assets/character skins/bomb skins/magical usagi bomb skin.png" alt="Magical Usagi Bomb" style="width: 76%; height: 76%; object-fit: contain; transform: scale(1.0); transition: transform 0.2s;" />
-                        </div>
-                        <div class="shop-item-info" style="padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1;">
-                          <div style="font-weight: 900; font-size: 14px; color: #fff; text-transform: uppercase;">M. Usagi Bomb</div>
-                          <div style="font-family: var(--font-clean); font-size: 11px; color: #888; font-weight: bold; line-height: 1.2;">Yellow star magical bomb skin with golden details!</div>
-                          <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3.5px solid #000; border-radius: 12px; font-size: 12px; font-weight: 900; padding: 6px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                        
+                        <!-- Magical Usagi Bomb Card -->
+                        <div class="shop-item-card" onclick="openShopGacha()" style="cursor: pointer; border: 4.5px solid #000; border-radius: 20px; background: #191a1c; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; overflow: hidden; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease; height: 260px;">
+                          <span class="shop-item-badge" style="position: absolute; top: 10px; left: 10px; background: #e74c3c; color: #fff; font-family: var(--font); font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; border: 2px solid #000; text-transform: uppercase; z-index: 10;">Rare</span>
+                          <div class="shop-item-img-container" style="background: linear-gradient(135deg, #1d1d21, #0f1012); height: 130px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <img src="assets/character skins/bomb skins/magical usagi bomb skin.png" alt="Magical Usagi Bomb" style="width: 70%; height: 70%; object-fit: contain; transform: scale(1.0); transition: transform 0.2s;" />
+                          </div>
+                          <div class="shop-item-info" style="padding: 10px; display: flex; flex-direction: column; gap: 4px; font-family: var(--font); text-align: left; background: #0f1012; border-top: 4px solid #000; flex-grow: 1; height: 120px;">
+                            <div style="font-weight: 900; font-size: 12px; color: #fff; text-transform: uppercase;">M. Usagi Bomb</div>
+                            <div style="font-family: var(--font-clean); font-size: 10px; color: #888; font-weight: bold; line-height: 1.2;">Yellow star magical bomb skin!</div>
+                            <div class="shop-item-btn" style="margin-top: auto; text-align: center; background: #ffd84a; color: #000; border: 3px solid #000; border-radius: 10px; font-size: 11px; font-weight: 900; padding: 4px 0; box-shadow: 2px 2px 0 #000; text-transform: uppercase;">Gacha Shop</div>
+                          </div>
                         </div>
                       </div>
                     </div>
