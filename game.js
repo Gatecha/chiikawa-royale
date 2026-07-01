@@ -15634,6 +15634,20 @@ let mbMoving = false;
 let mbRollQueue = 0;
 let mbSpeedMultiplier = 1;
 let mbWalkTimeout = null;
+let mbActiveTimeouts = [];
+function mbSetTimeout(fn, delay) {
+  const id = setTimeout(() => {
+    mbActiveTimeouts = mbActiveTimeouts.filter(t => t !== id);
+    fn();
+  }, delay);
+  mbActiveTimeouts.push(id);
+  return id;
+}
+function mbClearAllTimeouts() {
+  mbActiveTimeouts.forEach(id => clearTimeout(id));
+  mbActiveTimeouts = [];
+  if (mbWalkTimeout) { clearTimeout(mbWalkTimeout); mbWalkTimeout = null; }
+}
 let mbRoll10Results = [];
 let mbSummaryQueueType = 1;
 let mbBoardModActive = false; // true when pity 49 reached – board shows all S-Class
@@ -16232,18 +16246,18 @@ function triggerDiceRollSequence() {
     }
   });
 
-  setTimeout(() => {
+  mbSetTimeout(() => {
     // Snap dice to correct rotation and hide spin animation
     dice3d.classList.remove("rolling");
     dice3d.style.transform = rotMap[steps];
 
-    setTimeout(() => {
+    mbSetTimeout(() => {
       // Reveal result number
       dice3d.classList.add("hidden");
       diceResult.classList.remove("hidden");
       document.getElementById("mbDiceNum").textContent = steps;
 
-      setTimeout(() => {
+      mbSetTimeout(() => {
         // Close overlay and walk character
         diceOverlay.classList.add("hidden");
         mbRolling = false;
@@ -16782,7 +16796,7 @@ function triggerMonopolySkip() {
   if (!mbRolling && !mbMoving && mbRollQueue === 0) return;
 
   // Cancel any pending walk timeouts
-  if (mbWalkTimeout) { clearTimeout(mbWalkTimeout); mbWalkTimeout = null; }
+  mbClearAllTimeouts();
 
   const toSimulate = Math.max(0, mbRollQueue);
   const wasQueueType = mbSummaryQueueType;
@@ -17129,7 +17143,7 @@ function showCrateRewardPopup(item, rank, isDuplicate) {
     popup.classList.remove("hidden");
     if (typeof playSound === "function") playSound("tutorial_beep");
     // Auto close after brief flash then advance queue
-    setTimeout(() => {
+    mbSetTimeout(() => {
       popup.classList.add("hidden");
       if (claimBtn) claimBtn.style.display = "";
       checkQueueOrUnlockRoll();
@@ -17153,7 +17167,7 @@ function claimMonopolyReward() {
 function checkQueueOrUnlockRoll() {
   if (mbRollQueue > 1) {
     mbRollQueue--;
-    setTimeout(function() { triggerDiceRollSequence(); }, 500 / mbSpeedMultiplier);
+    mbSetTimeout(function() { triggerDiceRollSequence(); }, 500 / mbSpeedMultiplier);
   } else {
     mbRollQueue = 0;
     var ctrl = document.getElementById("mbGachaControls");
