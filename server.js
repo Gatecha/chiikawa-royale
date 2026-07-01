@@ -861,6 +861,15 @@ function removePlayerFromTeams(room, playerId) {
   resetRotationQueues(room);
 }
 
+function clearBotsFromRoom(room) {
+  room.players = room.players.filter(p => !p.ai);
+  if (room.teams) {
+    room.teams.A = (room.teams.A || []).filter(id => room.players.some(p => p.id === id));
+    room.teams.B = (room.teams.B || []).filter(id => room.players.some(p => p.id === id));
+  }
+  resetRotationQueues(room);
+}
+
 function resetRotationQueues(room) {
   room.rotationQueues = {
     A: shuffleArray([...room.teams.A]),
@@ -973,6 +982,7 @@ function markPlayerDisconnected(ws) {
 function destroyRoom(room) {
   if (room.tickInterval) clearInterval(room.tickInterval);
   if (room.nextRoundTimeout) clearTimeout(room.nextRoundTimeout);
+  if (room.matchmakingInterval) clearInterval(room.matchmakingInterval);
   if (room.matchmakingTimer) clearTimeout(room.matchmakingTimer);
   if (room.matchmakingCountdownInterval) clearInterval(room.matchmakingCountdownInterval);
   if (room.matchmakingFillInterval) clearInterval(room.matchmakingFillInterval);
@@ -1167,8 +1177,9 @@ function endMatchBySurrender(room, winnerTeam, winnerId) {
   room.finalRoundActive = false;
   room.finalVoteActive = false;
   room.activeRoundPlayers = [];
+  clearBotsFromRoom(room);
   room.players.forEach((p) => {
-    p.ready = p.ai;
+    p.ready = false;
     p.alive = true;
     p.dx = 0;
     p.dy = 0;
@@ -2037,8 +2048,9 @@ function endRound(room, winnerId) {
       room.finalRoundActive = false;
       room.finalVoteActive = false;
       room.activeRoundPlayers = [];
+      clearBotsFromRoom(room);
       room.players.forEach((p) => {
-        p.ready = p.ai;
+        p.ready = false;
         p.alive = true;
       });
       broadcastToRoom(room, {
@@ -2081,7 +2093,8 @@ function endRound(room, winnerId) {
       // Direct victory for team mode / duo mode at 8 trophies
       const winningTeam = scoreA >= 8 ? "A" : "B";
       room.state = "lobby";
-      room.players.forEach((p) => { p.ready = p.ai; });
+      clearBotsFromRoom(room);
+      room.players.forEach((p) => { p.ready = false; });
       broadcastToRoom(room, {
         type: "game_over",
         data: {
@@ -2117,7 +2130,8 @@ function endRound(room, winnerId) {
     const grandWinner = room.players.find((p) => (p.trophies || 0) >= 8);
     if (grandWinner) {
       room.state = "lobby";
-      room.players.forEach((p) => { p.ready = p.ai; });
+      clearBotsFromRoom(room);
+      room.players.forEach((p) => { p.ready = false; });
       broadcastToRoom(room, {
         type: "game_over",
         data: { message: `${grandWinner.name} wins the Match! 🏆`, players: room.players, tournamentFinished: true, winnerId: grandWinner.id },
@@ -2599,6 +2613,16 @@ function canMoveServer(room, px, py, actor) {
 
 function moveServerActor(room, actor, dx, dy, dt) {
   if (dx !== 0 && dy !== 0) dy = 0;
+
+  if (actor.ai) {
+    if (dx !== 0) {
+      actor.y = Math.floor(actor.y / TILE) * TILE + TILE / 2;
+    }
+    if (dy !== 0) {
+      actor.x = Math.floor(actor.x / TILE) * TILE + TILE / 2;
+    }
+  }
+
   const speed = actor.speed || 142;
   let nextX = actor.x + dx * speed * dt;
   let nextY = actor.y + dy * speed * dt;
@@ -3631,9 +3655,10 @@ function checkBRGameEnd(room) {
     room.state = "lobby";
     if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
     
+    clearBotsFromRoom(room);
     room.players.forEach(p => {
       if (p.alive) p.placement = 1;
-      p.ready = p.ai; p.alive = true; p.knocked = false;
+      p.ready = false; p.alive = true; p.knocked = false;
     });
     
     broadcastToRoom(room, {

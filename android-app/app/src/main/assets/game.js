@@ -7403,6 +7403,10 @@ function update(dt) {
     players.forEach((p) => {
       if (!localMode && p.id !== localPlayerId) {
         if (p.targetX !== undefined) {
+          // Dead reckoning prediction: Project the target position forward between server updates
+          p.targetX += (p.dx || 0) * (p.speed || 142) * dt;
+          p.targetY += (p.dy || 0) * (p.speed || 142) * dt;
+
           const dist = Math.hypot(p.targetX - p.x, p.targetY - p.y);
           if (dist > 96) {
             // Snap position instantly on teleport, spawn, or huge desync
