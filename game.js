@@ -16381,7 +16381,155 @@ function closeRoll10Summary() {
   syncMonopolyStats();
 }
 
+let gmrAnimationId = null;
+function startGachaMagicalReveal(characterKind) {
+  const overlay = document.getElementById("gachaMagicalRevealOverlay");
+  const video = document.getElementById("gmrVideo");
+  const canvas = document.getElementById("gmrCanvas");
+  const ctx = canvas ? canvas.getContext("2d") : null;
+  const title = document.getElementById("gmrTitle");
+  
+  if (!overlay || !video || !canvas || !ctx) return;
+  
+  if (title) {
+    const style = characterStyle[characterKind];
+    title.textContent = style ? style.label : characterKind.replace("magical_", "MAGICAL ").toUpperCase();
+  }
+  
+  // Set video source
+  const videoName = characterSelectVideos[characterKind] || `assets/character skins/character animation wardrobe/${characterKind.replace("_", " ")}.mp4`;
+  const targetSrc = getVideoSrc(videoName);
+  video.src = targetSrc;
+  video.load();
+  
+  // Reset overlay animation state
+  const glitch = overlay.querySelector(".gmr-glitch-overlay");
+  if (glitch) {
+    glitch.classList.remove("active");
+    void glitch.offsetWidth; // Trigger reflow
+    glitch.classList.add("active");
+  }
+  
+  overlay.classList.remove("hidden");
+  
+  const gmrSparkles = [];
+  const startTime = performance.now();
+  const silhouetteDuration = 1000; // time in ms that character is pure white
+  const fadeDuration = 900; // fade from white to color
+  
+  video.oncanplay = () => {
+    video.play();
+    
+    if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+    
+    function tick() {
+      if (video.paused || video.ended) return;
+      
+      const width = canvas.width;
+      const height = canvas.height;
+      ctx.clearRect(0, 0, width, height);
+      
+      // Draw frame to canvas
+      ctx.drawImage(video, 0, 0, width, height);
+      
+      const elapsed = performance.now() - startTime;
+      
+      // Apply white silhouette blend
+      if (elapsed < silhouetteDuration + fadeDuration) {
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+        
+        let mix = 0; // 0 = all white, 1 = original colors
+        if (elapsed > silhouetteDuration) {
+          mix = (elapsed - silhouetteDuration) / fadeDuration;
+          mix = Math.min(1, mix);
+        }
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const alpha = data[i+3];
+          if (alpha > 5) {
+            data[i]   = Math.round(data[i]   * mix + 255 * (1 - mix));
+            data[i+1] = Math.round(data[i+1] * mix + 255 * (1 - mix));
+            data[i+2] = Math.round(data[i+2] * mix + 255 * (1 - mix));
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+      
+      // Chromakey out the green screen background
+      removeGreenScreenFromCanvas(ctx, width, height);
+      
+      // Spawn and draw sparkle particles on top!
+      if (Math.random() < 0.22) {
+        gmrSparkles.push({
+          x: width / 2 + (Math.random() - 0.5) * 160,
+          y: height / 2 + (Math.random() - 0.5) * 160,
+          vx: (Math.random() - 0.5) * 8,
+          vy: (Math.random() - 0.6) * 8,
+          size: 6 + Math.random() * 10,
+          life: 0.7 + Math.random() * 0.6,
+          color: ["#fffbcf", "#ffd1fb", "#d1f6ff", "#ffffff", "#fcd9ff"][Math.floor(Math.random() * 5)]
+        });
+      }
+      
+      // Update and draw sparkles
+      ctx.save();
+      for (let i = gmrSparkles.length - 1; i >= 0; i--) {
+        const s = gmrSparkles[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.04; // slight gravity
+        s.life -= 0.016;
+        
+        if (s.life <= 0) {
+          gmrSparkles.splice(i, 1);
+          continue;
+        }
+        
+        ctx.globalAlpha = Math.min(1, s.life * 2.2);
+        ctx.shadowColor = s.color;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = s.color;
+        
+        // Draw 4-point sparkle cross star
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y - s.size);
+        ctx.quadraticCurveTo(s.x, s.y, s.x + s.size, s.y);
+        ctx.quadraticCurveTo(s.x, s.y, s.x, s.y + s.size);
+        ctx.quadraticCurveTo(s.x, s.y, s.x - s.size, s.y);
+        ctx.quadraticCurveTo(s.x, s.y, s.x, s.y - s.size);
+        ctx.fill();
+      }
+      ctx.restore();
+      
+      gmrAnimationId = requestAnimationFrame(tick);
+    }
+    
+    gmrAnimationId = requestAnimationFrame(tick);
+  };
+}
+
 function showCrateRewardPopup(item, rank, isDuplicate) {
+  // Intercept magical character skins to show the special full-screen reveal animation
+  if (item.type === "character" && item.id.startsWith("magical_")) {
+    startGachaMagicalReveal(item.id);
+    
+    const gmrClaimBtn = document.getElementById("gmrClaimBtn");
+    if (gmrClaimBtn) {
+      gmrClaimBtn.onclick = () => {
+        const overlay = document.getElementById("gachaMagicalRevealOverlay");
+        if (overlay) overlay.classList.add("hidden");
+        const video = document.getElementById("gmrVideo");
+        if (video) video.pause();
+        if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+        
+        // Proceed to close monopoly crate reward modal
+        claimMonopolyReward();
+      };
+    }
+    return;
+  }
+
   const popup = document.getElementById("mbCratePopup");
   if (!popup) return;
 

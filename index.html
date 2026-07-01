@@ -3259,6 +3259,24 @@
 
     </div><!-- /monopolyBoardOverlay -->
 
+    <!-- Genshin Impact-style Gacha Magical Character Skin Reveal Overlay -->
+    <div id="gachaMagicalRevealOverlay" class="hidden">
+      <div class="gmr-background">
+        <div class="gmr-rays"></div>
+        <div class="gmr-particles"></div>
+      </div>
+      <div class="gmr-glitch-overlay"></div>
+      <div class="gmr-character-container">
+        <video id="gmrVideo" muted playsinline style="display: none;"></video>
+        <canvas id="gmrCanvas" width="900" height="900"></canvas>
+      </div>
+      <div class="gmr-details">
+        <div class="gmr-stars">★★★★★</div>
+        <div class="gmr-title" id="gmrTitle">MAGICAL CHIIKAWA</div>
+        <div class="gmr-subtitle">NEW LEGENDARY SKIN UNLOCKED!</div>
+        <button id="gmrClaimBtn" type="button">Tap to Claim</button>
+      </div>
+    </div>
 
   </body>
 </html>
