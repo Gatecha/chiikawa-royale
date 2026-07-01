@@ -12354,7 +12354,8 @@ body.is-iphone {
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(ellipse at 50% 0%, #1a0800 0%, #080300 100%);
+  background: repeating-radial-gradient(circle at 35% 50%, #ffd5e5 0px, #ffd5e5 12px, #ffb7d2 12px, #ffb7d2 48px);
+  animation: radialRingDrift 18s linear infinite, mbMagicalBgCycle 12s ease-in-out infinite;
   font-family: var(--font, 'Outfit', sans-serif);
   overflow: hidden;
 }
@@ -13427,9 +13428,10 @@ body.is-iphone {
 }
 
 .mb-bg-star {
-  position: absolute; font-size: 16px; color: rgba(255,216,111,0.3);
-  animation: mbStarFloat 12s linear infinite;
-  text-shadow: 0 0 8px rgba(255,216,111,0.5);
+  position: absolute;
+  font-size: 16px;
+  color: #fff;
+  animation: mbStarFloat 12s linear infinite, mbMagicalStarColorCycle 6s ease-in-out infinite;
 }
 .fstar-1 { top: 15%; left: 8%; animation-duration: 9s; }
 .fstar-2 { top: 40%; left: 15%; animation-duration: 15s; animation-delay: -3s; }
@@ -13931,6 +13933,22 @@ body.is-iphone {
   position: absolute;
   inset: 0;
   z-index: 1;
+  background: repeating-radial-gradient(circle at 50% 50%,
+    var(--gmr-swirl, #ffd5e5) var(--grad-offset, 0px),
+    var(--gmr-swirl, #ffd5e5) calc(var(--grad-offset, 0px) + 12px),
+    var(--gmr-dark, #ffb7d2) calc(var(--grad-offset, 0px) + 12px),
+    var(--gmr-dark, #ffb7d2) calc(var(--grad-offset, 0px) + 48px)
+  );
+  animation: radialRingDrift 18s linear infinite;
+  opacity: 0.95;
+}
+
+.gmr-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, transparent 35%, rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
 }
 
 .gmr-rays {
@@ -14345,4 +14363,47 @@ body.is-iphone {
   border-width: 3.5px !important;
   border-radius: 22px !important;
   padding: 4px 7px !important;
+}
+
+/* Animations for magical gacha overlays */
+@keyframes mbMagicalBgCycle {
+  0%, 100% {
+    background: repeating-radial-gradient(circle at 35% 50%, 
+      #ffd5e5 var(--grad-offset, 0px), 
+      #ffd5e5 calc(var(--grad-offset, 0px) + 12px), 
+      #ffb7d2 calc(var(--grad-offset, 0px) + 12px), 
+      #ffb7d2 calc(var(--grad-offset, 0px) + 48px)
+    );
+  }
+  33% {
+    background: repeating-radial-gradient(circle at 35% 50%, 
+      #d4f0fc var(--grad-offset, 0px), 
+      #d4f0fc calc(var(--grad-offset, 0px) + 12px), 
+      #aae0f7 calc(var(--grad-offset, 0px) + 12px), 
+      #aae0f7 calc(var(--grad-offset, 0px) + 48px)
+    );
+  }
+  66% {
+    background: repeating-radial-gradient(circle at 35% 50%, 
+      #fcfade var(--grad-offset, 0px), 
+      #fcfade calc(var(--grad-offset, 0px) + 12px), 
+      #faf5b1 calc(var(--grad-offset, 0px) + 12px), 
+      #faf5b1 calc(var(--grad-offset, 0px) + 48px)
+    );
+  }
+}
+
+@keyframes mbMagicalStarColorCycle {
+  0%, 100% {
+    color: #ff8ab1;
+    text-shadow: 0 0 12px #ff8ab1, 0 0 20px #ffb6c9;
+  }
+  33% {
+    color: #00bcd4;
+    text-shadow: 0 0 12px #00bcd4, 0 0 20px #80b2c9;
+  }
+  66% {
+    color: #ffd84a;
+    text-shadow: 0 0 12px #ffd84a, 0 0 20px #ffd59e;
+  }
 }
