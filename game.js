@@ -6865,21 +6865,22 @@ function drawCharacterSelectPreview() {
   const height = characterSelectCanvas.height;
   characterSelectCtx.clearRect(0, 0, width, height);
 
-  let scaleBoost = 1.76;
-  let yOffset = 1.03;
+  // Use fit-to-height scale so character always fits within the canvas vertically
+  // Then apply a modest boost so it appears large but not clipped
+  let scaleBoost = 1.42;
   if (previewCharacter === "magical_hachiware") {
-    scaleBoost = 2.05;
-    yOffset = 1.03;
+    scaleBoost = 1.55;
   } else if (previewCharacter === "magical_chiikawa" || previewCharacter === "magical_usagi") {
-    scaleBoost = 1.95;
-    yOffset = 1.03;
+    scaleBoost = 1.50;
   }
 
   const scale = Math.min(width / characterSelectVideo.videoWidth, height / characterSelectVideo.videoHeight) * scaleBoost;
   const drawW = characterSelectVideo.videoWidth * scale;
   const drawH = characterSelectVideo.videoHeight * scale;
   const drawX = (width - drawW) / 2;
-  const drawY = height - drawH * yOffset;
+  // Center vertically with a slight downward nudge, but clamp so top is never clipped
+  const rawDrawY = (height - drawH) / 2 + height * 0.04;
+  const drawY = Math.max(0, rawDrawY);
 
   characterSelectCtx.drawImage(characterSelectVideo, drawX, drawY, drawW, drawH);
   removeGreenScreenFromCanvas(characterSelectCtx, width, height);
@@ -16796,6 +16797,24 @@ function triggerMonopolySkip() {
     const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
     if (lastResult) {
       mbSummaryQueueType = 0; // sentinel so claimMonopolyReward won't re-trigger summary
+
+      // If the skipped reward is a magical clothes skin, show the special full-screen reveal!
+      if (lastResult.item && lastResult.item.type === "character" && lastResult.item.id && lastResult.item.id.startsWith("magical_")) {
+        startGachaMagicalReveal(lastResult.item.id);
+        const gmrClaimBtn = document.getElementById("gmrClaimBtn");
+        if (gmrClaimBtn) {
+          gmrClaimBtn.onclick = () => {
+            const overlay = document.getElementById("gachaMagicalRevealOverlay");
+            if (overlay) overlay.classList.add("hidden");
+            const video = document.getElementById("gmrVideo");
+            if (video) video.pause();
+            if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+            claimMonopolyReward();
+          };
+        }
+        return;
+      }
+
       const popup = document.getElementById("mbCratePopup");
       const itemDisplay = document.getElementById("mbCrateItemDisplay");
       const claimBtn = document.getElementById("mbCrateClaimBtn");
@@ -16905,22 +16924,21 @@ function startGachaMagicalReveal(characterKind) {
     const elapsed = performance.now() - startTime;
     
     if (video.readyState >= 2) {
-      // Calculate correct centered aspect ratio and scale boost
-      let scaleBoost = 1.76;
-      let yOffset = 1.03;
+      // Match safe scale/center logic from wardrobe preview — never clip top
+      let scaleBoost = 1.42;
       if (characterKind === "magical_hachiware") {
-        scaleBoost = 2.05;
-        yOffset = 1.03;
+        scaleBoost = 1.55;
       } else if (characterKind === "magical_chiikawa" || characterKind === "magical_usagi") {
-        scaleBoost = 1.95;
-        yOffset = 1.03;
+        scaleBoost = 1.50;
       }
 
       const scale = Math.min(width / video.videoWidth, height / video.videoHeight) * scaleBoost;
       const drawW = video.videoWidth * scale;
       const drawH = video.videoHeight * scale;
       const drawX = (width - drawW) / 2;
-      const drawY = height - drawH * yOffset;
+      // Center vertically with slight downward nudge, clamped so top is never clipped
+      const rawDrawY = (height - drawH) / 2 + height * 0.04;
+      const drawY = Math.max(0, rawDrawY);
 
       // Draw centered frame to canvas
       ctx.drawImage(video, drawX, drawY, drawW, drawH);
