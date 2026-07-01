@@ -83,6 +83,7 @@ const TEAM_MAX_PLAYERS = 6;        // Team mode cap (3v3)
 const MATCHMAKING_AUTO_FILL_SECONDS = 20;
 const MATCHMAKING_CARD_FILL_DELAY_MS = 650;
 const MATCHMAKING_AFTER_FILL_DELAY_MS = 1100;
+const ROUND_START_LOCK_MS = 3500;
 const FINAL_VOTE_SECONDS = 20;     // Vote timer duration
 const RECONNECT_GRACE_MS = 10 * 60 * 1000;
 const SURRENDER_THRESHOLD = 3;
@@ -559,6 +560,7 @@ function handleMessage(ws, msg) {
     case "move": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.state !== "playing") return;
+      if (isRoundActionLocked(room)) return;
 
       const playerId = data.id || ws.id;
       // In team mode, only active round players can move
@@ -588,6 +590,7 @@ function handleMessage(ws, msg) {
     case "place_bomb": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.state !== "playing") return;
+      if (isRoundActionLocked(room)) return;
 
       const playerId = data.id || ws.id;
       // In team mode, only active round players can place bombs
@@ -601,6 +604,7 @@ function handleMessage(ws, msg) {
     case "use_item": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.state !== "playing") return;
+      if (isRoundActionLocked(room)) return;
       const player = room.players.find(p => p.id === ws.id);
       if (!player || !player.alive || player.knocked) return;
       
@@ -662,6 +666,7 @@ function handleMessage(ws, msg) {
     case "punch_bomb": {
       const room = rooms.get(ws.roomCode);
       if (!room || room.state !== "playing") return;
+      if (isRoundActionLocked(room)) return;
       const playerId = data.id || ws.id;
       const player = room.players.find((p) => p.id === playerId);
       if (player && player.alive && player.hasPunch) {
@@ -750,6 +755,7 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
     worldEventTimer: 0,
     activeSupplyDrop: null,
     currentWorldEvent: null,
+    roundActionLockUntil: 0,
   };
 }
 
@@ -1588,7 +1594,10 @@ function checkPickupCollision(room, player) {
 
 function tickRoom(room) {
   const dt = 0.05;
-  room.roundTime = Math.max(0, room.roundTime - dt);
+  const roundLocked = isRoundActionLocked(room);
+  if (!roundLocked) {
+    room.roundTime = Math.max(0, room.roundTime - dt);
+  }
   if (room.roundTime <= 0) {
     if (isBattleRoyale(room.mode)) {
       checkBRGameEnd(room);
@@ -1598,12 +1607,14 @@ function tickRoom(room) {
     return;
   }
 
-  room.players.forEach((p) => {
-    if (p.cooldown > 0) p.cooldown = Math.max(0, p.cooldown - dt);
-    if (p.aiBombCooldown > 0) p.aiBombCooldown = Math.max(0, p.aiBombCooldown - dt);
-  });
+  if (!roundLocked) {
+    room.players.forEach((p) => {
+      if (p.cooldown > 0) p.cooldown = Math.max(0, p.cooldown - dt);
+      if (p.aiBombCooldown > 0) p.aiBombCooldown = Math.max(0, p.aiBombCooldown - dt);
+    });
+  }
 
-  if (isBattleRoyale(room.mode)) {
+  if (!roundLocked && isBattleRoyale(room.mode)) {
     room.players.forEach((p) => {
       if (p.healingState) {
         p.healingState.timeLeft -= dt;
@@ -1668,17 +1679,21 @@ function tickRoom(room) {
     }
   }
 
-  updateServerBots(room, dt);
+  if (!roundLocked) {
+    updateServerBots(room, dt);
+  }
   
-  if (!isBattleRoyale(room.mode)) {
+  if (!roundLocked && !isBattleRoyale(room.mode)) {
     updateServerZone(room, dt);
   }
 
   const cols = room.map[0] ? room.map[0].length : COLS;
   const rows = room.map ? room.map.length : ROWS;
-  pruneServerBombPassability(room);
+  if (!roundLocked) {
+    pruneServerBombPassability(room);
+  }
 
-  room.bombs.forEach((bomb) => {
+  if (!roundLocked) room.bombs.forEach((bomb) => {
     if (bomb.vx !== undefined && bomb.vy !== undefined && (bomb.vx !== 0 || bomb.vy !== 0)) {
       if (bomb.slideX === undefined) bomb.slideX = bomb.x;
       if (bomb.slideY === undefined) bomb.slideY = bomb.y;
@@ -1757,9 +1772,11 @@ function tickRoom(room) {
     }
   });
 
-  const exploded = [];
-  room.bombs.forEach((bomb) => { bomb.timer -= dt; if (bomb.timer <= 0) exploded.push(bomb); });
-  exploded.forEach((bomb) => triggerExplosion(room, bomb));
+  if (!roundLocked) {
+    const exploded = [];
+    room.bombs.forEach((bomb) => { bomb.timer -= dt; if (bomb.timer <= 0) exploded.push(bomb); });
+    exploded.forEach((bomb) => triggerExplosion(room, bomb));
+  }
 
   broadcastToRoom(room, {
     type: "state_update",
@@ -1806,6 +1823,10 @@ function tickRoom(room) {
       } : null,
     },
   });
+}
+
+function isRoundActionLocked(room) {
+  return !!room && room.state === "playing" && Date.now() < (room.roundActionLockUntil || 0);
 }
 
 function updateServerZone(room, dt) {
@@ -2305,6 +2326,7 @@ function startRound(room, isNewTournament) {
     spawnPowerZonePickups(room);
   }
   room.roundTime = ROUND_SECONDS;
+  room.roundActionLockUntil = Date.now() + ROUND_START_LOCK_MS;
   room.zoneActive = false;
   room.zoneLayer = 0;
   room.zoneStepTimer = 0;
@@ -3393,6 +3415,7 @@ function startBRGame(room) {
   };
 
   room.roundTime = 900;
+  room.roundActionLockUntil = Date.now() + ROUND_START_LOCK_MS;
   room.state = "playing";
   room.supplyDropTimer = 0;
   room.worldEventTimer = 0;

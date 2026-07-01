@@ -4773,15 +4773,16 @@ function updateAi(bot, dt) {
   const threatScore = getLocalBotThreatScore(here.x, here.y);
   const isThreatened = threatScore > 0 || danger;
   const isBombThreat = isBombOrBlastDanger(here.x, here.y) || threatScore > 0;
+  const isCrowdedOnTile = isLocalBotOnBombTile(bot, here) || isLocalBotSharingTile(bot, here);
 
   // Human-like movement constraint:
   // If the bot is mid-tile (bot.moveTarget is set), only allow a new decision if threatened by a bomb/blast.
   // Otherwise, wait until the bot reaches the center of the tile.
   let shouldThink = false;
   if (!bot.moveTarget) {
-    shouldThink = (isThreatened || bot.aiThink <= 0);
+    shouldThink = (isThreatened || isCrowdedOnTile || bot.aiThink <= 0);
   } else {
-    shouldThink = isBombThreat;
+    shouldThink = isBombThreat || isCrowdedOnTile;
   }
 
   if (shouldThink) {
@@ -4802,7 +4803,7 @@ function updateAi(bot, dt) {
         return;
       }
 
-      const safetyDir = getSafetyStepLocal(bot, here);
+      const safetyDir = getSafetyStepLocal(bot, here) || (isCrowdedOnTile ? getLocalUnstuckStep(bot, here) : null);
       if (safetyDir) {
         interruptUnsafeBotMove(bot, safetyDir);
         bot.aiDir = safetyDir;
@@ -4913,6 +4914,18 @@ function rememberBotTile(bot, before, after) {
   bot.aiRecentTiles = bot.aiRecentTiles || [];
   bot.aiRecentTiles.unshift(`${before.x},${before.y}`);
   bot.aiRecentTiles = bot.aiRecentTiles.slice(0, 5);
+}
+
+function isLocalBotOnBombTile(bot, tile = gridAt(bot.x, bot.y)) {
+  return bombs.some((bomb) => bomb.x === tile.x && bomb.y === tile.y && overlapsBomb(bot, bomb));
+}
+
+function isLocalBotSharingTile(bot, tile = gridAt(bot.x, bot.y)) {
+  return players.some((other) => {
+    if (other === bot || !other.alive) return false;
+    const otherTile = gridAt(other.x, other.y);
+    return otherTile.x === tile.x && otherTile.y === tile.y;
+  });
 }
 
 function tryLocalBotPunchStrategic(bot, tile) {
@@ -5129,6 +5142,13 @@ function scoreAiMove(bot, x, y) {
   if (x === here.x && y === here.y) score -= 80;
   if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && getLocalBotThreatScore(here.x, here.y) === 0) {
     score -= 70;
+  }
+  if (players.some((other) => {
+    if (other === bot || !other.alive) return false;
+    const tile = gridAt(other.x, other.y);
+    return tile.x === x && tile.y === y;
+  })) {
+    score -= 260;
   }
 
   const threat = getLocalBotThreatScore(x, y);
