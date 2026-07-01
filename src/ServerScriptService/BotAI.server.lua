@@ -77,7 +77,7 @@ end
 -- ── Helper: Calculate danger zone from all active bombs ────────────────────
 local function getDangerZone()
     local dangerous = {}
-    for _, obj in ipairs(workspace:GetDescendants()) do
+    for _, obj in ipairs(workspace:GetChildren()) do
         if obj.Name == "Bomb" and obj:GetAttribute("Exploded") == false then
             local range = obj:GetAttribute("Range") or BOMB_RANGE
             local bx = math.round(obj.Position.X / GRID_SIZE)

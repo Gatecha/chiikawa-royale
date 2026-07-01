@@ -329,6 +329,7 @@ end)
 
     model.PrimaryPart = hrp
     model.Parent = workspace
+    hrp:SetNetworkOwner(nil)
 
     return model
 end
