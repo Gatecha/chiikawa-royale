@@ -2043,10 +2043,6 @@ input[type="text"]:focus {
   background: var(--yellow-light);
 }
 
-.lobby-player-card.bot {
-  background: #f9f9fb;
-}
-
 .lobby-player-card .player-info {
   display: grid;
   gap: 4px;
@@ -7164,7 +7160,7 @@ body.is-mobile .arcade-controller {
 }
 
 /* ================================================================
-   MATCHMAKING CPU FILL COUNTDOWN
+   MATCHMAKING COUNTDOWN
    ================================================================ */
 
 .matchmaking-fill-notice {

@@ -3746,7 +3746,7 @@ function updateLobbyUI() {
 
 function appendLobbyPlayerCard(p, isHost) {
   const card = document.createElement("div");
-  card.className = `lobby-player-card ${p.ready ? "ready" : ""} ${p.ai ? "bot" : ""} ${p.id === hostId ? "host" : ""}`;
+  card.className = `lobby-player-card ${p.ready ? "ready" : ""} ${p.id === hostId ? "host" : ""}`;
   card.style.position = "relative";
 
   const style = characterStyle[p.kind];
@@ -3757,11 +3757,10 @@ function appendLobbyPlayerCard(p, isHost) {
       <canvas id="${avatarCanvasId}" width="60" height="60"></canvas>
     </div>
     <div class="player-info">
-      <div class="name-tag">${escapeHTML(p.name)}</div>
+      <div class="name-tag">${escapeHTML(sanitizeMatchmakingName(p.name))}</div>
       <div class="status-tag">${p.ready ? "READY" : "WAITING..."}</div>
     </div>
     ${p.id === hostId ? '<span class="host-tag">HOST</span>' : ""}
-    ${isHost && p.ai ? `<button class="btn-remove-bot" data-bot-id="${p.id}">Remove</button>` : ""}
   `;
 
   lobbyPlayersList.appendChild(card);
@@ -3773,11 +3772,6 @@ function appendLobbyPlayerCard(p, isHost) {
     drawCharacterOnContext(actx, p.kind, style, 0);
   }
 
-  if (isHost && p.ai) {
-    card.querySelector(".btn-remove-bot")?.addEventListener("click", () => {
-      sendServerMessage("remove_bot", { botId: p.id });
-    });
-  }
 }
 
 function isTeamMode(mode) {
@@ -3921,6 +3915,7 @@ function localPlaceBomb(player) {
     effectColor: effectColor
   });
   player.cooldown = 0.05;
+  return true;
 }
 
 function localTriggerExplosion(bomb) {
@@ -4485,6 +4480,18 @@ function overlapsBomb(actor, bomb) {
   );
 }
 
+function pruneLocalBombPassability() {
+  bombs.forEach((bomb) => {
+    if (!bomb.passableFor) return;
+    [...bomb.passableFor].forEach((playerId) => {
+      const actor = players.find((p) => p.id === playerId);
+      if (!actor || !overlapsBomb(actor, bomb)) {
+        bomb.passableFor.delete(playerId);
+      }
+    });
+  });
+}
+
 function isTileSolidForBombLocal(tx, ty) {
   const mapCols = map[0] ? map[0].length : COLS;
   const mapRows = map ? map.length : ROWS;
@@ -4848,6 +4855,7 @@ function updateAi(bot, dt) {
     }
   }
 
+  const tileBeforeMove = gridAt(bot.x, bot.y);
   const moved = moveActor(bot, bot.aiDir.x, bot.aiDir.y, dt);
   if (!moved) {
     bot.aiStuckFrames = (bot.aiStuckFrames || 0) + 1;
@@ -4857,6 +4865,7 @@ function updateAi(bot, dt) {
     if (rescueDir) bot.aiDir = rescueDir;
   } else {
     bot.aiStuckFrames = 0;
+    rememberBotTile(bot, tileBeforeMove, gridAt(bot.x, bot.y));
   }
 
   if (localMode) {
@@ -4880,9 +4889,12 @@ function updateAi(bot, dt) {
     ? (isCrateOnPathToEnemy(bot, tile) || isCrateOnPathToTarget(bot, tile, target))
     : neighbors(tile.x, tile.y).some((n) => isCrateTile(map[n.y]?.[n.x]));
   
-  if ((canAttackEnemy || strategicCrate || nearbyEnemy) && !danger && hasEscapeTileLocal(bot, tile) && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy)) {
-    if (localMode) localPlaceBomb(bot);
-    else sendServerMessage("place_bomb", { id: bot.id });
+  const escapePlan = (canAttackEnemy || strategicCrate || nearbyEnemy) && !danger
+    ? getLocalEscapePlan(bot, tile, tile, getLocalEscapeDepthForDifficulty() + 4)
+    : null;
+  if (escapePlan && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy, escapePlan)) {
+    const bombPlaced = localMode ? localPlaceBomb(bot) : (sendServerMessage("place_bomb", { id: bot.id }), true);
+    if (!bombPlaced) return;
     
     const activeBombsCount = bombs.filter(b => b.ownerId === bot.id).length;
     if (activeBombsCount < bot.bombs && (nearbyEnemy || canAttackEnemy)) {
@@ -4890,8 +4902,17 @@ function updateAi(bot, dt) {
     } else {
       bot.aiBombCooldown = 0.7 + Math.random() * 0.5;
     }
+    clearBotMoveTarget(bot);
+    bot.aiDir = escapePlan.firstStep;
     bot.aiThink = 0;
   }
+}
+
+function rememberBotTile(bot, before, after) {
+  if (!before || !after || (before.x === after.x && before.y === after.y)) return;
+  bot.aiRecentTiles = bot.aiRecentTiles || [];
+  bot.aiRecentTiles.unshift(`${before.x},${before.y}`);
+  bot.aiRecentTiles = bot.aiRecentTiles.slice(0, 5);
 }
 
 function tryLocalBotPunchStrategic(bot, tile) {
@@ -4997,6 +5018,12 @@ function getProjectedLocalThreatScore(bot, x, y, projectedBombTile = null) {
   if (projectedBombTile && wouldLocalBombThreatenTile(projectedBombTile, x, y, bot.range || 2)) {
     score = Math.max(score, 1700);
   }
+  if (bot && bot.moveTarget) {
+    const targetTile = gridAt(bot.moveTarget.x, bot.moveTarget.y);
+    if (targetTile.x === x && targetTile.y === y && getLocalBotThreatScore(x, y) > 0) {
+      score = Math.max(score, 2200);
+    }
+  }
   return score;
 }
 
@@ -5030,10 +5057,12 @@ function isCrateOnPathToEnemy(bot, tile) {
   });
 }
 
-function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy) {
+function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy, escapePlan = null) {
   if ((bot.aiBombCooldown || 0) > 0) return false;
-  const escapePlan = getLocalEscapePlan(bot, tile, tile, getLocalEscapeDepthForDifficulty() + 4);
-  if (!escapePlan) return false;
+  if (!escapePlan) {
+    escapePlan = getLocalEscapePlan(bot, tile, tile, getLocalEscapeDepthForDifficulty() + 4);
+    if (!escapePlan) return false;
+  }
   const trapScore = getLocalEnemyTrapScore(bot, tile);
 
   // Always bomb when we have a clean shot at an enemy
@@ -5098,6 +5127,9 @@ function scoreAiMove(bot, x, y) {
   const here = gridAt(bot.x, bot.y);
   // Discourage standing still
   if (x === here.x && y === here.y) score -= 80;
+  if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && getLocalBotThreatScore(here.x, here.y) === 0) {
+    score -= 70;
+  }
 
   const threat = getLocalBotThreatScore(x, y);
   score -= threat;
@@ -7527,6 +7559,7 @@ function update(dt) {
         if (p.invuln > 0) p.invuln = Math.max(0, p.invuln - dt);
         if (p.alive) localCheckPickup(p);
       });
+      pruneLocalBombPassability();
       bombs.filter((bomb) => bomb.timer <= 0).forEach(localTriggerExplosion);
       localCheckGameEnd();
     }
@@ -8628,17 +8661,21 @@ function showOnlineMatchmakingSearch() {
 function revealMatchedBot(slotNum, charKind, botName) {
   const slot = document.getElementById(`matchmakerSlot_${slotNum}`);
   if (!slot) return;
+  const displayName = sanitizeMatchmakingName(botName);
   
   slot.className = "matchmaking-card active pop-found";
   slot.innerHTML = `
     <div class="card-inner">
-      <span class="slot-badge badge-bot">CPU</span>
       <div class="slot-image-container">
-        <img src="${getCharacterIconPath(charKind)}" alt="${botName}" />
+        <img src="${getCharacterIconPath(charKind)}" alt="${displayName}" />
       </div>
-      <div class="slot-name">${botName}</div>
+      <div class="slot-name">${escapeHTML(displayName)}</div>
     </div>
   `;
+}
+
+function sanitizeMatchmakingName(name) {
+  return String(name || "Friend").replace(/\s*CPU\b/gi, "").trim() || "Friend";
 }
 
 let onlineMatchmakingInterval = null;
@@ -8647,7 +8684,6 @@ let isOnlineMatchmakingActive = false;
 function startOnlineMatchmakingTimer() {
   if (onlineMatchmakingInterval) return;
   let elapsedSeconds = 0;
-  let botsFilled = false;
   if (matchmakingTimer) matchmakingTimer.textContent = "00:00";
   onlineMatchmakingInterval = setInterval(() => {
     elapsedSeconds++;
@@ -8655,18 +8691,8 @@ function startOnlineMatchmakingTimer() {
     const s = String(elapsedSeconds % 60).padStart(2, "0");
     if (matchmakingTimer) matchmakingTimer.textContent = `${m}:${s}`;
 
-    // After 20 seconds, fill remaining empty slots with bots
-    if (elapsedSeconds >= 20 && !botsFilled && isOnlineMatchmakingActive) {
-      botsFilled = true;
-      const maxPlayers = currentRoomMaxPlayers;
-      const currentCount = players.length;
-      const slotsNeeded = maxPlayers - currentCount;
-      if (slotsNeeded > 0 && socket && socket.readyState === WebSocket.OPEN) {
-        const titleEl = matchmakingPopup ? matchmakingPopup.querySelector(".matchmaking-title") : null;
-        if (titleEl) titleEl.textContent = "FILLING WITH BOTS...";
-        sendServerMessage("fill_match_with_bots");
-      }
-    }
+    const titleEl = matchmakingPopup ? matchmakingPopup.querySelector(".matchmaking-title") : null;
+    if (titleEl && titleEl.textContent !== "MATCH FOUND!") titleEl.textContent = "MATCHMAKING...";
   }, 1000);
 }
 
@@ -8693,7 +8719,7 @@ function updateOnlineMatchmakingPopup() {
 
   const teammates = players.filter(p => p.id !== localPlayerId && p.squadCode === localSquadCode && !p.ai);
   const enemies = players.filter(p => p.squadCode !== localSquadCode && !p.ai);
-  const bots = players.filter(p => p.ai);
+  const fillers = players.filter(p => p.ai);
 
   const sortedPlayers = [];
   if (localPlayer) {
@@ -8701,7 +8727,7 @@ function updateOnlineMatchmakingPopup() {
   }
   teammates.forEach(p => sortedPlayers.push({ player: p, type: "MEMBER" }));
   enemies.forEach(p => sortedPlayers.push({ player: p, type: "ENEMY" }));
-  bots.forEach(p => sortedPlayers.push({ player: p, type: "CPU" }));
+  fillers.forEach(p => sortedPlayers.push({ player: p, type: "PLAYER" }));
 
   const displayPlayers = sortedPlayers.slice(0, TEAM_MAX_PLAYERS);
 
@@ -8718,14 +8744,15 @@ function updateOnlineMatchmakingPopup() {
       if (type === "YOU") badgeClass = "badge-you";
       else if (type === "MEMBER") badgeClass = "badge-member";
       else if (type === "ENEMY") badgeClass = "badge-enemy";
+      const displayName = sanitizeMatchmakingName(player.name);
 
       slot.innerHTML = `
         <div class="card-inner">
-          <span class="slot-badge ${badgeClass}">${type}</span>
+          ${type === "PLAYER" ? "" : `<span class="slot-badge ${badgeClass}">${type}</span>`}
           <div class="slot-image-container">
-            <img src="${getCharacterIconPath(player.kind)}" alt="${player.name}" />
+            <img src="${getCharacterIconPath(player.kind)}" alt="${displayName}" />
           </div>
-          <div class="slot-name">${escapeHTML(player.name)}</div>
+          <div class="slot-name">${escapeHTML(displayName)}</div>
         </div>
       `;
     } else {
@@ -11570,7 +11597,7 @@ function renderLanRoomsTab() {
     const isCurrentRoom = room.roomCode === roomCode;
     const li = document.createElement("li");
     li.className = "social-user-item";
-    const playerNames = (room.players || []).map((p) => p.ai ? "CPU" : escapeHTML(p.name)).join(", ");
+    const playerNames = (room.players || []).map((p) => escapeHTML(sanitizeMatchmakingName(p.name))).join(", ");
     li.innerHTML = `
       <div class="knock-avatar room-avatar">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="white" style="display: block; opacity: 0.95; margin: auto;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>

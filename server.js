@@ -80,8 +80,9 @@ const MAX_ZONE_LAYER = 4;
 const TROPHIES_TO_WIN = 8;        // Team trophies needed to win (or trigger final vote)
 const STANDARD_MAX_PLAYERS = 4;   // Quick match / standard mode cap
 const TEAM_MAX_PLAYERS = 6;        // Team mode cap (3v3)
-const MATCHMAKING_FILL_ALONE = 5; // Seconds alone before CPU fill
-const MATCHMAKING_FILL_PARTIAL = 5; // Seconds with 1-2 players before fill
+const MATCHMAKING_AUTO_FILL_SECONDS = 20;
+const MATCHMAKING_CARD_FILL_DELAY_MS = 650;
+const MATCHMAKING_AFTER_FILL_DELAY_MS = 1100;
 const FINAL_VOTE_SECONDS = 20;     // Vote timer duration
 const RECONNECT_GRACE_MS = 10 * 60 * 1000;
 const SURRENDER_THRESHOLD = 3;
@@ -436,7 +437,7 @@ function handleMessage(ws, msg) {
       const room = rooms.get(ws.roomCode);
       if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
       clearMatchmakingTimers(room);
-      fillAllRemainingWithBots(room);
+      fillAllRemainingWithBots(room, { staggered: true });
       break;
     }
 
@@ -465,10 +466,7 @@ function handleMessage(ws, msg) {
       if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
       if (room.players.length < 1) return;
 
-      // Clear matchmaking timers when game starts manually
-      if (room.matchmakingTimer) { clearTimeout(room.matchmakingTimer); room.matchmakingTimer = null; }
-      if (room.matchmakingCountdownInterval) { clearInterval(room.matchmakingCountdownInterval); room.matchmakingCountdownInterval = null; }
-      if (room.matchmakingInterval) { clearInterval(room.matchmakingInterval); room.matchmakingInterval = null; }
+      clearMatchmakingTimers(room);
 
       if (!isOnlineServer()) {
         fillAllRemainingWithBots(room);
@@ -738,6 +736,8 @@ function createRoomObject(roomCode, hostId, mode = "standard") {
     // Matchmaking
     matchmakingTimer: null,
     matchmakingCountdownInterval: null,
+    matchmakingFillInterval: null,
+    matchmakingMapVoteTimeout: null,
     matchmakingFillSecondsLeft: 0,
     surrenderVotes: { A: null, B: null },
     surrenderDeclines: { A: null, B: null },
@@ -808,14 +808,10 @@ function joinPlayerToRoom(ws, room, name, kind, squadCode = null) {
 
   broadcastLobbyUpdate(room);
 
-  // Auto-start map voting if lobby is full of real players and we are in public matchmaking
+  // Auto-start map voting after the full-card update has time to animate.
   if (!room.isPrivate && room.players.length >= maxPlayers) {
     clearMatchmakingTimers(room);
-    setTimeout(() => {
-      if (room.state === "lobby") {
-        startMapVoting(room);
-      }
-    }, 2000);
+    scheduleMapVotingAfterMatchmakingFill(room, MATCHMAKING_AFTER_FILL_DELAY_MS);
   }
 }
 
@@ -903,14 +899,7 @@ function leaveRoom(ws, intentional = false) {
   if (intentional && room.state === "lobby" && room.hostId === ws.id) {
     room.isPrivate = true;
     room.matchmakingFillSecondsLeft = 0;
-    if (room.matchmakingTimer) {
-      clearTimeout(room.matchmakingTimer);
-      room.matchmakingTimer = null;
-    }
-    if (room.matchmakingCountdownInterval) {
-      clearInterval(room.matchmakingCountdownInterval);
-      room.matchmakingCountdownInterval = null;
-    }
+    clearMatchmakingTimers(room);
     broadcastToRoom(room, {
       type: "matchmaking_countdown",
       data: { secondsLeft: 0 }
@@ -980,6 +969,8 @@ function destroyRoom(room) {
   if (room.nextRoundTimeout) clearTimeout(room.nextRoundTimeout);
   if (room.matchmakingTimer) clearTimeout(room.matchmakingTimer);
   if (room.matchmakingCountdownInterval) clearInterval(room.matchmakingCountdownInterval);
+  if (room.matchmakingFillInterval) clearInterval(room.matchmakingFillInterval);
+  if (room.matchmakingMapVoteTimeout) clearTimeout(room.matchmakingMapVoteTimeout);
   if (room.voteTimer) clearTimeout(room.voteTimer);
   if (room.voteCountdownInterval) clearInterval(room.voteCountdownInterval);
   Object.values(room.surrenderTimers || {}).forEach((timer) => { if (timer) clearTimeout(timer); });
@@ -1210,17 +1201,16 @@ function startMatchmakingTimers(room) {
   room.matchmakingInterval = setInterval(() => {
     room.matchmakingElapsed++;
     
-    // Broadcast matchmaking countdown (max 20s)
+    // Broadcast matchmaking countdown.
     broadcastToRoom(room, {
       type: "matchmaking_countdown",
-      data: { secondsLeft: Math.max(0, 20 - room.matchmakingElapsed), elapsed: room.matchmakingElapsed }
+      data: { secondsLeft: Math.max(0, MATCHMAKING_AUTO_FILL_SECONDS - room.matchmakingElapsed), elapsed: room.matchmakingElapsed }
     });
 
-    // If match exceeds 20 seconds, auto-fill remaining slots with bots and start the match
-    if (room.matchmakingElapsed >= 20) {
-      console.log(`Matchmaking 20s timeout/fill check for room ${room.code}. Auto-filling bots and starting.`);
+    if (room.matchmakingElapsed >= MATCHMAKING_AUTO_FILL_SECONDS) {
+      console.log(`Matchmaking timeout/fill check for room ${room.code}. Filling hidden players and starting.`);
       clearMatchmakingTimers(room);
-      fillAllRemainingWithBots(room);
+      fillAllRemainingWithBots(room, { staggered: true });
     }
   }, 1000);
 }
@@ -1229,6 +1219,14 @@ function clearMatchmakingTimers(room) {
   if (room.matchmakingInterval) {
     clearInterval(room.matchmakingInterval);
     room.matchmakingInterval = null;
+  }
+  if (room.matchmakingFillInterval) {
+    clearInterval(room.matchmakingFillInterval);
+    room.matchmakingFillInterval = null;
+  }
+  if (room.matchmakingMapVoteTimeout) {
+    clearTimeout(room.matchmakingMapVoteTimeout);
+    room.matchmakingMapVoteTimeout = null;
   }
 }
 
@@ -1273,8 +1271,41 @@ function fillIncompleteMatchWithBots(room) {
   }
 }
 
-function fillAllRemainingWithBots(room) {
+function fillAllRemainingWithBots(room, options = {}) {
   if (room.state !== "lobby") return;
+  const { staggered = false } = options;
+  if (staggered && !isBattleRoyale(room.mode)) {
+    const fillers = planMatchmakingFillers(room);
+    if (fillers.length === 0) {
+      scheduleMapVotingAfterMatchmakingFill(room, 0);
+      return;
+    }
+    let index = 0;
+    const addNext = () => {
+      if (room.state !== "lobby") {
+        if (room.matchmakingFillInterval) {
+          clearInterval(room.matchmakingFillInterval);
+          room.matchmakingFillInterval = null;
+        }
+        return;
+      }
+      const add = fillers[index++];
+      if (add) add();
+      broadcastLobbyUpdate(room);
+      if (index >= fillers.length) {
+        if (room.matchmakingFillInterval) {
+          clearInterval(room.matchmakingFillInterval);
+          room.matchmakingFillInterval = null;
+        }
+        scheduleMapVotingAfterMatchmakingFill(room, MATCHMAKING_AFTER_FILL_DELAY_MS);
+      }
+    };
+    addNext();
+    if (index < fillers.length) {
+      room.matchmakingFillInterval = setInterval(addNext, MATCHMAKING_CARD_FILL_DELAY_MS);
+    }
+    return;
+  }
 
   const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
   if (room.mode === "solo" || room.mode === "br_solo") {
@@ -1298,6 +1329,50 @@ function fillAllRemainingWithBots(room) {
   } else {
     broadcastLobbyUpdate(room);
     startMapVoting(room);
+  }
+}
+
+function scheduleMapVotingAfterMatchmakingFill(room, delayMs) {
+  if (room.matchmakingMapVoteTimeout) clearTimeout(room.matchmakingMapVoteTimeout);
+  room.matchmakingMapVoteTimeout = setTimeout(() => {
+    room.matchmakingMapVoteTimeout = null;
+    if (room.state === "lobby") startMapVoting(room);
+  }, delayMs);
+}
+
+function planMatchmakingFillers(room) {
+  const fillers = [];
+  const maxPlayers = getMatchMaxPlayers(room.mode, room.isChallenge);
+  if (room.mode === "solo") {
+    while (room.players.length + fillers.length < maxPlayers) {
+      fillers.push(() => addBotToRoom(room));
+    }
+  } else if (room.mode === "duo") {
+    pushTeamFillers(room, fillers, "A", 2);
+    pushTeamFillers(room, fillers, "B", 2);
+  } else if (room.mode === "trio" || room.mode === "team") {
+    pushTeamFillers(room, fillers, "A", 3);
+    pushTeamFillers(room, fillers, "B", 3);
+  } else {
+    while (room.players.length + fillers.length < maxPlayers) {
+      fillers.push(() => addBotToRoom(room));
+    }
+  }
+  return fillers;
+}
+
+function pushTeamFillers(room, fillers, team, size) {
+  let planned = room.teams[team].length;
+  while (planned < size) {
+    const add = () => {
+      const bot = createBotObject(room);
+      room.players.push(bot);
+      room.teams[team].push(bot.id);
+      resetRotationQueues(room);
+    };
+    add.team = team;
+    fillers.push(add);
+    planned++;
   }
 }
 
@@ -1601,6 +1676,7 @@ function tickRoom(room) {
 
   const cols = room.map[0] ? room.map[0].length : COLS;
   const rows = room.map ? room.map.length : ROWS;
+  pruneServerBombPassability(room);
 
   room.bombs.forEach((bomb) => {
     if (bomb.vx !== undefined && bomb.vy !== undefined && (bomb.vx !== 0 || bomb.vy !== 0)) {
@@ -2352,6 +2428,7 @@ function updateServerBots(room, dt) {
       }
     }
 
+    const tileBeforeMove = gridAtServer(bot.x, bot.y);
     const beforeX = bot.x;
     const beforeY = bot.y;
     moveServerActor(room, bot, bot.aiDir.x, bot.aiDir.y, dt);
@@ -2363,6 +2440,7 @@ function updateServerBots(room, dt) {
       if (rescueDir) bot.aiDir = rescueDir;
     } else {
       bot.aiStuckFrames = 0;
+      rememberServerBotTile(bot, tileBeforeMove, gridAtServer(bot.x, bot.y));
     }
     checkPickupCollision(room, bot);
 
@@ -2378,8 +2456,11 @@ function updateServerBots(room, dt) {
       const enemyTile = gridAtServer(enemy.x, enemy.y);
       return Math.abs(enemyTile.x - nowTile.x) + Math.abs(enemyTile.y - nowTile.y) <= Math.max(2, bot.range || 2);
     });
-    const shouldBomb = bot.aiBombCooldown <= 0 && !isDangerTileServer(room, nowTile.x, nowTile.y) && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget);
-    if (shouldBomb && hasEscapeTile(room, bot, nowTile)) {
+    const escapePlan = !isDangerTileServer(room, nowTile.x, nowTile.y)
+      ? getServerEscapePlan(room, bot, nowTile, nowTile, 18)
+      : null;
+    const shouldBomb = bot.aiBombCooldown <= 0 && escapePlan && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget, escapePlan);
+    if (shouldBomb) {
       if (placeServerBomb(room, bot)) {
         const activeBombsCount = room.bombs.filter(b => b.ownerId === bot.id).length;
         if (activeBombsCount < bot.bombs && (nearbyEnemy || canAttackEnemy)) {
@@ -2387,6 +2468,7 @@ function updateServerBots(room, dt) {
         } else {
           bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
         }
+        bot.aiDir = escapePlan.firstStep;
         bot.aiThink = 0;
       }
     }
@@ -2447,6 +2529,25 @@ function overlapsBombServer(actor, bomb) {
     actor.y + radius > tileTop &&
     actor.y - radius < tileTop + TILE
   );
+}
+
+function pruneServerBombPassability(room) {
+  room.bombs.forEach((bomb) => {
+    if (!bomb.passableFor) return;
+    [...bomb.passableFor].forEach((playerId) => {
+      const actor = room.players.find((p) => p.id === playerId);
+      if (!actor || !overlapsBombServer(actor, bomb)) {
+        bomb.passableFor.delete(playerId);
+      }
+    });
+  });
+}
+
+function rememberServerBotTile(bot, before, after) {
+  if (!before || !after || (before.x === after.x && before.y === after.y)) return;
+  bot.aiRecentTiles = bot.aiRecentTiles || [];
+  bot.aiRecentTiles.unshift(`${before.x},${before.y}`);
+  bot.aiRecentTiles = bot.aiRecentTiles.slice(0, 5);
 }
 
 function isSolidServer(room, tileX, tileY, actor = null) {
@@ -2522,6 +2623,9 @@ function scoreServerBotMove(room, bot, x, y) {
   let score = Math.random() * 2;
   const here = gridAtServer(bot.x, bot.y);
   if (x === here.x && y === here.y) score -= 56;
+  if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && getServerBotThreatScore(room, here.x, here.y) === 0) {
+    score -= 72;
+  }
 
   if (room.brZone) {
     const px = x * TILE + TILE / 2;
@@ -2579,9 +2683,11 @@ function scoreServerBotMove(room, bot, x, y) {
   return score;
 }
 
-function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy, target) {
-  const escapePlan = getServerEscapePlan(room, bot, tile, tile, 18);
-  if (!escapePlan) return false;
+function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy, target, escapePlan = null) {
+  if (!escapePlan) {
+    escapePlan = getServerEscapePlan(room, bot, tile, tile, 18);
+    if (!escapePlan) return false;
+  }
   const trapScore = getServerEnemyTrapScore(room, bot, tile);
   if (canAttackEnemy) return true;
   if (nearbyEnemy) {
