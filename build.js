@@ -63,3 +63,19 @@ fs.copyFileSync(path.join(__dirname, 'download.html'), path.join(distDir, 'index
 fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(distDir, 'emulator.html'));
 
 console.log('Build completed successfully! Files copied to dist/');
+
+// Copy updated files to Android assets folder if it exists
+const androidAssetsDir = path.join(__dirname, 'android-app', 'app', 'src', 'main', 'assets');
+if (fs.existsSync(androidAssetsDir)) {
+  fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(androidAssetsDir, 'index.html'));
+  fs.copyFileSync(path.join(__dirname, 'game.js'), path.join(androidAssetsDir, 'game.js'));
+  fs.copyFileSync(path.join(__dirname, 'styles.css'), path.join(androidAssetsDir, 'styles.css'));
+  
+  // Also sync the assets folder recursively
+  const androidAssetsSubdir = path.join(androidAssetsDir, 'assets');
+  if (fs.existsSync(androidAssetsSubdir)) {
+    fs.rmSync(androidAssetsSubdir, { recursive: true, force: true });
+  }
+  copyRecursiveSync(path.join(__dirname, 'assets'), androidAssetsSubdir);
+  console.log('Android assets synced successfully!');
+}

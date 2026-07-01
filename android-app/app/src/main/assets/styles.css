@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   color-scheme: light;
   --ink: #221f25;
   --white: #ffffff;
@@ -789,29 +789,32 @@ body.android-apk .badge-text {
 }
 
 .select-back-btn {
-  width: 84px;
-  height: 62px;
+  position: absolute;
+  left: 20px;
+  top: 15px;
+  width: 48px;
+  height: 48px;
   border: 0;
-  border-radius: 10px;
-  background: #0b0b0c;
+  background: transparent;
   color: #ff210f;
   cursor: pointer;
   display: grid;
   place-items: center;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.04), 0 5px 12px rgba(0, 0, 0, 0.55);
+  box-shadow: none;
+  z-index: 100;
 }
 
 .select-back-btn svg {
-  width: 58px;
-  height: 42px;
+  width: 36px;
+  height: 28px;
   stroke: currentColor;
   fill: none;
   stroke-width: 3.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  border: 4px solid #ff210f;
-  border-radius: 28px;
-  padding: 5px 8px;
+  border: 3px solid #ff210f;
+  border-radius: 20px;
+  padding: 3px 6px;
 }
 
 .select-lobby-pill {
@@ -8947,6 +8950,10 @@ body.graphics-low .yellow-console {
   padding: 2px 8px;
   border-radius: 10px;
   border: 2px solid #000;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .showcase-level-badge .lvl-label {
@@ -9613,6 +9620,10 @@ body.is-iphone {
   .showcase-level-badge {
     font-size: 8px !important;
     padding: 1px 3px !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2px !important;
   }
   .showcase-stats-panel {
     display: none !important;
@@ -10564,6 +10575,9 @@ body.is-iphone {
 
 #tabContent_look .bomb-card .card-video-crop,
 #tabContent_look .effect-card .card-video-crop {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   transform: skewX(12deg) scale(1.15);
   transform-origin: center;
 }
@@ -10633,6 +10647,29 @@ body.is-iphone {
   display: none !important;
 }
 
+/* Characters Tab: Show normal, hide magical */
+.select-card-grid[data-mode="characters"] .character-card[data-kind^="magical_"] {
+  display: none !important;
+}
+
+/* Clothes Tab: Show magical, hide normal */
+.select-card-grid[data-mode="clothes"] .character-card {
+  display: none !important;
+}
+.select-card-grid[data-mode="clothes"] .character-card[data-kind^="magical_"] {
+  display: block !important;
+}
+
+/* Shop Item Card Hover Interactions */
+.shop-item-card:hover {
+  transform: translateY(-5px) scale(1.03) !important;
+  box-shadow: 8px 8px 0 #000 !important;
+  border-color: #83cf00 !important;
+}
+.shop-item-card:hover img {
+  transform: scale(1.18) !important;
+}
+
 /* Gacha Stage Styles */
 .gacha-stage {
   perspective: 1000px;
@@ -10682,6 +10719,24 @@ body.is-iphone {
 
 .gacha-pool-item.owned {
   opacity: 0.45;
+}
+
+/* Rarity Gacha Styling */
+.gacha-pool-item.legendary {
+  border-color: #ffd86f !important;
+  box-shadow: 0 0 15px rgba(255, 216, 111, 0.4), 3px 3px 0 #000 !important;
+}
+.gacha-pool-item.rare {
+  border-color: #b94cff !important;
+  box-shadow: 0 0 15px rgba(185, 76, 255, 0.4), 3px 3px 0 #000 !important;
+}
+.gacha-reel-tile.legendary {
+  border-color: #ffd86f !important;
+  box-shadow: inset 0 0 15px rgba(255, 216, 111, 0.3), 4px 4px 0 #000 !important;
+}
+.gacha-reel-tile.rare {
+  border-color: #b94cff !important;
+  box-shadow: inset 0 0 15px rgba(185, 76, 255, 0.3), 4px 4px 0 #000 !important;
 }
 
 .gacha-pool-item span {
@@ -13852,4 +13907,442 @@ body.is-iphone {
   box-shadow: 0 0 20px rgba(255,216,111,0.7), 0 0 40px rgba(255,216,111,0.3);
   animation: mbTutRingPulse 1.4s ease-out infinite;
   pointer-events: none;
+}
+
+/* Gacha Magical Reveal Overlay */
+#gachaMagicalRevealOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#gachaMagicalRevealOverlay.hidden {
+  display: none !important;
+}
+
+.gmr-background {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.gmr-rays {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  left: -50%;
+  top: -50%;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.24) 0%, transparent 60%);
+  animation: gmr-spin 25s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes gmr-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.gmr-glitch-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0);
+  pointer-events: none;
+}
+
+.gmr-glitch-overlay.active {
+  animation: gmr-glitch-flash 0.5s ease-out forwards;
+}
+
+@keyframes gmr-glitch-flash {
+  0% {
+    background: rgba(255, 255, 255, 0.95);
+    filter: hue-rotate(90deg);
+  }
+  15% {
+    background: rgba(0, 255, 255, 0.5);
+    clip-path: inset(10% 0 15% 0);
+  }
+  30% {
+    background: rgba(255, 0, 255, 0.5);
+    clip-path: inset(25% 0 5% 0);
+  }
+  45% {
+    background: rgba(255, 255, 0, 0.4);
+    clip-path: inset(0 15% 0 5%);
+  }
+  60% {
+    background: rgba(255, 255, 255, 0.2);
+    clip-path: none;
+  }
+  100% {
+    background: rgba(255, 255, 255, 0);
+  }
+}
+
+.gmr-character-container {
+  position: relative;
+  z-index: 5;
+  width: min(75vh, 600px);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+#gmrCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gmr-details {
+  position: relative;
+  z-index: 6;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: gmr-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+  animation-delay: 1.2s;
+}
+
+@keyframes gmr-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gmr-stars {
+  font-size: 24px;
+  color: #ffd86f;
+  text-shadow: 0 0 8px rgba(255, 216, 111, 0.8), 0 3px 0 #000;
+  letter-spacing: 4px;
+  font-weight: bold;
+}
+
+.gmr-title {
+  font-family: var(--font, 'Fredoka', sans-serif);
+  font-weight: 900;
+  font-size: 38px;
+  color: #fff;
+  text-shadow: 0 4px 0 #000, 0 0 12px rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.gmr-subtitle {
+  font-family: var(--font-clean, sans-serif);
+  font-size: 14px;
+  color: #a78bfa;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+#gmrClaimBtn {
+  margin-top: 15px;
+  background: #ffd86f;
+  color: #000;
+  border: 4.5px solid #000;
+  border-radius: 20px;
+  font-family: var(--font, 'Fredoka', sans-serif);
+  font-size: 16px;
+  font-weight: 900;
+  padding: 10px 32px;
+  box-shadow: 4px 4px 0 #000;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+#gmrClaimBtn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 6px 6px 0 #000;
+}
+
+#gmrClaimBtn:active {
+  transform: translateY(2px) scale(0.98);
+  box-shadow: 2px 2px 0 #000;
+}
+
+/* Outfit Upgrade Interface */
+#outfitUpgradeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+#outfitUpgradeOverlay.hidden {
+  display: none !important;
+}
+
+#outfitUpgradeOverlay button, 
+#outfitUpgradeOverlay .gmu-node-item, 
+#outfitUpgradeOverlay .gmu-details-panel {
+  pointer-events: auto;
+}
+
+/* Constellation Nodes orbit on the right */
+.gmu-nodes-container {
+  position: absolute;
+  right: 320px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 5;
+  width: 100px;
+  height: 300px;
+  animation: gmu-fade-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.gmu-node-wire {
+  position: absolute;
+  width: 3px;
+  height: 260px;
+  background: linear-gradient(to bottom, transparent, rgba(167, 139, 250, 0.4) 20%, rgba(167, 139, 250, 0.4) 80%, transparent);
+  border-radius: 50%;
+  left: 50%;
+  transform: translateX(-50%) rotate(-10deg);
+  z-index: 1;
+}
+
+.gmu-node-item {
+  position: absolute;
+  top: calc(50% + var(--y-offset));
+  left: calc(50% + var(--x-offset));
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.gmu-node-item:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.gmu-node-diamond {
+  width: 38px;
+  height: 38px;
+  background: #181a1d;
+  border: 3.5px solid #000;
+  transform: rotate(45deg);
+  box-shadow: 2px 2px 0 #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.gmu-node-item.active .gmu-node-diamond {
+  color: #ffd86f;
+  background: radial-gradient(circle, #fffbcf 0%, #3b9dfb 100%);
+  border-color: #ffd86f;
+  box-shadow: 0 0 15px rgba(255, 216, 111, 0.6), 2px 2px 0 #000;
+}
+
+.gmu-node-item.selected .gmu-node-diamond {
+  border-color: #83cf00 !important;
+  transform: rotate(45deg) scale(1.1);
+}
+
+.gmu-node-level {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: bold;
+  color: #888;
+  margin-top: 4px;
+}
+
+.gmu-node-item.active .gmu-node-level {
+  color: #fff;
+}
+
+/* Detail Panel on the far right */
+.gmu-details-panel {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 260px;
+  background: rgba(20, 21, 24, 0.94);
+  border: 4.5px solid #000;
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 6px 6px 0 #000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+  animation: gmu-fade-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes gmu-fade-in-right {
+  0% { opacity: 0; transform: translateY(-50%) translateX(40px); }
+  100% { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.gmu-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3.5px solid #000;
+  padding-bottom: 8px;
+}
+
+.gmu-details-header h3 {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 16px;
+  color: #fff;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.gmu-badge {
+  font-family: var(--font-clean);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 2px solid #000;
+  text-transform: uppercase;
+}
+
+.gmu-badge.unlocked {
+  background: #83cf00;
+  color: #000;
+}
+
+.gmu-badge.locked {
+  background: #ff2f73;
+  color: #fff;
+}
+
+#gmuNodeDesc {
+  font-family: var(--font-clean);
+  font-size: 12px;
+  color: #ccc;
+  line-height: 1.4;
+  margin: 0;
+  min-height: 50px;
+}
+
+.gmu-details-footer {
+  margin-top: 10px;
+  border-top: 3.5px solid #000;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gmu-duplicate-counter {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: bold;
+  color: #888;
+}
+
+#gmuActivateBtn {
+  background: #a78bfa;
+  color: #000;
+  border: 3.5px solid #000;
+  border-radius: 14px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 8px 0;
+  width: 100%;
+  box-shadow: 2px 2px 0 #000;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+#gmuActivateBtn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 4px 4px 0 #000;
+}
+
+#gmuActivateBtn:disabled {
+  background: #333;
+  color: #666;
+  border-color: #111;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Screen Transitions */
+.character-select-screen .select-card-grid {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
+.character-select-screen.upgrade-active .select-card-grid {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.character-select-screen .select-main-video-wrap {
+  transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              top 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              bottom 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.character-select-screen.upgrade-active .select-main-video-wrap {
+  left: 50% !important;
+  right: auto !important;
+  top: 20% !important;
+  bottom: 30% !important;
+  transform: translateX(-50%) !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Hide select buttons in upgrade screen */
+.character-select-screen.upgrade-active #confirmCharacterBtn,
+.character-select-screen.upgrade-active #upgradeClothesBtn,
+.character-select-screen.upgrade-active .select-category-tabs,
+.character-select-screen.upgrade-active .select-back-btn:not(#closeOutfitUpgradeBtn) {
+  display: none !important;
+}
+
+/* Make exit button kinda bigger in upgrade UI */
+#closeOutfitUpgradeBtn {
+  width: 56px !important;
+  height: 56px !important;
+  left: 20px !important;
+  top: 20px !important;
+}
+
+#closeOutfitUpgradeBtn svg {
+  width: 42px !important;
+  height: 32px !important;
+  border-width: 3.5px !important;
+  border-radius: 22px !important;
+  padding: 4px 7px !important;
 }

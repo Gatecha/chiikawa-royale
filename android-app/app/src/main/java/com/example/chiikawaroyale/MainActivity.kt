@@ -60,19 +60,30 @@ class MainActivity : Activity() {
                 if (url.startsWith("file:///android_asset/")) {
                     val path = url.substring("file:///android_asset/".length)
                     if (path == "index.html" || path == "game.js" || path == "styles.css") {
-                        val updateFile = File(File(filesDir, "update"), path)
-                        if (updateFile.exists()) {
-                            try {
-                                val mimeType = when {
-                                    path.endsWith(".html") -> "text/html"
-                                    path.endsWith(".js") -> "application/javascript"
-                                    path.endsWith(".css") -> "text/css"
-                                    else -> "text/plain"
+                        val updateDir = File(filesDir, "update")
+                        val indexFile = File(updateDir, "index.html")
+                        val gameFile = File(updateDir, "game.js")
+                        val stylesFile = File(updateDir, "styles.css")
+                        
+                        // All-or-nothing check: only intercept if all update files exist and are non-empty
+                        if (indexFile.exists() && indexFile.length() > 0 &&
+                            gameFile.exists() && gameFile.length() > 0 &&
+                            stylesFile.exists() && stylesFile.length() > 0) {
+                            
+                            val updateFile = File(updateDir, path)
+                            if (updateFile.exists()) {
+                                try {
+                                    val mimeType = when {
+                                        path.endsWith(".html") -> "text/html"
+                                        path.endsWith(".js") -> "application/javascript"
+                                        path.endsWith(".css") -> "text/css"
+                                        else -> "text/plain"
+                                    }
+                                    val stream = FileInputStream(updateFile)
+                                    return WebResourceResponse(mimeType, "UTF-8", stream)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
                                 }
-                                val stream = FileInputStream(updateFile)
-                                return WebResourceResponse(mimeType, "UTF-8", stream)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
                             }
                         }
                     }
@@ -142,7 +153,10 @@ class MainActivity : Activity() {
         setContentView(webView)
         webView.setInitialScale(88)
         
-        // Check for updates
+        // Load the webview page immediately so the user sees the styled loading screen
+        webView.loadUrl("file:///android_asset/index.html")
+        
+        // Start checking for updates in the background
         checkForUpdatesAndLoad()
     }
 
@@ -200,7 +214,9 @@ class MainActivity : Activity() {
     private fun checkForUpdatesAndLoad() {
         if (!isOnline()) {
             isUpdating = false
-            webView.loadUrl("file:///android_asset/index.html")
+            mainHandler.post {
+                webView.evaluateJavascript("window.isUpdating = false; if (typeof startTitleScreenLoading === 'function') startTitleScreenLoading();", null)
+            }
             return
         }
 
@@ -212,6 +228,9 @@ class MainActivity : Activity() {
                 val conn = url.openConnection() as HttpURLConnection
                 conn.connectTimeout = 5000
                 conn.readTimeout = 5000
+                // Set User-Agent to prevent GitHub blocking rate limits
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+                
                 val text = conn.inputStream.bufferedReader().use { it.readText() }
                 val target = "refs/heads/main"
                 val index = text.indexOf(target)
@@ -229,10 +248,10 @@ class MainActivity : Activity() {
             }
 
             if (latestSha == null) {
-                // If checking fails, proceed to load normal game cache/assets without updating
+                // If checking fails, proceed to load normal cache/assets without updating
                 mainHandler.post {
                     isUpdating = false
-                    webView.loadUrl("file:///android_asset/index.html")
+                    webView.evaluateJavascript("window.isUpdating = false; if (typeof startTitleScreenLoading === 'function') startTitleScreenLoading();", null)
                 }
                 return@execute
             }
@@ -244,16 +263,12 @@ class MainActivity : Activity() {
                 // Already at latest version! No update needed
                 mainHandler.post {
                     isUpdating = false
-                    webView.loadUrl("file:///android_asset/index.html")
+                    webView.evaluateJavascript("window.isUpdating = false; if (typeof startTitleScreenLoading === 'function') startTitleScreenLoading();", null)
                 }
             } else {
                 // Update needed! Start downloading
                 mainHandler.post {
-                    // Load the webview page immediately so the user sees the styled loading screen
                     isUpdating = true
-                    webView.loadUrl("file:///android_asset/index.html")
-                    
-                    // Run the download in background
                     startDownloadSequence(latestSha)
                 }
             }
@@ -313,7 +328,7 @@ class MainActivity : Activity() {
                 mainHandler.post {
                     isUpdating = false
                     Toast.makeText(this@MainActivity, "Update failed. Starting game...", Toast.LENGTH_SHORT).show()
-                    webView.evaluateJavascript("window.isUpdating = false; startTitleScreenLoading();", null)
+                    webView.evaluateJavascript("window.isUpdating = false; if (typeof startTitleScreenLoading === 'function') startTitleScreenLoading();", null)
                 }
             }
         }
@@ -330,6 +345,9 @@ class MainActivity : Activity() {
         val conn = url.openConnection() as HttpURLConnection
         conn.connectTimeout = 8000
         conn.readTimeout = 8000
+        // Set User-Agent to prevent GitHub blocking rate limits
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+        
         val totalBytes = conn.contentLength
         
         conn.inputStream.use { input ->

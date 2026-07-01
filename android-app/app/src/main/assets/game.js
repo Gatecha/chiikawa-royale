@@ -1,4 +1,4 @@
-﻿// =================================================================
+// =================================================================
 // DEBUG LOG SYSTEM — intercepts errors and console.error/warn
 // =================================================================
 (function() {
@@ -532,7 +532,58 @@ const characterSelectVideos = {
   hachiware: "hachiware-lobby.mp4",
   usagi: "assets/usagi/usagi_character_animation.mp4",
   momonga: "assets/momonga/momonga_character_animation.mp4",
+  magical_chiikawa: "assets/character skins/character animation wardrobe/magical chiikawa.mp4",
+  magical_hachiware: "assets/character skins/character animation wardrobe/magical hachiware.mp4",
+  magical_usagi: "assets/character skins/character animation wardrobe/magical usagi.mp4",
 };
+
+function getCharacterCardPath(kind) {
+  let base = kind || "chiikawa";
+  if (base.startsWith("magical_")) {
+    base = base.replace("magical_", "");
+  }
+  return `assets/lobby cards/${base} character card.png`;
+}
+
+function getCharacterIconPath(kind) {
+  let base = kind || "chiikawa";
+  if (base.startsWith("magical_")) {
+    base = base.replace("magical_", "");
+  }
+  return `assets/cards/${base}.png`;
+}
+
+function getCharacterSpritePath(kind, pose, frameNum = 1) {
+  let char = kind || "chiikawa";
+  
+  if (char === "magical_chiikawa" || char === "magical_hachiware" || char === "magical_usagi") {
+    let namePart = char.replace("magical_", "");
+    if (pose === "idle") {
+      return `assets/character skins/in game animations/magical ${namePart} idle.png`;
+    } else if (pose === "back") {
+      return `assets/character skins/in game animations/magical ${namePart} walk backward.png`;
+    } else if (pose === "side") {
+      return `assets/character skins/in game animations/magical ${namePart} walk sideward.png`;
+    } else {
+      return `assets/character skins/in game animations/magical ${namePart} walk forward.png`;
+    }
+  }
+  
+  let suffix = frameNum;
+  if (pose === "idle") {
+    return `assets/${char}/${char}_idle.png`;
+  } else if (pose === "back") {
+    return `assets/${char}/${char}_walk_back${suffix}.png`;
+  } else if (pose === "side") {
+    if (char === "chiikawa" && frameNum === 2) {
+      return `assets/${char}/${char}_walk_sid2.png`;
+    }
+    return `assets/${char}/${char}_walk_side${suffix}.png`;
+  } else {
+    return `assets/${char}/${char}_walk_front${suffix}.png`;
+  }
+}
+
 let selectedCharacter = localStorage.getItem("equipped_character") || "chiikawa";
 let previewCharacter = selectedCharacter;
 let brmVideoEl = null;
@@ -761,6 +812,9 @@ const characterStyle = {
   chiikawa: { body: "#ffffff", accent: "#ff8ab1", blush: "#ffb6c9", label: "Chiikawa" },
   momonga: { body: "#f6fbff", accent: "#b9def2", blush: "#ffb3c5", label: "Momonga" },
   shisa: { body: "#fff2ce", accent: "#ffac79", blush: "#ffafc2", label: "Shisa" },
+  magical_chiikawa: { body: "#ffffff", accent: "#ff8ab1", blush: "#ffb6c9", label: "Magical Chiikawa" },
+  magical_hachiware: { body: "#ffffff", accent: "#80b2c9", blush: "#ffb5c6", label: "Magical Hachiware" },
+  magical_usagi: { body: "#fff1bc", accent: "#ff9d57", blush: "#ffaac1", label: "Magical Usagi" },
 };
 
 // Load Hachiware Images
@@ -835,6 +889,67 @@ momongaImages.walk_back2.src = "assets/momonga/momonga_walk_back2.png";
 momongaImages.walk_side1.src = "assets/momonga/momonga_walk_side1.png";
 momongaImages.walk_side2.src = "assets/momonga/momonga_walk_side2.png";
 
+// Load Magical Chiikawa Images
+const magical_chiikawaImages = {
+  idle: new Image(),
+  walk_front1: new Image(),
+  walk_front2: new Image(),
+  walk_back1: new Image(),
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
+};
+magical_chiikawaImages.idle.src = "assets/character skins/in game animations/magical chiikawa idle.png";
+magical_chiikawaImages.walk_front1.src = "assets/character skins/in game animations/magical chiikawa walk forward.png";
+magical_chiikawaImages.walk_front2.src = "assets/character skins/in game animations/magical chiikawa walk forward.png";
+magical_chiikawaImages.walk_back1.src = "assets/character skins/in game animations/magical chiikawa walk backward.png";
+magical_chiikawaImages.walk_back2.src = "assets/character skins/in game animations/magical chiikawa walk backward.png";
+magical_chiikawaImages.walk_side1.src = "assets/character skins/in game animations/magical chiikawa walk sideward.png";
+magical_chiikawaImages.walk_side2.src = "assets/character skins/in game animations/magical chiikawa walk sideward.png";
+
+// Load Magical Hachiware Images
+const magical_hachiwareImages = {
+  idle: new Image(),
+  walk_front1: new Image(),
+  walk_front2: new Image(),
+  walk_back1: new Image(),
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
+};
+magical_hachiwareImages.idle.src = "assets/character skins/in game animations/magical hachiware idle.png";
+magical_hachiwareImages.walk_front1.src = "assets/character skins/in game animations/magical hachiware walk forward.png";
+magical_hachiwareImages.walk_front2.src = "assets/character skins/in game animations/magical hachiware walk forward.png";
+magical_hachiwareImages.walk_back1.src = "assets/character skins/in game animations/magical hachiware walk backward.png";
+magical_hachiwareImages.walk_back2.src = "assets/character skins/in game animations/magical hachiware walk backward.png";
+magical_hachiwareImages.walk_side1.src = "assets/character skins/in game animations/magical hachiware walk sideward.png";
+magical_hachiwareImages.walk_side2.src = "assets/character skins/in game animations/magical hachiware walk sideward.png";
+
+// Load Magical Usagi Images
+const magical_usagiImages = {
+  idle: new Image(),
+  walk_front1: new Image(),
+  walk_front2: new Image(),
+  walk_back1: new Image(),
+  walk_back2: new Image(),
+  walk_side1: new Image(),
+  walk_side2: new Image()
+};
+magical_usagiImages.idle.src = "assets/character skins/in game animations/magical usagi idle.png";
+magical_usagiImages.walk_front1.src = "assets/character skins/in game animations/magical usagi walk forward.png";
+magical_usagiImages.walk_front2.src = "assets/character skins/in game animations/magical usagi walk forward.png";
+magical_usagiImages.walk_back1.src = "assets/character skins/in game animations/magical usagi walk backward.png";
+magical_usagiImages.walk_back2.src = "assets/character skins/in game animations/magical usagi walk backward.png";
+magical_usagiImages.walk_side1.src = "assets/character skins/in game animations/magical usagi walk sideward.png";
+magical_usagiImages.walk_side2.src = "assets/character skins/in game animations/magical usagi walk sideward.png";
+
+// Load Custom Bomb Skins
+const magicalChiikawaBombImg = new Image();
+magicalChiikawaBombImg.src = "assets/character skins/bomb skins/magical chiikawa bomb skin.png";
+const magicalHachiwareBombImg = new Image();
+magicalHachiwareBombImg.src = "assets/character skins/bomb skins/magical hachiware bomb skin.png";
+const magicalUsagiBombImg = new Image();
+magicalUsagiBombImg.src = "assets/character skins/bomb skins/magical usagi bomb skin.png";
 
 // Emote symbols
 const emoteSymbols = {
@@ -1386,6 +1501,16 @@ function syncCharacterSelectPreview(kind) {
     }
   }
 
+  // Show Upgrade button only for magical character skins
+  const upgradeBtn = document.getElementById("upgradeClothesBtn");
+  if (upgradeBtn) {
+    if (kind.startsWith("magical_")) {
+      upgradeBtn.classList.remove("hidden");
+    } else {
+      upgradeBtn.classList.add("hidden");
+    }
+  }
+
   if (characterSelectVideo && characterSelectVideos[kind]) {
     installVideoFallback(characterSelectVideo, characterSelectVideos[kind]);
     const targetSrc = getVideoSrc(characterSelectVideos[kind], true); // Force high quality for wardrobe
@@ -1411,6 +1536,18 @@ function syncCharacterSelectPreview(kind) {
       glowColor = "rgba(255, 157, 87, 0.35)";
     } else if (kind === "momonga") {
       glowColor = "rgba(185, 222, 242, 0.32)";
+    } else if (kind === "magical_chiikawa") {
+      swirlColor = "#ffd5e5";
+      darkColor = "#ffb7d2";
+      glowColor = "rgba(255, 255, 255, 0.7)";
+    } else if (kind === "magical_hachiware") {
+      swirlColor = "#d4f0fc";
+      darkColor = "#aae0f7";
+      glowColor = "rgba(255, 255, 255, 0.7)";
+    } else if (kind === "magical_usagi") {
+      swirlColor = "#fcfade";
+      darkColor = "#faf5b1";
+      glowColor = "rgba(255, 255, 255, 0.7)";
     }
     
     selectScreenEl.style.setProperty("--char-swirl", swirlColor);
@@ -1465,6 +1602,10 @@ function confirmCharacterSelection() {
   const isUnlocked = unlocked.includes(previewCharacter);
 
   if (!isUnlocked) {
+    if (previewCharacter.startsWith("magical_")) {
+      showToastMsg("Unlock this exclusive skin in the Gacha Shop!");
+      return;
+    }
     if (crownCount >= 5000) {
       crownCount -= 5000;
       unlocked.push(previewCharacter);
@@ -1569,6 +1710,248 @@ wardrobeTabs.forEach((tab) => {
     }
   });
 });
+
+// Outfit Upgrade System & Constellation Logic
+let selectedUpgradeLevel = 1;
+let activeUpgradeCharacter = "";
+
+function getOutfitUpgradeLevel(kind) {
+  try {
+    const saved = localStorage.getItem("outfit_upgrade_levels");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed[kind] || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function setOutfitUpgradeLevel(kind, level) {
+  try {
+    let parsed = {};
+    const saved = localStorage.getItem("outfit_upgrade_levels");
+    if (saved) parsed = JSON.parse(saved);
+    parsed[kind] = level;
+    localStorage.setItem("outfit_upgrade_levels", JSON.stringify(parsed));
+  } catch (e) {}
+}
+
+function getEquippedOutfitSparkleLevel(kind) {
+  try {
+    const saved = localStorage.getItem("equipped_outfit_sparkle_levels");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed[kind] !== undefined) return parsed[kind];
+    }
+  } catch (e) {}
+  return getOutfitUpgradeLevel(kind);
+}
+
+function setEquippedOutfitSparkleLevel(kind, level) {
+  try {
+    let parsed = {};
+    const saved = localStorage.getItem("equipped_outfit_sparkle_levels");
+    if (saved) parsed = JSON.parse(saved);
+    parsed[kind] = level;
+    localStorage.setItem("equipped_outfit_sparkle_levels", JSON.stringify(parsed));
+  } catch (e) {}
+}
+
+function getOutfitDuplicates(kind) {
+  try {
+    const saved = localStorage.getItem("outfit_duplicates");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed[kind] || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function setOutfitDuplicates(kind, val) {
+  try {
+    let parsed = {};
+    const saved = localStorage.getItem("outfit_duplicates");
+    if (saved) parsed = JSON.parse(saved);
+    parsed[kind] = val;
+    localStorage.setItem("outfit_duplicates", JSON.stringify(parsed));
+  } catch (e) {}
+}
+
+const OUTFIT_UPGRADE_BENEFITS = {
+  1: {
+    name: "Golden Sparks",
+    desc: "Unlocks floating golden cross star sparkles around your avatar in game play and wardrobe!",
+    color: "#ffd86f"
+  },
+  2: {
+    name: "Cherry Bubbles",
+    desc: "Upgrades sparkles to cherry pink rings and circular bubble dust effects!",
+    color: "#ff8da1"
+  },
+  3: {
+    name: "Frost Flares",
+    desc: "Upgrades sparkles to bright diamond-flares and icy teal star points!",
+    color: "#6fedff"
+  },
+  4: {
+    name: "Nebula Diamonds",
+    desc: "Upgrades sparkles to deep purple diamond stars and glowing cosmic dust!",
+    color: "#c36fff"
+  },
+  5: {
+    name: "Rainbow Hyperglow",
+    desc: "Enables all colored sparkle shapes at once in a hyper-glow rainbow pattern! Equips instantly in multiplayer gameplay!",
+    color: "#ff3cfc"
+  }
+};
+
+function selectUpgradeNode(level) {
+  selectedUpgradeLevel = level;
+  
+  // Highlight node in UI
+  document.querySelectorAll(".gmu-node-item").forEach(node => {
+    const nodeLevel = parseInt(node.getAttribute("data-level"));
+    node.classList.toggle("selected", nodeLevel === level);
+  });
+  
+  // Sync Details Panel
+  const benefit = OUTFIT_UPGRADE_BENEFITS[level];
+  const nodeNameEl = document.getElementById("gmuNodeName");
+  const nodeDescEl = document.getElementById("gmuNodeDesc");
+  const nodeStatusEl = document.getElementById("gmuNodeStatus");
+  const dupCountEl = document.getElementById("gmuDupCount");
+  const activateBtn = document.getElementById("gmuActivateBtn");
+  
+  if (benefit && nodeNameEl && nodeDescEl && nodeStatusEl && dupCountEl && activateBtn) {
+    nodeNameEl.textContent = benefit.name;
+    nodeDescEl.textContent = benefit.desc;
+    
+    const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+    const equippedLevel = getEquippedOutfitSparkleLevel(activeUpgradeCharacter);
+    const duplicatesOwned = getOutfitDuplicates(activeUpgradeCharacter);
+    dupCountEl.textContent = duplicatesOwned;
+    
+    if (level <= currentLevel) {
+      nodeStatusEl.className = "gmu-badge unlocked";
+      nodeStatusEl.textContent = "Unlocked";
+      
+      if (level === equippedLevel) {
+        activateBtn.disabled = true;
+        activateBtn.textContent = "Equipped";
+      } else {
+        activateBtn.disabled = false;
+        activateBtn.textContent = "Equip Effect";
+      }
+    } else {
+      nodeStatusEl.className = "gmu-badge locked";
+      nodeStatusEl.textContent = "Locked";
+      
+      // Can only unlock next sequential level
+      if (level === currentLevel + 1) {
+        if (duplicatesOwned >= 1) {
+          activateBtn.disabled = false;
+          activateBtn.textContent = "Activate Node";
+        } else {
+          activateBtn.disabled = true;
+          activateBtn.textContent = "Need 1 Duplicate";
+        }
+      } else {
+        activateBtn.disabled = true;
+        activateBtn.textContent = `Unlock Node ${level - 1} First`;
+      }
+    }
+  }
+}
+
+function syncConstellationNodes() {
+  const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+  document.querySelectorAll(".gmu-node-item").forEach(node => {
+    const nodeLevel = parseInt(node.getAttribute("data-level"));
+    node.classList.toggle("active", nodeLevel <= currentLevel);
+  });
+}
+
+function initOutfitUpgradeSystem() {
+  const upgradeBtn = document.getElementById("upgradeClothesBtn");
+  const closeUpgradeBtn = document.getElementById("closeOutfitUpgradeBtn");
+  const activateBtn = document.getElementById("gmuActivateBtn");
+  const screen = document.querySelector(".character-select-screen");
+  
+  if (upgradeBtn) {
+    upgradeBtn.onclick = () => {
+      if (!previewCharacter) return;
+      activeUpgradeCharacter = previewCharacter;
+      
+      if (screen) screen.classList.add("upgrade-active");
+      const overlay = document.getElementById("outfitUpgradeOverlay");
+      if (overlay) overlay.classList.remove("hidden");
+      
+      // Update Nodes
+      syncConstellationNodes();
+      
+      // Select first node or next locked node or currently equipped node
+      const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+      const equippedLevel = getEquippedOutfitSparkleLevel(activeUpgradeCharacter);
+      const startSelect = equippedLevel > 0 ? equippedLevel : Math.min(5, currentLevel + 1);
+      selectUpgradeNode(startSelect);
+      
+      if (typeof playSound === "function") playSound("tutorial_beep");
+    };
+  }
+  
+  if (closeUpgradeBtn) {
+    closeUpgradeBtn.onclick = () => {
+      if (screen) screen.classList.remove("upgrade-active");
+      const overlay = document.getElementById("outfitUpgradeOverlay");
+      if (overlay) overlay.classList.add("hidden");
+      if (typeof playSound === "function") playSound("swipe");
+    };
+  }
+  
+  // Constellation Node click events
+  document.querySelectorAll(".gmu-node-item").forEach(node => {
+    node.onclick = () => {
+      const level = parseInt(node.getAttribute("data-level"));
+      selectUpgradeNode(level);
+      if (typeof playSound === "function") playSound("button_hover");
+    };
+  });
+  
+  if (activateBtn) {
+    activateBtn.onclick = () => {
+      const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+      
+      if (selectedUpgradeLevel <= currentLevel) {
+        // Equip unlocked level effect
+        setEquippedOutfitSparkleLevel(activeUpgradeCharacter, selectedUpgradeLevel);
+        if (typeof playSound === "function") playSound("tutorial_beep");
+        selectUpgradeNode(selectedUpgradeLevel);
+        showToastMsg(`Equipped Level ${selectedUpgradeLevel} sparkles!`);
+      } else if (selectedUpgradeLevel === currentLevel + 1) {
+        // Unlock next level node
+        const duplicatesOwned = getOutfitDuplicates(activeUpgradeCharacter);
+        if (duplicatesOwned >= 1) {
+          // Spend 1 duplicate
+          setOutfitDuplicates(activeUpgradeCharacter, duplicatesOwned - 1);
+          // Level up max unlocked level
+          setOutfitUpgradeLevel(activeUpgradeCharacter, selectedUpgradeLevel);
+          // Auto-equip the newly unlocked level
+          setEquippedOutfitSparkleLevel(activeUpgradeCharacter, selectedUpgradeLevel);
+          
+          if (typeof playSound === "function") playSound("victory_royale");
+          
+          syncConstellationNodes();
+          selectUpgradeNode(selectedUpgradeLevel);
+          showToastMsg(`Outfit Skin Upgraded & Level ${selectedUpgradeLevel} sparkles equipped!`);
+        }
+      }
+    };
+  }
+}
+
+// Call init on startup
+setTimeout(initOutfitUpgradeSystem, 500);
 
 
 // ----------------------------------------------------------------
@@ -1940,7 +2323,7 @@ function handleServerMessage(msg) {
                 const voter = players.find(p => p.id === voterId);
                 if (voter) {
                   const img = document.createElement("img");
-                  img.src = `assets/cards/${voter.kind}.png`;
+                  img.src = getCharacterIconPath(voter.kind);
                   img.style.width = "24px";
                   img.style.height = "24px";
                   img.style.borderRadius = "50%";
@@ -2195,12 +2578,14 @@ function handleServerMessage(msg) {
     case "bomb_exploded":
       const explBomb = bombs.find((b) => b.id === data.bombId);
       const explColor = explBomb ? (explBomb.effectColor || "default") : "default";
+      const explIsMagical = explBomb && (explBomb.color === "magical_chiikawa" || explBomb.color === "magical_hachiware" || explBomb.color === "magical_usagi");
       bombs = bombs.filter((b) => b.id !== data.bombId);
       blasts.push({
         cells: data.cells,
         timer: 0.48,
         age: 0,
         color: explColor,
+        isMagical: explIsMagical
       });
 
       data.destroyedCrates.forEach((crate) => {
@@ -2836,7 +3221,7 @@ function renderLocalFourPlayerLobby() {
     if (slot) {
       const style = characterStyle[slot.kind] || characterStyle.chiikawa;
       card.innerHTML = `
-        <img src="assets/lobby cards/${slot.kind} character card.png" alt="${escapeHTML(style.label)}" />
+        <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" />
         <strong>P${i + 1} ${escapeHTML(style.label)}</strong>
         <span>Tap to change / hold remove</span>
       `;
@@ -2879,7 +3264,7 @@ function renderLocalFourPlayerSquadCard(cardId, index) {
       <div class="card-inner-skew">
         <button class="local-four-remove" type="button" aria-label="Remove P${index + 1}" ${index === 0 ? "hidden" : ""}>x</button>
         <div class="squad-card-image-container">
-          <img src="assets/lobby cards/${slot.kind} character card.png" alt="${escapeHTML(style.label)}" />
+          <img src="${getCharacterCardPath(slot.kind)}" alt="${escapeHTML(style.label)}" ${slot.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
         </div>
       </div>
       <div class="card-footer-bar">
@@ -3088,7 +3473,7 @@ function updateCouchControlPicker() {
     panel.className = `couch-control-panel slot-${slotNumber}`;
     panel.innerHTML = `
       <div class="couch-player-label" data-kind="${player.kind}">
-        <img src="assets/cards/${player.kind}.png" alt="${escapeHTML(player.name)}" />
+        <img src="${getCharacterIconPath(player.kind)}" alt="${escapeHTML(player.name)}" />
         <span>${player.trophies || 0}</span>
       </div>
       <div class="couch-joystick" aria-label="P${slotNumber} movement joystick">
@@ -3581,7 +3966,8 @@ function localTriggerExplosion(bomb) {
     }
   });
 
-  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.effectColor || "default" });
+  const explIsMagical = bomb.color === "magical_chiikawa" || bomb.color === "magical_hachiware" || bomb.color === "magical_usagi";
+  blasts.push({ cells, timer: 0.48, age: 0, color: bomb.effectColor || "default", isMagical: explIsMagical });
   // In BR mode only shake for MY own bomb; in classic mode always shake
   if (!isBattleRoyale(currentRoomMode) || bomb.ownerId === localPlayerId) {
     shakeTimer = 0.35;
@@ -3770,7 +4156,7 @@ function updateProgressionUI() {
   // Sync character avatar
   const avatarImg = document.getElementById("profileCharAvatar");
   if (avatarImg) {
-    const src = `assets/cards/${selectedCharacter || 'hachiware'}.png`;
+    const src = getCharacterIconPath(selectedCharacter || 'hachiware');
     if (!avatarImg.getAttribute('src') || !avatarImg.getAttribute('src').endsWith(src.split('/').pop())) {
       avatarImg.src = src;
     }
@@ -3804,9 +4190,14 @@ function updateProgressionUI() {
   // Centered Premium Play Card updates
   const playCardImg = document.getElementById("playCharacterCardImg");
   if (playCardImg) {
-    const src = `assets/lobby cards/${selectedCharacter} character card.png`;
-    if (!playCardImg.src.endsWith(src)) {
-      playCardImg.src = src;
+    const cardPath = getCharacterCardPath(selectedCharacter);
+    if (!playCardImg.src.endsWith(cardPath)) {
+      playCardImg.src = cardPath;
+    }
+    if (selectedCharacter === "magical_usagi") {
+      playCardImg.style.transform = "translateX(24px) scale(1.05)";
+    } else {
+      playCardImg.style.transform = "";
     }
   }
   const playCharName = document.getElementById("playCharName");
@@ -5099,10 +5490,16 @@ function burstSparkles(px, py) {
 // ----------------------------------------------------------------
 
 function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0, dy = 1, tilesWalked = 0, walkDistance = 0) {
-  if (kind === "hachiware" || kind === "usagi" || kind === "chiikawa" || kind === "momonga") {
+  if (kind === "hachiware" || kind === "usagi" || kind === "chiikawa" || kind === "momonga" || kind === "magical_chiikawa" || kind === "magical_hachiware" || kind === "magical_usagi") {
     actx.save();
     
-    const spriteSet = kind === "momonga" ? momongaImages : (kind === "chiikawa" ? chiikawaImages : (kind === "usagi" ? usagiImages : hachiwareImages));
+    let spriteSet = hachiwareImages;
+    if (kind === "momonga") spriteSet = momongaImages;
+    else if (kind === "chiikawa") spriteSet = chiikawaImages;
+    else if (kind === "usagi") spriteSet = usagiImages;
+    else if (kind === "magical_chiikawa") spriteSet = magical_chiikawaImages;
+    else if (kind === "magical_hachiware") spriteSet = magical_hachiwareImages;
+    else if (kind === "magical_usagi") spriteSet = magical_usagiImages;
     
     // Determine the image to draw and orientation
     let img = spriteSet.idle;
@@ -5119,6 +5516,10 @@ function drawCharacterOnContext(actx, kind, style, t, isWalking = false, dx = 0,
     } else {
       const canvasWidth = (actx.canvas && actx.canvas.width) ? actx.canvas.width : 70;
       size = canvasWidth * 0.92;
+    }
+    
+    if (kind === "magical_chiikawa" || kind === "magical_hachiware" || kind === "magical_usagi") {
+      size *= 1.60;
     }
     
     if (isWalking) {
@@ -5905,10 +6306,32 @@ function drawBomb(bomb) {
   const by = (bomb.slideY !== undefined) ? bomb.slideY : bomb.y;
   if (!isTileVisible(bx, by)) return;
   const c = centerOf(bx, by);
-  const scale = 1 + Math.sin(bomb.pulse) * 0.08;
+  
+  let scale = 1 + Math.sin(bomb.pulse) * 0.08;
+  const isMagical = bomb.color === "magical_chiikawa" || bomb.color === "magical_hachiware" || bomb.color === "magical_usagi";
+  if (isMagical) {
+    const timeLeft = bomb.timer !== undefined ? bomb.timer : 1.5;
+    const speedMultiplier = timeLeft > 0 ? (1.6 / Math.max(0.18, timeLeft)) : 1;
+    const pulseVal = Math.sin(bomb.pulse * speedMultiplier);
+    const pulseFactor = pulseVal > 0 ? 0.16 * Math.pow(pulseVal, 2) : 0.07 * pulseVal;
+    scale = 1.04 + pulseFactor;
+  }
+  
   ctx.save();
   ctx.translate(c.x, c.y);
   ctx.scale(scale, scale);
+  
+  if (isMagical) {
+    let img = magicalChiikawaBombImg;
+    if (bomb.color === "magical_hachiware") img = magicalHachiwareBombImg;
+    else if (bomb.color === "magical_usagi") img = magicalUsagiBombImg;
+    
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, -18, -18, 36, 36);
+      ctx.restore();
+      return;
+    }
+  }
   
   // Custom bomb skin colors
   let bombColor = "#25212a";
@@ -5950,6 +6373,29 @@ function drawBomb(bomb) {
   ctx.restore();
 }
 
+function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+  let rot = (Math.PI / 2) * 3;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+}
+
 function drawBlast(blast) {
   const alpha = Math.max(0, blast.timer / 0.48);
   
@@ -5981,14 +6427,28 @@ function drawBlast(blast) {
     ctx.fillStyle = innerColor;
     ctx.strokeStyle = outerColor;
     ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, 23 + Math.sin(blast.age * 38) * 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.86)";
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, 11, 0, Math.PI * 2);
-    ctx.fill();
+    
+    if (blast.isMagical) {
+      const outerRad = 24 + Math.sin(blast.age * 38) * 3;
+      const innerRad = outerRad * 0.45;
+      drawStar(ctx, c.x, c.y, 5, outerRad, innerRad);
+      ctx.fill();
+      ctx.stroke();
+      
+      ctx.fillStyle = "rgba(255,255,255,0.86)";
+      ctx.beginPath();
+      drawStar(ctx, c.x, c.y, 5, 12, 5.4);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 23 + Math.sin(blast.age * 38) * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.86)";
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 11, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   });
 }
@@ -6001,6 +6461,53 @@ function drawPlayer(player) {
   if (!isPixelVisible(player.x, player.y, 60)) {
     return;
   }
+
+  // Spawn magical sparkle particles for magical character skins depending on outfit upgrade level
+  if (player.alive && (player.kind === "magical_chiikawa" || player.kind === "magical_hachiware" || player.kind === "magical_usagi")) {
+    const upgradeLevel = getEquippedOutfitSparkleLevel(player.kind);
+    if (upgradeLevel >= 1) {
+      if (Math.random() < 0.08) {
+        let sparkleColor = "#ffd86f";
+        let sparkleShape = "cross";
+        
+        if (upgradeLevel === 1) {
+          sparkleColor = ["#ffd86f", "#ffeaa7", "#fff9db"][Math.floor(Math.random() * 3)];
+          sparkleShape = "cross";
+        } else if (upgradeLevel === 2) {
+          sparkleColor = ["#ff8da1", "#ff788f", "#ffb3c1"][Math.floor(Math.random() * 3)];
+          sparkleShape = "circle";
+        } else if (upgradeLevel === 3) {
+          sparkleColor = ["#6fedff", "#a0effa", "#e0faff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "flare";
+        } else if (upgradeLevel === 4) {
+          sparkleColor = ["#c36fff", "#d69cff", "#f5e6ff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "diamond";
+        } else if (upgradeLevel === 5) {
+          const colors = ["#ff3cfc", "#6fedff", "#ffd86f", "#ff8da1", "#c36fff"];
+          sparkleColor = colors[Math.floor(Math.random() * colors.length)];
+          const shapes = ["cross", "circle", "flare", "diamond"];
+          sparkleShape = shapes[Math.floor(Math.random() * shapes.length)];
+        }
+        
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * 18;
+        const px = player.x + Math.cos(angle) * dist;
+        const py = player.y + Math.sin(angle) * dist - 8;
+        particles.push({
+          x: px,
+          y: py,
+          vx: (Math.random() - 0.5) * 12,
+          vy: -15 - Math.random() * 20,
+          life: 0.45 + Math.random() * 0.35,
+          color: sparkleColor,
+          size: 3.5 + Math.random() * 3.5,
+          isSparkle: true,
+          sparkleShape: sparkleShape
+        });
+      }
+    }
+  }
+
   const style = characterStyle[player.kind];
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -6118,7 +6625,63 @@ function drawParticle(p) {
   ctx.save();
   ctx.globalAlpha = Math.min(1, p.life * 2.4);
   ctx.fillStyle = p.color;
-  ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  
+  if (p.isSparkle) {
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 6;
+    
+    if (p.sparkleShape === "circle") {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw outer thin ring
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 1.3, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (p.sparkleShape === "flare") {
+      // 8-point star flare
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+      ctx.fill();
+      
+      // Diagonals
+      const diag = p.size * 0.65;
+      ctx.beginPath();
+      ctx.moveTo(p.x - diag, p.y - diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y - diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y + diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y + diag);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y - diag);
+      ctx.fill();
+    } else if (p.sparkleShape === "diamond") {
+      // Diamond
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.size * 1.2);
+      ctx.lineTo(p.x + p.size * 0.8, p.y);
+      ctx.lineTo(p.x, p.y + p.size * 1.2);
+      ctx.lineTo(p.x - p.size * 0.8, p.y);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Default 4-point cross star
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+      ctx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+      ctx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+      ctx.fill();
+    }
+  } else {
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  }
   ctx.restore();
 }
 
@@ -6310,14 +6873,145 @@ function drawCharacterSelectPreview() {
   const height = characterSelectCanvas.height;
   characterSelectCtx.clearRect(0, 0, width, height);
 
-  const scale = Math.min(width / characterSelectVideo.videoWidth, height / characterSelectVideo.videoHeight) * 1.76;
+  // Use fit-to-height scale so character always fits within the canvas vertically
+  // Then apply a modest boost so it appears large but not clipped
+  let scaleBoost = 1.42;
+  if (previewCharacter === "magical_hachiware") {
+    scaleBoost = 1.55;
+  } else if (previewCharacter === "magical_chiikawa" || previewCharacter === "magical_usagi") {
+    scaleBoost = 1.50;
+  }
+
+  const scale = Math.min(width / characterSelectVideo.videoWidth, height / characterSelectVideo.videoHeight) * scaleBoost;
   const drawW = characterSelectVideo.videoWidth * scale;
   const drawH = characterSelectVideo.videoHeight * scale;
   const drawX = (width - drawW) / 2;
-  const drawY = height - drawH * 1.03;
+  
+  const screenEl = document.querySelector(".character-select-screen");
+  const isUpgradeActive = screenEl && screenEl.classList.contains("upgrade-active");
+  
+  let rawDrawY;
+  if (isUpgradeActive) {
+    // Shipped down slightly in upgrade mode so it sits naturally
+    rawDrawY = (height - drawH) / 2 + height * 0.08;
+  } else {
+    // Normal wardrobe positioning
+    rawDrawY = (height - drawH) / 2 + height * 0.04;
+  }
+  const drawY = Math.max(0, rawDrawY);
 
   characterSelectCtx.drawImage(characterSelectVideo, drawX, drawY, drawW, drawH);
   removeGreenScreenFromCanvas(characterSelectCtx, width, height);
+
+  // Render sparkles corresponding to the wardrobe character upgrade level
+  const isMagical = previewCharacter && previewCharacter.startsWith("magical_");
+  if (isMagical) {
+    const upgradeLevel = getEquippedOutfitSparkleLevel(previewCharacter);
+    if (upgradeLevel >= 1) {
+      if (!window.wardrobeSparkles) window.wardrobeSparkles = [];
+      
+      // Spawn new sparkles
+      if (Math.random() < 0.16) {
+        let sparkleColor = "#ffd86f";
+        let sparkleShape = "cross";
+        
+        if (upgradeLevel === 1) {
+          sparkleColor = ["#ffd86f", "#ffeaa7", "#fff9db"][Math.floor(Math.random() * 3)];
+          sparkleShape = "cross";
+        } else if (upgradeLevel === 2) {
+          sparkleColor = ["#ff8da1", "#ff788f", "#ffb3c1"][Math.floor(Math.random() * 3)];
+          sparkleShape = "circle";
+        } else if (upgradeLevel === 3) {
+          sparkleColor = ["#6fedff", "#a0effa", "#e0faff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "flare";
+        } else if (upgradeLevel === 4) {
+          sparkleColor = ["#c36fff", "#d69cff", "#f5e6ff"][Math.floor(Math.random() * 3)];
+          sparkleShape = "diamond";
+        } else if (upgradeLevel === 5) {
+          const colors = ["#ff3cfc", "#6fedff", "#ffd86f", "#ff8da1", "#c36fff"];
+          sparkleColor = colors[Math.floor(Math.random() * colors.length)];
+          const shapes = ["cross", "circle", "flare", "diamond"];
+          sparkleShape = shapes[Math.floor(Math.random() * shapes.length)];
+        }
+        
+        window.wardrobeSparkles.push({
+          x: width / 2 + (Math.random() - 0.5) * 450,
+          y: height / 2 + (Math.random() - 0.5) * 450,
+          vx: (Math.random() - 0.5) * 3,
+          vy: -3 - Math.random() * 5,
+          life: 0.8 + Math.random() * 0.6,
+          color: sparkleColor,
+          size: 8 + Math.random() * 12,
+          sparkleShape: sparkleShape
+        });
+      }
+      
+      // Update and draw wardrobe sparkles
+      characterSelectCtx.save();
+      for (let i = window.wardrobeSparkles.length - 1; i >= 0; i--) {
+        const p = window.wardrobeSparkles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.016;
+        
+        if (p.life <= 0) {
+          window.wardrobeSparkles.splice(i, 1);
+          continue;
+        }
+        
+        characterSelectCtx.globalAlpha = Math.min(1, p.life * 2.2);
+        characterSelectCtx.shadowColor = p.color;
+        characterSelectCtx.shadowBlur = 10;
+        characterSelectCtx.fillStyle = p.color;
+        
+        if (p.sparkleShape === "circle") {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          characterSelectCtx.fill();
+          
+          characterSelectCtx.strokeStyle = p.color;
+          characterSelectCtx.lineWidth = 2.5;
+          characterSelectCtx.beginPath();
+          characterSelectCtx.arc(p.x, p.y, p.size * 1.6, 0, Math.PI * 2);
+          characterSelectCtx.stroke();
+        } else if (p.sparkleShape === "flare") {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x, p.y - p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+          characterSelectCtx.fill();
+          
+          const diag = p.size * 0.65;
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x - diag, p.y - diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y - diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + diag, p.y + diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y + diag);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - diag, p.y - diag);
+          characterSelectCtx.fill();
+        } else if (p.sparkleShape === "diamond") {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x, p.y - p.size * 1.2);
+          characterSelectCtx.lineTo(p.x + p.size * 0.8, p.y);
+          characterSelectCtx.lineTo(p.x, p.y + p.size * 1.2);
+          characterSelectCtx.lineTo(p.x - p.size * 0.8, p.y);
+          characterSelectCtx.closePath();
+          characterSelectCtx.fill();
+        } else {
+          characterSelectCtx.beginPath();
+          characterSelectCtx.moveTo(p.x, p.y - p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x + p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y + p.size);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x - p.size, p.y);
+          characterSelectCtx.quadraticCurveTo(p.x, p.y, p.x, p.y - p.size);
+          characterSelectCtx.fill();
+        }
+      }
+      characterSelectCtx.restore();
+    }
+  }
 }
 
 function drawSquadLobbyCharacter() {
@@ -6621,12 +7315,54 @@ function update(dt) {
     blasts.forEach((blast) => {
       blast.age += dt;
       blast.timer -= dt;
+      
+      if (blast.isMagical) {
+        blast.cells.forEach(cell => {
+          if (Math.random() < 0.12) {
+            const c = centerOf(cell.x, cell.y);
+            const px = c.x + (Math.random() - 0.5) * 36;
+            const py = c.y + (Math.random() - 0.5) * 36;
+            particles.push({
+              x: px,
+              y: py,
+              vx: (Math.random() - 0.5) * 80,
+              vy: (Math.random() - 0.5) * 80,
+              life: 0.3 + Math.random() * 0.3,
+              color: ["#ffd86f", "#ff9ebb", "#18baff", "#39d98a", "#ffffff"][Math.floor(Math.random() * 5)],
+              size: 5 + Math.random() * 5,
+              isSparkle: true
+            });
+          }
+        });
+      }
     });
     blasts = blasts.filter((blast) => blast.timer > 0);
 
     bombs.forEach((bomb) => {
       bomb.pulse += dt * 8;
       bomb.timer = Math.max(0, bomb.timer - dt);
+
+      const isMagical = bomb.color === "magical_chiikawa" || bomb.color === "magical_hachiware" || bomb.color === "magical_usagi";
+      if (isMagical) {
+        if (Math.random() < 0.18) {
+          const c = centerOf(bomb.x, bomb.y);
+          const angle = Math.random() * Math.PI * 2;
+          const radius = Math.random() * 14;
+          const px = c.x + Math.cos(angle) * radius;
+          const py = c.y + Math.sin(angle) * radius - 2;
+          
+          particles.push({
+            x: px,
+            y: py,
+            vx: (Math.random() - 0.5) * 15,
+            vy: -Math.random() * 20 - 5,
+            life: 0.4 + Math.random() * 0.3,
+            color: ["#ffd86f", "#ff9ebb", "#18baff", "#39d98a", "#ffffff"][Math.floor(Math.random() * 5)],
+            size: 4 + Math.random() * 4,
+            isSparkle: true
+          });
+        }
+      }
 
       if (bomb.passableFor) {
         players.forEach((player) => {
@@ -7016,8 +7752,25 @@ function syncSquadLobbyInterface() {
     userNameEl.textContent = getActivePlayerName();
   }
   const img = document.getElementById("squadLobbyCharImg");
-  if (img && !img.src.endsWith(`/lobby cards/${selectedCharacter} character card.png`)) {
-    img.src = `assets/lobby cards/${selectedCharacter} character card.png`;
+  if (img) {
+    const cardPath = getCharacterCardPath(selectedCharacter);
+    if (!img.src.endsWith(cardPath)) {
+      img.src = cardPath;
+    }
+    if (selectedCharacter === "magical_usagi") {
+      img.style.transform = "translateX(24px) scale(1.05)";
+    } else {
+      img.style.transform = "";
+    }
+  }
+  const squadLobbyRankIcon = document.getElementById("squadLobbyRankIcon");
+  if (squadLobbyRankIcon) {
+    const currentRank = getRankForRp(rankRp);
+    squadLobbyRankIcon.innerHTML = getRankIconSvg(currentRank.id);
+  }
+  const squadLobbyLevelNum = document.getElementById("squadLobbyLevelNum");
+  if (squadLobbyLevelNum) {
+    squadLobbyLevelNum.textContent = seasonLevel;
   }
 
   // Teammates-only filtering: must share the same squadCode and not be bots
@@ -7037,16 +7790,20 @@ function syncSquadLobbyInterface() {
       leftCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
           </div>
         </div>
         <div class="card-footer-bar">
-          <div class="avatar-circle">
-            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          <div class="showcase-rank-badge">
+            ${getRankIconSvg(p.rank || ['bronze', 'silver', 'gold', 'platinum'][p.name.charCodeAt(0) % 4])}
           </div>
           <div class="user-info">
             <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
             <div class="user-level">${escapeHTML(p.name)}</div>
+          </div>
+          <div class="showcase-level-badge">
+            <span class="lvl-label">LV.</span>
+            <span>${p.level || (p.name.charCodeAt(0) % 15) + 1}</span>
           </div>
         </div>
       `;
@@ -7077,16 +7834,20 @@ function syncSquadLobbyInterface() {
       rightCard.innerHTML = `
         <div class="card-inner-skew">
           <div class="squad-card-image-container">
-            <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+            <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
           </div>
         </div>
         <div class="card-footer-bar">
-          <div class="avatar-circle">
-            <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          <div class="showcase-rank-badge">
+            ${getRankIconSvg(p.rank || ['bronze', 'silver', 'gold', 'platinum'][p.name.charCodeAt(0) % 4])}
           </div>
           <div class="user-info">
             <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
             <div class="user-level">${escapeHTML(p.name)}</div>
+          </div>
+          <div class="showcase-level-badge">
+            <span class="lvl-label">LV.</span>
+            <span>${p.level || (p.name.charCodeAt(0) % 15) + 1}</span>
           </div>
         </div>
       `;
@@ -7118,16 +7879,20 @@ function syncSquadLobbyInterface() {
         fourthCard.innerHTML = `
           <div class="card-inner-skew">
             <div class="squad-card-image-container">
-              <img src="assets/lobby cards/${p.kind} character card.png" alt="Character Art" />
+              <img src="${getCharacterCardPath(p.kind)}" alt="Character Art" ${p.kind === 'magical_usagi' ? 'style="transform: translateX(24px) scale(1.05);"' : ''} />
             </div>
           </div>
           <div class="card-footer-bar">
-            <div class="avatar-circle">
-              <svg viewBox="0 0 24 24" class="avatar-smile-svg"><circle cx="12" cy="12" r="10" fill="#000" stroke="#ffd84a" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="#ffd84a"/><circle cx="15.5" cy="9.5" r="1.5" fill="#ffd84a"/><path d="M8 14s1.5 2.5 4 2.5 4-2.5 4-2.5" stroke="#ffd84a" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            <div class="showcase-rank-badge">
+              ${getRankIconSvg(p.rank || ['bronze', 'silver', 'gold', 'platinum'][p.name.charCodeAt(0) % 4])}
             </div>
             <div class="user-info">
               <div class="user-name">${characterStyle[p.kind]?.label || p.kind}</div>
               <div class="user-level">${escapeHTML(p.name)}</div>
+            </div>
+            <div class="showcase-level-badge">
+              <span class="lvl-label">LV.</span>
+              <span>${p.level || (p.name.charCodeAt(0) % 15) + 1}</span>
             </div>
           </div>
         `;
@@ -7367,33 +8132,45 @@ surrenderNoBtn?.addEventListener("click", () => {
 });
 
 // Return to Lobby after Victory
-document.getElementById("victoryReturnBtn")?.addEventListener("click", () => {
-  players = [];
-  document.getElementById("tournamentOverlay").classList.add("hidden");
-  stopConfetti();
-  const vVideo = document.getElementById("victoryVideo");
-  if (vVideo) {
-    vVideo.pause();
-  }
-  if (roundCountdownInterval) {
-    clearInterval(roundCountdownInterval);
-    roundCountdownInterval = null;
-  }
+const victoryLobbyBtn = document.getElementById("victoryLobbyBtn");
+if (victoryLobbyBtn) {
+  victoryLobbyBtn.addEventListener("click", () => {
+    // Clear auto-lobby timer if active
+    if (window.victoryLobbyCountdownInterval) {
+      clearInterval(window.victoryLobbyCountdownInterval);
+      window.victoryLobbyCountdownInterval = null;
+    }
+    
+    // Restore default text
+    victoryLobbyBtn.textContent = "Return to Lobby";
 
-  if (localMode) {
-    roomCode = null;
-    localPlayerId = null;
-    hostId = null;
-    localMode = false;
-    resetCouchControls();
-    resetLobbyMapSelectToNormal();
-    switchScreen(menuScreen);
-    document.querySelector('.tab-btn[data-tab="play"]')?.click();
-  } else {
-    switchScreen(menuScreen);
-    document.querySelector('.tab-btn[data-tab="squad"]')?.click();
-  }
-});
+    players = [];
+    document.getElementById("tournamentOverlay").classList.add("hidden");
+    stopConfetti();
+    const vVideo = document.getElementById("victoryVideo");
+    if (vVideo) {
+      vVideo.pause();
+    }
+    if (roundCountdownInterval) {
+      clearInterval(roundCountdownInterval);
+      roundCountdownInterval = null;
+    }
+
+    if (localMode) {
+      roomCode = null;
+      localPlayerId = null;
+      hostId = null;
+      localMode = false;
+      resetCouchControls();
+      resetLobbyMapSelectToNormal();
+      switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="play"]')?.click();
+    } else {
+      switchScreen(menuScreen);
+      document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+    }
+  });
+}
 
 // Squad Lobby Private Room Bot Button
 document.getElementById("squadAddBotBtn")?.addEventListener("click", () => {
@@ -7680,7 +8457,7 @@ function startMatchmakingSearch() {
   // Set player slot 1 to player's current character
   const img1 = document.getElementById("matchmakerImg_1");
   const name1 = document.getElementById("matchmakerName_1");
-  if (img1) img1.src = `assets/cards/${selectedCharacter}.png`;
+  if (img1) img1.src = getCharacterIconPath(selectedCharacter);
   if (name1) {
     name1.textContent = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
   }
@@ -7770,7 +8547,7 @@ function showOnlineMatchmakingSearch() {
         <div class="card-inner">
           <span class="slot-badge badge-you">YOU</span>
           <div class="slot-image-container">
-            <img src="assets/cards/${selectedCharacter}.png" alt="${escapeHTML(playerName)}" />
+            <img src="${getCharacterIconPath(selectedCharacter)}" alt="${escapeHTML(playerName)}" />
           </div>
           <div class="slot-name">${escapeHTML(playerName)}</div>
         </div>
@@ -7797,7 +8574,7 @@ function revealMatchedBot(slotNum, charKind, botName) {
     <div class="card-inner">
       <span class="slot-badge badge-bot">CPU</span>
       <div class="slot-image-container">
-        <img src="assets/cards/${charKind}.png" alt="${botName}" />
+        <img src="${getCharacterIconPath(charKind)}" alt="${botName}" />
       </div>
       <div class="slot-name">${botName}</div>
     </div>
@@ -7886,7 +8663,7 @@ function updateOnlineMatchmakingPopup() {
         <div class="card-inner">
           <span class="slot-badge ${badgeClass}">${type}</span>
           <div class="slot-image-container">
-            <img src="assets/cards/${player.kind}.png" alt="${player.name}" />
+            <img src="${getCharacterIconPath(player.kind)}" alt="${player.name}" />
           </div>
           <div class="slot-name">${escapeHTML(player.name)}</div>
         </div>
@@ -8021,7 +8798,7 @@ function showVsLoadingScreen(combatants, onComplete, durationMs = 5000) {
     const nameEl = document.getElementById(`vsName_${slot}`);
     const imgEl = document.getElementById(`vsImg_${slot}`);
     if (nameEl) nameEl.textContent = fighter.name;
-    if (imgEl) imgEl.src = `assets/cards/${fighter.kind}.png`;
+    if (imgEl) imgEl.src = getCharacterIconPath(fighter.kind);
     setVsCardTheme(slot, fighter.kind);
   });
 
@@ -8085,13 +8862,17 @@ function setVsCardTheme(slotNum, charKind) {
   if (!cardInner) return;
   
   cardInner.classList.remove("card-pink", "card-yellow", "card-blue", "card-purple");
-  if (charKind === "chiikawa") {
+  let baseKind = charKind || "chiikawa";
+  if (baseKind.startsWith("magical_")) {
+    baseKind = baseKind.replace("magical_", "");
+  }
+  if (baseKind === "chiikawa") {
     cardInner.classList.add("card-pink");
-  } else if (charKind === "usagi") {
+  } else if (baseKind === "usagi") {
     cardInner.classList.add("card-yellow");
-  } else if (charKind === "hachiware") {
+  } else if (baseKind === "hachiware") {
     cardInner.classList.add("card-blue");
-  } else if (charKind === "momonga") {
+  } else if (baseKind === "momonga") {
     cardInner.classList.add("card-purple");
   } else {
     cardInner.classList.add("card-pink");
@@ -8957,7 +9738,7 @@ function showFinalVoteOverlay(data) {
       card.dataset.playerId = player.id;
       card.disabled = localTeam !== team;
       card.innerHTML = `
-        <img class="fv-card-avatar" src="assets/cards/${player.kind || "chiikawa"}.png" alt="">
+        <img class="fv-card-avatar" src="${getCharacterIconPath(player.kind || "chiikawa")}" alt="">
         <div class="fv-card-info">
           <div class="fv-card-name">${escapeHTML(player.name)}</div>
           <div class="fv-card-votes" data-vote-count-for="${player.id}">0 votes</div>
@@ -9086,7 +9867,7 @@ function updateLocalMapVoteUI() {
       localMapVoteState.voters.forEach((voter) => {
         if (localMapVoteState.votes[voter.id] !== mapType) return;
         const img = document.createElement("img");
-        img.src = `assets/cards/${voter.kind || "chiikawa"}.png`;
+        img.src = getCharacterIconPath(voter.kind || "chiikawa");
         img.style.width = "24px";
         img.style.height = "24px";
         img.style.borderRadius = "50%";
@@ -9167,6 +9948,27 @@ function showTournamentResults(playersList, winnerId, tournamentFinished, trophy
         clearInterval(roundCountdownInterval);
         roundCountdownInterval = null;
       }
+
+      // Start 10-second automatic return-to-lobby countdown
+      let victoryTimeLeft = 10;
+      const vLobbyBtn = document.getElementById("victoryLobbyBtn");
+      if (vLobbyBtn) {
+        vLobbyBtn.textContent = `Return to Lobby (${victoryTimeLeft}s)`;
+      }
+      if (window.victoryLobbyCountdownInterval) {
+        clearInterval(window.victoryLobbyCountdownInterval);
+      }
+      window.victoryLobbyCountdownInterval = setInterval(() => {
+        victoryTimeLeft--;
+        if (vLobbyBtn) {
+          vLobbyBtn.textContent = `Return to Lobby (${victoryTimeLeft}s)`;
+        }
+        if (victoryTimeLeft <= 0) {
+          clearInterval(window.victoryLobbyCountdownInterval);
+          window.victoryLobbyCountdownInterval = null;
+          if (vLobbyBtn) vLobbyBtn.click();
+        }
+      }, 1000);
 
       // Identify grand winner
       const grandWinner = players.find(p => p.id === winnerId || (p.trophies || 0) >= trophyGoal);
@@ -13138,16 +13940,26 @@ if (document.readyState === "complete" || document.readyState === "interactive")
 // =================================================================
 
 const gachaPool = [
-  { id: "pink-bomb", name: "Pink Bomb", color: "pink", type: "bomb", file: "assets/shop/pink-bomb.svg", chance: "10% Chance" },
-  { id: "blue-bomb", name: "Blue Bomb", color: "blue", type: "bomb", file: "assets/shop/blue-bomb.svg", chance: "10% Chance" },
-  { id: "green-bomb", name: "Green Bomb", color: "green", type: "bomb", file: "assets/shop/green-bomb.svg", chance: "10% Chance" },
-  { id: "gold-bomb", name: "Gold Bomb", color: "gold", type: "bomb", file: "assets/shop/gold-bomb.svg", chance: "10% Chance" },
-  { id: "purple-bomb", name: "Purple Bomb", color: "purple", type: "bomb", file: "assets/shop/purple-bomb.svg", chance: "10% Chance" },
-  { id: "pink-effect", name: "Pink Flame", color: "pink", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "blue-effect", name: "Blue Flame", color: "blue", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "green-effect", name: "Green Flame", color: "green", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "gold-effect", name: "Golden Blast", color: "gold", type: "effect", isSvgMarkup: true, chance: "10% Chance" },
-  { id: "purple-effect", name: "Shadow Blast", color: "purple", type: "effect", isSvgMarkup: true, chance: "10% Chance" }
+  { id: "pink-bomb", name: "Pink Bomb", color: "pink", type: "bomb", file: "assets/shop/pink-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "blue-bomb", name: "Blue Bomb", color: "blue", type: "bomb", file: "assets/shop/blue-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "green-bomb", name: "Green Bomb", color: "green", type: "bomb", file: "assets/shop/green-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "gold-bomb", name: "Gold Bomb", color: "gold", type: "bomb", file: "assets/shop/gold-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "purple-bomb", name: "Purple Bomb", color: "purple", type: "bomb", file: "assets/shop/purple-bomb.svg", chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "pink-effect", name: "Pink Flame", color: "pink", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "blue-effect", name: "Blue Flame", color: "blue", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "green-effect", name: "Green Flame", color: "green", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "gold-effect", name: "Golden Blast", color: "gold", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  { id: "purple-effect", name: "Shadow Blast", color: "purple", type: "effect", isSvgMarkup: true, chance: "Normal (9.4%)", weight: 10, rarity: "normal" },
+  
+  // Magical Bombs (Rare)
+  { id: "magical_chiikawa_bomb", name: "Magical Chiikawa Bomb", color: "magical_chiikawa", type: "bomb", file: "assets/character skins/bomb skins/magical chiikawa bomb skin.png", chance: "Rare (1.4%)", weight: 1.5, rarity: "rare" },
+  { id: "magical_hachiware_bomb", name: "Magical Hachiware Bomb", color: "magical_hachiware", type: "bomb", file: "assets/character skins/bomb skins/magical hachiware bomb skin.png", chance: "Rare (1.4%)", weight: 1.5, rarity: "rare" },
+  { id: "magical_usagi_bomb", name: "Magical Usagi Bomb", color: "magical_usagi", type: "bomb", file: "assets/character skins/bomb skins/magical usagi bomb skin.png", chance: "Rare (1.4%)", weight: 1.5, rarity: "rare" },
+  
+  // Magical Characters (Legendary)
+  { id: "magical_chiikawa", name: "Magical Chiikawa", color: "magical_chiikawa", type: "character", file: "assets/character skins/wardrobe cards/magical chiikawa.png", chance: "Legendary (0.5%)", weight: 0.5, rarity: "legendary" },
+  { id: "magical_hachiware", name: "Magical Hachiware", color: "magical_hachiware", type: "character", file: "assets/character skins/wardrobe cards/magical hachiware.png", chance: "Legendary (0.5%)", weight: 0.5, rarity: "legendary" },
+  { id: "magical_usagi", name: "Magical Usagi", color: "magical_usagi", type: "character", file: "assets/character skins/wardrobe cards/magical usagi.png", chance: "Legendary (0.5%)", weight: 0.5, rarity: "legendary" }
 ];
 
 function getGachaItemImageHtml(item, size = 44) {
@@ -13191,6 +14003,9 @@ function syncBombSelectPreview(color) {
     green: "Green Bomb",
     gold: "Gold Bomb",
     purple: "Purple Bomb",
+    magical_chiikawa: "Magical Chiikawa Bomb",
+    magical_hachiware: "Magical Hachiware Bomb",
+    magical_usagi: "Magical Usagi Bomb",
   };
   
   if (characterSelectName) {
@@ -13209,7 +14024,13 @@ function syncBombSelectPreview(color) {
     characterSelectCanvas.style.display = "none";
     effectSelectPreviewContainer.style.display = "none";
     bombSelectPreviewImg.style.display = "block";
-    bombSelectPreviewImg.src = `assets/shop/${color}-bomb.svg`;
+    
+    if (color.startsWith("magical_")) {
+      const cleanColor = color.replace("_", " ");
+      bombSelectPreviewImg.src = `assets/character skins/bomb skins/${cleanColor} bomb skin.png`;
+    } else {
+      bombSelectPreviewImg.src = `assets/shop/${color}-bomb.svg`;
+    }
     
     // Trigger bounce pop & floating reflow
     bombSelectPreviewImg.classList.remove("active-preview");
@@ -13219,7 +14040,7 @@ function syncBombSelectPreview(color) {
 }
 
 function updateWardrobeTabBadges() {
-  const bombColors = ["pink", "blue", "green", "gold", "purple"];
+  const bombColors = ["pink", "blue", "green", "gold", "purple", "magical_chiikawa", "magical_hachiware", "magical_usagi"];
   const hasNewBomb = bombColors.some(color => localStorage.getItem("new_bomb_" + color) === "true");
   
   const effectColors = ["pink", "blue", "green", "gold", "purple"];
@@ -13251,6 +14072,9 @@ function syncBombWardrobe() {
     green: localStorage.getItem("owned_bomb_green") === "true",
     gold: localStorage.getItem("owned_bomb_gold") === "true",
     purple: localStorage.getItem("owned_bomb_purple") === "true",
+    magical_chiikawa: localStorage.getItem("owned_bomb_magical_chiikawa") === "true",
+    magical_hachiware: localStorage.getItem("owned_bomb_magical_hachiware") === "true",
+    magical_usagi: localStorage.getItem("owned_bomb_magical_usagi") === "true",
   };
   
   const bombCards = document.querySelectorAll(".bomb-card");
@@ -13375,6 +14199,7 @@ function initGachaShop() {
       winIndicator.style.opacity = "0";
       setTimeout(() => winIndicator.classList.add("hidden"), 300);
     }
+    stopGachaWinAnimation();
   });
 
   // Phone sub-tab click listeners
@@ -13401,6 +14226,13 @@ function initGachaShop() {
       }
     });
   });
+
+  window.openShopGacha = function() {
+    const gachaTab = document.querySelector('.shop-nav-btn[data-shop-subtab="gacha"]');
+    if (gachaTab) {
+      gachaTab.click();
+    }
+  };
 
   // Tab click wallet updates
   document.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -13499,8 +14331,8 @@ function handleGachaDraw() {
   
   // Find unowned pool items
   const unowned = gachaPool.filter(item => {
-    const ownedKey = item.type === "effect" ? `owned_effect_${item.color}` : `owned_bomb_${item.color}`;
-    return localStorage.getItem(ownedKey) !== "true";
+    const owned = item.type === "character" ? getUnlockedCharacters().includes(item.id) : (item.type === "effect" ? localStorage.getItem(`owned_effect_${item.color}`) === "true" : localStorage.getItem(`owned_bomb_${item.color}`) === "true");
+    return !owned;
   });
   if (unowned.length === 0) {
     showToastMsg("You own all rewards!");
@@ -13531,8 +14363,44 @@ function handleGachaDraw() {
   document.getElementById("gachaDrawBtn").disabled = true;
   document.getElementById("closeGachaModalBtn").disabled = true;
   
-  // Select a random unowned item as the winner
-  const winner = unowned[Math.floor(Math.random() * unowned.length)];
+  // Load and increment gacha pity
+  let gachaPity = parseInt(localStorage.getItem('gacha_draw_pity') || '0');
+  gachaPity++;
+  
+  const charactersInPool = unowned.filter(item => item.type === "character");
+  const forceCharacter = (gachaPity >= 50 && charactersInPool.length > 0);
+  
+  // Calculate dynamic weights based on pity
+  const itemWeights = unowned.map(item => {
+    let weight = item.weight || 10;
+    if (item.type === "character") {
+      if (forceCharacter) {
+        weight = 100;
+      } else if (gachaPity >= 20) {
+        weight = 6.0; // Kinda high chance
+      } else if (gachaPity >= 10) {
+        weight = 1.5; // Very low chance
+      } else {
+        weight = 0.3; // Extremely low chance
+      }
+    } else {
+      if (forceCharacter) {
+        weight = 0; // Disable other items on 50 pity guarantee
+      }
+    }
+    return { item, weight };
+  });
+
+  const totalWeight = itemWeights.reduce((sum, entry) => sum + entry.weight, 0);
+  let randomValue = Math.random() * totalWeight;
+  let winner = unowned[unowned.length - 1]; // Fallback
+  for (const entry of itemWeights) {
+    if (randomValue < entry.weight) {
+      winner = entry.item;
+      break;
+    }
+    randomValue -= entry.weight;
+  }
   
   // Construct the gacha reel items list:
   // We want to generate around 40 items. The winner goes at index 32.
@@ -13556,7 +14424,7 @@ function handleGachaDraw() {
     generatedReelItems.push(item);
     
     const tile = document.createElement("div");
-    tile.className = `gacha-reel-tile ${i === winnerIndex ? "is-result" : ""}`;
+    tile.className = `gacha-reel-tile ${i === winnerIndex ? "is-result" : ""} ${item.rarity || "normal"}`;
     tile.innerHTML = getGachaItemImageHtml(item, 44);
     reel.appendChild(tile);
   }
@@ -13583,12 +14451,22 @@ function handleGachaDraw() {
     gachaDrawing = false;
     document.getElementById("closeGachaModalBtn").disabled = false;
     
-    // Save to owned
-    const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
-    localStorage.setItem(ownedKey, "true");
+    // Save to owned and update gacha pity
+    if (winner.type === "character") {
+      const unlocked = getUnlockedCharacters();
+      if (!unlocked.includes(winner.id)) {
+        unlocked.push(winner.id);
+        localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+      }
+      localStorage.setItem('gacha_draw_pity', '0');
+    } else {
+      const ownedKey = winner.type === "effect" ? `owned_effect_${winner.color}` : `owned_bomb_${winner.color}`;
+      localStorage.setItem(ownedKey, "true");
+      localStorage.setItem('gacha_draw_pity', gachaPity.toString());
+    }
     
     // Mark as new / untried
-    const newKey = winner.type === "effect" ? `new_effect_${winner.color}` : `new_bomb_${winner.color}`;
+    const newKey = winner.type === "character" ? `new_character_${winner.id}` : (winner.type === "effect" ? `new_effect_${winner.color}` : `new_bomb_${winner.color}`);
     localStorage.setItem(newKey, "true");
     updateWardrobeTabBadges();
     
@@ -13596,22 +14474,189 @@ function handleGachaDraw() {
     renderGachaPool();
     syncBombWardrobe();
     syncEffectWardrobe();
+    if (typeof refreshWardrobeLocks === "function") refreshWardrobeLocks();
     
-    // Show win indicator
-    const winItemAvatar = document.getElementById("gachaWinItemAvatar");
-    winItemAvatar.innerHTML = getGachaItemImageHtml(winner, 52);
-    
-    document.getElementById("gachaWinItemName").textContent = winner.name;
-    const winIndicator = document.getElementById("gachaWinIndicator");
-    if (winIndicator) {
-      winIndicator.classList.remove("hidden");
-      // Trigger smooth fade in
-      winIndicator.style.opacity = "0";
-      setTimeout(() => winIndicator.style.opacity = "1", 50);
-    }
+    // Show win indicator and animation
+    startGachaWinAnimation(winner);
     
     showToastMsg(`You unlocked the ${winner.name}!`);
   }, 5200);
+}
+
+// =================================================================
+// GACHA WIN REVEAL PREMIUM ANIMATION
+// =================================================================
+let gachaWinAnimationActive = false;
+let gachaWinAnimationRAF = null;
+let gachaWinParticles = [];
+
+function startGachaWinAnimation(winner) {
+  const canvas = document.getElementById("gachaWinPremiumCanvas");
+  const avatar = document.getElementById("gachaWinItemAvatar");
+  const winVideo = document.getElementById("gachaWinVideo");
+  const nameLabel = document.getElementById("gachaWinItemName");
+  const congratText = document.getElementById("gachaWinCongratText");
+  const indicator = document.getElementById("gachaWinIndicator");
+  
+  if (!canvas || !avatar || !winVideo || !nameLabel || !congratText || !indicator) return;
+  
+  const isPremium = (winner.type === "character");
+  
+  // Show indicators
+  indicator.classList.remove("hidden");
+  indicator.style.opacity = "0";
+  setTimeout(() => indicator.style.opacity = "1", 50);
+  
+  nameLabel.textContent = winner.name;
+  
+  if (isPremium) {
+    avatar.style.display = "none";
+    canvas.style.display = "block";
+    
+    // Set premium styles
+    indicator.style.background = "radial-gradient(circle, #2a2012 0%, #0d0b07 100%)";
+    nameLabel.style.color = "#ffd86f";
+    nameLabel.style.textShadow = "0 0 10px #ffb330, 0 0 20px #ff7700";
+    congratText.textContent = "★ LEGENDARY UNLOCK ★";
+    congratText.style.color = "#ffd86f";
+    congratText.style.textShadow = "0 0 8px rgba(255, 216, 111, 0.8)";
+    
+    // Load character video
+    const videoSrc = characterSelectVideos[winner.id];
+    if (videoSrc) {
+      winVideo.src = videoSrc;
+      winVideo.load();
+      winVideo.play().catch(e => console.warn("Win video play blocked:", e));
+      winVideo.loop = true;
+    }
+    
+    // Initialize particles
+    gachaWinParticles = [];
+    for (let i = 0; i < 60; i++) {
+      gachaWinParticles.push(createGachaParticle(canvas.width / 2, canvas.height / 2, true));
+    }
+    
+    gachaWinAnimationActive = true;
+    gachaWinAnimationLoop(canvas, winVideo);
+  } else {
+    // Normal item
+    canvas.style.display = "none";
+    avatar.style.display = "flex";
+    avatar.innerHTML = getGachaItemImageHtml(winner, 52);
+    
+    indicator.style.background = "rgba(0, 0, 0, 0.9)";
+    nameLabel.style.color = "#fff";
+    nameLabel.style.textShadow = "none";
+    congratText.textContent = "Congratulations!";
+    congratText.style.color = "#ffd86f";
+    congratText.style.textShadow = "none";
+    
+    winVideo.pause();
+    winVideo.src = "";
+  }
+}
+
+function stopGachaWinAnimation() {
+  gachaWinAnimationActive = false;
+  if (gachaWinAnimationRAF) {
+    cancelAnimationFrame(gachaWinAnimationRAF);
+    gachaWinAnimationRAF = null;
+  }
+  const winVideo = document.getElementById("gachaWinVideo");
+  if (winVideo) {
+    winVideo.pause();
+    winVideo.src = "";
+  }
+}
+
+function createGachaParticle(x, y, initial = false) {
+  const angle = Math.random() * Math.PI * 2;
+  const speed = initial ? (Math.random() * 4 + 2) : (Math.random() * 2 + 1);
+  return {
+    x: x,
+    y: y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed - (initial ? 0 : 0.5), // Float upwards slightly
+    size: Math.random() * 4 + 2,
+    color: ["#ffd86f", "#ff9ebb", "#18baff", "#39d98a", "#ffffff"][Math.floor(Math.random() * 5)],
+    life: Math.random() * 0.5 + 0.5,
+    maxLife: 1.0
+  };
+}
+
+function gachaWinAnimationLoop(canvas, video) {
+  if (!gachaWinAnimationActive) return;
+  
+  const ctx2 = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  ctx2.clearRect(0, 0, w, h);
+  
+  // 1. Draw rotating rays (Sunburst background)
+  ctx2.save();
+  ctx2.translate(w / 2, h / 2);
+  const time = performance.now() * 0.001;
+  ctx2.rotate(time * 0.2);
+  
+  const numRays = 16;
+  const rayAngle = (Math.PI * 2) / numRays;
+  ctx2.fillStyle = "rgba(255, 216, 111, 0.12)";
+  for (let i = 0; i < numRays; i++) {
+    ctx2.beginPath();
+    ctx2.moveTo(0, 0);
+    ctx2.arc(0, 0, w * 1.5, i * rayAngle, i * rayAngle + rayAngle / 2);
+    ctx2.closePath();
+    ctx2.fill();
+  }
+  ctx2.restore();
+  
+  // 2. Draw character video (chroma-keyed)
+  if (video.readyState >= 2) {
+    ctx2.save();
+    // Center character and crop appropriately
+    const scale = Math.min(w / video.videoWidth, h / video.videoHeight) * 1.5;
+    const drawW = video.videoWidth * scale;
+    const drawH = video.videoHeight * scale;
+    const drawX = (w - drawW) / 2;
+    const drawY = h - drawH * 1.05;
+    
+    ctx2.drawImage(video, drawX, drawY, drawW, drawH);
+    if (typeof removeGreenScreenFromCanvas === "function") {
+      removeGreenScreenFromCanvas(ctx2, w, h);
+    }
+    ctx2.restore();
+  }
+  
+  // 3. Update & Draw Particles
+  // Spawn a few new particles from the center/bottom
+  if (Math.random() < 0.4) {
+    gachaWinParticles.push(createGachaParticle(w / 2, h * 0.65));
+  }
+  
+  for (let i = gachaWinParticles.length - 1; i >= 0; i--) {
+    const p = gachaWinParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.016; // Approx 60 FPS
+    
+    if (p.life <= 0) {
+      gachaWinParticles.splice(i, 1);
+      continue;
+    }
+    
+    ctx2.save();
+    ctx2.globalAlpha = p.life;
+    ctx2.fillStyle = p.color;
+    ctx2.shadowColor = p.color;
+    ctx2.shadowBlur = 8;
+    ctx2.beginPath();
+    ctx2.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx2.fill();
+    ctx2.restore();
+  }
+  
+  gachaWinAnimationRAF = requestAnimationFrame(() => gachaWinAnimationLoop(canvas, video));
 }
 
 // Bind bomb skin wardrobe clicks and gacha init on page load
@@ -14525,7 +15570,7 @@ function checkMenuTutorialGuide() {
   
   if (guideEl && textEl) {
     if (avatarEl) {
-      avatarEl.src = `assets/cards/${selectedCharacter}.png`;
+      avatarEl.src = getCharacterIconPath(selectedCharacter);
     }
     textEl.innerHTML = "Great job completing your training match! Now let's try an <strong>Online Multiplayer Match</strong> to battle against other players!";
     guideEl.classList.add("active");
@@ -14609,6 +15654,12 @@ let mbPityMod = parseInt(localStorage.getItem('mb_rolls_pity_mod') || '0');
 
 // Categorize gachaPool items into ranks
 const mbItemRanks = {
+  'magical_chiikawa': 'S',
+  'magical_hachiware': 'S',
+  'magical_usagi': 'S',
+  'magical_chiikawa_bomb': 'S',
+  'magical_hachiware_bomb': 'S',
+  'magical_usagi_bomb': 'S',
   // S-Class
   'gold-bomb': 'S',
   'gold-effect': 'S',
@@ -14971,20 +16022,16 @@ function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
     else dir = 'left';
   }
 
-  const suffix = stepNum === 1 ? '1' : '2';
+  const suffix = stepNum === 1 ? 1 : 2;
   let src = '';
   let transform = 'scaleX(1)';
 
   if (dir === 'up') {
-    src = `assets/${char}/${char}_walk_back${suffix}.png`;
+    src = getCharacterSpritePath(char, 'back', suffix);
   } else if (dir === 'down') {
-    src = `assets/${char}/${char}_walk_front${suffix}.png`;
+    src = getCharacterSpritePath(char, 'front', suffix);
   } else { // 'left' or 'right'
-    if (char === 'chiikawa' && suffix === '2') {
-      src = `assets/${char}/${char}_walk_sid2.png`;
-    } else {
-      src = `assets/${char}/${char}_walk_side${suffix}.png`;
-    }
+    src = getCharacterSpritePath(char, 'side', suffix);
 
     if (dir === 'right') {
       transform = 'scaleX(-1)';
@@ -14996,7 +16043,7 @@ function getCharacterSpriteWalkInfo(char, board, index, stepNum) {
 
 function updateCharacterSprite() {
   const char = selectedCharacter || "chiikawa";
-  const idleFile = `assets/${char}/${char}_idle.png`;
+  const idleFile = getCharacterSpritePath(char, 'idle');
 
   const mainCharImg = document.getElementById("mbCharImg");
   if (mainCharImg) {
@@ -15224,7 +16271,7 @@ function animateCharacterWalk(steps) {
   updateCameraZoom(true, mbMainIndex);
 
   const char = selectedCharacter || "chiikawa";
-  const idle = `assets/${char}/${char}_idle.png`;
+  const idle = getCharacterSpritePath(char, 'idle');
 
   let frameTick = false;
 
@@ -15333,7 +16380,7 @@ function handleTileLanding() {
 
   // Set character back to idle image and default rotation
   const char = selectedCharacter || "chiikawa";
-  const idleFile = `assets/${char}/${char}_idle.png`;
+  const idleFile = getCharacterSpritePath(char, 'idle');
   
   const imgMain = document.getElementById("mbCharImg");
   if (imgMain) {
@@ -15485,9 +16532,17 @@ function triggerClassRevealSequence(rank, callback) {
 // Shared helpers to pick items
 // Shared helper to pick S-Class items (forced = true guarantees an S-Class item even if duplicate)
 // Shared helper to pick S-Class items (always returns an item, never coins fallback)
-function _pickSItem() {
-  var allS = gachaPool.filter(function(x) { return (mbItemRanks[x.id] || 'B') === 'S'; });
+function _pickSItem(isFiftyPity) {
+  var allS = gachaPool.filter(function(x) {
+    if (isFiftyPity) {
+      return x.type === "character" && (x.id === "magical_chiikawa" || x.id === "magical_hachiware" || x.id === "magical_usagi");
+    }
+    return (mbItemRanks[x.id] || 'B') === 'S';
+  });
   var unowned = allS.filter(function(x) {
+    if (x.type === "character") {
+      return !getUnlockedCharacters().includes(x.id);
+    }
     var k = x.type === "effect" ? "owned_effect_" + x.color : "owned_bomb_" + x.color;
     return localStorage.getItem(k) !== "true";
   });
@@ -15495,12 +16550,34 @@ function _pickSItem() {
   var pool = unowned.length > 0 ? unowned : allS;
   if (pool.length === 0) return null;
   var chosen = pool[Math.floor(Math.random() * pool.length)];
-  var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
-  var isDup = localStorage.getItem(oKey) === "true";
-  if (!isDup) {
-    localStorage.setItem(oKey, "true");
-    var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
-    localStorage.setItem(nKey, "true");
+  
+  var isDup = false;
+  if (chosen.type === "character") {
+    isDup = getUnlockedCharacters().includes(chosen.id);
+    if (isDup) {
+      if (chosen.id.startsWith("magical_")) {
+        let dups = {};
+        try {
+          const saved = localStorage.getItem("outfit_duplicates");
+          if (saved) dups = JSON.parse(saved);
+        } catch (e) {}
+        dups[chosen.id] = (dups[chosen.id] || 0) + 1;
+        localStorage.setItem("outfit_duplicates", JSON.stringify(dups));
+      }
+    } else {
+      var unlocked = getUnlockedCharacters();
+      unlocked.push(chosen.id);
+      localStorage.setItem("unlocked_characters", JSON.stringify(unlocked));
+      localStorage.setItem("new_character_" + chosen.id, "true");
+    }
+  } else {
+    var oKey = chosen.type === "effect" ? "owned_effect_" + chosen.color : "owned_bomb_" + chosen.color;
+    isDup = localStorage.getItem(oKey) === "true";
+    if (!isDup) {
+      localStorage.setItem(oKey, "true");
+      var nKey = chosen.type === "effect" ? "new_effect_" + chosen.color : "new_bomb_" + chosen.color;
+      localStorage.setItem(nKey, "true");
+    }
   }
   return { item: chosen, isDuplicate: isDup };
 }
@@ -15553,7 +16630,7 @@ function drawMonopolyReward(rarity) {
 
   if (rank === 'S') {
     // S-Class is strictly skins/effects, never coins
-    var picked = _pickSItem();
+    var picked = _pickSItem(forceSClassItem);
     if (picked) {
       finalItem = picked.item;
       isDuplicate = picked.isDuplicate;
@@ -15643,7 +16720,7 @@ function drawMonopolyRewardSilently(rarity) {
   var isDuplicate = false;
 
   if (rank === 'S') {
-    var picked = _pickSItem();
+    var picked = _pickSItem(forceSClassItem);
     if (picked) {
       finalItem = picked.item;
       isDuplicate = picked.isDuplicate;
@@ -15687,14 +16764,34 @@ function toggleGachaSpeed() {
   }
 }
 
+function checkAndRevealSkippedMagicalItems(onComplete) {
+  const pendingReveal = mbRoll10Results.find(r => r.item && r.item.type === "character" && r.item.id && r.item.id.startsWith("magical_") && !r.hasBeenRevealed);
+  
+  if (pendingReveal) {
+    pendingReveal.hasBeenRevealed = true;
+    startGachaMagicalReveal(pendingReveal.item.id);
+    const gmrClaimBtn = document.getElementById("gmrClaimBtn");
+    if (gmrClaimBtn) {
+      gmrClaimBtn.onclick = () => {
+        const overlay = document.getElementById("gachaMagicalRevealOverlay");
+        if (overlay) overlay.classList.add("hidden");
+        const video = document.getElementById("gmrVideo");
+        if (video) video.pause();
+        if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+        checkAndRevealSkippedMagicalItems(onComplete);
+      };
+    }
+  } else {
+    onComplete();
+  }
+}
+
 function triggerMonopolySkip() {
   if (!mbRolling && !mbMoving && mbRollQueue === 0) return;
 
   // Cancel any pending walk timeouts
   if (mbWalkTimeout) { clearTimeout(mbWalkTimeout); mbWalkTimeout = null; }
 
-  // Draw silently for ALL remaining rolls in queue (including the current in-flight one
-  // which may not have landed yet — we simulate it here and block its landing callback).
   const toSimulate = Math.max(0, mbRollQueue);
   const wasQueueType = mbSummaryQueueType;
 
@@ -15726,34 +16823,41 @@ function triggerMonopolySkip() {
   positionCharacterAt(mbMainIndex);
   syncMonopolyStats();
 
+  // Reset revealed markers
+  mbRoll10Results.forEach(r => { r.hasBeenRevealed = false; });
+
   // Show appropriate summary
   if (wasQueueType === 10) {
     // Ensure exactly 10 results (pad if we skipped mid-way)
     while (mbRoll10Results.length < 10) {
       mbRoll10Results.push(mbRoll10Results[mbRoll10Results.length - 1] || { item: { id:"coins", name:"Coins", color:"gold", type:"coins" }, rank:"A" });
     }
-    showRoll10SummaryOverlay();
+    checkAndRevealSkippedMagicalItems(() => {
+      showRoll10SummaryOverlay();
+    });
   } else {
-    // 1x pull: show last result popup ONCE with claim button
-    const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
-    if (lastResult) {
-      mbSummaryQueueType = 0; // sentinel so claimMonopolyReward won't re-trigger summary
-      const popup = document.getElementById("mbCratePopup");
-      const itemDisplay = document.getElementById("mbCrateItemDisplay");
-      const claimBtn = document.getElementById("mbCrateClaimBtn");
-      if (popup && itemDisplay) {
-        itemDisplay.innerHTML = getGachaItemImageHtml(lastResult.item, 90);
-        document.getElementById("mbCrateItemName").textContent = lastResult.item.name;
-        var typeText = lastResult.item.type === "effect" ? "BLAST EFFECT" : lastResult.item.type === "coins" ? "COINS" : "BOMB SKIN";
-        document.getElementById("mbCrateItemType").textContent = typeText;
-        var rankEl = document.getElementById("mbCrateRank");
-        if (rankEl) { rankEl.className = "mb-popup-rank rank-" + lastResult.rank.toLowerCase(); rankEl.innerHTML = lastResult.rank + "<br><small>RANK</small>"; }
-        var gemsBonus = document.getElementById("mbCrateGemsBonus");
-        if (gemsBonus) gemsBonus.classList.add("hidden");
-        if (claimBtn) claimBtn.style.display = "";
-        popup.classList.remove("hidden");
+    // 1x pull: check if S-Class magical clothes reveal is needed
+    checkAndRevealSkippedMagicalItems(() => {
+      const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
+      if (lastResult) {
+        mbSummaryQueueType = 0; // sentinel so claimMonopolyReward won't re-trigger summary
+        const popup = document.getElementById("mbCratePopup");
+        const itemDisplay = document.getElementById("mbCrateItemDisplay");
+        const claimBtn = document.getElementById("mbCrateClaimBtn");
+        if (popup && itemDisplay) {
+          itemDisplay.innerHTML = getGachaItemImageHtml(lastResult.item, 90);
+          document.getElementById("mbCrateItemName").textContent = lastResult.item.name;
+          var typeText = lastResult.item.type === "effect" ? "BLAST EFFECT" : lastResult.item.type === "coins" ? "COINS" : "BOMB SKIN";
+          document.getElementById("mbCrateItemType").textContent = typeText;
+          var rankEl = document.getElementById("mbCrateRank");
+          if (rankEl) { rankEl.className = "mb-popup-rank rank-" + lastResult.rank.toLowerCase(); rankEl.innerHTML = lastResult.rank + "<br><small>RANK</small>"; }
+          var gemsBonus = document.getElementById("mbCrateGemsBonus");
+          if (gemsBonus) gemsBonus.classList.add("hidden");
+          if (claimBtn) claimBtn.style.display = "";
+          popup.classList.remove("hidden");
+        }
       }
-    }
+    });
   }
 }
 
@@ -15797,7 +16901,198 @@ function closeRoll10Summary() {
   syncMonopolyStats();
 }
 
+let gmrAnimationId = null;
+function startGachaMagicalReveal(characterKind) {
+  const overlay = document.getElementById("gachaMagicalRevealOverlay");
+  const video = document.getElementById("gmrVideo");
+  const canvas = document.getElementById("gmrCanvas");
+  const ctx = canvas ? canvas.getContext("2d") : null;
+  const title = document.getElementById("gmrTitle");
+  
+  if (!overlay || !video || !canvas || !ctx) return;
+  
+  if (title) {
+    const style = characterStyle[characterKind];
+    title.textContent = style ? style.label : characterKind.replace("magical_", "MAGICAL ").toUpperCase();
+  }
+  
+  // Reset overlay animation state
+  const glitch = overlay.querySelector(".gmr-glitch-overlay");
+  if (glitch) {
+    glitch.classList.remove("active");
+    void glitch.offsetWidth; // Trigger reflow
+    glitch.classList.add("active");
+  }
+  
+  overlay.classList.remove("hidden");
+  
+  const gmrSparkles = [];
+  let startTime = null;
+  const silhouetteDuration = 1000; // time in ms that character is pure white
+  const fadeDuration = 900; // fade from white to color
+  
+  // Set video source and play
+  const videoName = characterSelectVideos[characterKind] || `assets/character skins/character animation wardrobe/${characterKind.replace("_", " ")}.mp4`;
+  installVideoFallback(video, videoName);
+  const targetSrc = getVideoSrc(videoName);
+  video.src = targetSrc;
+  video.currentTime = 0;
+  video.load();
+  playMutedLoop(video);
+  
+  // High-performance offscreen canvas for real-time pixel processing
+  const offscreenCanvas = document.createElement("canvas");
+  offscreenCanvas.width = 320;
+  offscreenCanvas.height = 320;
+  const offscreenCtx = offscreenCanvas.getContext("2d");
+  
+  if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+  
+  function tick() {
+    if (overlay.classList.contains("hidden")) return;
+    
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    
+    if (video.readyState >= 2 && !video.paused) {
+      if (startTime === null) {
+        startTime = performance.now();
+      }
+      const elapsed = performance.now() - startTime;
+      
+      offscreenCtx.clearRect(0, 0, 320, 320);
+      
+      // Match safe scale/center logic from wardrobe preview
+      let scaleBoost = 1.42;
+      if (characterKind === "magical_hachiware") {
+        scaleBoost = 1.55;
+      } else if (characterKind === "magical_chiikawa" || characterKind === "magical_usagi") {
+        scaleBoost = 1.50;
+      }
+
+      const scale = Math.min(320 / video.videoWidth, 320 / video.videoHeight) * scaleBoost;
+      const drawW = video.videoWidth * scale;
+      const drawH = video.videoHeight * scale;
+      const drawX = (320 - drawW) / 2;
+      const rawDrawY = (320 - drawH) / 2 + 320 * 0.04;
+      const drawY = Math.max(0, rawDrawY);
+
+      // Draw to offscreen canvas
+      offscreenCtx.drawImage(video, drawX, drawY, drawW, drawH);
+      
+      // Get image data of offscreen canvas
+      const imgData = offscreenCtx.getImageData(0, 0, 320, 320);
+      const data = imgData.data;
+      
+      let mix = 0; // 0 = all white, 1 = original colors
+      if (elapsed > silhouetteDuration) {
+        mix = (elapsed - silhouetteDuration) / fadeDuration;
+        mix = Math.min(1, mix);
+      }
+      
+      const isSilhouettePhase = (elapsed < silhouetteDuration + fadeDuration);
+      
+      // Single pass chromakey and silhouette blend
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i+1];
+        const b = data[i+2];
+        const alpha = data[i+3];
+        
+        // Chromakey Check
+        const greenDominance = g - Math.max(r, b);
+        const isGreenScreen = g > 48 && (greenDominance > 14 || (g > r * 1.12 && g > b * 1.08));
+        
+        if (isGreenScreen) {
+          const softness = Math.min(1, Math.max(0.62, (greenDominance - 10) / 38));
+          data[i + 3] = Math.max(0, alpha * (1 - softness));
+        } else if (isSilhouettePhase && alpha > 10) {
+          // Silhouette blend to white
+          data[i]   = Math.round(r * mix + 255 * (1 - mix));
+          data[i+1] = Math.round(g * mix + 255 * (1 - mix));
+          data[i+2] = Math.round(b * mix + 255 * (1 - mix));
+        }
+      }
+      
+      offscreenCtx.putImageData(imgData, 0, 0);
+      
+      // Scale and draw processed frame to the main canvas
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(offscreenCanvas, 0, 0, width, height);
+    }
+    
+    // Spawn and draw sparkle particles on top!
+    if (Math.random() < 0.22) {
+      gmrSparkles.push({
+        x: width / 2 + (Math.random() - 0.5) * 160,
+        y: height / 2 + (Math.random() - 0.5) * 160,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.6) * 8,
+        size: 6 + Math.random() * 10,
+        life: 0.7 + Math.random() * 0.6,
+        color: ["#fffbcf", "#ffd1fb", "#d1f6ff", "#ffffff", "#fcd9ff"][Math.floor(Math.random() * 5)]
+      });
+    }
+    
+    // Update and draw sparkles
+    ctx.save();
+    for (let i = gmrSparkles.length - 1; i >= 0; i--) {
+      const s = gmrSparkles[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.vy += 0.04; // slight gravity
+      s.life -= 0.016;
+      
+      if (s.life <= 0) {
+        gmrSparkles.splice(i, 1);
+        continue;
+      }
+      
+      ctx.globalAlpha = Math.min(1, s.life * 2.2);
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = s.color;
+      
+      // Draw 4-point sparkle cross star
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y - s.size);
+      ctx.quadraticCurveTo(s.x, s.y, s.x + s.size, s.y);
+      ctx.quadraticCurveTo(s.x, s.y, s.x, s.y + s.size);
+      ctx.quadraticCurveTo(s.x, s.y, s.x - s.size, s.y);
+      ctx.quadraticCurveTo(s.x, s.y, s.x, s.y - s.size);
+      ctx.fill();
+    }
+    ctx.restore();
+    
+    gmrAnimationId = requestAnimationFrame(tick);
+  }
+  
+  gmrAnimationId = requestAnimationFrame(tick);
+}
+
 function showCrateRewardPopup(item, rank, isDuplicate) {
+  // Intercept magical character skins to show the special full-screen reveal animation
+  if (item.type === "character" && item.id.startsWith("magical_")) {
+    startGachaMagicalReveal(item.id);
+    
+    const gmrClaimBtn = document.getElementById("gmrClaimBtn");
+    if (gmrClaimBtn) {
+      gmrClaimBtn.onclick = () => {
+        const overlay = document.getElementById("gachaMagicalRevealOverlay");
+        if (overlay) overlay.classList.add("hidden");
+        const video = document.getElementById("gmrVideo");
+        if (video) video.pause();
+        if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+        
+        // Proceed to close monopoly crate reward modal
+        claimMonopolyReward();
+      };
+    }
+    return;
+  }
+
   const popup = document.getElementById("mbCratePopup");
   if (!popup) return;
 
