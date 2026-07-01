@@ -15547,6 +15547,17 @@ function removeLobbyPulseOverlay() {
   existing.forEach(el => el.remove());
 }
 
+function dismissMenuTutorialGuide() {
+  const guideEl = document.getElementById("menuTutorialGuide");
+  if (guideEl) guideEl.classList.remove("active");
+  removeLobbyPulseOverlay();
+  if (localStorage.getItem("tutorial_status") === "tutorial_match_completed") {
+    localStorage.setItem("tutorial_status", "online_match_guided");
+  }
+}
+
+document.getElementById("menuTutorialGuideCloseBtn")?.addEventListener("click", dismissMenuTutorialGuide);
+
 function checkMenuTutorialGuide() {
   const status = localStorage.getItem("tutorial_status");
   if (status !== "tutorial_match_completed") {

@@ -2559,9 +2559,9 @@
 
     <!-- Alpha Welcome Popup Dialog -->
     <div id="alphaWelcomeDialog" class="dialog-overlay hidden">
-      <div class="card glass dialog-card server-select-card" style="max-width: 480px !important; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px;">
+      <div class="card glass dialog-card server-select-card alpha-welcome-card" style="max-width: 480px !important; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px;">
         <h2 style="font-family: var(--font); color: var(--blue); font-size: 24px; text-transform: uppercase; margin: 0;">ALPHA WARNING</h2>
-        <div style="font-family: 'Fredoka', sans-serif; font-size: 14px; color: #ffffff; font-weight: 500; line-height: 1.5; text-align: center;">
+        <div class="alpha-warning-copy" style="font-family: 'Fredoka', sans-serif; font-size: 14px; color: #ffffff; font-weight: 500; line-height: 1.5; text-align: center;">
           This game is still in its alpha stage, so expect major bugs and optimization issues. If you’d like to send feedback, please do so through our Discord channel.
           <br><br>
           We are also currently looking for dedicated artists and developers to join our development team. Since only a few people are working on the game, we currently don’t have enough artists to help illustrate it. If you’re interested in joining, feel free to contact us. &lt;3
@@ -2945,10 +2945,11 @@
 
     <!-- Lobby Menu Tutorial Guide Overlay -->
     <div id="menuTutorialGuide">
-      <div style="width: 48px; height: 48px; border-radius: 50%; border: 2.5px solid #000; overflow: hidden; background: #ffebf2; flex-shrink: 0;">
+      <div class="menu-guide-avatar-frame" style="width: 48px; height: 48px; border-radius: 50%; border: 2.5px solid #000; overflow: hidden; background: #ffebf2; flex-shrink: 0;">
         <img id="menuTutorialGuideAvatar" src="assets/cards/chiikawa.png" alt="Guide Avatar" style="width: 100%; height: 100%; object-fit: contain;" class="bouncing" />
       </div>
       <p id="menuTutorialGuideText" class="menu-guide-text"></p>
+      <button id="menuTutorialGuideCloseBtn" class="menu-guide-close-btn" type="button" aria-label="Close guide">&times;</button>
       <button id="menuTutorialGuideOkBtn" class="menu-guide-btn" style="display: none;">OKAY</button>
     </div>
 
