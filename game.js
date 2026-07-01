@@ -549,6 +549,14 @@ function getCharacterCardPath(kind) {
   return `assets/lobby cards/${base} character card.png`;
 }
 
+function getCharacterIconPath(kind) {
+  let base = kind || "chiikawa";
+  if (base.startsWith("magical_")) {
+    base = base.replace("magical_", "");
+  }
+  return `assets/cards/${base}.png`;
+}
+
 function getCharacterSpritePath(kind, pose, frameNum = 1) {
   let char = kind || "chiikawa";
   
@@ -2055,7 +2063,7 @@ function handleServerMessage(msg) {
                 const voter = players.find(p => p.id === voterId);
                 if (voter) {
                   const img = document.createElement("img");
-                  img.src = `assets/cards/${voter.kind}.png`;
+                  img.src = getCharacterIconPath(voter.kind);
                   img.style.width = "24px";
                   img.style.height = "24px";
                   img.style.borderRadius = "50%";
@@ -3205,7 +3213,7 @@ function updateCouchControlPicker() {
     panel.className = `couch-control-panel slot-${slotNumber}`;
     panel.innerHTML = `
       <div class="couch-player-label" data-kind="${player.kind}">
-        <img src="assets/cards/${player.kind}.png" alt="${escapeHTML(player.name)}" />
+        <img src="${getCharacterIconPath(player.kind)}" alt="${escapeHTML(player.name)}" />
         <span>${player.trophies || 0}</span>
       </div>
       <div class="couch-joystick" aria-label="P${slotNumber} movement joystick">
@@ -3888,7 +3896,7 @@ function updateProgressionUI() {
   // Sync character avatar
   const avatarImg = document.getElementById("profileCharAvatar");
   if (avatarImg) {
-    const src = `assets/cards/${selectedCharacter || 'hachiware'}.png`;
+    const src = getCharacterIconPath(selectedCharacter || 'hachiware');
     if (!avatarImg.getAttribute('src') || !avatarImg.getAttribute('src').endsWith(src.split('/').pop())) {
       avatarImg.src = src;
     }
@@ -6193,6 +6201,27 @@ function drawPlayer(player) {
   if (!isPixelVisible(player.x, player.y, 60)) {
     return;
   }
+
+  // Spawn magical sparkle particles for magical character skins
+  if (player.alive && (player.kind === "magical_chiikawa" || player.kind === "magical_hachiware" || player.kind === "magical_usagi")) {
+    if (Math.random() < 0.08) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * 18;
+      const px = player.x + Math.cos(angle) * dist;
+      const py = player.y + Math.sin(angle) * dist - 8;
+      particles.push({
+        x: px,
+        y: py,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -15 - Math.random() * 20,
+        life: 0.45 + Math.random() * 0.35,
+        color: ["#fffbcf", "#ffd1fb", "#d1f6ff", "#ffffff", "#fcd9ff"][Math.floor(Math.random() * 5)],
+        size: 3.5 + Math.random() * 3.5,
+        isSparkle: true
+      });
+    }
+  }
+
   const style = characterStyle[player.kind];
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -7966,7 +7995,7 @@ function startMatchmakingSearch() {
   // Set player slot 1 to player's current character
   const img1 = document.getElementById("matchmakerImg_1");
   const name1 = document.getElementById("matchmakerName_1");
-  if (img1) img1.src = `assets/cards/${selectedCharacter}.png`;
+  if (img1) img1.src = getCharacterIconPath(selectedCharacter);
   if (name1) {
     name1.textContent = (usernameInput && usernameInput.value.trim()) ? usernameInput.value.trim() : "You";
   }
@@ -8056,7 +8085,7 @@ function showOnlineMatchmakingSearch() {
         <div class="card-inner">
           <span class="slot-badge badge-you">YOU</span>
           <div class="slot-image-container">
-            <img src="assets/cards/${selectedCharacter}.png" alt="${escapeHTML(playerName)}" />
+            <img src="${getCharacterIconPath(selectedCharacter)}" alt="${escapeHTML(playerName)}" />
           </div>
           <div class="slot-name">${escapeHTML(playerName)}</div>
         </div>
@@ -8083,7 +8112,7 @@ function revealMatchedBot(slotNum, charKind, botName) {
     <div class="card-inner">
       <span class="slot-badge badge-bot">CPU</span>
       <div class="slot-image-container">
-        <img src="assets/cards/${charKind}.png" alt="${botName}" />
+        <img src="${getCharacterIconPath(charKind)}" alt="${botName}" />
       </div>
       <div class="slot-name">${botName}</div>
     </div>
@@ -8172,7 +8201,7 @@ function updateOnlineMatchmakingPopup() {
         <div class="card-inner">
           <span class="slot-badge ${badgeClass}">${type}</span>
           <div class="slot-image-container">
-            <img src="assets/cards/${player.kind}.png" alt="${player.name}" />
+            <img src="${getCharacterIconPath(player.kind)}" alt="${player.name}" />
           </div>
           <div class="slot-name">${escapeHTML(player.name)}</div>
         </div>
@@ -8307,7 +8336,7 @@ function showVsLoadingScreen(combatants, onComplete, durationMs = 5000) {
     const nameEl = document.getElementById(`vsName_${slot}`);
     const imgEl = document.getElementById(`vsImg_${slot}`);
     if (nameEl) nameEl.textContent = fighter.name;
-    if (imgEl) imgEl.src = `assets/cards/${fighter.kind}.png`;
+    if (imgEl) imgEl.src = getCharacterIconPath(fighter.kind);
     setVsCardTheme(slot, fighter.kind);
   });
 
@@ -9247,7 +9276,7 @@ function showFinalVoteOverlay(data) {
       card.dataset.playerId = player.id;
       card.disabled = localTeam !== team;
       card.innerHTML = `
-        <img class="fv-card-avatar" src="assets/cards/${player.kind || "chiikawa"}.png" alt="">
+        <img class="fv-card-avatar" src="${getCharacterIconPath(player.kind || "chiikawa")}" alt="">
         <div class="fv-card-info">
           <div class="fv-card-name">${escapeHTML(player.name)}</div>
           <div class="fv-card-votes" data-vote-count-for="${player.id}">0 votes</div>
@@ -9376,7 +9405,7 @@ function updateLocalMapVoteUI() {
       localMapVoteState.voters.forEach((voter) => {
         if (localMapVoteState.votes[voter.id] !== mapType) return;
         const img = document.createElement("img");
-        img.src = `assets/cards/${voter.kind || "chiikawa"}.png`;
+        img.src = getCharacterIconPath(voter.kind || "chiikawa");
         img.style.width = "24px";
         img.style.height = "24px";
         img.style.borderRadius = "50%";
@@ -13715,6 +13744,13 @@ function initGachaShop() {
     });
   });
 
+  window.openShopGacha = function() {
+    const gachaTab = document.querySelector('.shop-nav-btn[data-shop-subtab="gacha"]');
+    if (gachaTab) {
+      gachaTab.click();
+    }
+  };
+
   // Tab click wallet updates
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -15051,7 +15087,7 @@ function checkMenuTutorialGuide() {
   
   if (guideEl && textEl) {
     if (avatarEl) {
-      avatarEl.src = `assets/cards/${selectedCharacter}.png`;
+      avatarEl.src = getCharacterIconPath(selectedCharacter);
     }
     textEl.innerHTML = "Great job completing your training match! Now let's try an <strong>Online Multiplayer Match</strong> to battle against other players!";
     guideEl.classList.add("active");

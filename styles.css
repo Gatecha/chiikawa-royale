@@ -8947,6 +8947,10 @@ body.graphics-low .yellow-console {
   padding: 2px 8px;
   border-radius: 10px;
   border: 2px solid #000;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .showcase-level-badge .lvl-label {
@@ -9613,6 +9617,10 @@ body.is-iphone {
   .showcase-level-badge {
     font-size: 8px !important;
     padding: 1px 3px !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2px !important;
   }
   .showcase-stats-panel {
     display: none !important;
@@ -10564,6 +10572,9 @@ body.is-iphone {
 
 #tabContent_look .bomb-card .card-video-crop,
 #tabContent_look .effect-card .card-video-crop {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   transform: skewX(12deg) scale(1.15);
   transform-origin: center;
 }
@@ -10644,6 +10655,16 @@ body.is-iphone {
 }
 .select-card-grid[data-mode="clothes"] .character-card[data-kind^="magical_"] {
   display: block !important;
+}
+
+/* Shop Item Card Hover Interactions */
+.shop-item-card:hover {
+  transform: translateY(-5px) scale(1.03) !important;
+  box-shadow: 8px 8px 0 #000 !important;
+  border-color: #83cf00 !important;
+}
+.shop-item-card:hover img {
+  transform: scale(1.18) !important;
 }
 
 /* Gacha Stage Styles */
