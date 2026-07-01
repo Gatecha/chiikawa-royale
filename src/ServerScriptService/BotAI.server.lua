@@ -266,11 +266,12 @@ local function runBot(botModel)
     local stuckTimer   = 0
     local lastPos      = rootPart.Position
 
-    while botModel and botModel.Parent and humanoid.Health > 0 do
+    while botModel and botModel.Parent and humanoid.Health > 0 and botModel:GetAttribute("AIActive") == true do
         task.wait(THINK_DELAY)
 
         if not (botModel and botModel.Parent) then break end
         if humanoid.Health <= 0 then break end
+        if botModel:GetAttribute("AIActive") ~= true then break end
 
         local currentPos  = rootPart.Position
         local currentGrid = snapToGrid(currentPos)
@@ -387,10 +388,12 @@ end
 local function handleNewChild(child)
     if child:IsA("Model") and child:GetAttribute("IsBot") then
         task.spawn(function()
-            if not child:GetAttribute("AIActive") then
+            while child and child.Parent and child:GetAttribute("AIActive") ~= true do
                 child:GetAttributeChangedSignal("AIActive"):Wait()
             end
-            runBot(child)
+            if child and child.Parent then
+                runBot(child)
+            end
         end)
     end
 end
