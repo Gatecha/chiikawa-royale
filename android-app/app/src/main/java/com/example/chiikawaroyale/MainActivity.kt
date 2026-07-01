@@ -26,6 +26,8 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import org.json.JSONObject
+import java.security.MessageDigest
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
@@ -59,31 +61,32 @@ class MainActivity : Activity() {
                 
                 if (url.startsWith("file:///android_asset/")) {
                     val path = url.substring("file:///android_asset/".length)
-                    if (path == "index.html" || path == "game.js" || path == "styles.css") {
+                    val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    val storedSha = prefs.getString(KEY_COMMIT_SHA, "")
+                    if (!storedSha.isNullOrEmpty()) {
                         val updateDir = File(filesDir, "update")
-                        val indexFile = File(updateDir, "index.html")
-                        val gameFile = File(updateDir, "game.js")
-                        val stylesFile = File(updateDir, "styles.css")
-                        
-                        // All-or-nothing check: only intercept if all update files exist and are non-empty
-                        if (indexFile.exists() && indexFile.length() > 0 &&
-                            gameFile.exists() && gameFile.length() > 0 &&
-                            stylesFile.exists() && stylesFile.length() > 0) {
-                            
-                            val updateFile = File(updateDir, path)
-                            if (updateFile.exists()) {
-                                try {
-                                    val mimeType = when {
-                                        path.endsWith(".html") -> "text/html"
-                                        path.endsWith(".js") -> "application/javascript"
-                                        path.endsWith(".css") -> "text/css"
-                                        else -> "text/plain"
-                                    }
-                                    val stream = FileInputStream(updateFile)
-                                    return WebResourceResponse(mimeType, "UTF-8", stream)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
+                        val updateFile = File(updateDir, path)
+                        if (updateFile.exists() && updateFile.isFile && updateFile.length() > 0) {
+                            try {
+                                val mimeType = when {
+                                    path.endsWith(".html") -> "text/html"
+                                    path.endsWith(".js") -> "application/javascript"
+                                    path.endsWith(".css") -> "text/css"
+                                    path.endsWith(".png") -> "image/png"
+                                    path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
+                                    path.endsWith(".ico") -> "image/x-icon"
+                                    path.endsWith(".mp3") -> "audio/mpeg"
+                                    path.endsWith(".mp4") -> "video/mp4"
+                                    else -> "application/octet-stream"
                                 }
+                                val encoding = when {
+                                    path.endsWith(".html") || path.endsWith(".js") || path.endsWith(".css") -> "UTF-8"
+                                    else -> null
+                                }
+                                val stream = FileInputStream(updateFile)
+                                return WebResourceResponse(mimeType, encoding, stream)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
                         }
                     }
@@ -279,32 +282,166 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun downloadUrlAsString(urlStr: String): String {
+        val url = URL(urlStr)
+        val conn = url.openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000
+        conn.readTimeout = 8000
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+        return conn.inputStream.bufferedReader().use { it.readText() }
+    }
+
+    private fun getFileMD5(file: File): String {
+        if (!file.exists() || !file.isFile) return ""
+        return try {
+            val digest = MessageDigest.getInstance("MD5")
+            val buffer = ByteArray(8192)
+            val fis = FileInputStream(file)
+            var read: Int
+            while (fis.read(buffer).also { read = it } != -1) {
+                digest.update(buffer, 0, read)
+            }
+            fis.close()
+            val md5Bytes = digest.digest()
+            val sb = java.lang.StringBuilder()
+            for (b in md5Bytes) {
+                sb.append(String.format("%02x", b))
+            }
+            sb.toString()
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    private fun getAssetMD5(assetName: String): String {
+        return try {
+            val digest = MessageDigest.getInstance("MD5")
+            val buffer = ByteArray(8192)
+            assets.open(assetName).use { input ->
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    digest.update(buffer, 0, read)
+                }
+            }
+            val md5Bytes = digest.digest()
+            val sb = java.lang.StringBuilder()
+            for (b in md5Bytes) {
+                sb.append(String.format("%02x", b))
+            }
+            sb.toString()
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    private fun copyAssetToFile(assetName: String, destFile: File) {
+        destFile.parentFile?.mkdirs()
+        assets.open(assetName).use { input ->
+            FileOutputStream(destFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+
+    private fun downloadFile(urlStr: String, destFile: File) {
+        val url = URL(urlStr)
+        val conn = url.openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000
+        conn.readTimeout = 8000
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
+        conn.inputStream.use { input ->
+            FileOutputStream(destFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+
     private fun startDownloadSequence(targetSha: String) {
         executor.execute {
             try {
+                mainHandler.post {
+                    webView.evaluateJavascript("""
+                        (function() {
+                            var fill = document.getElementById('titleProgressBarFill');
+                            var status = document.getElementById('titleLoadingStatus');
+                            if (fill) fill.style.width = '5%';
+                            if (status) status.textContent = 'CHECKING FOR GAME UPDATES...';
+                        })();
+                    """.trimIndent(), null)
+                }
+
+                val manifestStr = downloadUrlAsString("https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/update-manifest.json")
+                val manifestObj = org.json.JSONObject(manifestStr)
+                val filesObj = manifestObj.getJSONObject("files")
+
                 val tempDir = File(filesDir, "update_temp")
                 if (tempDir.exists()) tempDir.deleteRecursively()
                 tempDir.mkdirs()
 
-                val filesToDownload = arrayOf("index.html", "game.js", "styles.css")
-                // Approximate weights for progress bar: index.html (20%), game.js (60%), styles.css (20%)
-                val weights = intArrayOf(20, 60, 20)
-                val offsets = intArrayOf(0, 20, 80)
+                val updateDir = File(filesDir, "update")
+                val keys = filesObj.keys()
+                val filesToProcess = mutableListOf<Pair<String, String>>()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    filesToProcess.add(Pair(k, filesObj.getString(k)))
+                }
 
-                for (i in filesToDownload.indices) {
-                    val fileName = filesToDownload[i]
-                    val fileUrl = "https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/$fileName"
+                val downloads = mutableListOf<String>()
+                val copiesFromUpdate = mutableListOf<String>()
+                val copiesFromAssets = mutableListOf<String>()
+
+                for (item in filesToProcess) {
+                    val fileName = item.first
+                    val expectedHash = item.second
+                    val localFile = File(updateDir, fileName)
+                    
+                    val currentHash = getFileMD5(localFile)
+                    if (currentHash == expectedHash) {
+                        copiesFromUpdate.add(fileName)
+                    } else {
+                        val assetHash = getAssetMD5(fileName)
+                        if (assetHash == expectedHash) {
+                            copiesFromAssets.add(fileName)
+                        } else {
+                            downloads.add(fileName)
+                        }
+                    }
+                }
+
+                // Process copies from update cache
+                for (fileName in copiesFromUpdate) {
+                    val srcFile = File(updateDir, fileName)
                     val destFile = File(tempDir, fileName)
+                    destFile.parentFile?.mkdirs()
+                    srcFile.copyTo(destFile, overwrite = true)
+                }
 
-                    downloadFileWithProgress(fileUrl, destFile, offsets[i], weights[i]) { progress ->
-                        // Post progress update to webview
+                // Process copies from shipped assets
+                for (fileName in copiesFromAssets) {
+                    val destFile = File(tempDir, fileName)
+                    copyAssetToFile(fileName, destFile)
+                }
+
+                val totalDownloads = downloads.size
+                var downloadedCount = 0
+
+                if (totalDownloads > 0) {
+                    for (fileName in downloads) {
+                        val fileUrl = "https://raw.githubusercontent.com/Gatecha/chiikawa-royale/main/$fileName"
+                        val destFile = File(tempDir, fileName)
+                        destFile.parentFile?.mkdirs()
+
+                        downloadFile(fileUrl, destFile)
+                        downloadedCount++
+                        
+                        val progress = 10 + (downloadedCount.toDouble() / totalDownloads * 85).toInt()
                         mainHandler.post {
                             webView.evaluateJavascript("""
                                 (function() {
                                     var fill = document.getElementById('titleProgressBarFill');
                                     var status = document.getElementById('titleLoadingStatus');
                                     if (fill) fill.style.width = '$progress%';
-                                    if (status) status.textContent = 'UPDATING GAME FILES... $progress%';
+                                    if (status) status.textContent = 'DOWNLOADING UPDATES ($downloadedCount/$totalDownloads)... $progress%';
                                 })();
                             """.trimIndent(), null)
                         }
@@ -312,7 +449,6 @@ class MainActivity : Activity() {
                 }
 
                 // Successful download! Do atomic swap
-                val updateDir = File(filesDir, "update")
                 if (updateDir.exists()) updateDir.deleteRecursively()
                 tempDir.renameTo(updateDir)
 
@@ -328,44 +464,14 @@ class MainActivity : Activity() {
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Error during download: fall back to normal cache
+                try {
+                    File(filesDir, "update_temp").deleteRecursively()
+                } catch (ex: Exception) {}
+
                 mainHandler.post {
                     isUpdating = false
                     Toast.makeText(this@MainActivity, "Update failed. Starting game...", Toast.LENGTH_SHORT).show()
                     webView.evaluateJavascript("window.isUpdating = false; if (typeof startTitleScreenLoading === 'function') startTitleScreenLoading();", null)
-                }
-            }
-        }
-    }
-
-    private fun downloadFileWithProgress(
-        urlStr: String,
-        destFile: File,
-        progressOffset: Int,
-        progressWeight: Int,
-        onProgress: (Int) -> Unit
-    ) {
-        val url = URL(urlStr)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.connectTimeout = 8000
-        conn.readTimeout = 8000
-        // Set User-Agent to prevent GitHub blocking rate limits
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36")
-        
-        val totalBytes = conn.contentLength
-        
-        conn.inputStream.use { input ->
-            FileOutputStream(destFile).use { output ->
-                val buffer = ByteArray(4096)
-                var bytesRead = 0
-                var read: Int
-                while (input.read(buffer).also { read = it } != -1) {
-                    output.write(buffer, 0, read)
-                    bytesRead += read
-                    if (totalBytes > 0) {
-                        val fileProgress = (bytesRead.toDouble() / totalBytes * progressWeight).toInt()
-                        onProgress(progressOffset + fileProgress)
-                    }
                 }
             }
         }

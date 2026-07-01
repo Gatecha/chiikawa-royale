@@ -515,6 +515,20 @@ const spotlightVideo = document.getElementById("spotlightVideo");
 const characterSelectVideo = document.getElementById("characterSelectVideo");
 const characterSelectCanvas = document.getElementById("characterSelectCanvas");
 const characterSelectCtx = characterSelectCanvas ? characterSelectCanvas.getContext("2d") : null;
+
+// Mobile performance optimizations: reduce chroma-key canvas resolutions
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.AndroidUpdater !== undefined);
+if (isMobileDevice) {
+  if (characterSelectCanvas) {
+    characterSelectCanvas.width = 384;
+    characterSelectCanvas.height = 384;
+  }
+  if (spotlightCanvas) {
+    spotlightCanvas.width = 256;
+    spotlightCanvas.height = 256;
+  }
+}
+
 const squadLobbyVideo = document.getElementById("squadLobbyVideo");
 const squadLobbyCanvas = document.getElementById("squadLobbyCanvas");
 const squadLobbyCtx = squadLobbyCanvas ? squadLobbyCanvas.getContext("2d") : null;
@@ -669,12 +683,16 @@ let lastMenuDrawTime = 0;
 
 function getVideoSrc(baseSrc, forceHighQuality = false) {
   if (!baseSrc) return "";
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.AndroidUpdater !== undefined);
+  if (isMobile) {
+    return baseSrc; // Never use high quality on mobile devices
+  }
   if (window.electronAPI?.isElectron) forceHighQuality = true;
   if (graphicsQuality === "high" || forceHighQuality) {
     return baseSrc.replace(".mp4", "_high.mp4");
   }
   return baseSrc;
-}
+};
 
 function installVideoFallback(videoEl, baseSrc) {
   if (!videoEl || !baseSrc || videoEl.dataset.fallbackInstalled === baseSrc) return;
@@ -2502,6 +2520,20 @@ function handleServerMessage(msg) {
 
     case "state_update":
       roundTime = data.roundTime;
+      if (data.roundActionLockRemainingMs !== undefined) {
+        startCountdownTimer = data.roundActionLockRemainingMs / 1000;
+        if (startCountdownTimer <= 0) {
+          startCountdownState = "";
+        } else if (startCountdownTimer > 2.5) {
+          startCountdownState = "3";
+        } else if (startCountdownTimer > 1.5) {
+          startCountdownState = "2";
+        } else if (startCountdownTimer > 0.5) {
+          startCountdownState = "1";
+        } else {
+          startCountdownState = "START";
+        }
+      }
       if (Array.isArray(data.map)) {
         map = data.map;
       }
@@ -15949,6 +15981,10 @@ function openMonopolyBoard() {
   setTimeout(() => {
     const mbOverlay = document.getElementById("monopolyBoardOverlay");
     if (mbOverlay) {
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.AndroidUpdater !== undefined);
+      if (isMobile) {
+        mbOverlay.classList.add("mb-mobile");
+      }
       mbOverlay.classList.remove("hidden");
     }
     initMonopolyBoardUI();
@@ -17424,15 +17460,17 @@ function updateCameraZoom(zoomIn, index) {
   const mainContainer = document.getElementById("mbBoardContainer");
   if (!mainContainer) return;
   
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.AndroidUpdater !== undefined);
+
   if (zoomIn) {
     let coords;
     if (mbCurrentBoard === 'main') {
       coords = getTileCoordsMain(index !== undefined ? index : mbMainIndex);
       const x = coords.left + 16;
       const y = coords.top + 24;
-      mainContainer.style.transition = "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
+      mainContainer.style.transition = isMobile ? "transform 0.25s ease, transform-origin 0.25s ease" : "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
       mainContainer.style.transformOrigin = `${x}px ${y}px`;
-      mainContainer.style.transform = "perspective(1000px) rotateX(8deg) scale(1.6)";
+      mainContainer.style.transform = isMobile ? "scale(1.6)" : "perspective(1000px) rotateX(8deg) scale(1.6)";
     } else {
       const isId = mbCurrentBoard === 'island1' ? 1 : 2;
       const plat = document.querySelector(`.mb-island-plat-${isId === 1 ? 'gold' : 'purple'}`);
@@ -17441,15 +17479,15 @@ function updateCameraZoom(zoomIn, index) {
         coords = getTileCoordsIsland(idx);
         const x = coords.left + 16;
         const y = coords.top + 24;
-        plat.style.transition = "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
+        plat.style.transition = isMobile ? "transform 0.25s ease, transform-origin 0.25s ease" : "transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform-origin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)";
         plat.style.transformOrigin = `${x}px ${y}px`;
         plat.style.transform = "scale(1.4)";
       }
     }
   } else {
     // Reset main board container
-    mainContainer.style.transition = "transform 0.5s ease, transform-origin 0.5s ease";
-    mainContainer.style.transform = "perspective(1000px) rotateX(8deg) scale(1)";
+    mainContainer.style.transition = isMobile ? "transform 0.3s ease, transform-origin 0.3s ease" : "transform 0.5s ease, transform-origin 0.5s ease";
+    mainContainer.style.transform = isMobile ? "scale(1)" : "perspective(1000px) rotateX(8deg) scale(1)";
     mainContainer.style.transformOrigin = "center top";
     
     // Reset island platforms
@@ -17464,7 +17502,12 @@ function updateCameraZoom(zoomIn, index) {
 // 3D Parallax Tilt Hover effect
 document.addEventListener("DOMContentLoaded", () => {
   const world = document.getElementById("mbBoardWorld");
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.AndroidUpdater !== undefined);
   if (world) {
+    if (isMobile) {
+      world.style.transform = "none";
+      return;
+    }
     world.style.transformStyle = "preserve-3d";
     world.addEventListener("mousemove", (e) => {
       if (mbMoving || mbRolling) return; // disable during active moves/rolls

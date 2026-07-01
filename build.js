@@ -79,3 +79,56 @@ if (fs.existsSync(androidAssetsDir)) {
   copyRecursiveSync(path.join(__dirname, 'assets'), androidAssetsSubdir);
   console.log('Android assets synced successfully!');
 }
+
+// Generate update-manifest.json for auto-updater
+const crypto = require('crypto');
+
+function getFileHash(filePath) {
+  const content = fs.readFileSync(filePath);
+  return crypto.createHash('md5').update(content).digest('hex');
+}
+
+function getFilesRecursive(dir, fileList = []) {
+  fs.readdirSync(dir).forEach(file => {
+    const filePath = path.join(dir, file);
+    if (fs.statSync(filePath).isDirectory()) {
+      getFilesRecursive(filePath, fileList);
+    } else {
+      fileList.push(filePath);
+    }
+  });
+  return fileList;
+}
+
+let gitCommitSha = '';
+try {
+  gitCommitSha = require('child_process').execSync('git rev-parse HEAD').toString().trim();
+} catch (e) {
+  gitCommitSha = Date.now().toString();
+}
+
+const updateManifest = {
+  commit: gitCommitSha,
+  files: {}
+};
+
+const coreFiles = ['index.html', 'game.js', 'styles.css'];
+coreFiles.forEach(file => {
+  const filePath = path.join(__dirname, file);
+  if (fs.existsSync(filePath)) {
+    updateManifest.files[file] = getFileHash(filePath);
+  }
+});
+
+const assetsDir = path.join(__dirname, 'assets');
+if (fs.existsSync(assetsDir)) {
+  const assetFiles = getFilesRecursive(assetsDir);
+  assetFiles.forEach(file => {
+    const relPath = path.relative(__dirname, file).replace(/\\/g, '/');
+    updateManifest.files[relPath] = getFileHash(file);
+  });
+}
+
+fs.writeFileSync(path.join(__dirname, 'update-manifest.json'), JSON.stringify(updateManifest, null, 2));
+fs.writeFileSync(path.join(distDir, 'update-manifest.json'), JSON.stringify(updateManifest, null, 2));
+console.log('update-manifest.json generated successfully!');

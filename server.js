@@ -1806,6 +1806,7 @@ function tickRoom(room) {
       })),
       map: room.map,
       roundTime: room.roundTime,
+      roundActionLockRemainingMs: Math.max(0, (room.roundActionLockUntil || 0) - Date.now()),
       brZone: room.brZone ? {
         x: room.brZone.x,
         y: room.brZone.y,
@@ -2374,7 +2375,8 @@ function placeServerBomb(room, player) {
     ownerId: player.id,
     range: range,
     timer: timer,
-    bombType: bombType
+    bombType: bombType,
+    passableFor: new Set([player.id])
   };
   room.bombs.push(bomb);
   player.cooldown = 0.05;

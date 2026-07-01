@@ -14610,3 +14610,17 @@ body.is-iphone {
     text-shadow: 0 0 16px #ffc107, 0 0 28px #ffe082, 0 0 40px #fff;
   }
 }
+
+/* Mobile-specific performance overrides for Monopoly Board */
+.mb-mobile .mb-board-container {
+  transform: none !important;
+  perspective: none !important;
+  transform-style: flat !important;
+  will-change: transform;
+}
+.mb-mobile #mbBoardWorld {
+  transform: none !important;
+  perspective: none !important;
+  transform-style: flat !important;
+  transition: none !important;
+}
