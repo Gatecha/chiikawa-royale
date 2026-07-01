@@ -1728,6 +1728,27 @@ function setOutfitUpgradeLevel(kind, level) {
   } catch (e) {}
 }
 
+function getEquippedOutfitSparkleLevel(kind) {
+  try {
+    const saved = localStorage.getItem("equipped_outfit_sparkle_levels");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed[kind] !== undefined) return parsed[kind];
+    }
+  } catch (e) {}
+  return getOutfitUpgradeLevel(kind);
+}
+
+function setEquippedOutfitSparkleLevel(kind, level) {
+  try {
+    let parsed = {};
+    const saved = localStorage.getItem("equipped_outfit_sparkle_levels");
+    if (saved) parsed = JSON.parse(saved);
+    parsed[kind] = level;
+    localStorage.setItem("equipped_outfit_sparkle_levels", JSON.stringify(parsed));
+  } catch (e) {}
+}
+
 function getOutfitDuplicates(kind) {
   try {
     const saved = localStorage.getItem("outfit_duplicates");
@@ -1799,14 +1820,21 @@ function selectUpgradeNode(level) {
     nodeDescEl.textContent = benefit.desc;
     
     const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
+    const equippedLevel = getEquippedOutfitSparkleLevel(activeUpgradeCharacter);
     const duplicatesOwned = getOutfitDuplicates(activeUpgradeCharacter);
     dupCountEl.textContent = duplicatesOwned;
     
     if (level <= currentLevel) {
       nodeStatusEl.className = "gmu-badge unlocked";
       nodeStatusEl.textContent = "Unlocked";
-      activateBtn.disabled = true;
-      activateBtn.textContent = "Activated";
+      
+      if (level === equippedLevel) {
+        activateBtn.disabled = true;
+        activateBtn.textContent = "Equipped";
+      } else {
+        activateBtn.disabled = false;
+        activateBtn.textContent = "Equip Effect";
+      }
     } else {
       nodeStatusEl.className = "gmu-badge locked";
       nodeStatusEl.textContent = "Locked";
@@ -1854,10 +1882,11 @@ function initOutfitUpgradeSystem() {
       // Update Nodes
       syncConstellationNodes();
       
-      // Select first node or next locked node
+      // Select first node or next locked node or currently equipped node
       const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
-      const nextSelect = Math.min(5, currentLevel + 1);
-      selectUpgradeNode(nextSelect);
+      const equippedLevel = getEquippedOutfitSparkleLevel(activeUpgradeCharacter);
+      const startSelect = equippedLevel > 0 ? equippedLevel : Math.min(5, currentLevel + 1);
+      selectUpgradeNode(startSelect);
       
       if (typeof playSound === "function") playSound("tutorial_beep");
     };
@@ -1884,24 +1913,30 @@ function initOutfitUpgradeSystem() {
   if (activateBtn) {
     activateBtn.onclick = () => {
       const currentLevel = getOutfitUpgradeLevel(activeUpgradeCharacter);
-      const targetLevel = currentLevel + 1;
-      const duplicatesOwned = getOutfitDuplicates(activeUpgradeCharacter);
       
-      if (duplicatesOwned >= 1) {
-        // Spend 1 duplicate
-        setOutfitDuplicates(activeUpgradeCharacter, duplicatesOwned - 1);
-        // Level up!
-        setOutfitUpgradeLevel(activeUpgradeCharacter, targetLevel);
-        
-        // Visual effects flash and sound
-        if (typeof playSound === "function") playSound("victory_royale");
-        
-        // Show success visual feedback
-        syncConstellationNodes();
+      if (selectedUpgradeLevel <= currentLevel) {
+        // Equip unlocked level effect
+        setEquippedOutfitSparkleLevel(activeUpgradeCharacter, selectedUpgradeLevel);
+        if (typeof playSound === "function") playSound("tutorial_beep");
         selectUpgradeNode(selectedUpgradeLevel);
-        
-        // Show toast
-        showToastMsg(`Outfit Skin Upgraded to Level ${targetLevel}!`);
+        showToastMsg(`Equipped Level ${selectedUpgradeLevel} sparkles!`);
+      } else if (selectedUpgradeLevel === currentLevel + 1) {
+        // Unlock next level node
+        const duplicatesOwned = getOutfitDuplicates(activeUpgradeCharacter);
+        if (duplicatesOwned >= 1) {
+          // Spend 1 duplicate
+          setOutfitDuplicates(activeUpgradeCharacter, duplicatesOwned - 1);
+          // Level up max unlocked level
+          setOutfitUpgradeLevel(activeUpgradeCharacter, selectedUpgradeLevel);
+          // Auto-equip the newly unlocked level
+          setEquippedOutfitSparkleLevel(activeUpgradeCharacter, selectedUpgradeLevel);
+          
+          if (typeof playSound === "function") playSound("victory_royale");
+          
+          syncConstellationNodes();
+          selectUpgradeNode(selectedUpgradeLevel);
+          showToastMsg(`Outfit Skin Upgraded & Level ${selectedUpgradeLevel} sparkles equipped!`);
+        }
       }
     };
   }
@@ -6421,7 +6456,7 @@ function drawPlayer(player) {
 
   // Spawn magical sparkle particles for magical character skins depending on outfit upgrade level
   if (player.alive && (player.kind === "magical_chiikawa" || player.kind === "magical_hachiware" || player.kind === "magical_usagi")) {
-    const upgradeLevel = getOutfitUpgradeLevel(player.kind);
+    const upgradeLevel = getEquippedOutfitSparkleLevel(player.kind);
     if (upgradeLevel >= 1) {
       if (Math.random() < 0.08) {
         let sparkleColor = "#ffd86f";
@@ -6852,7 +6887,7 @@ function drawCharacterSelectPreview() {
   // Render sparkles corresponding to the wardrobe character upgrade level
   const isMagical = previewCharacter && previewCharacter.startsWith("magical_");
   if (isMagical) {
-    const upgradeLevel = getOutfitUpgradeLevel(previewCharacter);
+    const upgradeLevel = getEquippedOutfitSparkleLevel(previewCharacter);
     if (upgradeLevel >= 1) {
       if (!window.wardrobeSparkles) window.wardrobeSparkles = [];
       
@@ -16870,33 +16905,62 @@ function startGachaMagicalReveal(characterKind) {
     const elapsed = performance.now() - startTime;
     
     if (video.readyState >= 2) {
-      // Draw frame to canvas
-      ctx.drawImage(video, 0, 0, width, height);
-      
-      // Chromakey out the green screen background first
-      removeGreenScreenFromCanvas(ctx, width, height);
-      
-      // Apply white silhouette blend only to remaining visible character pixels
-      if (elapsed < silhouetteDuration + fadeDuration) {
-        const imgData = ctx.getImageData(0, 0, width, height);
-        const data = imgData.data;
-        
-        let mix = 0; // 0 = all white, 1 = original colors
-        if (elapsed > silhouetteDuration) {
-          mix = (elapsed - silhouetteDuration) / fadeDuration;
-          mix = Math.min(1, mix);
-        }
-        
-        for (let i = 0; i < data.length; i += 4) {
-          const alpha = data[i+3];
-          if (alpha > 10) { // Only character body pixels
-            data[i]   = Math.round(data[i]   * mix + 255 * (1 - mix));
-            data[i+1] = Math.round(data[i+1] * mix + 255 * (1 - mix));
-            data[i+2] = Math.round(data[i+2] * mix + 255 * (1 - mix));
-          }
-        }
-        ctx.putImageData(imgData, 0, 0);
+      // Calculate correct centered aspect ratio and scale boost
+      let scaleBoost = 1.76;
+      let yOffset = 1.03;
+      if (characterKind === "magical_hachiware") {
+        scaleBoost = 2.05;
+        yOffset = 1.03;
+      } else if (characterKind === "magical_chiikawa" || characterKind === "magical_usagi") {
+        scaleBoost = 1.95;
+        yOffset = 1.03;
       }
+
+      const scale = Math.min(width / video.videoWidth, height / video.videoHeight) * scaleBoost;
+      const drawW = video.videoWidth * scale;
+      const drawH = video.videoHeight * scale;
+      const drawX = (width - drawW) / 2;
+      const drawY = height - drawH * yOffset;
+
+      // Draw centered frame to canvas
+      ctx.drawImage(video, drawX, drawY, drawW, drawH);
+      
+      // Get image data of only the bounding box area (much faster than 900x900)
+      const imgData = ctx.getImageData(drawX, drawY, drawW, drawH);
+      const data = imgData.data;
+      
+      let mix = 0; // 0 = all white, 1 = original colors
+      if (elapsed > silhouetteDuration) {
+        mix = (elapsed - silhouetteDuration) / fadeDuration;
+        mix = Math.min(1, mix);
+      }
+      
+      const isSilhouettePhase = (elapsed < silhouetteDuration + fadeDuration);
+      
+      // Single pass chromakey and silhouette blend
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i+1];
+        const b = data[i+2];
+        const alpha = data[i+3];
+        
+        // Chromakey Check
+        const greenDominance = g - Math.max(r, b);
+        const isGreenScreen = g > 48 && (greenDominance > 14 || (g > r * 1.12 && g > b * 1.08));
+        
+        if (isGreenScreen) {
+          const softness = Math.min(1, Math.max(0.62, (greenDominance - 10) / 38));
+          data[i + 3] = Math.max(0, alpha * (1 - softness));
+        } else if (isSilhouettePhase && alpha > 10) {
+          // Silhouette blend to white
+          data[i]   = Math.round(r * mix + 255 * (1 - mix));
+          data[i+1] = Math.round(g * mix + 255 * (1 - mix));
+          data[i+2] = Math.round(b * mix + 255 * (1 - mix));
+        }
+      }
+      
+      // Put image data back to the bounding box
+      ctx.putImageData(imgData, drawX, drawY);
     }
     
     // Spawn and draw sparkle particles on top!

@@ -789,29 +789,32 @@ body.android-apk .badge-text {
 }
 
 .select-back-btn {
-  width: 84px;
-  height: 62px;
+  position: absolute;
+  left: 20px;
+  top: 15px;
+  width: 48px;
+  height: 48px;
   border: 0;
-  border-radius: 10px;
-  background: #0b0b0c;
+  background: transparent;
   color: #ff210f;
   cursor: pointer;
   display: grid;
   place-items: center;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.04), 0 5px 12px rgba(0, 0, 0, 0.55);
+  box-shadow: none;
+  z-index: 100;
 }
 
 .select-back-btn svg {
-  width: 58px;
-  height: 42px;
+  width: 36px;
+  height: 28px;
   stroke: currentColor;
   fill: none;
   stroke-width: 3.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  border: 4px solid #ff210f;
-  border-radius: 28px;
-  padding: 5px 8px;
+  border: 3px solid #ff210f;
+  border-radius: 20px;
+  padding: 3px 6px;
 }
 
 .select-lobby-pill {
@@ -14314,6 +14317,8 @@ body.is-iphone {
 
 /* Hide select buttons in upgrade screen */
 .character-select-screen.upgrade-active #confirmCharacterBtn,
-.character-select-screen.upgrade-active #upgradeClothesBtn {
+.character-select-screen.upgrade-active #upgradeClothesBtn,
+.character-select-screen.upgrade-active .select-category-tabs,
+.character-select-screen.upgrade-active .select-back-btn:not(#closeOutfitUpgradeBtn) {
   display: none !important;
 }
