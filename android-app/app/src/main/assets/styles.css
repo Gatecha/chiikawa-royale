@@ -12354,7 +12354,25 @@ body.is-iphone {
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(ellipse at 50% 0%, #1a0800 0%, #080300 100%);
+  background: repeating-radial-gradient(circle at 34% 50%,
+    #ffd5e5 var(--grad-offset, 0px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 12px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 12px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 48px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 48px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 76px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 76px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 100px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 100px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 108px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 108px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 160px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 160px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 176px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 176px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 240px)
+  );
+  animation: radialRingDrift 18s linear infinite, mbMagicalBgCycle 12s ease-in-out infinite;
   font-family: var(--font, 'Outfit', sans-serif);
   overflow: hidden;
 }
@@ -13427,9 +13445,11 @@ body.is-iphone {
 }
 
 .mb-bg-star {
-  position: absolute; font-size: 16px; color: rgba(255,216,111,0.3);
-  animation: mbStarFloat 12s linear infinite;
-  text-shadow: 0 0 8px rgba(255,216,111,0.5);
+  position: absolute;
+  font-size: 25px; /* Bigger particles/sparkles! */
+  color: #fff;
+  z-index: 2; /* Make sure stars sit visible on top of backgrounds */
+  animation: mbStarFloat 12s linear infinite, mbMagicalStarColorCycle 6s ease-in-out infinite;
 }
 .fstar-1 { top: 15%; left: 8%; animation-duration: 9s; }
 .fstar-2 { top: 40%; left: 15%; animation-duration: 15s; animation-delay: -3s; }
@@ -14345,4 +14365,83 @@ body.is-iphone {
   border-width: 3.5px !important;
   border-radius: 22px !important;
   padding: 4px 7px !important;
+}
+
+/* Animations for magical gacha overlays */
+@keyframes mbMagicalBgCycle {
+  0%, 100% {
+    background: repeating-radial-gradient(circle at 34% 50%, 
+      #ffd5e5 var(--grad-offset, 0px), 
+      #ffd5e5 calc(var(--grad-offset, 0px) + 12px), 
+      #ffb7d2 calc(var(--grad-offset, 0px) + 12px), 
+      #ffb7d2 calc(var(--grad-offset, 0px) + 48px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 48px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 76px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 76px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 100px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 100px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 108px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 108px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 160px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 160px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 176px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 176px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 240px)
+    );
+  }
+  33% {
+    background: repeating-radial-gradient(circle at 34% 50%, 
+      #d4f0fc var(--grad-offset, 0px), 
+      #d4f0fc calc(var(--grad-offset, 0px) + 12px), 
+      #aae0f7 calc(var(--grad-offset, 0px) + 12px), 
+      #aae0f7 calc(var(--grad-offset, 0px) + 48px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 48px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 76px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 76px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 100px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 100px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 108px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 108px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 160px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 160px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 176px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 176px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 240px)
+    );
+  }
+  66% {
+    background: repeating-radial-gradient(circle at 34% 50%, 
+      #fcfade var(--grad-offset, 0px), 
+      #fcfade calc(var(--grad-offset, 0px) + 12px), 
+      #faf5b1 calc(var(--grad-offset, 0px) + 12px), 
+      #faf5b1 calc(var(--grad-offset, 0px) + 48px),
+      #fcfade calc(var(--grad-offset, 0px) + 48px),
+      #fcfade calc(var(--grad-offset, 0px) + 76px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 76px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 100px),
+      #fcfade calc(var(--grad-offset, 0px) + 100px),
+      #fcfade calc(var(--grad-offset, 0px) + 108px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 108px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 160px),
+      #fcfade calc(var(--grad-offset, 0px) + 160px),
+      #fcfade calc(var(--grad-offset, 0px) + 176px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 176px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 240px)
+    );
+  }
+}
+
+@keyframes mbMagicalStarColorCycle {
+  0%, 100% {
+    color: #ff5ba2; /* Brighter, highly visible pink */
+    text-shadow: 0 0 16px #ff5ba2, 0 0 28px #ff8ab1, 0 0 40px #fff;
+  }
+  33% {
+    color: #00bcd4; /* Vibrant visible cyan blue */
+    text-shadow: 0 0 16px #00bcd4, 0 0 28px #4dd0e1, 0 0 40px #fff;
+  }
+  66% {
+    color: #ffc107; /* Bright visible golden yellow */
+    text-shadow: 0 0 16px #ffc107, 0 0 28px #ffe082, 0 0 40px #fff;
+  }
 }

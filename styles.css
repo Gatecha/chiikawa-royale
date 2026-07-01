@@ -12354,7 +12354,24 @@ body.is-iphone {
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: repeating-radial-gradient(circle at 35% 50%, #ffd5e5 0px, #ffd5e5 12px, #ffb7d2 12px, #ffb7d2 48px);
+  background: repeating-radial-gradient(circle at 34% 50%,
+    #ffd5e5 var(--grad-offset, 0px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 12px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 12px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 48px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 48px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 76px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 76px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 100px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 100px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 108px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 108px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 160px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 160px),
+    #ffd5e5 calc(var(--grad-offset, 0px) + 176px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 176px),
+    #ffb7d2 calc(var(--grad-offset, 0px) + 240px)
+  );
   animation: radialRingDrift 18s linear infinite, mbMagicalBgCycle 12s ease-in-out infinite;
   font-family: var(--font, 'Outfit', sans-serif);
   overflow: hidden;
@@ -13429,8 +13446,9 @@ body.is-iphone {
 
 .mb-bg-star {
   position: absolute;
-  font-size: 16px;
+  font-size: 25px; /* Bigger particles/sparkles! */
   color: #fff;
+  z-index: 2; /* Make sure stars sit visible on top of backgrounds */
   animation: mbStarFloat 12s linear infinite, mbMagicalStarColorCycle 6s ease-in-out infinite;
 }
 .fstar-1 { top: 15%; left: 8%; animation-duration: 9s; }
@@ -13933,22 +13951,6 @@ body.is-iphone {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: repeating-radial-gradient(circle at 50% 50%,
-    var(--gmr-swirl, #ffd5e5) var(--grad-offset, 0px),
-    var(--gmr-swirl, #ffd5e5) calc(var(--grad-offset, 0px) + 12px),
-    var(--gmr-dark, #ffb7d2) calc(var(--grad-offset, 0px) + 12px),
-    var(--gmr-dark, #ffb7d2) calc(var(--grad-offset, 0px) + 48px)
-  );
-  animation: radialRingDrift 18s linear infinite;
-  opacity: 0.95;
-}
-
-.gmr-background::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, transparent 35%, rgba(0, 0, 0, 0.55) 100%);
-  pointer-events: none;
 }
 
 .gmr-rays {
@@ -14368,42 +14370,78 @@ body.is-iphone {
 /* Animations for magical gacha overlays */
 @keyframes mbMagicalBgCycle {
   0%, 100% {
-    background: repeating-radial-gradient(circle at 35% 50%, 
+    background: repeating-radial-gradient(circle at 34% 50%, 
       #ffd5e5 var(--grad-offset, 0px), 
       #ffd5e5 calc(var(--grad-offset, 0px) + 12px), 
       #ffb7d2 calc(var(--grad-offset, 0px) + 12px), 
-      #ffb7d2 calc(var(--grad-offset, 0px) + 48px)
+      #ffb7d2 calc(var(--grad-offset, 0px) + 48px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 48px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 76px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 76px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 100px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 100px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 108px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 108px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 160px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 160px),
+      #ffd5e5 calc(var(--grad-offset, 0px) + 176px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 176px),
+      #ffb7d2 calc(var(--grad-offset, 0px) + 240px)
     );
   }
   33% {
-    background: repeating-radial-gradient(circle at 35% 50%, 
+    background: repeating-radial-gradient(circle at 34% 50%, 
       #d4f0fc var(--grad-offset, 0px), 
       #d4f0fc calc(var(--grad-offset, 0px) + 12px), 
       #aae0f7 calc(var(--grad-offset, 0px) + 12px), 
-      #aae0f7 calc(var(--grad-offset, 0px) + 48px)
+      #aae0f7 calc(var(--grad-offset, 0px) + 48px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 48px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 76px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 76px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 100px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 100px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 108px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 108px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 160px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 160px),
+      #d4f0fc calc(var(--grad-offset, 0px) + 176px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 176px),
+      #aae0f7 calc(var(--grad-offset, 0px) + 240px)
     );
   }
   66% {
-    background: repeating-radial-gradient(circle at 35% 50%, 
+    background: repeating-radial-gradient(circle at 34% 50%, 
       #fcfade var(--grad-offset, 0px), 
       #fcfade calc(var(--grad-offset, 0px) + 12px), 
       #faf5b1 calc(var(--grad-offset, 0px) + 12px), 
-      #faf5b1 calc(var(--grad-offset, 0px) + 48px)
+      #faf5b1 calc(var(--grad-offset, 0px) + 48px),
+      #fcfade calc(var(--grad-offset, 0px) + 48px),
+      #fcfade calc(var(--grad-offset, 0px) + 76px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 76px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 100px),
+      #fcfade calc(var(--grad-offset, 0px) + 100px),
+      #fcfade calc(var(--grad-offset, 0px) + 108px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 108px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 160px),
+      #fcfade calc(var(--grad-offset, 0px) + 160px),
+      #fcfade calc(var(--grad-offset, 0px) + 176px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 176px),
+      #faf5b1 calc(var(--grad-offset, 0px) + 240px)
     );
   }
 }
 
 @keyframes mbMagicalStarColorCycle {
   0%, 100% {
-    color: #ff8ab1;
-    text-shadow: 0 0 12px #ff8ab1, 0 0 20px #ffb6c9;
+    color: #ff5ba2; /* Brighter, highly visible pink */
+    text-shadow: 0 0 16px #ff5ba2, 0 0 28px #ff8ab1, 0 0 40px #fff;
   }
   33% {
-    color: #00bcd4;
-    text-shadow: 0 0 12px #00bcd4, 0 0 20px #80b2c9;
+    color: #00bcd4; /* Vibrant visible cyan blue */
+    text-shadow: 0 0 16px #00bcd4, 0 0 28px #4dd0e1, 0 0 40px #fff;
   }
   66% {
-    color: #ffd84a;
-    text-shadow: 0 0 12px #ffd84a, 0 0 20px #ffd59e;
+    color: #ffc107; /* Bright visible golden yellow */
+    text-shadow: 0 0 16px #ffc107, 0 0 28px #ffe082, 0 0 40px #fff;
   }
 }

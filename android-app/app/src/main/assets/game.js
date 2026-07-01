@@ -16907,6 +16907,19 @@ function startGachaMagicalReveal(characterKind) {
     const style = characterStyle[characterKind];
     title.textContent = style ? style.label : characterKind.replace("magical_", "MAGICAL ").toUpperCase();
   }
+
+  // Set character-specific magical theme background colors on reveal overlay
+  let swirlColor = "#ffd5e5"; // default pink
+  let darkColor = "#ffb7d2";
+  if (characterKind === "magical_hachiware") {
+    swirlColor = "#d4f0fc";
+    darkColor = "#aae0f7";
+  } else if (characterKind === "magical_usagi") {
+    swirlColor = "#fcfade";
+    darkColor = "#faf5b1";
+  }
+  overlay.style.setProperty("--gmr-swirl", swirlColor);
+  overlay.style.setProperty("--gmr-dark", darkColor);
   
   // Reset overlay animation state
   const glitch = overlay.querySelector(".gmr-glitch-overlay");
