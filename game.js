@@ -1540,6 +1540,18 @@ function syncCharacterSelectPreview(kind) {
       glowColor = "rgba(255, 157, 87, 0.35)";
     } else if (kind === "momonga") {
       glowColor = "rgba(185, 222, 242, 0.32)";
+    } else if (kind === "magical_chiikawa") {
+      swirlColor = "#ffd5e5";
+      darkColor = "#ffb7d2";
+      glowColor = "rgba(255, 255, 255, 0.7)";
+    } else if (kind === "magical_hachiware") {
+      swirlColor = "#d4f0fc";
+      darkColor = "#aae0f7";
+      glowColor = "rgba(255, 255, 255, 0.7)";
+    } else if (kind === "magical_usagi") {
+      swirlColor = "#fcfade";
+      darkColor = "#faf5b1";
+      glowColor = "rgba(255, 255, 255, 0.7)";
     }
     
     selectScreenEl.style.setProperty("--char-swirl", swirlColor);
@@ -6878,8 +6890,18 @@ function drawCharacterSelectPreview() {
   const drawW = characterSelectVideo.videoWidth * scale;
   const drawH = characterSelectVideo.videoHeight * scale;
   const drawX = (width - drawW) / 2;
-  // Shift character toward top — negative offset moves it above center
-  const rawDrawY = (height - drawH) / 2 - height * 0.14;
+  
+  const screenEl = document.querySelector(".character-select-screen");
+  const isUpgradeActive = screenEl && screenEl.classList.contains("upgrade-active");
+  
+  let rawDrawY;
+  if (isUpgradeActive) {
+    // Shipped down slightly in upgrade mode so it sits naturally
+    rawDrawY = (height - drawH) / 2 + height * 0.08;
+  } else {
+    // Normal wardrobe positioning
+    rawDrawY = (height - drawH) / 2 + height * 0.04;
+  }
   const drawY = Math.max(0, rawDrawY);
 
   characterSelectCtx.drawImage(characterSelectVideo, drawX, drawY, drawW, drawH);
@@ -16746,14 +16768,34 @@ function toggleGachaSpeed() {
   }
 }
 
+function checkAndRevealSkippedMagicalItems(onComplete) {
+  const pendingReveal = mbRoll10Results.find(r => r.item && r.item.type === "character" && r.item.id && r.item.id.startsWith("magical_") && !r.hasBeenRevealed);
+  
+  if (pendingReveal) {
+    pendingReveal.hasBeenRevealed = true;
+    startGachaMagicalReveal(pendingReveal.item.id);
+    const gmrClaimBtn = document.getElementById("gmrClaimBtn");
+    if (gmrClaimBtn) {
+      gmrClaimBtn.onclick = () => {
+        const overlay = document.getElementById("gachaMagicalRevealOverlay");
+        if (overlay) overlay.classList.add("hidden");
+        const video = document.getElementById("gmrVideo");
+        if (video) video.pause();
+        if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+        checkAndRevealSkippedMagicalItems(onComplete);
+      };
+    }
+  } else {
+    onComplete();
+  }
+}
+
 function triggerMonopolySkip() {
   if (!mbRolling && !mbMoving && mbRollQueue === 0) return;
 
   // Cancel any pending walk timeouts
   if (mbWalkTimeout) { clearTimeout(mbWalkTimeout); mbWalkTimeout = null; }
 
-  // Draw silently for ALL remaining rolls in queue (including the current in-flight one
-  // which may not have landed yet — we simulate it here and block its landing callback).
   const toSimulate = Math.max(0, mbRollQueue);
   const wasQueueType = mbSummaryQueueType;
 
@@ -16785,52 +16827,41 @@ function triggerMonopolySkip() {
   positionCharacterAt(mbMainIndex);
   syncMonopolyStats();
 
+  // Reset revealed markers
+  mbRoll10Results.forEach(r => { r.hasBeenRevealed = false; });
+
   // Show appropriate summary
   if (wasQueueType === 10) {
     // Ensure exactly 10 results (pad if we skipped mid-way)
     while (mbRoll10Results.length < 10) {
       mbRoll10Results.push(mbRoll10Results[mbRoll10Results.length - 1] || { item: { id:"coins", name:"Coins", color:"gold", type:"coins" }, rank:"A" });
     }
-    showRoll10SummaryOverlay();
+    checkAndRevealSkippedMagicalItems(() => {
+      showRoll10SummaryOverlay();
+    });
   } else {
-    // 1x pull: show last result popup ONCE with claim button
-    const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
-    if (lastResult) {
-      mbSummaryQueueType = 0; // sentinel so claimMonopolyReward won't re-trigger summary
-
-      // If the skipped reward is a magical clothes skin, show the special full-screen reveal!
-      if (lastResult.item && lastResult.item.type === "character" && lastResult.item.id && lastResult.item.id.startsWith("magical_")) {
-        startGachaMagicalReveal(lastResult.item.id);
-        const gmrClaimBtn = document.getElementById("gmrClaimBtn");
-        if (gmrClaimBtn) {
-          gmrClaimBtn.onclick = () => {
-            const overlay = document.getElementById("gachaMagicalRevealOverlay");
-            if (overlay) overlay.classList.add("hidden");
-            const video = document.getElementById("gmrVideo");
-            if (video) video.pause();
-            if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
-            claimMonopolyReward();
-          };
+    // 1x pull: check if S-Class magical clothes reveal is needed
+    checkAndRevealSkippedMagicalItems(() => {
+      const lastResult = mbRoll10Results[mbRoll10Results.length - 1];
+      if (lastResult) {
+        mbSummaryQueueType = 0; // sentinel so claimMonopolyReward won't re-trigger summary
+        const popup = document.getElementById("mbCratePopup");
+        const itemDisplay = document.getElementById("mbCrateItemDisplay");
+        const claimBtn = document.getElementById("mbCrateClaimBtn");
+        if (popup && itemDisplay) {
+          itemDisplay.innerHTML = getGachaItemImageHtml(lastResult.item, 90);
+          document.getElementById("mbCrateItemName").textContent = lastResult.item.name;
+          var typeText = lastResult.item.type === "effect" ? "BLAST EFFECT" : lastResult.item.type === "coins" ? "COINS" : "BOMB SKIN";
+          document.getElementById("mbCrateItemType").textContent = typeText;
+          var rankEl = document.getElementById("mbCrateRank");
+          if (rankEl) { rankEl.className = "mb-popup-rank rank-" + lastResult.rank.toLowerCase(); rankEl.innerHTML = lastResult.rank + "<br><small>RANK</small>"; }
+          var gemsBonus = document.getElementById("mbCrateGemsBonus");
+          if (gemsBonus) gemsBonus.classList.add("hidden");
+          if (claimBtn) claimBtn.style.display = "";
+          popup.classList.remove("hidden");
         }
-        return;
       }
-
-      const popup = document.getElementById("mbCratePopup");
-      const itemDisplay = document.getElementById("mbCrateItemDisplay");
-      const claimBtn = document.getElementById("mbCrateClaimBtn");
-      if (popup && itemDisplay) {
-        itemDisplay.innerHTML = getGachaItemImageHtml(lastResult.item, 90);
-        document.getElementById("mbCrateItemName").textContent = lastResult.item.name;
-        var typeText = lastResult.item.type === "effect" ? "BLAST EFFECT" : lastResult.item.type === "coins" ? "COINS" : "BOMB SKIN";
-        document.getElementById("mbCrateItemType").textContent = typeText;
-        var rankEl = document.getElementById("mbCrateRank");
-        if (rankEl) { rankEl.className = "mb-popup-rank rank-" + lastResult.rank.toLowerCase(); rankEl.innerHTML = lastResult.rank + "<br><small>RANK</small>"; }
-        var gemsBonus = document.getElementById("mbCrateGemsBonus");
-        if (gemsBonus) gemsBonus.classList.add("hidden");
-        if (claimBtn) claimBtn.style.display = "";
-        popup.classList.remove("hidden");
-      }
-    }
+    });
   }
 }
 
@@ -16900,7 +16931,7 @@ function startGachaMagicalReveal(characterKind) {
   overlay.classList.remove("hidden");
   
   const gmrSparkles = [];
-  const startTime = performance.now();
+  let startTime = null;
   const silhouetteDuration = 1000; // time in ms that character is pure white
   const fadeDuration = 900; // fade from white to color
   
@@ -16909,8 +16940,15 @@ function startGachaMagicalReveal(characterKind) {
   installVideoFallback(video, videoName);
   const targetSrc = getVideoSrc(videoName);
   video.src = targetSrc;
+  video.currentTime = 0;
   video.load();
   playMutedLoop(video);
+  
+  // High-performance offscreen canvas for real-time pixel processing
+  const offscreenCanvas = document.createElement("canvas");
+  offscreenCanvas.width = 320;
+  offscreenCanvas.height = 320;
+  const offscreenCtx = offscreenCanvas.getContext("2d");
   
   if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
   
@@ -16921,10 +16959,15 @@ function startGachaMagicalReveal(characterKind) {
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
     
-    const elapsed = performance.now() - startTime;
-    
-    if (video.readyState >= 2) {
-      // Match safe scale/center logic from wardrobe preview — never clip top
+    if (video.readyState >= 2 && !video.paused) {
+      if (startTime === null) {
+        startTime = performance.now();
+      }
+      const elapsed = performance.now() - startTime;
+      
+      offscreenCtx.clearRect(0, 0, 320, 320);
+      
+      // Match safe scale/center logic from wardrobe preview
       let scaleBoost = 1.42;
       if (characterKind === "magical_hachiware") {
         scaleBoost = 1.55;
@@ -16932,19 +16975,18 @@ function startGachaMagicalReveal(characterKind) {
         scaleBoost = 1.50;
       }
 
-      const scale = Math.min(width / video.videoWidth, height / video.videoHeight) * scaleBoost;
+      const scale = Math.min(320 / video.videoWidth, 320 / video.videoHeight) * scaleBoost;
       const drawW = video.videoWidth * scale;
       const drawH = video.videoHeight * scale;
-      const drawX = (width - drawW) / 2;
-      // Shift character toward top — negative offset moves it above center
-      const rawDrawY = (height - drawH) / 2 - height * 0.14;
+      const drawX = (320 - drawW) / 2;
+      const rawDrawY = (320 - drawH) / 2 + 320 * 0.04;
       const drawY = Math.max(0, rawDrawY);
 
-      // Draw centered frame to canvas
-      ctx.drawImage(video, drawX, drawY, drawW, drawH);
+      // Draw to offscreen canvas
+      offscreenCtx.drawImage(video, drawX, drawY, drawW, drawH);
       
-      // Get image data of only the bounding box area (much faster than 900x900)
-      const imgData = ctx.getImageData(drawX, drawY, drawW, drawH);
+      // Get image data of offscreen canvas
+      const imgData = offscreenCtx.getImageData(0, 0, 320, 320);
       const data = imgData.data;
       
       let mix = 0; // 0 = all white, 1 = original colors
@@ -16977,8 +17019,12 @@ function startGachaMagicalReveal(characterKind) {
         }
       }
       
-      // Put image data back to the bounding box
-      ctx.putImageData(imgData, drawX, drawY);
+      offscreenCtx.putImageData(imgData, 0, 0);
+      
+      // Scale and draw processed frame to the main canvas
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(offscreenCanvas, 0, 0, width, height);
     }
     
     // Spawn and draw sparkle particles on top!

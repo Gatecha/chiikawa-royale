@@ -14316,8 +14316,8 @@ body.is-iphone {
 .character-select-screen.upgrade-active .select-main-video-wrap {
   left: 50% !important;
   right: auto !important;
-  top: 2% !important;
-  bottom: 45% !important;
+  top: 20% !important;
+  bottom: 30% !important;
   transform: translateX(-50%) !important;
   align-items: center !important;
   justify-content: center !important;
@@ -14329,4 +14329,20 @@ body.is-iphone {
 .character-select-screen.upgrade-active .select-category-tabs,
 .character-select-screen.upgrade-active .select-back-btn:not(#closeOutfitUpgradeBtn) {
   display: none !important;
+}
+
+/* Make exit button kinda bigger in upgrade UI */
+#closeOutfitUpgradeBtn {
+  width: 56px !important;
+  height: 56px !important;
+  left: 20px !important;
+  top: 20px !important;
+}
+
+#closeOutfitUpgradeBtn svg {
+  width: 42px !important;
+  height: 32px !important;
+  border-width: 3.5px !important;
+  border-radius: 22px !important;
+  padding: 4px 7px !important;
 }
