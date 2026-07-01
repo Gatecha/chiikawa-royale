@@ -16396,12 +16396,6 @@ function startGachaMagicalReveal(characterKind) {
     title.textContent = style ? style.label : characterKind.replace("magical_", "MAGICAL ").toUpperCase();
   }
   
-  // Set video source
-  const videoName = characterSelectVideos[characterKind] || `assets/character skins/character animation wardrobe/${characterKind.replace("_", " ")}.mp4`;
-  const targetSrc = getVideoSrc(videoName);
-  video.src = targetSrc;
-  video.load();
-  
   // Reset overlay animation state
   const glitch = overlay.querySelector(".gmr-glitch-overlay");
   if (glitch) {
@@ -16417,22 +16411,27 @@ function startGachaMagicalReveal(characterKind) {
   const silhouetteDuration = 1000; // time in ms that character is pure white
   const fadeDuration = 900; // fade from white to color
   
-  video.oncanplay = () => {
-    video.play();
+  // Set video source and play
+  const videoName = characterSelectVideos[characterKind] || `assets/character skins/character animation wardrobe/${characterKind.replace("_", " ")}.mp4`;
+  const targetSrc = getVideoSrc(videoName);
+  video.src = targetSrc;
+  video.load();
+  playMutedLoop(video);
+  
+  if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+  
+  function tick() {
+    if (overlay.classList.contains("hidden")) return;
     
-    if (gmrAnimationId) cancelAnimationFrame(gmrAnimationId);
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
     
-    function tick() {
-      if (video.paused || video.ended) return;
-      
-      const width = canvas.width;
-      const height = canvas.height;
-      ctx.clearRect(0, 0, width, height);
-      
+    const elapsed = performance.now() - startTime;
+    
+    if (video.readyState >= 2) {
       // Draw frame to canvas
       ctx.drawImage(video, 0, 0, width, height);
-      
-      const elapsed = performance.now() - startTime;
       
       // Apply white silhouette blend
       if (elapsed < silhouetteDuration + fadeDuration) {
@@ -16458,55 +16457,55 @@ function startGachaMagicalReveal(characterKind) {
       
       // Chromakey out the green screen background
       removeGreenScreenFromCanvas(ctx, width, height);
-      
-      // Spawn and draw sparkle particles on top!
-      if (Math.random() < 0.22) {
-        gmrSparkles.push({
-          x: width / 2 + (Math.random() - 0.5) * 160,
-          y: height / 2 + (Math.random() - 0.5) * 160,
-          vx: (Math.random() - 0.5) * 8,
-          vy: (Math.random() - 0.6) * 8,
-          size: 6 + Math.random() * 10,
-          life: 0.7 + Math.random() * 0.6,
-          color: ["#fffbcf", "#ffd1fb", "#d1f6ff", "#ffffff", "#fcd9ff"][Math.floor(Math.random() * 5)]
-        });
-      }
-      
-      // Update and draw sparkles
-      ctx.save();
-      for (let i = gmrSparkles.length - 1; i >= 0; i--) {
-        const s = gmrSparkles[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.vy += 0.04; // slight gravity
-        s.life -= 0.016;
-        
-        if (s.life <= 0) {
-          gmrSparkles.splice(i, 1);
-          continue;
-        }
-        
-        ctx.globalAlpha = Math.min(1, s.life * 2.2);
-        ctx.shadowColor = s.color;
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = s.color;
-        
-        // Draw 4-point sparkle cross star
-        ctx.beginPath();
-        ctx.moveTo(s.x, s.y - s.size);
-        ctx.quadraticCurveTo(s.x, s.y, s.x + s.size, s.y);
-        ctx.quadraticCurveTo(s.x, s.y, s.x, s.y + s.size);
-        ctx.quadraticCurveTo(s.x, s.y, s.x - s.size, s.y);
-        ctx.quadraticCurveTo(s.x, s.y, s.x, s.y - s.size);
-        ctx.fill();
-      }
-      ctx.restore();
-      
-      gmrAnimationId = requestAnimationFrame(tick);
     }
     
+    // Spawn and draw sparkle particles on top!
+    if (Math.random() < 0.22) {
+      gmrSparkles.push({
+        x: width / 2 + (Math.random() - 0.5) * 160,
+        y: height / 2 + (Math.random() - 0.5) * 160,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.6) * 8,
+        size: 6 + Math.random() * 10,
+        life: 0.7 + Math.random() * 0.6,
+        color: ["#fffbcf", "#ffd1fb", "#d1f6ff", "#ffffff", "#fcd9ff"][Math.floor(Math.random() * 5)]
+      });
+    }
+    
+    // Update and draw sparkles
+    ctx.save();
+    for (let i = gmrSparkles.length - 1; i >= 0; i--) {
+      const s = gmrSparkles[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.vy += 0.04; // slight gravity
+      s.life -= 0.016;
+      
+      if (s.life <= 0) {
+        gmrSparkles.splice(i, 1);
+        continue;
+      }
+      
+      ctx.globalAlpha = Math.min(1, s.life * 2.2);
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = s.color;
+      
+      // Draw 4-point sparkle cross star
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y - s.size);
+      ctx.quadraticCurveTo(s.x, s.y, s.x + s.size, s.y);
+      ctx.quadraticCurveTo(s.x, s.y, s.x, s.y + s.size);
+      ctx.quadraticCurveTo(s.x, s.y, s.x - s.size, s.y);
+      ctx.quadraticCurveTo(s.x, s.y, s.x, s.y - s.size);
+      ctx.fill();
+    }
+    ctx.restore();
+    
     gmrAnimationId = requestAnimationFrame(tick);
-  };
+  }
+  
+  gmrAnimationId = requestAnimationFrame(tick);
 }
 
 function showCrateRewardPopup(item, rank, isDuplicate) {
