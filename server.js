@@ -2352,10 +2352,18 @@ function updateServerBots(room, dt) {
       }
     }
 
-    const before = gridAtServer(bot.x, bot.y);
+    const beforeX = bot.x;
+    const beforeY = bot.y;
     moveServerActor(room, bot, bot.aiDir.x, bot.aiDir.y, dt);
-    const after = gridAtServer(bot.x, bot.y);
-    if (before.x === after.x && before.y === after.y && (bot.aiDir.x !== 0 || bot.aiDir.y !== 0)) bot.aiThink = 0;
+    const movedPixels = Math.hypot(bot.x - beforeX, bot.y - beforeY);
+    if (movedPixels < 0.1 && (bot.aiDir.x !== 0 || bot.aiDir.y !== 0)) {
+      bot.aiStuckFrames = (bot.aiStuckFrames || 0) + 1;
+      bot.aiThink = 0;
+      const rescueDir = getSafetyStepServer(room, bot, gridAtServer(bot.x, bot.y)) || getServerUnstuckStep(room, bot, gridAtServer(bot.x, bot.y));
+      if (rescueDir) bot.aiDir = rescueDir;
+    } else {
+      bot.aiStuckFrames = 0;
+    }
     checkPickupCollision(room, bot);
 
     const nowTile = gridAtServer(bot.x, bot.y);
@@ -2572,6 +2580,9 @@ function scoreServerBotMove(room, bot, x, y) {
 }
 
 function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy, target) {
+  const escapePlan = getServerEscapePlan(room, bot, tile, tile, 18);
+  if (!escapePlan) return false;
+  const trapScore = getServerEnemyTrapScore(room, bot, tile);
   if (canAttackEnemy) return true;
   if (nearbyEnemy) {
     const enemies = getServerBotEnemies(room, bot);
@@ -2580,6 +2591,7 @@ function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearb
       const dist = Math.abs(enemyTile.x - tile.x) + Math.abs(enemyTile.y - tile.y);
       return Math.min(min, dist);
     }, 999);
+    if (nearestDist <= 2 && trapScore >= 140) return true;
     if (nearestDist <= 2) return Math.random() < 0.85;
     return Math.random() < 0.42;
   }
@@ -2597,42 +2609,101 @@ function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearb
   return false;
 }
 
+function getServerEnemyTrapScore(room, bot, tile) {
+  return getServerBotEnemies(room, bot).reduce((best, enemy) => {
+    const enemyTile = gridAtServer(enemy.x, enemy.y);
+    const dist = Math.abs(enemyTile.x - tile.x) + Math.abs(enemyTile.y - tile.y);
+    if (dist > Math.max(3, bot.range || 2)) return best;
+    const enemyExits = [
+      { x: enemyTile.x + 1, y: enemyTile.y },
+      { x: enemyTile.x - 1, y: enemyTile.y },
+      { x: enemyTile.x, y: enemyTile.y + 1 },
+      { x: enemyTile.x, y: enemyTile.y - 1 },
+    ].filter((n) => !isSolidServer(room, n.x, n.y, enemy) && !wouldBombThreatenTile(room, tile, n.x, n.y, bot.range || 2)).length;
+    let score = Math.max(0, 150 - dist * 28);
+    if (enemyExits <= 1) score += 110;
+    if (enemyTile.x === tile.x || enemyTile.y === tile.y) score += 80;
+    return Math.max(best, score);
+  }, 0);
+}
+
 function getSafetyStepServer(room, bot, here) {
-  if (getServerBotThreatScore(room, here.x, here.y) === 0 && !isDangerTileServer(room, here.x, here.y)) {
+  if (getServerBotThreatScore(room, here.x, here.y) === 0 && !isDangerTileServer(room, here.x, here.y) && (bot.aiStuckFrames || 0) < 2) {
     return null;
   }
+  const plan = getServerEscapePlan(room, bot, here);
+  return plan ? plan.firstStep : null;
+}
+
+function getServerEscapePlan(room, bot, here, projectedBombTile = null, maxDepth = 14) {
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
-  const dirs = [
-    { x: 1, y: 0 },
-    { x: -1, y: 0 },
-    { x: 0, y: 1 },
-    { x: 0, y: -1 }
-  ];
+  const candidates = [];
   while (queue.length > 0) {
     const current = queue.shift();
-    if (getServerBotThreatScore(room, current.x, current.y) === 0 && !isDangerTileServer(room, current.x, current.y)) {
-      if (current.path.length > 0) {
-        return current.path[0];
-      }
-      return null;
+    const projectedThreat = getProjectedServerThreatScore(room, bot, current.x, current.y, projectedBombTile);
+    if (current.path.length > 0 && projectedThreat === 0 && !isDangerTileServer(room, current.x, current.y)) {
+      const safeExits = countServerSafeExits(room, bot, current.x, current.y);
+      candidates.push({
+        firstStep: current.path[0],
+        depth: current.path.length,
+        safeExits,
+        score: safeExits * 80 - current.path.length * 8
+      });
     }
-    if (current.path.length >= 10) continue;
-    for (const d of dirs) {
-      const tx = current.x + d.x;
-      const ty = current.y + d.y;
-      const key = `${tx},${ty}`;
+    if (current.path.length >= maxDepth) continue;
+    for (const next of getRankedServerEscapeDirs(room, bot, current, projectedBombTile)) {
+      const key = `${next.x},${next.y}`;
       if (seen.has(key)) continue;
-      if (isSolidServer(room, tx, ty, bot)) continue;
+      if (isSolidServer(room, next.x, next.y, bot)) continue;
       seen.add(key);
       queue.push({
-        x: tx,
-        y: ty,
-        path: current.path.concat({ x: d.x, y: d.y })
+        x: next.x,
+        y: next.y,
+        path: current.path.concat({ x: next.x - current.x, y: next.y - current.y })
       });
     }
   }
-  return null;
+  return candidates.sort((a, b) => b.score - a.score)[0] || null;
+}
+
+function getRankedServerEscapeDirs(room, bot, current, projectedBombTile) {
+  return [
+    { x: current.x + 1, y: current.y },
+    { x: current.x - 1, y: current.y },
+    { x: current.x, y: current.y + 1 },
+    { x: current.x, y: current.y - 1 },
+  ]
+    .map((next) => ({
+      ...next,
+      threat: getProjectedServerThreatScore(room, bot, next.x, next.y, projectedBombTile),
+      exits: countServerSafeExits(room, bot, next.x, next.y)
+    }))
+    .sort((a, b) => (a.threat - b.threat) || (b.exits - a.exits));
+}
+
+function getProjectedServerThreatScore(room, bot, x, y, projectedBombTile = null) {
+  let score = getServerBotThreatScore(room, x, y);
+  if (projectedBombTile && wouldBombThreatenTile(room, projectedBombTile, x, y, bot.range || 2)) {
+    score = Math.max(score, 1700);
+  }
+  return score;
+}
+
+function getServerUnstuckStep(room, bot, here) {
+  const best = [
+    { x: here.x + 1, y: here.y },
+    { x: here.x - 1, y: here.y },
+    { x: here.x, y: here.y + 1 },
+    { x: here.x, y: here.y - 1 },
+  ]
+    .map((next) => ({
+      x: next.x - here.x,
+      y: next.y - here.y,
+      score: scoreServerBotMove(room, bot, next.x, next.y)
+    }))
+    .sort((a, b) => b.score - a.score)[0];
+  return best && best.score > -9000 ? { x: best.x, y: best.y } : null;
 }
 
 function getServerBotThreatScore(room, x, y) {
@@ -2814,30 +2885,7 @@ function hasAdjacentCrate(room, x, y) {
 }
 
 function hasEscapeTile(room, bot, tile) {
-  const queue = [{ x: tile.x, y: tile.y, depth: 0 }];
-  const seen = new Set([`${tile.x},${tile.y}`]);
-  const dirs = [
-    { x: 1, y: 0 },
-    { x: -1, y: 0 },
-    { x: 0, y: 1 },
-    { x: 0, y: -1 },
-  ];
-  while (queue.length) {
-    const current = queue.shift();
-    if (current.depth > 0 && !wouldBombThreatenTile(room, tile, current.x, current.y, bot.range || 2) && !isDangerTileServer(room, current.x, current.y)) {
-      return true;
-    }
-    if (current.depth >= 6) continue;
-    dirs.forEach((dir) => {
-      const x = current.x + dir.x;
-      const y = current.y + dir.y;
-      const key = `${x},${y}`;
-      if (seen.has(key) || isSolidServer(room, x, y, bot)) return;
-      seen.add(key);
-      queue.push({ x, y, depth: current.depth + 1 });
-    });
-  }
-  return false;
+  return !!getServerEscapePlan(room, bot, tile, tile, 14);
 }
 
 function isDangerTileServer(room, x, y) {
@@ -2861,7 +2909,7 @@ function bombThreatensTile(room, bomb, x, y) {
   for (let i = 1; i <= distance; i += 1) {
     const cell = room.map[bomb.y + dy * i]?.[bomb.x + dx * i];
     if (!cell || cell === "wall") return false;
-    if (cell === "crate") return i === distance;
+    if (isCrateTile(cell)) return i === distance;
   }
   return true;
 }
@@ -2875,7 +2923,7 @@ function wouldBombThreatenTile(room, bombTile, x, y, range) {
   if (distance > range) return false;
   for (let i = 1; i <= distance; i += 1) {
     const cell = room.map[bombTile.y + dy * i]?.[bombTile.x + dx * i];
-    if (!cell || cell === "wall" || cell === "crate") return false;
+    if (!cell || cell === "wall" || isCrateTile(cell)) return false;
   }
   return true;
 }

@@ -4678,6 +4678,20 @@ function isCrateOnPathToTarget(bot, tile, target) {
 
 let botsWhoThoughtThisFrame = 0;
 
+function clearBotMoveTarget(bot) {
+  bot.moveTarget = null;
+  bot.moveFrom = null;
+  bot.moveDir = null;
+}
+
+function interruptUnsafeBotMove(bot, nextDir) {
+  if (!bot.moveTarget || !nextDir) return;
+  const currentDir = bot.moveDir || { x: 0, y: 0 };
+  const changingDirection = currentDir.x !== nextDir.x || currentDir.y !== nextDir.y;
+  if (!changingDirection) return;
+  clearBotMoveTarget(bot);
+}
+
 function updateAi(bot, dt) {
   // Handle bot healing casting progress
   if (bot.healingState) {
@@ -4783,6 +4797,7 @@ function updateAi(bot, dt) {
 
       const safetyDir = getSafetyStepLocal(bot, here);
       if (safetyDir) {
+        interruptUnsafeBotMove(bot, safetyDir);
         bot.aiDir = safetyDir;
         // Make reaction time slightly slower on easy/hard
         if (localBotsDifficulty === "easy") {
@@ -4834,7 +4849,15 @@ function updateAi(bot, dt) {
   }
 
   const moved = moveActor(bot, bot.aiDir.x, bot.aiDir.y, dt);
-  if (!moved) bot.aiThink = 0;
+  if (!moved) {
+    bot.aiStuckFrames = (bot.aiStuckFrames || 0) + 1;
+    bot.aiThink = 0;
+    clearBotMoveTarget(bot);
+    const rescueDir = getSafetyStepLocal(bot, gridAt(bot.x, bot.y)) || getLocalUnstuckStep(bot, gridAt(bot.x, bot.y));
+    if (rescueDir) bot.aiDir = rescueDir;
+  } else {
+    bot.aiStuckFrames = 0;
+  }
 
   if (localMode) {
     localCheckPickup(bot);
@@ -4911,26 +4934,39 @@ function tryLocalBotPunchStrategic(bot, tile) {
 }
 
 function getSafetyStepLocal(bot, here) {
-  if (getLocalBotThreatScore(here.x, here.y) === 0 && !isDanger(here.x, here.y)) {
+  if (getLocalBotThreatScore(here.x, here.y) === 0 && !isDanger(here.x, here.y) && (bot.aiStuckFrames || 0) < 2) {
     return null;
   }
+  const plan = getLocalEscapePlan(bot, here);
+  return plan ? plan.firstStep : null;
+}
+
+function getLocalEscapeDepthForDifficulty() {
   let maxDepth = 10;
   if (localBotsDifficulty === "easy") maxDepth = 4;
   else if (localBotsDifficulty === "pro") maxDepth = 14;
   else if (localBotsDifficulty === "expert") maxDepth = 18;
+  return maxDepth;
+}
 
+function getLocalEscapePlan(bot, here, projectedBombTile = null, maxDepth = getLocalEscapeDepthForDifficulty()) {
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
+  const candidates = [];
   while (queue.length > 0) {
     const current = queue.shift();
-    if (getLocalBotThreatScore(current.x, current.y) === 0 && !isDanger(current.x, current.y)) {
-      if (current.path.length > 0) {
-        return current.path[0];
-      }
-      return null;
+    const projectedThreat = getProjectedLocalThreatScore(bot, current.x, current.y, projectedBombTile);
+    if (current.path.length > 0 && projectedThreat === 0 && !isDanger(current.x, current.y)) {
+      const safeExits = countLocalSafeExits(bot, current.x, current.y);
+      candidates.push({
+        firstStep: current.path[0],
+        depth: current.path.length,
+        safeExits,
+        score: safeExits * 80 - current.path.length * 8
+      });
     }
     if (current.path.length >= maxDepth) continue;
-    const dirs = neighbors(current.x, current.y);
+    const dirs = getRankedLocalEscapeDirs(bot, current, projectedBombTile);
     for (const dir of dirs) {
       const key = `${dir.x},${dir.y}`;
       if (seen.has(key)) continue;
@@ -4943,7 +4979,36 @@ function getSafetyStepLocal(bot, here) {
       });
     }
   }
-  return null;
+  return candidates.sort((a, b) => b.score - a.score)[0] || null;
+}
+
+function getRankedLocalEscapeDirs(bot, current, projectedBombTile) {
+  return neighbors(current.x, current.y)
+    .map((dir) => ({
+      ...dir,
+      threat: getProjectedLocalThreatScore(bot, dir.x, dir.y, projectedBombTile),
+      exits: countLocalSafeExits(bot, dir.x, dir.y)
+    }))
+    .sort((a, b) => (a.threat - b.threat) || (b.exits - a.exits));
+}
+
+function getProjectedLocalThreatScore(bot, x, y, projectedBombTile = null) {
+  let score = getLocalBotThreatScore(x, y);
+  if (projectedBombTile && wouldLocalBombThreatenTile(projectedBombTile, x, y, bot.range || 2)) {
+    score = Math.max(score, 1700);
+  }
+  return score;
+}
+
+function getLocalUnstuckStep(bot, here) {
+  const best = neighbors(here.x, here.y)
+    .map((dir) => ({
+      x: dir.x - here.x,
+      y: dir.y - here.y,
+      score: scoreAiMove(bot, dir.x, dir.y)
+    }))
+    .sort((a, b) => b.score - a.score)[0];
+  return best && best.score > -9000 ? { x: best.x, y: best.y } : null;
 }
 
 // Returns true when a crate adjacent to the bot is on a direct path toward the nearest enemy
@@ -4967,6 +5032,9 @@ function isCrateOnPathToEnemy(bot, tile) {
 
 function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy) {
   if ((bot.aiBombCooldown || 0) > 0) return false;
+  const escapePlan = getLocalEscapePlan(bot, tile, tile, getLocalEscapeDepthForDifficulty() + 4);
+  if (!escapePlan) return false;
+  const trapScore = getLocalEnemyTrapScore(bot, tile);
 
   // Always bomb when we have a clean shot at an enemy
   if (canAttackEnemy) return true;
@@ -4985,6 +5053,7 @@ function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEne
       return Math.random() < 0.82; // pro
     }
     if (nearestDist <= 2) {
+      if (trapScore >= 140) return true;
       if (localBotsDifficulty === "easy")   return Math.random() < 0.20;
       if (localBotsDifficulty === "hard")   return Math.random() < 0.45;
       if (localBotsDifficulty === "expert") return Math.random() < 0.80;
@@ -5005,6 +5074,21 @@ function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEne
   }
 
   return false;
+}
+
+function getLocalEnemyTrapScore(bot, tile) {
+  return getLocalBotEnemies(bot).reduce((best, enemy) => {
+    const enemyTile = gridAt(enemy.x, enemy.y);
+    const dist = distanceTiles(tile, enemyTile);
+    if (dist > Math.max(3, bot.range || 2)) return best;
+    const enemyExits = neighbors(enemyTile.x, enemyTile.y)
+      .filter((n) => !isSolid(n.x, n.y, enemy) && !wouldLocalBombThreatenTile(tile, n.x, n.y, bot.range || 2))
+      .length;
+    let score = Math.max(0, 150 - dist * 28);
+    if (enemyExits <= 1) score += 110;
+    if (enemyTile.x === tile.x || enemyTile.y === tile.y) score += 80;
+    return Math.max(best, score);
+  }, 0);
 }
 
 function scoreAiMove(bot, x, y) {
@@ -5279,25 +5363,7 @@ function hasEnemyInBombLineLocal(bot, tile) {
 }
 
 function hasEscapeTileLocal(bot, tile) {
-  const queue = [{ x: tile.x, y: tile.y, depth: 0 }];
-  const seen = new Set([`${tile.x},${tile.y}`]);
-  const dirs = neighbors(0, 0);
-  while (queue.length) {
-    const current = queue.shift();
-    if (current.depth > 0 && !wouldLocalBombThreatenTile(tile, current.x, current.y, bot.range || 2) && !isDanger(current.x, current.y)) {
-      return true;
-    }
-    if (current.depth >= 6) continue;
-    dirs.forEach((dir) => {
-      const x = current.x + dir.x;
-      const y = current.y + dir.y;
-      const key = `${x},${y}`;
-      if (seen.has(key) || isSolid(x, y, bot)) return;
-      seen.add(key);
-      queue.push({ x, y, depth: current.depth + 1 });
-    });
-  }
-  return false;
+  return !!getLocalEscapePlan(bot, tile, tile, Math.max(8, getLocalEscapeDepthForDifficulty()));
 }
 
 function wouldLocalBombThreatenTile(bombTile, x, y, range) {
@@ -5309,7 +5375,7 @@ function wouldLocalBombThreatenTile(bombTile, x, y, range) {
   if (distance > range) return false;
   for (let i = 1; i <= distance; i += 1) {
     const cell = map[bombTile.y + dy * i]?.[bombTile.x + dx * i];
-    if (!cell || cell === "wall" || cell === "crate") return false;
+    if (!cell || cell === "wall" || isCrateTile(cell)) return false;
   }
   return true;
 }
@@ -5332,6 +5398,8 @@ function getDijkstraPathDistance(start, end) {
   const visited = new Set();
   const startKey = `${start.x},${start.y}`;
   dists[startKey] = 0;
+  const rows = map ? map.length : ROWS;
+  const cols = map && map[0] ? map[0].length : COLS;
   
   const queue = [{ x: start.x, y: start.y, dist: 0 }];
   
@@ -5351,7 +5419,7 @@ function getDijkstraPathDistance(start, end) {
     
     const dirs = neighbors(current.x, current.y);
     for (const dir of dirs) {
-      if (dir.x < 1 || dir.x >= COLS - 1 || dir.y < 1 || dir.y >= ROWS - 1) continue;
+      if (dir.x < 1 || dir.x >= cols - 1 || dir.y < 1 || dir.y >= rows - 1) continue;
       
       const cell = map[dir.y]?.[dir.x];
       if (cell === "wall" || cell === "zone") continue;
