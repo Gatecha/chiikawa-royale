@@ -1462,9 +1462,11 @@ function createBotObject(room) {
     id: botId, name, kind,
     ready: true, ai: true,
     x: 0, y: 0, dx: 0, dy: 0,
-    alive: true, speed: 142, bombs: 1, range: 2, cooldown: 0, trophies: 0,
+    alive: true, speed: 172, bombs: 1, range: 2, cooldown: 0, trophies: 0,
     hasPunch: false, hasSlide: false,
     aiThink: 0, aiDir: { x: 0, y: 0 }, aiTarget: null, aiBombCooldown: 0,
+    aiEscapeBombId: null, aiEscapeBombTile: null, aiEscapeDir: null,
+    moveTarget: null, moveFrom: null, moveDir: null,
   };
 }
 
@@ -1604,7 +1606,10 @@ function checkPickupCollision(room, player) {
 // ----------------------------------------------------------------
 
 function tickRoom(room) {
-  const dt = 0.05;
+  const now = Date.now();
+  const elapsed = room.lastTickAt ? (now - room.lastTickAt) / 1000 : 1 / 30;
+  const dt = Math.max(0.016, Math.min(0.08, elapsed));
+  room.lastTickAt = now;
   const roundLocked = isRoundActionLocked(room);
   if (!roundLocked) {
     room.roundTime = Math.max(0, room.roundTime - dt);
@@ -1798,6 +1803,7 @@ function tickRoom(room) {
         y: p.y,
         dx: p.dx,
         dy: p.dy,
+        ai: !!p.ai,
         alive: p.alive,
         speed: p.speed + (p.energyDrinkTimeLeft > 0 ? 50 : 0),
         bombs: p.bombs,
@@ -2329,10 +2335,20 @@ function startRound(room, isNewTournament) {
     p.y = spawn.y * TILE + TILE / 2;
     p.dx = 0; p.dy = 0;
     p.alive = isActive; // spectators start dead
-    p.speed = 142;
+    p.speed = p.ai ? 172 : 142;
     p.bombs = 1;
     p.range = getStartingBombRange(p.ai, mapType);
     p.cooldown = 0; p.hasPunch = false; p.hasSlide = false;
+    p.aiThink = 0;
+    p.aiDir = { x: 0, y: 0 };
+    p.aiTarget = null;
+    p.aiStuckFrames = 0;
+    p.aiEscapeBombId = null;
+    p.aiEscapeBombTile = null;
+    p.aiEscapeDir = null;
+    p.moveTarget = null;
+    p.moveFrom = null;
+    p.moveDir = null;
     if (isNewTournament) p.trophies = 0;
   });
 
@@ -2364,7 +2380,8 @@ function startRound(room, isNewTournament) {
   });
 
   if (room.tickInterval) clearInterval(room.tickInterval);
-  room.tickInterval = setInterval(() => tickRoom(room), 50);
+  room.lastTickAt = Date.now();
+  room.tickInterval = setInterval(() => tickRoom(room), 33);
 }
 
 // ----------------------------------------------------------------
@@ -2401,7 +2418,7 @@ function placeServerBomb(room, player) {
   }
 
   broadcastToRoom(room, { type: "bomb_placed", data: { bomb } });
-  return true;
+  return bomb;
 }
 
 function updateServerBots(room, dt) {
@@ -2442,15 +2459,30 @@ function updateServerBots(room, dt) {
     const danger = isDangerTileServer(room, tile.x, tile.y);
     const threatScore = getServerBotThreatScore(room, tile.x, tile.y);
     const isBombThreat = room.bombs.some((bomb) => bombThreatensTile(room, bomb, tile.x, tile.y)) || threatScore > 0;
+    const escapeBomb = bot.aiEscapeBombId ? room.bombs.find((bomb) => bomb.id === bot.aiEscapeBombId) : null;
+    const needsBombEscape = !!(escapeBomb && overlapsBombServer(bot, escapeBomb));
+    if (bot.aiEscapeBombId && (!escapeBomb || !needsBombEscape)) {
+      clearServerBotBombEscape(bot);
+    }
+    let forcedEscapeDir = null;
+    if (needsBombEscape) {
+      forcedEscapeDir = getServerBotBombEscapeStep(room, bot, escapeBomb) || bot.aiEscapeDir;
+      if (forcedEscapeDir) {
+        interruptServerBotMove(bot, forcedEscapeDir);
+        bot.aiDir = forcedEscapeDir;
+        bot.aiThink = 0;
+      }
+    }
 
     // Only recalculate immediately if threatened by an active bomb/blast.
     // Otherwise, wait until the think timer expires.
-    if (bot.aiThink <= 0 || !bot.aiDir || isBombThreat) {
+    if (!forcedEscapeDir && (bot.aiThink <= 0 || !bot.aiDir || isBombThreat || (bot.aiStuckFrames || 0) >= 2)) {
       bot.aiTarget = findServerBotTarget(room, bot, tile);
       const safetyDir = getSafetyStepServer(room, bot, tile);
       if (safetyDir) {
+        interruptServerBotMove(bot, safetyDir);
         bot.aiDir = safetyDir;
-        bot.aiThink = 0.10;
+        bot.aiThink = 0.06;
       } else {
         const dirs = [
           { x: 0, y: -1 },
@@ -2462,8 +2494,9 @@ function updateServerBots(room, dt) {
         const ranked = dirs
           .map((dir) => ({ ...dir, score: scoreServerBotMove(room, bot, tile.x + dir.x, tile.y + dir.y) }))
           .sort((a, b) => b.score - a.score);
+        interruptServerBotMove(bot, ranked[0]);
         bot.aiDir = { x: ranked[0].x, y: ranked[0].y };
-        bot.aiThink = danger ? 0.08 : 0.16 + Math.random() * 0.12;
+        bot.aiThink = danger ? 0.06 : 0.10 + Math.random() * 0.08;
       }
     }
 
@@ -2500,14 +2533,21 @@ function updateServerBots(room, dt) {
       : null;
     const shouldBomb = bot.aiBombCooldown <= 0 && escapePlan && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget, escapePlan);
     if (shouldBomb) {
-      if (placeServerBomb(room, bot)) {
+      const placedBomb = placeServerBomb(room, bot);
+      if (placedBomb) {
         const activeBombsCount = room.bombs.filter(b => b.ownerId === bot.id).length;
         if (activeBombsCount < bot.bombs && (nearbyEnemy || canAttackEnemy)) {
           bot.aiBombCooldown = 0.1 + Math.random() * 0.1;
         } else {
           bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
         }
+        clearServerBotMoveTarget(bot);
         bot.aiDir = escapePlan.firstStep;
+        if (typeof placedBomb === "object") {
+          bot.aiEscapeBombId = placedBomb.id;
+          bot.aiEscapeBombTile = { x: placedBomb.x, y: placedBomb.y };
+          bot.aiEscapeDir = escapePlan.firstStep;
+        }
         bot.aiThink = 0;
       }
     }
@@ -2589,6 +2629,33 @@ function rememberServerBotTile(bot, before, after) {
   bot.aiRecentTiles = bot.aiRecentTiles.slice(0, 5);
 }
 
+function clearServerBotMoveTarget(bot) {
+  bot.moveTarget = null;
+  bot.moveFrom = null;
+  bot.moveDir = null;
+}
+
+function clearServerBotBombEscape(bot) {
+  bot.aiEscapeBombId = null;
+  bot.aiEscapeBombTile = null;
+  bot.aiEscapeDir = null;
+}
+
+function getServerBotBombEscapeStep(room, bot, bomb) {
+  if (!bot || !bomb) return null;
+  const here = gridAtServer(bot.x, bot.y);
+  const plan = getServerEscapePlan(room, bot, here, { x: bomb.x, y: bomb.y }, 20);
+  return plan ? plan.firstStep : null;
+}
+
+function interruptServerBotMove(bot, nextDir) {
+  if (!bot.moveTarget || !nextDir) return;
+  const currentDir = bot.moveDir || { x: 0, y: 0 };
+  if (currentDir.x !== nextDir.x || currentDir.y !== nextDir.y) {
+    clearServerBotMoveTarget(bot);
+  }
+}
+
 function isSolidServer(room, tileX, tileY, actor = null) {
   if (isMapSolidServer(room, tileX, tileY)) return true;
   return room.bombs.some((bomb) => {
@@ -2643,16 +2710,11 @@ function canMoveServer(room, px, py, actor) {
 }
 
 function moveServerActor(room, actor, dx, dy, dt) {
-  if (dx !== 0 && dy !== 0) dy = 0;
-
   if (actor.ai) {
-    if (dx !== 0) {
-      actor.y = Math.floor(actor.y / TILE) * TILE + TILE / 2;
-    }
-    if (dy !== 0) {
-      actor.x = Math.floor(actor.x / TILE) * TILE + TILE / 2;
-    }
+    return moveServerBotTileStep(room, actor, dx, dy, dt);
   }
+
+  if (dx !== 0 && dy !== 0) dy = 0;
 
   const speed = actor.speed || 142;
   let nextX = actor.x + dx * speed * dt;
@@ -2680,6 +2742,79 @@ function moveServerActor(room, actor, dx, dy, dt) {
   }
   actor.dx = dx;
   actor.dy = dy;
+  return dx !== 0 || dy !== 0;
+}
+
+function centerOfServer(tileX, tileY) {
+  return {
+    x: tileX * TILE + TILE / 2,
+    y: tileY * TILE + TILE / 2,
+  };
+}
+
+function stepServerBotTowardTarget(actor, dt) {
+  const target = actor.moveTarget;
+  const from = actor.moveFrom || { x: actor.x, y: actor.y };
+  const dir = actor.moveDir || { x: Math.sign(target.x - actor.x), y: Math.sign(target.y - actor.y) };
+  const distance = Math.abs(target.x - actor.x) + Math.abs(target.y - actor.y);
+  const step = (actor.speed || 172) * dt;
+
+  if (distance <= step) {
+    actor.x = target.x;
+    actor.y = target.y;
+    clearServerBotMoveTarget(actor);
+    actor.dx = 0;
+    actor.dy = 0;
+    return true;
+  }
+
+  if (dir.x !== 0) {
+    actor.x += dir.x * step;
+    actor.y = from.y;
+  } else {
+    actor.x = from.x;
+    actor.y += dir.y * step;
+  }
+  actor.dx = dir.x;
+  actor.dy = dir.y;
+  return true;
+}
+
+function moveServerBotTileStep(room, actor, dx, dy, dt) {
+  if (actor.moveTarget) {
+    stepServerBotTowardTarget(actor, dt);
+    if (actor.moveTarget) return true;
+  }
+
+  const current = gridAtServer(actor.x, actor.y);
+  actor.x = current.x * TILE + TILE / 2;
+  actor.y = current.y * TILE + TILE / 2;
+
+  if (dx === 0 && dy === 0) {
+    actor.dx = 0;
+    actor.dy = 0;
+    return false;
+  }
+
+  const dir = Math.abs(dx) > 0 ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) };
+  const targetTile = { x: current.x + dir.x, y: current.y + dir.y };
+  const target = centerOfServer(targetTile.x, targetTile.y);
+  if (!canMoveServer(room, target.x, target.y, actor)) {
+    if (tryKickBombServer(room, actor, current, dir) && canMoveServer(room, target.x, target.y, actor)) {
+      actor.moveFrom = centerOfServer(current.x, current.y);
+      actor.moveDir = dir;
+      actor.moveTarget = target;
+      return stepServerBotTowardTarget(actor, dt);
+    }
+    actor.dx = 0;
+    actor.dy = 0;
+    return false;
+  }
+
+  actor.moveFrom = centerOfServer(current.x, current.y);
+  actor.moveDir = dir;
+  actor.moveTarget = target;
+  return stepServerBotTowardTarget(actor, dt);
 }
 
 function tryKickBombServer(room, actor, tile, dir) {

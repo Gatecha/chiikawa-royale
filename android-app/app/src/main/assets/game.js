@@ -2549,6 +2549,7 @@ function handleServerMessage(msg) {
           localP.range = serverPlayer.range;
           localP.hasPunch = !!serverPlayer.hasPunch;
           localP.hasSlide = !!serverPlayer.hasSlide;
+          localP.ai = !!serverPlayer.ai;
           // Sync Battle Royale stats
           localP.hp = serverPlayer.hp;
           localP.shield = serverPlayer.shield;
@@ -7452,7 +7453,7 @@ function update(dt) {
             p.y = p.targetY;
           } else {
             // Smoothly glide position using exponential decay interpolation
-            const rate = 18; // smooth but responsive (converges within ~100-150ms)
+            const rate = p.ai ? 28 : 18; // bots are server-driven, so keep them tighter to authoritative updates
             const alpha = 1 - Math.exp(-rate * dt);
             p.x += (p.targetX - p.x) * alpha;
             p.y += (p.targetY - p.y) * alpha;
