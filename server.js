@@ -2499,7 +2499,8 @@ function updateServerBots(room, dt) {
 
     // Only recalculate immediately if threatened by an active bomb/blast.
     // Otherwise, wait until the think timer expires.
-    if (!forcedEscapeDir && (bot.aiThink <= 0 || !bot.aiDir || isBombThreat || (bot.aiStuckFrames || 0) >= 2)) {
+    const targetStillDangerous = bot.moveTarget && getServerBotMoveTargetThreat(room, bot) >= threatScore;
+    if (!forcedEscapeDir && (bot.aiThink <= 0 || !bot.aiDir || !bot.moveTarget || (isBombThreat && targetStillDangerous) || (bot.aiStuckFrames || 0) >= 2)) {
       bot.aiTarget = findServerBotTarget(room, bot, tile);
       const safetyDir = getSafetyStepServer(room, bot, tile);
       if (safetyDir) {
@@ -2540,6 +2541,7 @@ function updateServerBots(room, dt) {
     checkPickupCollision(room, bot);
 
     const nowTile = gridAtServer(bot.x, bot.y);
+    const postMoveDanger = isDangerTileServer(room, nowTile.x, nowTile.y) || getServerBotThreatScore(room, nowTile.x, nowTile.y) > 0;
     if (bot.hasPunch && tryServerBotPunch(room, bot, nowTile)) {
       bot.aiThink = 0;
       return;
@@ -2552,7 +2554,7 @@ function updateServerBots(room, dt) {
       return Math.abs(enemyTile.x - nowTile.x) + Math.abs(enemyTile.y - nowTile.y) <= Math.max(2, bot.range || 2);
     });
     const canConsiderBomb = !bot.aiEscapeBombId && bot.aiBombCooldown <= 0;
-    const shouldBomb = canConsiderBomb && !isDangerTileServer(room, nowTile.x, nowTile.y) && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget);
+    const shouldBomb = canConsiderBomb && !postMoveDanger && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget);
     if (shouldBomb) {
       const placedBomb = placeServerBomb(room, bot);
       if (placedBomb) {
@@ -2671,6 +2673,12 @@ function interruptServerBotMove(bot, nextDir) {
   if (currentDir.x !== nextDir.x || currentDir.y !== nextDir.y) {
     clearServerBotMoveTarget(bot);
   }
+}
+
+function getServerBotMoveTargetThreat(room, bot) {
+  if (!bot.moveTarget) return Infinity;
+  const targetTile = gridAtServer(bot.moveTarget.x, bot.moveTarget.y);
+  return getServerBotThreatScore(room, targetTile.x, targetTile.y);
 }
 
 function isSolidServer(room, tileX, tileY, actor = null) {

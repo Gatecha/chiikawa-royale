@@ -4868,6 +4868,12 @@ function interruptUnsafeBotMove(bot, nextDir) {
   clearBotMoveTarget(bot);
 }
 
+function getLocalBotMoveTargetThreat(bot) {
+  if (!bot.moveTarget) return Infinity;
+  const targetTile = gridAt(bot.moveTarget.x, bot.moveTarget.y);
+  return getLocalBotThreatScore(targetTile.x, targetTile.y);
+}
+
 function updateAi(bot, dt) {
   // Handle bot healing casting progress
   if (bot.healingState) {
@@ -4966,7 +4972,7 @@ function updateAi(bot, dt) {
   if (!bot.moveTarget) {
     shouldThink = (isThreatened || isCrowdedOnTile || bot.aiThink <= 0);
   } else {
-    shouldThink = isBombThreat || isCrowdedOnTile;
+    shouldThink = isCrowdedOnTile || (isBombThreat && getLocalBotMoveTargetThreat(bot) >= threatScore);
   }
 
   if (!forcedEscapeDir && shouldThink) {
@@ -5066,6 +5072,7 @@ function updateAi(bot, dt) {
   }
 
   const tile = gridAt(bot.x, bot.y);
+  const postMoveDanger = isDanger(tile.x, tile.y) || getLocalBotThreatScore(tile.x, tile.y) > 0;
   const nearbyEnemy = getLocalBotEnemies(bot).some((other) => other.alive && distanceTiles(tile, gridAt(other.x, other.y)) <= Math.max(2, bot.range || 2));
   const canAttackEnemy = hasEnemyInBombLineLocal(bot, tile);
   // Consider bombing adjacent crates if they lie on path to enemy or on path to bot's current target
@@ -5074,7 +5081,7 @@ function updateAi(bot, dt) {
     ? (isCrateOnPathToEnemy(bot, tile) || isCrateOnPathToTarget(bot, tile, target))
     : neighbors(tile.x, tile.y).some((n) => isCrateTile(map[n.y]?.[n.x]));
   
-  if (!bot.aiEscapeBombId && !danger && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy)) {
+  if (!bot.aiEscapeBombId && !postMoveDanger && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy)) {
     const bombPlaced = localMode ? localPlaceBomb(bot) : (sendServerMessage("place_bomb", { id: bot.id }), true);
     if (!bombPlaced) return;
     
