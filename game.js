@@ -4977,11 +4977,7 @@ function updateAi(bot, dt) {
     ? (isCrateOnPathToEnemy(bot, tile) || isCrateOnPathToTarget(bot, tile, target))
     : neighbors(tile.x, tile.y).some((n) => isCrateTile(map[n.y]?.[n.x]));
   
-  const escapePlan = (canAttackEnemy || strategicCrate || nearbyEnemy) && !danger
-    ? getLocalEscapePlan(bot, tile, tile, getLocalEscapeDepthForDifficulty() + 4)
-    : null;
-  const hasEscapeStep = escapePlan?.firstStep && (escapePlan.firstStep.x !== 0 || escapePlan.firstStep.y !== 0);
-  if (!bot.aiEscapeBombId && hasEscapeStep && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy, escapePlan)) {
+  if (!bot.aiEscapeBombId && !danger && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy)) {
     const bombPlaced = localMode ? localPlaceBomb(bot) : (sendServerMessage("place_bomb", { id: bot.id }), true);
     if (!bombPlaced) return;
     
@@ -4992,12 +4988,8 @@ function updateAi(bot, dt) {
       bot.aiBombCooldown = 0.7 + Math.random() * 0.5;
     }
     clearBotMoveTarget(bot);
-    bot.aiDir = escapePlan.firstStep;
-    if (typeof bombPlaced === "object") {
-      bot.aiEscapeBombId = bombPlaced.id;
-      bot.aiEscapeBombTile = { x: bombPlaced.x, y: bombPlaced.y };
-      bot.aiEscapeDir = escapePlan.firstStep;
-    }
+    clearBotBombEscape(bot);
+    bot.aiDir = getLocalUnstuckStep(bot, tile) || bot.aiDir || { x: 0, y: 0 };
     bot.aiThink = 0;
   }
 }
@@ -5165,10 +5157,6 @@ function isCrateOnPathToEnemy(bot, tile) {
 
 function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy, escapePlan = null) {
   if ((bot.aiBombCooldown || 0) > 0) return false;
-  if (!escapePlan) {
-    escapePlan = getLocalEscapePlan(bot, tile, tile, getLocalEscapeDepthForDifficulty() + 4);
-    if (!escapePlan) return false;
-  }
   const trapScore = getLocalEnemyTrapScore(bot, tile);
 
   // Always bomb when we have a clean shot at an enemy

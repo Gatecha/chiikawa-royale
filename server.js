@@ -2531,12 +2531,7 @@ function updateServerBots(room, dt) {
       return Math.abs(enemyTile.x - nowTile.x) + Math.abs(enemyTile.y - nowTile.y) <= Math.max(2, bot.range || 2);
     });
     const canConsiderBomb = !bot.aiEscapeBombId && bot.aiBombCooldown <= 0;
-    const escapePlanDepth = isBattleRoyale(room.mode) ? 14 : 18;
-    const escapePlan = canConsiderBomb && !isDangerTileServer(room, nowTile.x, nowTile.y)
-      ? getServerEscapePlan(room, bot, nowTile, nowTile, escapePlanDepth)
-      : null;
-    const hasEscapeStep = escapePlan?.firstStep && (escapePlan.firstStep.x !== 0 || escapePlan.firstStep.y !== 0);
-    const shouldBomb = canConsiderBomb && hasEscapeStep && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget, escapePlan);
+    const shouldBomb = canConsiderBomb && !isDangerTileServer(room, nowTile.x, nowTile.y) && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget);
     if (shouldBomb) {
       const placedBomb = placeServerBomb(room, bot);
       if (placedBomb) {
@@ -2547,12 +2542,8 @@ function updateServerBots(room, dt) {
           bot.aiBombCooldown = 0.55 + Math.random() * 0.35;
         }
         clearServerBotMoveTarget(bot);
-        bot.aiDir = escapePlan.firstStep;
-        if (typeof placedBomb === "object") {
-          bot.aiEscapeBombId = placedBomb.id;
-          bot.aiEscapeBombTile = { x: placedBomb.x, y: placedBomb.y };
-          bot.aiEscapeDir = escapePlan.firstStep;
-        }
+        clearServerBotBombEscape(bot);
+        bot.aiDir = getServerUnstuckStep(room, bot, nowTile) || bot.aiDir || { x: 0, y: 0 };
         bot.aiThink = 0;
       }
     }
@@ -2903,10 +2894,6 @@ function scoreServerBotMove(room, bot, x, y) {
 }
 
 function shouldServerBotBomb(room, bot, tile, canAttackEnemy, nearbyCrate, nearbyEnemy, target, escapePlan = null) {
-  if (!escapePlan) {
-    escapePlan = getServerEscapePlan(room, bot, tile, tile, 18);
-    if (!escapePlan) return false;
-  }
   const trapScore = getServerEnemyTrapScore(room, bot, tile);
   if (canAttackEnemy) return true;
   if (nearbyEnemy) {
