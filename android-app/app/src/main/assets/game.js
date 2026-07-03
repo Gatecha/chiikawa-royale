@@ -817,10 +817,10 @@ const starts = [
 ];
 
 const powerZoneStarts = [
-  { x: 5, y: 5 },
-  { x: COLS - 6, y: ROWS - 6 },
-  { x: COLS - 6, y: 5 },
-  { x: 5, y: ROWS - 6 },
+  { x: 3, y: 3 },
+  { x: COLS - 4, y: ROWS - 4 },
+  { x: COLS - 4, y: 3 },
+  { x: 3, y: ROWS - 4 },
 ];
 
 // Character styles
@@ -2473,7 +2473,9 @@ function handleServerMessage(msg) {
       particles = [];
       roundTime = typeof data.roundTime === "number" ? data.roundTime : roundTime;
       running = true;
-      startCountdownTimer = 3.5;
+      startCountdownTimer = typeof data.roundActionLockRemainingMs === "number"
+        ? Math.max(0, data.roundActionLockRemainingMs / 1000)
+        : 3.5;
       startCountdownState = "3";
       isOnlineMatchmakingActive = false;
       shakeTimer = 0;
@@ -2625,6 +2627,9 @@ function handleServerMessage(msg) {
         if (map[crate.y]) map[crate.y][crate.x] = "grass";
         burstCrate(crate.x, crate.y);
       });
+      if (data.destroyedCrates.length && isBattleRoyale(currentRoomMode)) {
+        brMinimapCacheDirty = true;
+      }
 
       data.spawnedPickups.forEach((pickup) => {
         pickups.push(pickup);
@@ -2640,6 +2645,13 @@ function handleServerMessage(msg) {
         shakeTimer = 0.35;
       }
       updateHudSidebar();
+      break;
+
+    case "supply_drop_landed":
+      if (map[data.y]) {
+        map[data.y][data.x] = data.tile || "supply_crate";
+        brMinimapCacheDirty = true;
+      }
       break;
 
     case "pickup_collected":
@@ -3411,11 +3423,19 @@ function shouldShowVsBeforeGameStart(data) {
 }
 
 function showServerVsThenStart(data) {
+  const vsStartedAt = performance.now();
   showVsLoadingScreen(data?.players || players, () => {
+    const adjustedData = { ...data };
+    if (typeof adjustedData.roundActionLockRemainingMs === "number") {
+      adjustedData.roundActionLockRemainingMs = Math.max(
+        0,
+        adjustedData.roundActionLockRemainingMs - (performance.now() - vsStartedAt)
+      );
+    }
     handleServerMessage({
       type: "game_started",
       data: {
-        ...data,
+        ...adjustedData,
         __vsLoadingShown: true,
       },
     });
@@ -4827,7 +4847,8 @@ function updateAi(bot, dt) {
   const isBombThreat = isBombOrBlastDanger(here.x, here.y) || threatScore > 0;
   const isCrowdedOnTile = isLocalBotOnBombTile(bot, here) || isLocalBotSharingTile(bot, here);
   const escapeBomb = bot.aiEscapeBombId ? bombs.find((bomb) => bomb.id === bot.aiEscapeBombId) : null;
-  const needsBombEscape = !!(escapeBomb && overlapsBomb(bot, escapeBomb));
+  const escapeBombThreat = !!(escapeBomb && localBombThreatensTileAnyTimer(escapeBomb, here.x, here.y));
+  const needsBombEscape = !!(escapeBomb && (overlapsBomb(bot, escapeBomb) || escapeBombThreat || bot.moveTarget));
   if (bot.aiEscapeBombId && (!escapeBomb || !needsBombEscape)) {
     clearBotBombEscape(bot);
   }
@@ -4959,7 +4980,8 @@ function updateAi(bot, dt) {
   const escapePlan = (canAttackEnemy || strategicCrate || nearbyEnemy) && !danger
     ? getLocalEscapePlan(bot, tile, tile, getLocalEscapeDepthForDifficulty() + 4)
     : null;
-  if (escapePlan && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy, escapePlan)) {
+  const hasEscapeStep = escapePlan?.firstStep && (escapePlan.firstStep.x !== 0 || escapePlan.firstStep.y !== 0);
+  if (!bot.aiEscapeBombId && hasEscapeStep && shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy, escapePlan)) {
     const bombPlaced = localMode ? localPlaceBomb(bot) : (sendServerMessage("place_bomb", { id: bot.id }), true);
     if (!bombPlaced) return;
     

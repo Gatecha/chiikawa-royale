@@ -84,6 +84,7 @@ const MATCHMAKING_AUTO_FILL_SECONDS = 20;
 const MATCHMAKING_CARD_FILL_DELAY_MS = 650;
 const MATCHMAKING_AFTER_FILL_DELAY_MS = 1100;
 const ROUND_START_LOCK_MS = 3500;
+const SERVER_VS_SCREEN_LOCK_MS = 5200;
 const FINAL_VOTE_SECONDS = 20;     // Vote timer duration
 const RECONNECT_GRACE_MS = 10 * 60 * 1000;
 const SURRENDER_THRESHOLD = 3;
@@ -128,10 +129,10 @@ const starts = [
 ];
 
 const powerZoneStarts = [
-  { x: 5, y: 5 },
-  { x: COLS - 6, y: ROWS - 6 },
-  { x: COLS - 6, y: 5 },
-  { x: 5, y: ROWS - 6 },
+  { x: 3, y: 3 },
+  { x: COLS - 4, y: ROWS - 4 },
+  { x: COLS - 4, y: 3 },
+  { x: 3, y: ROWS - 4 },
 ];
 
 // In-memory Room storage
@@ -1821,7 +1822,6 @@ function tickRoom(room) {
         kills: p.kills || 0,
         damageDealt: p.damageDealt || 0,
       })),
-      map: room.map,
       roundTime: room.roundTime,
       roundActionLockRemainingMs: Math.max(0, (room.roundActionLockUntil || 0) - Date.now()),
       brZone: room.brZone ? {
@@ -1992,7 +1992,7 @@ function triggerExplosion(room, bomb) {
 
   broadcastToRoom(room, {
     type: "bomb_exploded",
-    data: { bombId: bomb.id, ownerId: bomb.ownerId, cells, destroyedCrates, spawnedPickups, deadPlayers, map: room.map },
+    data: { bombId: bomb.id, ownerId: bomb.ownerId, cells, destroyedCrates, spawnedPickups, deadPlayers },
   });
 
   if (isBattleRoyale(room.mode)) {
@@ -2357,7 +2357,7 @@ function startRound(room, isNewTournament) {
     spawnPowerZonePickups(room);
   }
   room.roundTime = ROUND_SECONDS;
-  room.roundActionLockUntil = Date.now() + ROUND_START_LOCK_MS;
+  room.roundActionLockUntil = Date.now() + ROUND_START_LOCK_MS + SERVER_VS_SCREEN_LOCK_MS;
   room.zoneActive = false;
   room.zoneLayer = 0;
   room.zoneStepTimer = 0;
@@ -2376,6 +2376,7 @@ function startRound(room, isNewTournament) {
       activeRoundPlayers: room.activeRoundPlayers,
       roundNumber: room.roundNumber,
       isFinalRound: room.finalRoundActive,
+      roundActionLockRemainingMs: Math.max(0, (room.roundActionLockUntil || 0) - Date.now()),
     },
   });
 
@@ -2460,7 +2461,8 @@ function updateServerBots(room, dt) {
     const threatScore = getServerBotThreatScore(room, tile.x, tile.y);
     const isBombThreat = room.bombs.some((bomb) => bombThreatensTile(room, bomb, tile.x, tile.y)) || threatScore > 0;
     const escapeBomb = bot.aiEscapeBombId ? room.bombs.find((bomb) => bomb.id === bot.aiEscapeBombId) : null;
-    const needsBombEscape = !!(escapeBomb && overlapsBombServer(bot, escapeBomb));
+    const escapeBombThreat = !!(escapeBomb && bombThreatensTileAnyTimer(room, escapeBomb, tile.x, tile.y));
+    const needsBombEscape = !!(escapeBomb && (overlapsBombServer(bot, escapeBomb) || escapeBombThreat || bot.moveTarget));
     if (bot.aiEscapeBombId && (!escapeBomb || !needsBombEscape)) {
       clearServerBotBombEscape(bot);
     }
@@ -2528,10 +2530,13 @@ function updateServerBots(room, dt) {
       const enemyTile = gridAtServer(enemy.x, enemy.y);
       return Math.abs(enemyTile.x - nowTile.x) + Math.abs(enemyTile.y - nowTile.y) <= Math.max(2, bot.range || 2);
     });
-    const escapePlan = !isDangerTileServer(room, nowTile.x, nowTile.y)
-      ? getServerEscapePlan(room, bot, nowTile, nowTile, 18)
+    const canConsiderBomb = !bot.aiEscapeBombId && bot.aiBombCooldown <= 0;
+    const escapePlanDepth = isBattleRoyale(room.mode) ? 14 : 18;
+    const escapePlan = canConsiderBomb && !isDangerTileServer(room, nowTile.x, nowTile.y)
+      ? getServerEscapePlan(room, bot, nowTile, nowTile, escapePlanDepth)
       : null;
-    const shouldBomb = bot.aiBombCooldown <= 0 && escapePlan && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget, escapePlan);
+    const hasEscapeStep = escapePlan?.firstStep && (escapePlan.firstStep.x !== 0 || escapePlan.firstStep.y !== 0);
+    const shouldBomb = canConsiderBomb && hasEscapeStep && shouldServerBotBomb(room, bot, nowTile, canAttackEnemy, nearbyCrate, nearbyEnemy, bot.aiTarget, escapePlan);
     if (shouldBomb) {
       const placedBomb = placeServerBomb(room, bot);
       if (placedBomb) {
@@ -3081,13 +3086,22 @@ function countServerSafeExits(room, bot, x, y) {
 
 function findServerBotTarget(room, bot, here) {
   const enemies = getServerBotEnemies(room, bot).map(enemy => ({ ...gridAtServer(enemy.x, enemy.y), weight: 3 }));
-  const loot = room.pickups.map(pickup => ({ x: pickup.x, y: pickup.y, weight: pickup.type === "punch" || pickup.type === "full_fire" || pickup.type === "slide" ? 5 : 3 }));
+  const brMode = isBattleRoyale(room.mode);
+  const targetScanRadius = brMode ? 12 : Math.max(getCols(room.mode), getRows(room.mode));
+  const isNearbyTarget = (target) => !brMode || (Math.abs(target.x - here.x) <= targetScanRadius && Math.abs(target.y - here.y) <= targetScanRadius);
+  const loot = room.pickups
+    .filter(isNearbyTarget)
+    .map(pickup => ({ x: pickup.x, y: pickup.y, weight: pickup.type === "punch" || pickup.type === "full_fire" || pickup.type === "slide" ? 5 : 3 }));
   
   const rows = getRows(room.mode);
   const cols = getCols(room.mode);
   const crates = [];
-  for (let y = 1; y < rows - 1; y += 1) {
-    for (let x = 1; x < cols - 1; x += 1) {
+  const minX = brMode ? Math.max(1, here.x - targetScanRadius) : 1;
+  const maxX = brMode ? Math.min(cols - 2, here.x + targetScanRadius) : cols - 2;
+  const minY = brMode ? Math.max(1, here.y - targetScanRadius) : 1;
+  const maxY = brMode ? Math.min(rows - 2, here.y + targetScanRadius) : rows - 2;
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
       const cell = room.map[y]?.[x];
       if (isCrateTile(cell)) {
         crates.push({ x, y, weight: 1 });
@@ -3096,7 +3110,7 @@ function findServerBotTarget(room, bot, here) {
   }
 
   let targets = [...loot, ...enemies, ...crates];
-  if (isBattleRoyale(room.mode) && room.brZone) {
+  if (brMode && room.brZone) {
     // Filter out targets that are outside the next safe zone
     targets = targets.filter((target) => !isTileOutsideNextZoneServer(room, target.x, target.y));
 
@@ -3634,7 +3648,8 @@ function startBRGame(room) {
       pickups: room.pickups,
       mapType: "classic",
       mode: room.mode,
-      brZone: room.brZone
+      brZone: room.brZone,
+      roundActionLockRemainingMs: Math.max(0, (room.roundActionLockUntil || 0) - Date.now()),
     }
   });
 
@@ -3910,7 +3925,7 @@ function updateBRSupplyDrops(room, dt) {
       }
       broadcastToRoom(room, {
         type: "supply_drop_landed",
-        data: { x, y, map: room.map }
+        data: { x, y, tile: "supply_crate" }
       });
       room.activeSupplyDrop = null;
     }
