@@ -35,6 +35,101 @@
 })();
 
 // =================================================================
+// GAMEPLAY BOT DEBUG PANEL
+// =================================================================
+let lastBotDebugAutoOpenAt = 0;
+const BOT_DEBUG_STUCK_ALERT_FRAMES = 3;
+
+function showDebugButton() {
+  const dbgBtn = document.getElementById("debugBtnFloat");
+  if (dbgBtn) dbgBtn.style.display = "block";
+}
+
+function openDebugPanelForBotStuck() {
+  const now = performance.now();
+  if (now - lastBotDebugAutoOpenAt < 3500) return;
+  lastBotDebugAutoOpenAt = now;
+  showDebugButton();
+  const overlay = document.getElementById("debugPopupOverlay");
+  if (overlay) overlay.classList.add("dbg-show");
+}
+
+function dirToText(dir) {
+  if (!dir) return "none";
+  const x = Number(dir.x || 0).toFixed(0);
+  const y = Number(dir.y || 0).toFixed(0);
+  return `${x},${y}`;
+}
+
+function buildClientBotDebug(bot, note = "client") {
+  const tile = typeof gridAt === "function" ? gridAt(bot.x, bot.y) : { x: "?", y: "?" };
+  const moveTargetTile = bot.moveTarget && typeof gridAt === "function"
+    ? gridAt(bot.moveTarget.x, bot.moveTarget.y)
+    : null;
+  const danger = typeof isDanger === "function" ? !!isDanger(tile.x, tile.y) : false;
+  const threatScore = typeof getLocalBotThreatScore === "function" ? getLocalBotThreatScore(tile.x, tile.y) : 0;
+  const onBomb = typeof bombs !== "undefined" && Array.isArray(bombs) && bombs.some((bomb) => bomb.x === tile.x && bomb.y === tile.y);
+  const bombThreat = typeof isBombOrBlastDanger === "function" ? !!isBombOrBlastDanger(tile.x, tile.y) : false;
+  return {
+    note,
+    tile,
+    dir: bot.aiDir || { x: bot.dx || 0, y: bot.dy || 0 },
+    dx: bot.dx || 0,
+    dy: bot.dy || 0,
+    stuckFrames: bot.aiStuckFrames || 0,
+    aiThink: Number(bot.aiThink || 0).toFixed(2),
+    target: bot.aiTarget || null,
+    moveTarget: moveTargetTile,
+    onBomb,
+    danger,
+    bombThreat,
+    threatScore,
+    bombCooldown: Number(bot.aiBombCooldown || 0).toFixed(2),
+    escapeBombId: bot.aiEscapeBombId || null,
+    recentTiles: bot.aiRecentTiles || [],
+  };
+}
+
+function formatBotDebugLine(bot) {
+  const debug = bot.aiDebug || buildClientBotDebug(bot, "derived");
+  const tile = debug.tile || {};
+  const target = debug.target ? `${debug.target.x},${debug.target.y}` : "none";
+  const moveTarget = debug.moveTarget ? `${debug.moveTarget.x},${debug.moveTarget.y}` : "none";
+  const flags = [
+    debug.onBomb ? "ON_BOMB" : null,
+    debug.bombThreat ? "BOMB_THREAT" : null,
+    debug.danger ? "DANGER" : null,
+    (debug.stuckFrames || 0) >= BOT_DEBUG_STUCK_ALERT_FRAMES ? "STUCK" : null,
+  ].filter(Boolean).join(" ");
+  return [
+    `${bot.name || bot.id} ${bot.alive ? "alive" : "dead"} ${flags || "ok"}`,
+    `  id=${bot.id} src=${debug.note || "?"} tile=${tile.x},${tile.y} pos=${Math.round(bot.x)},${Math.round(bot.y)}`,
+    `  dir=${dirToText(debug.dir)} vel=${Number(debug.dx || 0).toFixed(0)},${Number(debug.dy || 0).toFixed(0)} stuck=${debug.stuckFrames || 0} think=${debug.aiThink}`,
+    `  target=${target} moveTarget=${moveTarget} threat=${debug.threatScore || 0} cd=${debug.bombCooldown || 0} escapeBomb=${debug.escapeBombId || "none"}`,
+    `  recent=${Array.isArray(debug.recentTiles) && debug.recentTiles.length ? debug.recentTiles.join(" <- ") : "none"}`,
+  ].join("\n");
+}
+
+function updateBotDebugPanel(source = "tick") {
+  const el = document.getElementById("botDebugText");
+  if (!el || typeof players === "undefined" || !Array.isArray(players)) return;
+  const bots = players.filter((p) => p.ai);
+  if (!bots.length) {
+    el.textContent = "No bots in this match yet.";
+    return;
+  }
+  const stuckBots = bots.filter((bot) => (bot.aiDebug?.stuckFrames || bot.aiStuckFrames || 0) >= BOT_DEBUG_STUCK_ALERT_FRAMES);
+  el.textContent = [
+    `Bot debug ${new Date().toLocaleTimeString()} source=${source}`,
+    `mode=${typeof currentRoomMode !== "undefined" ? currentRoomMode : "?"} localMode=${typeof localMode !== "undefined" ? !!localMode : "?"} bots=${bots.length} bombs=${typeof bombs !== "undefined" && Array.isArray(bombs) ? bombs.length : "?"}`,
+    stuckBots.length ? `ALERT stuck bots: ${stuckBots.map((bot) => bot.name || bot.id).join(", ")}` : "No stuck bots detected.",
+    "",
+    bots.map(formatBotDebugLine).join("\n\n"),
+  ].join("\n");
+  if (stuckBots.length) openDebugPanelForBotStuck();
+}
+
+// =================================================================
 // BATTLE GUIDE GLOBAL CLOSE HANDLER
 // (runs via inline onclick so it works even if addEventListener fires early)
 // =================================================================
@@ -2563,6 +2658,7 @@ function handleServerMessage(msg) {
           localP.reviveProgress = serverPlayer.reviveProgress || 0;
           localP.kills = serverPlayer.kills || 0;
           localP.damageDealt = serverPlayer.damageDealt || 0;
+          localP.aiDebug = serverPlayer.aiDebug || null;
 
           if (serverPlayer.id !== localPlayerId) {
             localP.targetX = serverPlayer.x;
@@ -2586,6 +2682,7 @@ function handleServerMessage(msg) {
           }
         }
       });
+      updateBotDebugPanel("server-state");
       updateHudSidebar();
       break;
 
@@ -7445,8 +7542,10 @@ function update(dt) {
       players.forEach((p) => {
         if (p.ai && p.alive) {
           updateAi(p, dt);
+          p.aiDebug = buildClientBotDebug(p, "local");
         }
       });
+      updateBotDebugPanel("local-ai");
     }
 
     players.forEach((p) => {
@@ -9285,6 +9384,14 @@ window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       ingameChatInput.blur();
     }
+    return;
+  }
+
+  if (event.key === "F9") {
+    event.preventDefault();
+    showDebugButton();
+    updateBotDebugPanel("manual-f9");
+    document.getElementById("debugPopupOverlay")?.classList.toggle("dbg-show");
     return;
   }
   
