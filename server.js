@@ -2499,7 +2499,7 @@ function updateServerBots(room, dt) {
 
     // Only recalculate immediately if threatened by an active bomb/blast.
     // Otherwise, wait until the think timer expires.
-    const targetStillDangerous = bot.moveTarget && getServerBotMoveTargetThreat(room, bot) >= threatScore;
+    const targetStillDangerous = bot.moveTarget && getServerBotMoveTargetThreat(room, bot) > threatScore;
     if (!forcedEscapeDir && (bot.aiThink <= 0 || !bot.aiDir || !bot.moveTarget || (isBombThreat && targetStillDangerous) || (bot.aiStuckFrames || 0) >= 2)) {
       bot.aiTarget = findServerBotTarget(room, bot, tile);
       const safetyDir = getSafetyStepServer(room, bot, tile);
@@ -2861,8 +2861,9 @@ function scoreServerBotMove(room, bot, x, y) {
   if (isSolidServer(room, x, y, bot)) return -9999;
   let score = Math.random() * 2;
   const here = gridAtServer(bot.x, bot.y);
+  const hereThreat = getServerBotThreatScore(room, here.x, here.y);
   if (x === here.x && y === here.y) score -= 56;
-  if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && getServerBotThreatScore(room, here.x, here.y) === 0) {
+  if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && hereThreat === 0) {
     score -= 72;
   }
 
@@ -2893,11 +2894,19 @@ function scoreServerBotMove(room, bot, x, y) {
 
   const threat = getServerBotThreatScore(room, x, y);
   score -= threat;
-  if (threat >= 1200) return score;
 
   const safeExits = countServerSafeExits(room, bot, x, y);
   score += safeExits * 34;
   if (safeExits === 0) score -= 280;
+
+  if (threat > 0) {
+    if (hereThreat === 0) {
+      score -= 5000;
+    } else if (threat >= hereThreat) {
+      score -= 1800;
+    }
+    return score;
+  }
 
   const pickup = room.pickups.find(p => p.x === x && p.y === y);
   if (pickup) score += pickup.type === "full_fire" || pickup.type === "punch" || pickup.type === "slide" ? 190 : 135;

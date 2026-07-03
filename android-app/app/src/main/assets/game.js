@@ -4981,7 +4981,7 @@ function updateAi(bot, dt) {
   if (!bot.moveTarget) {
     shouldThink = (isThreatened || isCrowdedOnTile || bot.aiThink <= 0);
   } else {
-    shouldThink = isCrowdedOnTile || (isBombThreat && getLocalBotMoveTargetThreat(bot) >= threatScore);
+    shouldThink = isCrowdedOnTile || (isBombThreat && getLocalBotMoveTargetThreat(bot) > threatScore);
   }
 
   if (!forcedEscapeDir && shouldThink) {
@@ -5334,7 +5334,8 @@ function scoreAiMove(bot, x, y) {
   const here = gridAt(bot.x, bot.y);
   // Discourage standing still
   if (x === here.x && y === here.y) score -= 80;
-  if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && getLocalBotThreatScore(here.x, here.y) === 0) {
+  const hereThreat = getLocalBotThreatScore(here.x, here.y);
+  if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && hereThreat === 0) {
     score -= 70;
   }
   if (players.some((other) => {
@@ -5347,11 +5348,19 @@ function scoreAiMove(bot, x, y) {
 
   const threat = getLocalBotThreatScore(x, y);
   score -= threat;
-  if (threat >= 1200) return score;
 
   const safeExits = countLocalSafeExits(bot, x, y);
   score += safeExits * 38;
   if (safeExits === 0) score -= 320;
+
+  if (threat > 0) {
+    if (hereThreat === 0) {
+      score -= 5000;
+    } else if (threat >= hereThreat) {
+      score -= 1800;
+    }
+    return score;
+  }
 
   // Storm/safe zone penalty for Battle Royale with difficulty scaling
   if (isBattleRoyale(currentRoomMode) && currentBRZone) {
