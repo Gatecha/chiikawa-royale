@@ -147,6 +147,15 @@ window._closeBattleGuide = function() {
   }
 };
 
+window._dismissBattleGuide = function() {
+  const overlay = document.getElementById('tutorialGuideOverlay');
+  if (overlay) overlay.classList.remove('zzz-guide-show');
+  window.tutorialGuideActive = false;
+  window.tutorialGuidePaused = false;
+  window.tutorialGuideStep = 3;
+  if (typeof keys !== 'undefined') keys.clear();
+};
+
 function dismissMenuTutorialGuide() {
   const guideEl = document.getElementById("menuTutorialGuide");
   if (guideEl) guideEl.classList.remove("active");
@@ -15845,6 +15854,22 @@ document.getElementById("tutorialGuideOkBtn")?.addEventListener("click", () => {
     }, 7000);
   } else if (window.tutorialGuideStep === 2) {
     window.tutorialGuideStep = 3;
+  }
+});
+
+document.getElementById("tutorialGuideCloseBtn")?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (typeof window._dismissBattleGuide === "function") {
+    window._dismissBattleGuide();
+  }
+});
+
+document.getElementById("tutorialGuideCloseBtn")?.addEventListener("touchend", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (typeof window._dismissBattleGuide === "function") {
+    window._dismissBattleGuide();
   }
 });
 

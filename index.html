@@ -2920,9 +2920,9 @@
     <div id="tutorialGuideOverlay">
       <div class="zzz-guide-card">
         <button id="tutorialGuideCloseBtn" type="button" aria-label="Close tutorial guide"
-          onclick="window._closeBattleGuide && window._closeBattleGuide()"
-          ontouchend="event.preventDefault(); window._closeBattleGuide && window._closeBattleGuide()"
-          style="position:absolute;top:14px;right:14px;width:34px;height:34px;border:3px solid #111;border-radius:50%;background:#ff4c68;color:#fff;font-family:monospace;font-size:19px;font-weight:900;line-height:26px;cursor:pointer;box-shadow:0 3px 0 #111;z-index:4;">x</button>
+          onclick="event.preventDefault(); event.stopPropagation(); window._dismissBattleGuide && window._dismissBattleGuide()"
+          ontouchend="event.preventDefault(); event.stopPropagation(); window._dismissBattleGuide && window._dismissBattleGuide()"
+          style="position:absolute;top:14px;right:14px;width:34px;height:34px;border:3px solid #111;border-radius:50%;background:#ff4c68;color:#fff;font-family:monospace;font-size:19px;font-weight:900;line-height:26px;cursor:pointer;box-shadow:0 3px 0 #111;z-index:4;pointer-events:auto;">x</button>
         <div class="zzz-guide-badge">BATTLE GUIDE</div>
         <p id="tutorialGuideText" class="zzz-guide-text"></p>
         <div class="zzz-guide-divider"></div>
