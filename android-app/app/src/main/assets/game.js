@@ -817,10 +817,10 @@ const starts = [
 ];
 
 const powerZoneStarts = [
-  { x: 3, y: 3 },
-  { x: COLS - 4, y: ROWS - 4 },
-  { x: COLS - 4, y: 3 },
-  { x: 3, y: ROWS - 4 },
+  { x: 5, y: 5 },
+  { x: COLS - 6, y: ROWS - 6 },
+  { x: COLS - 6, y: 5 },
+  { x: 5, y: ROWS - 6 },
 ];
 
 // Character styles
@@ -5080,10 +5080,21 @@ function getLocalEscapePlan(bot, here, projectedBombTile = null, maxDepth = getL
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
   const candidates = [];
+  const requiresImmediateBombLaneExit = !!(
+    projectedBombTile &&
+    projectedBombTile.x === here.x &&
+    projectedBombTile.y === here.y
+  );
   while (queue.length > 0) {
     const current = queue.shift();
     const projectedThreat = getProjectedLocalThreatScore(bot, current.x, current.y, projectedBombTile);
-    if (current.path.length > 0 && projectedThreat === 0 && !isDanger(current.x, current.y)) {
+    const firstStep = current.path[0];
+    const firstTile = firstStep ? { x: here.x + firstStep.x, y: here.y + firstStep.y } : null;
+    const firstStepLeavesBombLane = !requiresImmediateBombLaneExit || (
+      firstTile &&
+      !wouldLocalBombThreatenTile(projectedBombTile, firstTile.x, firstTile.y, bot.range || 2)
+    );
+    if (current.path.length > 0 && firstStepLeavesBombLane && projectedThreat === 0 && !isDanger(current.x, current.y)) {
       const safeExits = countLocalSafeExits(bot, current.x, current.y);
       candidates.push({
         firstStep: current.path[0],
