@@ -2964,21 +2964,10 @@ function getServerEscapePlan(room, bot, here, projectedBombTile = null, maxDepth
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
   const candidates = [];
-  const requiresImmediateBombLaneExit = !!(
-    projectedBombTile &&
-    projectedBombTile.x === here.x &&
-    projectedBombTile.y === here.y
-  );
   while (queue.length > 0) {
     const current = queue.shift();
     const projectedThreat = getProjectedServerThreatScore(room, bot, current.x, current.y, projectedBombTile);
-    const firstStep = current.path[0];
-    const firstTile = firstStep ? { x: here.x + firstStep.x, y: here.y + firstStep.y } : null;
-    const firstStepLeavesBombLane = !requiresImmediateBombLaneExit || (
-      firstTile &&
-      !wouldBombThreatenTile(room, projectedBombTile, firstTile.x, firstTile.y, bot.range || 2)
-    );
-    if (current.path.length > 0 && firstStepLeavesBombLane && projectedThreat === 0 && !isDangerTileServer(room, current.x, current.y)) {
+    if (current.path.length > 0 && projectedThreat === 0 && !isDangerTileServer(room, current.x, current.y)) {
       const safeExits = countServerSafeExits(room, bot, current.x, current.y);
       candidates.push({
         firstStep: current.path[0],

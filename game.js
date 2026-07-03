@@ -5080,21 +5080,10 @@ function getLocalEscapePlan(bot, here, projectedBombTile = null, maxDepth = getL
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
   const candidates = [];
-  const requiresImmediateBombLaneExit = !!(
-    projectedBombTile &&
-    projectedBombTile.x === here.x &&
-    projectedBombTile.y === here.y
-  );
   while (queue.length > 0) {
     const current = queue.shift();
     const projectedThreat = getProjectedLocalThreatScore(bot, current.x, current.y, projectedBombTile);
-    const firstStep = current.path[0];
-    const firstTile = firstStep ? { x: here.x + firstStep.x, y: here.y + firstStep.y } : null;
-    const firstStepLeavesBombLane = !requiresImmediateBombLaneExit || (
-      firstTile &&
-      !wouldLocalBombThreatenTile(projectedBombTile, firstTile.x, firstTile.y, bot.range || 2)
-    );
-    if (current.path.length > 0 && firstStepLeavesBombLane && projectedThreat === 0 && !isDanger(current.x, current.y)) {
+    if (current.path.length > 0 && projectedThreat === 0 && !isDanger(current.x, current.y)) {
       const safeExits = countLocalSafeExits(bot, current.x, current.y);
       candidates.push({
         firstStep: current.path[0],
