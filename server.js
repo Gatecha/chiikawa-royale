@@ -2383,6 +2383,7 @@ function placeServerBomb(room, player) {
   const timer = bombType === "nuke_bomb" ? 3.5 : bombType === "teleport_bomb" ? 2.0 : 2.25;
   const range = bombType === "nuke_bomb" ? Math.max(player.range, 6) : player.range;
 
+  const overlapping = room.players.filter((p) => p.alive && overlapsBombServer(p, { x: tileX, y: tileY }));
   const bomb = {
     id: "bomb_" + Math.random().toString(36).substr(2, 9),
     x: tileX, y: tileY,
@@ -2390,7 +2391,7 @@ function placeServerBomb(room, player) {
     range: range,
     timer: timer,
     bombType: bombType,
-    passableFor: new Set([player.id])
+    passableFor: new Set(overlapping.map((p) => p.id))
   };
   room.bombs.push(bomb);
   player.cooldown = 0.05;
@@ -2474,7 +2475,7 @@ function updateServerBots(room, dt) {
     if (movedPixels < 0.1 && (bot.aiDir.x !== 0 || bot.aiDir.y !== 0)) {
       bot.aiStuckFrames = (bot.aiStuckFrames || 0) + 1;
       bot.aiThink = 0;
-      const rescueDir = getSafetyStepServer(room, bot, gridAtServer(bot.x, bot.y)) || getServerUnstuckStep(room, bot, gridAtServer(bot.x, bot.y));
+      const rescueDir = getSafetyStepServer(room, bot, gridAtServer(bot.x, bot.y), bot.aiDir) || getServerUnstuckStep(room, bot, gridAtServer(bot.x, bot.y), bot.aiDir);
       if (rescueDir) bot.aiDir = rescueDir;
     } else {
       bot.aiStuckFrames = 0;
@@ -2605,10 +2606,40 @@ function canMoveServer(room, px, py, actor) {
     [px - radius, py + radius],
     [px + radius, py + radius],
   ];
-  return points.every(([x, y]) => {
+  const mapClear = points.every(([x, y]) => {
     const tile = gridAtServer(x, y);
-    return !isSolidServer(room, tile.x, tile.y, actor);
+    return !isMapSolidServer(room, tile.x, tile.y);
   });
+  if (!mapClear) return false;
+
+  const isBlockedByBomb = room.bombs.some((bomb) => {
+    if (actor && bomb.passableFor && bomb.passableFor.has(actor.id)) return false;
+
+    // Check if target position overlaps the bomb
+    const tileLeft = bomb.x * TILE;
+    const tileTop = bomb.y * TILE;
+    const overlapsNext =
+      px + radius > tileLeft &&
+      px - radius < tileLeft + TILE &&
+      py + radius > tileTop &&
+      py - radius < tileTop + TILE;
+
+    if (!overlapsNext) return false;
+
+    // If target overlaps, check if actor currently overlaps the bomb
+    if (actor && overlapsBombServer(actor, bomb)) {
+      const bombCenterX = bomb.x * TILE + TILE / 2;
+      const bombCenterY = bomb.y * TILE + TILE / 2;
+      const currentDistance = Math.hypot(actor.x - bombCenterX, actor.y - bombCenterY);
+      const nextDistance = Math.hypot(px - bombCenterX, py - bombCenterY);
+      // If moving closer to the center, block it!
+      return nextDistance < currentDistance - 0.2;
+    }
+
+    return true; // solid if not overlapping currently
+  });
+
+  return !isBlockedByBomb;
 }
 
 function moveServerActor(room, actor, dx, dy, dt) {
@@ -2781,15 +2812,15 @@ function getServerEnemyTrapScore(room, bot, tile) {
   }, 0);
 }
 
-function getSafetyStepServer(room, bot, here) {
+function getSafetyStepServer(room, bot, here, forbiddenDir = null) {
   if (getServerBotThreatScore(room, here.x, here.y) === 0 && !isDangerTileServer(room, here.x, here.y) && (bot.aiStuckFrames || 0) < 2) {
     return null;
   }
-  const plan = getServerEscapePlan(room, bot, here);
+  const plan = getServerEscapePlan(room, bot, here, null, 14, forbiddenDir);
   return plan ? plan.firstStep : null;
 }
 
-function getServerEscapePlan(room, bot, here, projectedBombTile = null, maxDepth = 14) {
+function getServerEscapePlan(room, bot, here, projectedBombTile = null, maxDepth = 14, forbiddenDir = null) {
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
   const candidates = [];
@@ -2810,6 +2841,15 @@ function getServerEscapePlan(room, bot, here, projectedBombTile = null, maxDepth
       const key = `${next.x},${next.y}`;
       if (seen.has(key)) continue;
       if (isSolidServer(room, next.x, next.y, bot)) continue;
+
+      if (current.path.length === 0 && forbiddenDir) {
+        const stepX = next.x - current.x;
+        const stepY = next.y - current.y;
+        if (stepX === forbiddenDir.x && stepY === forbiddenDir.y) {
+          continue;
+        }
+      }
+
       seen.add(key);
       queue.push({
         x: next.x,
@@ -2844,17 +2884,22 @@ function getProjectedServerThreatScore(room, bot, x, y, projectedBombTile = null
   return score;
 }
 
-function getServerUnstuckStep(room, bot, here) {
-  const best = [
-    { x: here.x + 1, y: here.y },
-    { x: here.x - 1, y: here.y },
-    { x: here.x, y: here.y + 1 },
-    { x: here.x, y: here.y - 1 },
-  ]
+function getServerUnstuckStep(room, bot, here, forbiddenDir = null) {
+  const dirs = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 }
+  ];
+  const filtered = forbiddenDir 
+    ? dirs.filter(d => d.x !== forbiddenDir.x || d.y !== forbiddenDir.y)
+    : dirs;
+
+  const best = filtered
     .map((next) => ({
-      x: next.x - here.x,
-      y: next.y - here.y,
-      score: scoreServerBotMove(room, bot, next.x, next.y)
+      x: next.x,
+      y: next.y,
+      score: scoreServerBotMove(room, bot, here.x + next.x, here.y + next.y)
     }))
     .sort((a, b) => b.score - a.score)[0];
   return best && best.score > -9000 ? { x: best.x, y: best.y } : null;
