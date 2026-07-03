@@ -3934,7 +3934,7 @@ function localPlaceBomb(player) {
     questSet("lifetime_bombs_placed", (lifetimeBombs + 1).toString());
   }
 
-  bombs.push({
+  const bomb = {
     id: `local_bomb_${++localBombId}`,
     x: tile.x,
     y: tile.y,
@@ -3945,9 +3945,10 @@ function localPlaceBomb(player) {
     passableFor: new Set([player.id]),
     color: color,
     effectColor: effectColor
-  });
+  };
+  bombs.push(bomb);
   player.cooldown = 0.05;
-  return true;
+  return bomb;
 }
 
 function localTriggerExplosion(bomb) {
@@ -4723,6 +4724,24 @@ function clearBotMoveTarget(bot) {
   bot.moveDir = null;
 }
 
+function clearBotBombEscape(bot) {
+  bot.aiEscapeBombId = null;
+  bot.aiEscapeBombTile = null;
+  bot.aiEscapeDir = null;
+}
+
+function getBotBombEscapeStep(bot, bomb) {
+  if (!bot || !bomb) return null;
+  const here = gridAt(bot.x, bot.y);
+  const plan = getLocalEscapePlan(
+    bot,
+    here,
+    { x: bomb.x, y: bomb.y },
+    getLocalEscapeDepthForDifficulty() + 6
+  );
+  return plan ? plan.firstStep : null;
+}
+
 function interruptUnsafeBotMove(bot, nextDir) {
   if (!bot.moveTarget || !nextDir) return;
   const currentDir = bot.moveDir || { x: 0, y: 0 };
@@ -4806,6 +4825,20 @@ function updateAi(bot, dt) {
   const isThreatened = threatScore > 0 || danger;
   const isBombThreat = isBombOrBlastDanger(here.x, here.y) || threatScore > 0;
   const isCrowdedOnTile = isLocalBotOnBombTile(bot, here) || isLocalBotSharingTile(bot, here);
+  const escapeBomb = bot.aiEscapeBombId ? bombs.find((bomb) => bomb.id === bot.aiEscapeBombId) : null;
+  const needsBombEscape = !!(escapeBomb && overlapsBomb(bot, escapeBomb));
+  if (bot.aiEscapeBombId && (!escapeBomb || !needsBombEscape)) {
+    clearBotBombEscape(bot);
+  }
+  let forcedEscapeDir = null;
+  if (needsBombEscape) {
+    forcedEscapeDir = getBotBombEscapeStep(bot, escapeBomb) || bot.aiEscapeDir;
+    if (forcedEscapeDir) {
+      interruptUnsafeBotMove(bot, forcedEscapeDir);
+      bot.aiDir = forcedEscapeDir;
+      bot.aiThink = 0;
+    }
+  }
 
   // Human-like movement constraint:
   // If the bot is mid-tile (bot.moveTarget is set), only allow a new decision if threatened by a bomb/blast.
@@ -4817,7 +4850,7 @@ function updateAi(bot, dt) {
     shouldThink = isBombThreat || isCrowdedOnTile;
   }
 
-  if (shouldThink) {
+  if (!forcedEscapeDir && shouldThink) {
     bot.aiTarget = findLocalBotTarget(bot, here);
     if (botsWhoThoughtThisFrame >= 3 && !isThreatened) {
       bot.aiThink = 0.01; // try next frame
@@ -4937,6 +4970,11 @@ function updateAi(bot, dt) {
     }
     clearBotMoveTarget(bot);
     bot.aiDir = escapePlan.firstStep;
+    if (typeof bombPlaced === "object") {
+      bot.aiEscapeBombId = bombPlaced.id;
+      bot.aiEscapeBombTile = { x: bombPlaced.x, y: bombPlaced.y };
+      bot.aiEscapeDir = escapePlan.firstStep;
+    }
     bot.aiThink = 0;
   }
 }
