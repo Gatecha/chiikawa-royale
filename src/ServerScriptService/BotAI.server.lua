@@ -19,8 +19,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GRID_SIZE   = 4      -- Must match BombManager
 local BOT_SPEED   = 14     -- Walk speed when active
 local BOMB_FUSE   = 3.0    -- Seconds before a bomb explodes (match BombManager)
-local THINK_DELAY = 0.35   -- Seconds between AI ticks
+local THINK_DELAY = 0.30   -- Seconds between AI ticks
 local BOMB_RANGE  = 2      -- Default bot bomb range
+local MOVE_TIMEOUT = 0.8   -- Max seconds to wait for MoveTo to finish one tile step
 
 
 
@@ -88,9 +89,11 @@ local function getDangerZone()
                 for step = 1, range do
                     local tx, tz = bx + d[1]*step, bz + d[2]*step
                     local tPos = Vector3.new(tx*GRID_SIZE, obj.Position.Y, tz*GRID_SIZE)
-                    dangerous[tx .. "," .. tz] = true
+                    -- Check for wall BEFORE marking dangerous - blast stops AT the wall
                     local c = scanTile(tPos)
-                    if c["SolidWall"] or c["BreakableWall"] then break end
+                    if c["SolidWall"] then break end
+                    dangerous[tx .. "," .. tz] = true
+                    if c["BreakableWall"] then break end -- blast destroys it but stops here
                 end
             end
         end
@@ -132,6 +135,24 @@ local function countEscapeRoutes(fromPos, botCurrentGrid)
         end
     end
     return count
+end
+
+-- ── Helper: Walk to a tile and wait for arrival (with timeout) ─────────────
+local function walkToAndWait(humanoid, targetPos, currentY)
+    local goal = Vector3.new(targetPos.X, currentY, targetPos.Z)
+    humanoid:MoveTo(goal)
+    -- Wait for MoveToFinished OR timeout, whichever comes first
+    local reached = false
+    local conn
+    conn = humanoid.MoveToFinished:Connect(function()
+        reached = true
+    end)
+    local elapsed = 0
+    while not reached and elapsed < MOVE_TIMEOUT do
+        task.wait(0.05)
+        elapsed = elapsed + 0.05
+    end
+    conn:Disconnect()
 end
 
 -- Wait until no players/bots are overlapping the bomb, then enable collision
@@ -305,7 +326,7 @@ local function runBot(botModel)
                 end
             end
             if bestFlee then
-                humanoid:MoveTo(Vector3.new(bestFlee.X, currentPos.Y, bestFlee.Z))
+                walkToAndWait(humanoid, bestFlee, currentPos.Y)
             end
         else
             -- ── Normal AI: hunt + bomb ───────────────────────────────────
@@ -333,7 +354,29 @@ local function runBot(botModel)
             -- Safety: only bomb if we have at least 1 escape route
             if shouldBomb and countEscapeRoutes(currentGrid, currentGrid) >= 1 then
                 botPlaceBomb(botModel, BOMB_RANGE)
-                bombCooldown = math.ceil((BOMB_FUSE + 1.5) / THINK_DELAY)
+                bombCooldown = math.ceil((BOMB_FUSE + 0.5) / THINK_DELAY)
+
+                -- ── BUG FIX: Immediately flee after placing bomb ─────────
+                -- Re-scan danger now that our own bomb exists
+                local postBombDanger = getDangerZone()
+                local fleeTarget = nil
+                local bestFleeScore = -math.huge
+                for _, neighbor in ipairs(getNeighborTiles(currentGrid)) do
+                    if isTileWalkable(neighbor, currentGrid) then
+                        local safe  = not isPosInDanger(neighbor, postBombDanger)
+                        local exits = countEscapeRoutes(neighbor, currentGrid)
+                        local score = (safe and 30 or 0) + exits
+                        if score > bestFleeScore then
+                            bestFleeScore = score
+                            fleeTarget    = neighbor
+                        end
+                    end
+                end
+                if fleeTarget then
+                    walkToAndWait(humanoid, fleeTarget, currentPos.Y)
+                end
+                -- Skip normal movement this tick - we already moved to flee
+                continue
             end
 
             -- ── Choose next movement tile ────────────────────────────────
@@ -360,18 +403,25 @@ local function runBot(botModel)
             end
 
             -- Random roam fallback (also unsticks the bot)
-            if not moveTarget or stuckTimer > 4 then
+            if not moveTarget or stuckTimer > 3 then
                 stuckTimer = 0
+                -- BUG FIX: prefer safe tiles when unsticking
+                local bestUnstick, bestUnstickScore = nil, -math.huge
                 for _, n in ipairs(getNeighborTiles(currentGrid)) do
                     if isTileWalkable(n, currentGrid) then
-                        moveTarget = n
-                        break
+                        local safe = not isPosInDanger(n, dangerZone)
+                        local score = (safe and 10 or 0) + countEscapeRoutes(n, currentGrid)
+                        if score > bestUnstickScore then
+                            bestUnstickScore = score
+                            bestUnstick = n
+                        end
                     end
                 end
+                moveTarget = bestUnstick or moveTarget
             end
 
             if moveTarget then
-                humanoid:MoveTo(Vector3.new(moveTarget.X, currentPos.Y, moveTarget.Z))
+                walkToAndWait(humanoid, moveTarget, currentPos.Y)
             end
         end
     end
