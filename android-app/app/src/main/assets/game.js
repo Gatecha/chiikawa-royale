@@ -8454,94 +8454,13 @@ surrenderNoBtn?.addEventListener("click", () => {
   surrenderVotePopup?.classList.add("hidden");
 });
 
-function showMatchmakingModeSelection() {
-  if (!matchmakingModeSelectDialog) return;
-
-  const localPlayer = players.find(p => p.id === localPlayerId);
-  const localSquadCode = localPlayer ? localPlayer.squadCode : null;
-  const squadSize = players.filter(p => (localSquadCode ? p.squadCode === localSquadCode : p.id === localPlayerId) && !p.ai).length;
-
-  const toggleBtn = (btn, limit) => {
-    if (!btn) return;
-    if (squadSize > limit) {
-      btn.disabled = true;
-      btn.style.opacity = "0.5";
-      btn.style.pointerEvents = "none";
-    } else {
-      btn.disabled = false;
-      btn.style.opacity = "1";
-      btn.style.pointerEvents = "auto";
-    }
-  };
-
-  toggleBtn(btnModeSelectSolo, 1);
-  toggleBtn(btnModeSelectBRSolo, 1);
-  toggleBtn(btnModeSelectDuo, 2);
-  toggleBtn(btnModeSelectBRDuo, 2);
-  toggleBtn(btnModeSelectTrio, 3);
-  toggleBtn(btnModeSelectBRTrio, 3);
-
-  // Hide BR mode buttons completely if in local 4-player couch lobby mode
-  if (localFourPlayerLobbyActive) {
-    if (btnModeSelectBRSolo) btnModeSelectBRSolo.style.setProperty("display", "none", "important");
-    if (btnModeSelectBRDuo) btnModeSelectBRDuo.style.setProperty("display", "none", "important");
-    if (btnModeSelectBRTrio) btnModeSelectBRTrio.style.setProperty("display", "none", "important");
-  } else {
-    if (btnModeSelectBRSolo) btnModeSelectBRSolo.style.setProperty("display", "flex", "important");
-    if (btnModeSelectBRDuo) btnModeSelectBRDuo.style.setProperty("display", "flex", "important");
-    if (btnModeSelectBRTrio) btnModeSelectBRTrio.style.setProperty("display", "flex", "important");
-  }
-
-  matchmakingModeSelectDialog.classList.remove("hidden");
-  matchmakingModeSelectDialog.classList.add("active");
-}
-
-function getLanBotToggleValue() {
-  const checkbox = document.getElementById("lanBotToggleCheckbox");
-  return checkbox ? checkbox.checked : true;
-}
-
-function updateLanBotToggleVisibility() {
-  const container = document.getElementById("lanBotToggleContainer");
-  if (container) {
-    if (serverMode === "local") {
-      container.style.display = "inline-flex";
-    } else {
-      container.style.display = "none";
-    }
-  }
-}
-
-function handleModeSelection(chosenMode) {
-  if (matchmakingModeSelectDialog) {
-    matchmakingModeSelectDialog.classList.remove("active");
-    matchmakingModeSelectDialog.classList.add("hidden");
-  }
-
-  const isBR = isBattleRoyale(chosenMode);
-  if (isBR) {
-    showBRMatchmakingScreen(chosenMode);
-  } else {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      if (roomCode) {
-        if (localPlayerId === hostId) {
-          showOnlineMatchmakingSearch();
-          sendServerMessage("start_matchmaking", { mode: chosenMode, allowBots: getLanBotToggleValue() });
-        } else {
-          alert("Only the room host can start matchmaking!");
-        }
-      } else {
-        showOnlineMatchmakingSearch();
-        const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
-        sendServerMessage("quick_match", { name, kind: selectedCharacter, mode: chosenMode, allowBots: getLanBotToggleValue() });
-      }
-    } else {
-      startMatchmakingSearch();
-    }
-  }
-}
-
 // Return to Lobby after Victory
+const victoryLobbyBtn = document.getElementById("victoryLobbyBtn");
+if (victoryLobbyBtn) {
+  victoryLobbyBtn.addEventListener("click", () => {
+    // Clear auto-lobby timer if active
+    if (window.victoryLobbyCountdownInterval) {
+      clearInterval(window.victoryLobbyCountdownInterval);
       window.victoryLobbyCountdownInterval = null;
     }
     
@@ -9356,6 +9275,80 @@ function showMatchmakingModeSelection() {
       btn.disabled = false;
       btn.style.opacity = "1";
       btn.style.pointerEvents = "auto";
+    }
+  };
+
+  toggleBtn(btnModeSelectSolo, 1);
+  toggleBtn(btnModeSelectBRSolo, 1);
+  toggleBtn(btnModeSelectDuo, 2);
+  toggleBtn(btnModeSelectBRDuo, 2);
+  toggleBtn(btnModeSelectTrio, 3);
+  toggleBtn(btnModeSelectBRTrio, 3);
+
+  // Hide BR mode buttons completely if in local 4-player couch lobby mode
+  if (localFourPlayerLobbyActive) {
+    if (btnModeSelectBRSolo) btnModeSelectBRSolo.style.setProperty("display", "none", "important");
+    if (btnModeSelectBRDuo) btnModeSelectBRDuo.style.setProperty("display", "none", "important");
+    if (btnModeSelectBRTrio) btnModeSelectBRTrio.style.setProperty("display", "none", "important");
+  } else {
+    if (btnModeSelectBRSolo) btnModeSelectBRSolo.style.setProperty("display", "flex", "important");
+    if (btnModeSelectBRDuo) btnModeSelectBRDuo.style.setProperty("display", "flex", "important");
+    if (btnModeSelectBRTrio) btnModeSelectBRTrio.style.setProperty("display", "flex", "important");
+  }
+
+  matchmakingModeSelectDialog.classList.remove("hidden");
+  matchmakingModeSelectDialog.classList.add("active");
+}
+
+function getLanBotToggleValue() {
+  const checkbox = document.getElementById("lanBotToggleCheckbox");
+  return checkbox ? checkbox.checked : true;
+}
+
+function updateLanBotToggleVisibility() {
+  const container = document.getElementById("lanBotToggleContainer");
+  if (container) {
+    if (serverMode === "local") {
+      container.style.display = "inline-flex";
+    } else {
+      container.style.display = "none";
+    }
+  }
+}
+
+function handleModeSelection(chosenMode) {
+  if (matchmakingModeSelectDialog) {
+    matchmakingModeSelectDialog.classList.remove("active");
+    matchmakingModeSelectDialog.classList.add("hidden");
+  }
+
+  const isBR = isBattleRoyale(chosenMode);
+  if (isBR) {
+    showBRMatchmakingScreen(chosenMode);
+  } else {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      if (roomCode) {
+        if (localPlayerId === hostId) {
+          showOnlineMatchmakingSearch();
+          sendServerMessage("start_matchmaking", { mode: chosenMode, allowBots: getLanBotToggleValue() });
+        } else {
+          alert("Only the room host can start matchmaking!");
+        }
+      } else {
+        showOnlineMatchmakingSearch();
+        const name = usernameInput?.value.trim() || currentSocialUsername || "Friend";
+        sendServerMessage("quick_match", { name, kind: selectedCharacter, mode: chosenMode, allowBots: getLanBotToggleValue() });
+      }
+    } else {
+      startMatchmakingSearch();
+    }
+  }
+}
+
+if (lobbyMatchBtn) {
+  lobbyMatchBtn.addEventListener("click", () => {
+    showMatchmakingModeSelection();
+  });
 }
 
 if (btnModeSelectSolo) btnModeSelectSolo.addEventListener("click", () => handleModeSelection("solo"));
@@ -12436,6 +12429,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("btnPlayOnlineBR")?.addEventListener("click", () => {
     triggerOnlineSessionLobby();
+  });
+
+  document.getElementById("btnPlayLanMode")?.addEventListener("click", () => {
+    const nickname = (usernameInput?.value.trim()) || localStorage.getItem("local_username") || "Friend";
+    localStorage.setItem("local_username", nickname);
+    if (usernameInput) usernameInput.value = nickname;
+    if (squadLobbyUserNameEl) squadLobbyUserNameEl.textContent = nickname;
+
+    serverMode = "local";
+    updateProgressionUI();
+    connectWebSocket(true);
+
+    const gamemodesPopup = document.getElementById("gamemodesPopup");
+    if (gamemodesPopup) {
+      gamemodesPopup.classList.remove("active");
+      gamemodesPopup.classList.add("hidden");
+    }
+
+    document.querySelector('.tab-btn[data-tab="squad"]')?.click();
+    updateLanBotToggleVisibility();
+    tryPlayMusic();
+  });
+
+  document.getElementById("lanBotToggleCheckbox")?.addEventListener("change", (e) => {
+    if (serverMode === "local" && socket && socket.readyState === WebSocket.OPEN && roomCode) {
+      sendServerMessage("toggle_allow_bots", { allowBots: e.target.checked });
+    }
   });
 
   // Render mini map previews onto the voting canvasses
