@@ -379,11 +379,22 @@ function handleMessage(ws, msg) {
       } else {
         const roomCode = generateRoomCode();
         const room = createRoomObject(roomCode, ws.id, chosenMode);
+        if (typeof data.allowBots === "boolean") {
+          room.allowBots = data.allowBots;
+        }
         room.isPrivate = false;
         rooms.set(roomCode, room);
         joinPlayerToRoom(ws, room, data.name, data.kind);
         startMatchmakingTimers(room);
       }
+      break;
+    }
+
+    case "toggle_allow_bots": {
+      const room = rooms.get(ws.roomCode);
+      if (!room || room.hostId !== ws.id || room.state !== "lobby") return;
+      room.allowBots = !!data.allowBots;
+      broadcastToRoom(room, { type: "allow_bots_updated", data: { allowBots: room.allowBots } });
       break;
     }
 
@@ -1228,7 +1239,17 @@ function startMatchmakingTimers(room) {
     if (room.matchmakingElapsed >= MATCHMAKING_AUTO_FILL_SECONDS) {
       console.log(`Matchmaking timeout/fill check for room ${room.code}. Filling hidden players and starting.`);
       clearMatchmakingTimers(room);
-      fillAllRemainingWithBots(room, { staggered: true });
+      if (room.allowBots === false) {
+        const humanCount = room.players.filter(p => !p.ai).length;
+        if (humanCount >= 2) {
+          startMapVoting(room);
+        } else {
+          room.matchmakingElapsed = 0;
+          startMatchmakingTimers(room);
+        }
+      } else {
+        fillAllRemainingWithBots(room, { staggered: true });
+      }
     }
   }, 1000);
 }

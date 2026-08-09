@@ -14624,3 +14624,35 @@ body.is-iphone {
   transform-style: flat !important;
   transition: none !important;
 }
+
+/* LAN Mode Button Styling & Hover Animation */
+.btn-lan-mode {
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.btn-lan-mode:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 6px 6px 0px #000 !important;
+  filter: brightness(1.1);
+}
+
+.btn-lan-mode:active {
+  transform: translateY(1px) scale(0.99) !important;
+  box-shadow: 2px 2px 0px #000 !important;
+}
+
+/* LAN Bot Toggle Check Button */
+.lan-bot-toggle-btn {
+  transition: all 0.15s ease;
+}
+
+.lan-bot-toggle-btn:hover {
+  background: #3a3a40 !important;
+  transform: translateY(-1px);
+}
+
+.lan-bot-toggle-btn:active {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0px #000 !important;
+}
+
