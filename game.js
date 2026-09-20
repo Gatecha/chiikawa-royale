@@ -2109,7 +2109,47 @@ function promptForLocalServerAddress() {
   return normalized;
 }
 
+let onlineReconnectTimer = null;
+let onlineReconnectAttempts = 0;
+const MAX_ONLINE_RECONNECT_ATTEMPTS = 6;
+
+function scheduleOnlineReconnect() {
+  if (serverMode !== "online") return;
+  if (onlineReconnectTimer) return;
+  if (onlineReconnectAttempts >= MAX_ONLINE_RECONNECT_ATTEMPTS) {
+    if (connectionStatusIndicator) {
+      connectionStatusIndicator.textContent = "Offline (Click to retry)";
+      connectionStatusIndicator.className = "connection-status offline";
+    }
+    showToastMsg("WebSocket connection failed. The online server may be offline or blocked.", 5000);
+    return;
+  }
+
+  onlineReconnectAttempts++;
+  const delay = Math.min(1500 * Math.pow(1.4, onlineReconnectAttempts - 1), 8000);
+  console.log(`[Online WebSocket] Scheduling auto-reconnect attempt ${onlineReconnectAttempts}/${MAX_ONLINE_RECONNECT_ATTEMPTS} in ${Math.round(delay)}ms...`);
+  if (connectionStatusIndicator) {
+    connectionStatusIndicator.textContent = `Connecting (${onlineReconnectAttempts}/${MAX_ONLINE_RECONNECT_ATTEMPTS})...`;
+    connectionStatusIndicator.className = "connection-status connecting";
+  }
+
+  onlineReconnectTimer = setTimeout(() => {
+    onlineReconnectTimer = null;
+    if (serverMode === "online" && (!socket || socket.readyState === WebSocket.CLOSED)) {
+      connectWebSocket(false);
+    }
+  }, delay);
+}
+
 function connectWebSocket(forceReconnect = false) {
+  if (forceReconnect) {
+    onlineReconnectAttempts = 0;
+    if (onlineReconnectTimer) {
+      clearTimeout(onlineReconnectTimer);
+      onlineReconnectTimer = null;
+    }
+  }
+
   if (socket) {
     if (forceReconnect) {
       try { socket.close(); } catch(e) {}
@@ -2146,7 +2186,7 @@ function connectWebSocket(forceReconnect = false) {
 
   console.log("Connecting to WebSocket server:", wsUrl);
   if (connectionStatusIndicator) {
-    connectionStatusIndicator.textContent = "Connecting...";
+    connectionStatusIndicator.textContent = onlineReconnectAttempts > 0 ? `Connecting (${onlineReconnectAttempts}/${MAX_ONLINE_RECONNECT_ATTEMPTS})...` : "Connecting...";
     connectionStatusIndicator.className = "connection-status connecting";
   }
 
@@ -2155,6 +2195,11 @@ function connectWebSocket(forceReconnect = false) {
 
     socket.onopen = () => {
       console.log("WebSocket connected successfully.");
+      onlineReconnectAttempts = 0;
+      if (onlineReconnectTimer) {
+        clearTimeout(onlineReconnectTimer);
+        onlineReconnectTimer = null;
+      }
       if (connectionStatusIndicator) {
         connectionStatusIndicator.textContent = serverMode === "local" ? "LAN" : "Online";
         connectionStatusIndicator.className = "connection-status online";
@@ -2194,7 +2239,9 @@ function connectWebSocket(forceReconnect = false) {
       if (isMicActive) {
         stopMicCapture();
       }
-      if (connectionStatusIndicator) {
+      if (serverMode === "online") {
+        scheduleOnlineReconnect();
+      } else if (connectionStatusIndicator) {
         connectionStatusIndicator.textContent = "Offline";
         connectionStatusIndicator.className = "connection-status offline";
       }
@@ -2208,19 +2255,31 @@ function connectWebSocket(forceReconnect = false) {
       if (isMicActive) {
         stopMicCapture();
       }
-      const msg = serverMode === "local"
-        ? "LAN connection failed. Make sure the local server is running, both devices are on the same Wi-Fi, and the IP/port is correct."
-        : "WebSocket connection failed. The online server may be offline or blocked.";
-      showToastMsg(msg, 5000);
+      if (serverMode === "local") {
+        showToastMsg("LAN connection failed. Make sure the local server is running, both devices are on the same Wi-Fi, and the IP/port is correct.", 5000);
+      }
     };
   } catch (e) {
     console.error("Failed to establish WebSocket connection:", e);
     reportAppError("Connection Error", e.message, { source: "websocket", stack: e.stack });
-    if (connectionStatusIndicator) {
+    if (serverMode === "online") {
+      scheduleOnlineReconnect();
+    } else if (connectionStatusIndicator) {
       connectionStatusIndicator.textContent = "Offline";
       connectionStatusIndicator.className = "connection-status offline";
     }
   }
+}
+
+if (connectionStatusIndicator) {
+  connectionStatusIndicator.style.cursor = "pointer";
+  connectionStatusIndicator.title = "Click to reconnect";
+  connectionStatusIndicator.addEventListener("click", () => {
+    if (serverMode === "online" && (!socket || socket.readyState !== WebSocket.OPEN)) {
+      showToastMsg("Reconnecting to online server...", 2000);
+      connectWebSocket(true);
+    }
+  });
 }
 
 
