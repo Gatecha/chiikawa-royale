@@ -4748,8 +4748,14 @@ function moveActor(actor, dx, dy, dt) {
   }
 
   const current = gridAt(actor.x, actor.y);
-  actor.x = current.x * TILE + TILE / 2;
-  actor.y = current.y * TILE + TILE / 2;
+  if (dx !== 0 && dy === 0) {
+    actor.y = current.y * TILE + TILE / 2;
+  } else if (dy !== 0 && dx === 0) {
+    actor.x = current.x * TILE + TILE / 2;
+  } else if (dx === 0 && dy === 0) {
+    actor.x = current.x * TILE + TILE / 2;
+    actor.y = current.y * TILE + TILE / 2;
+  }
 
   if (dx === 0 && dy === 0) {
     actor.dx = 0;
@@ -4959,30 +4965,39 @@ function updateAi(bot, dt) {
   const isThreatened = threatScore > 0 || danger;
   const isBombThreat = isBombOrBlastDanger(here.x, here.y) || threatScore > 0;
   const isCrowdedOnTile = isLocalBotOnBombTile(bot, here) || isLocalBotSharingTile(bot, here);
-  const escapeBomb = bot.aiEscapeBombId ? bombs.find((bomb) => bomb.id === bot.aiEscapeBombId) : null;
+
+  // Check escape state for placed or active bomb
+  const escapeBomb = bot.aiEscapeBombId
+    ? (bombs.find((bomb) => bomb.id === bot.aiEscapeBombId) || (bot.aiEscapeBombTile ? { x: bot.aiEscapeBombTile.x, y: bot.aiEscapeBombTile.y, range: bot.range || 2, timer: 2.0 } : null))
+    : null;
   const escapeBombThreat = !!(escapeBomb && localBombThreatensTileAnyTimer(escapeBomb, here.x, here.y));
-  const needsBombEscape = !!(escapeBomb && (overlapsBomb(bot, escapeBomb) || escapeBombThreat || bot.moveTarget));
+  const needsBombEscape = !!(escapeBomb && (overlapsBomb(bot, escapeBomb) || escapeBombThreat));
   if (bot.aiEscapeBombId && (!escapeBomb || !needsBombEscape)) {
     clearBotBombEscape(bot);
   }
-  let forcedEscapeDir = null;
-  if (needsBombEscape) {
-    forcedEscapeDir = getBotBombEscapeStep(bot, escapeBomb) || bot.aiEscapeDir;
-    if (forcedEscapeDir) {
-      interruptUnsafeBotMove(bot, forcedEscapeDir);
-      bot.aiDir = forcedEscapeDir;
-      bot.aiThink = 0;
+
+  // Handle mid-tile moveTarget safety check:
+  // If moving, only abort moveTarget if the target tile has become an immediate deadly threat (active blast or bomb detonating in < 0.4s)
+  if (bot.moveTarget) {
+    const targetTile = gridAt(bot.moveTarget.x, bot.moveTarget.y);
+    const targetHasBlast = blasts.some((b) => b.cells.some((c) => c.x === targetTile.x && c.y === targetTile.y));
+    const targetHasDeadlyBomb = bombs.some((b) => b.x === targetTile.x && b.y === targetTile.y && b.timer < 0.4);
+    if (targetHasBlast || targetHasDeadlyBomb) {
+      clearBotMoveTarget(bot);
     }
   }
 
-  // Human-like movement constraint:
-  // If the bot is mid-tile (bot.moveTarget is set), only allow a new decision if threatened by a bomb/blast.
-  // Otherwise, wait until the bot reaches the center of the tile.
+  let forcedEscapeDir = null;
+  if (needsBombEscape && !bot.moveTarget) {
+    forcedEscapeDir = getBotBombEscapeStep(bot, escapeBomb) || bot.aiEscapeDir || getLocalUnstuckStep(bot, here);
+    if (forcedEscapeDir) {
+      bot.aiDir = forcedEscapeDir;
+    }
+  }
+
   let shouldThink = false;
   if (!bot.moveTarget) {
     shouldThink = (isThreatened || isCrowdedOnTile || bot.aiThink <= 0);
-  } else {
-    shouldThink = isCrowdedOnTile || (isBombThreat && getLocalBotMoveTargetThreat(bot) > threatScore);
   }
 
   if (!forcedEscapeDir && shouldThink) {
@@ -4995,62 +5010,53 @@ function updateAi(bot, dt) {
       }
 
       if (bot.hasSlide && tryLocalBotKickStrategic(bot, here)) {
-        return;
-      }
-
-      if (bot.hasPunch && tryLocalBotPunchStrategic(bot, here)) {
+        // Kick direction set in bot.aiDir, continue to moveActor
+      } else if (bot.hasPunch && tryLocalBotPunchStrategic(bot, here)) {
         bot.aiThink = 0;
         return;
-      }
-
-      const safetyDir = getSafetyStepLocal(bot, here) || (isCrowdedOnTile ? getLocalUnstuckStep(bot, here) : null);
-      if (safetyDir) {
-        interruptUnsafeBotMove(bot, safetyDir);
-        bot.aiDir = safetyDir;
-        // Make reaction time slightly slower on easy/hard
-        if (localBotsDifficulty === "easy") {
-          bot.aiThink = 0.20;
-        } else if (localBotsDifficulty === "hard") {
-          bot.aiThink = 0.15;
-        } else if (localBotsDifficulty === "expert") {
-          bot.aiThink = 0.08;
-        } else {
-          bot.aiThink = 0.10; // pro
-        }
       } else {
-        const dirs = [
-          { x: 1, y: 0 },
-          { x: -1, y: 0 },
-          { x: 0, y: 1 },
-          { x: 0, y: -1 },
-          { x: 0, y: 0 },
-        ];
-        const useful = dirs
-          .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
-          .sort((a, b) => b.score - a.score);
-
-        // Adjust direction selection based on difficulty
-        let selectedDir = useful[0];
-        if (localBotsDifficulty === "easy" && Math.random() < 0.50) {
-          // 50% chance of random direction on Easy
-          selectedDir = dirs[Math.floor(Math.random() * dirs.length)];
-        } else if (localBotsDifficulty === "hard" && Math.random() < 0.15) {
-          // 15% chance of picking second best choice on Hard
-          selectedDir = useful[1] || useful[0];
-        }
-
-        bot.aiDir = selectedDir;
-
-        // Adjust thinking intervals (reaction speed)
-        if (localBotsDifficulty === "easy") {
-          bot.aiThink = danger ? 0.25 : 0.35 + Math.random() * 0.25;
-        } else if (localBotsDifficulty === "hard") {
-          bot.aiThink = danger ? 0.18 : 0.22 + Math.random() * 0.15;
-        } else if (localBotsDifficulty === "expert") {
-          bot.aiThink = danger ? 0.08 : 0.12 + Math.random() * 0.10;
+        const safetyDir = getSafetyStepLocal(bot, here) || (isCrowdedOnTile ? getLocalUnstuckStep(bot, here) : null);
+        if (safetyDir) {
+          bot.aiDir = safetyDir;
+          if (localBotsDifficulty === "easy") {
+            bot.aiThink = 0.20;
+          } else if (localBotsDifficulty === "hard") {
+            bot.aiThink = 0.15;
+          } else if (localBotsDifficulty === "expert") {
+            bot.aiThink = 0.08;
+          } else {
+            bot.aiThink = 0.10; // pro
+          }
         } else {
-          // pro (default)
-          bot.aiThink = danger ? 0.12 : 0.16 + Math.random() * 0.12;
+          const dirs = [
+            { x: 1, y: 0 },
+            { x: -1, y: 0 },
+            { x: 0, y: 1 },
+            { x: 0, y: -1 },
+            { x: 0, y: 0 },
+          ];
+          const useful = dirs
+            .map((d) => ({ ...d, score: scoreAiMove(bot, here.x + d.x, here.y + d.y) }))
+            .sort((a, b) => b.score - a.score);
+
+          let selectedDir = useful[0];
+          if (localBotsDifficulty === "easy" && Math.random() < 0.50) {
+            selectedDir = dirs[Math.floor(Math.random() * dirs.length)];
+          } else if (localBotsDifficulty === "hard" && Math.random() < 0.15) {
+            selectedDir = useful[1] || useful[0];
+          }
+
+          bot.aiDir = selectedDir;
+
+          if (localBotsDifficulty === "easy") {
+            bot.aiThink = danger ? 0.25 : 0.35 + Math.random() * 0.25;
+          } else if (localBotsDifficulty === "hard") {
+            bot.aiThink = danger ? 0.18 : 0.22 + Math.random() * 0.15;
+          } else if (localBotsDifficulty === "expert") {
+            bot.aiThink = danger ? 0.08 : 0.12 + Math.random() * 0.10;
+          } else {
+            bot.aiThink = danger ? 0.12 : 0.16 + Math.random() * 0.12;
+          }
         }
       }
     }
@@ -5062,7 +5068,7 @@ function updateAi(bot, dt) {
     bot.aiStuckFrames = (bot.aiStuckFrames || 0) + 1;
     bot.aiThink = 0;
     clearBotMoveTarget(bot);
-    const rescueDir = getSafetyStepLocal(bot, gridAt(bot.x, bot.y)) || getLocalUnstuckStep(bot, gridAt(bot.x, bot.y));
+    const rescueDir = getSafetyStepLocal(bot, gridAt(bot.x, bot.y), bot.aiDir) || getLocalUnstuckStep(bot, gridAt(bot.x, bot.y), bot.aiDir);
     if (rescueDir) bot.aiDir = rescueDir;
   } else {
     bot.aiStuckFrames = 0;
@@ -5102,8 +5108,11 @@ function updateAi(bot, dt) {
       bot.aiBombCooldown = 0.7 + Math.random() * 0.5;
     }
     clearBotMoveTarget(bot);
-    clearBotBombEscape(bot);
-    bot.aiDir = getLocalUnstuckStep(bot, tile) || bot.aiDir || { x: 0, y: 0 };
+    const escapePlan = getLocalEscapePlan(bot, tile, { x: tile.x, y: tile.y });
+    bot.aiEscapeBombId = typeof bombPlaced === "object" && bombPlaced.id ? bombPlaced.id : `bomb_at_${tile.x}_${tile.y}`;
+    bot.aiEscapeBombTile = { x: tile.x, y: tile.y };
+    bot.aiEscapeDir = escapePlan ? escapePlan.firstStep : null;
+    bot.aiDir = bot.aiEscapeDir || getLocalUnstuckStep(bot, tile) || { x: 0, y: 0 };
     bot.aiThink = 0;
   }
 }
@@ -5166,37 +5175,65 @@ function tryLocalBotPunchStrategic(bot, tile) {
   return false;
 }
 
-function getSafetyStepLocal(bot, here) {
+function getDistToNearestBombLocal(x, y) {
+  if (!bombs || !bombs.length) return 999;
+  let minDist = 999;
+  bombs.forEach((b) => {
+    const d = Math.abs(b.x - x) + Math.abs(b.y - y);
+    if (d < minDist) minDist = d;
+  });
+  return minDist;
+}
+
+function getSafetyStepLocal(bot, here, forbiddenDir = null) {
   if (getLocalBotThreatScore(here.x, here.y) === 0 && !isDanger(here.x, here.y) && (bot.aiStuckFrames || 0) < 2) {
     return null;
   }
-  const plan = getLocalEscapePlan(bot, here);
+  const plan = getLocalEscapePlan(bot, here, null, getLocalEscapeDepthForDifficulty(), forbiddenDir);
   return plan ? plan.firstStep : null;
 }
 
 function getLocalEscapeDepthForDifficulty() {
   let maxDepth = 10;
-  if (localBotsDifficulty === "easy") maxDepth = 4;
+  if (localBotsDifficulty === "easy") maxDepth = 6;
   else if (localBotsDifficulty === "pro") maxDepth = 14;
   else if (localBotsDifficulty === "expert") maxDepth = 18;
   return maxDepth;
 }
 
-function getLocalEscapePlan(bot, here, projectedBombTile = null, maxDepth = getLocalEscapeDepthForDifficulty()) {
+function getLocalEscapePlan(bot, here, projectedBombTile = null, maxDepth = getLocalEscapeDepthForDifficulty(), forbiddenDir = null) {
   const queue = [{ x: here.x, y: here.y, path: [] }];
   const seen = new Set([`${here.x},${here.y}`]);
   const candidates = [];
+  let bestFallback = null;
+  let minFallbackThreat = Infinity;
+  let maxFallbackDist = -1;
+
   while (queue.length > 0) {
     const current = queue.shift();
     const projectedThreat = getProjectedLocalThreatScore(bot, current.x, current.y, projectedBombTile);
-    if (current.path.length > 0 && projectedThreat === 0 && !isDanger(current.x, current.y)) {
-      const safeExits = countLocalSafeExits(bot, current.x, current.y);
-      candidates.push({
-        firstStep: current.path[0],
-        depth: current.path.length,
-        safeExits,
-        score: safeExits * 80 - current.path.length * 8
-      });
+    if (current.path.length > 0) {
+      if (projectedThreat === 0 && !isDanger(current.x, current.y)) {
+        const safeExits = countLocalSafeExits(bot, current.x, current.y);
+        candidates.push({
+          firstStep: current.path[0],
+          depth: current.path.length,
+          safeExits,
+          score: safeExits * 50 - current.path.length * 10
+        });
+      } else {
+        const bombDist = getDistToNearestBombLocal(current.x, current.y);
+        if (projectedThreat < minFallbackThreat || (projectedThreat === minFallbackThreat && bombDist > maxFallbackDist)) {
+          minFallbackThreat = projectedThreat;
+          maxFallbackDist = bombDist;
+          bestFallback = {
+            firstStep: current.path[0],
+            depth: current.path.length,
+            safeExits: 0,
+            score: -projectedThreat + bombDist * 10
+          };
+        }
+      }
     }
     if (current.path.length >= maxDepth) continue;
     const dirs = getRankedLocalEscapeDirs(bot, current, projectedBombTile);
@@ -5204,6 +5241,11 @@ function getLocalEscapePlan(bot, here, projectedBombTile = null, maxDepth = getL
       const key = `${dir.x},${dir.y}`;
       if (seen.has(key)) continue;
       if (isSolid(dir.x, dir.y, bot)) continue;
+      if (current.path.length === 0 && forbiddenDir) {
+        const stepX = dir.x - current.x;
+        const stepY = dir.y - current.y;
+        if (stepX === forbiddenDir.x && stepY === forbiddenDir.y) continue;
+      }
       seen.add(key);
       queue.push({
         x: dir.x,
@@ -5212,7 +5254,10 @@ function getLocalEscapePlan(bot, here, projectedBombTile = null, maxDepth = getL
       });
     }
   }
-  return candidates.sort((a, b) => b.score - a.score)[0] || null;
+  if (candidates.length > 0) {
+    return candidates.sort((a, b) => b.score - a.score)[0];
+  }
+  return bestFallback;
 }
 
 function getRankedLocalEscapeDirs(bot, current, projectedBombTile) {
@@ -5230,21 +5275,24 @@ function getProjectedLocalThreatScore(bot, x, y, projectedBombTile = null) {
   if (projectedBombTile && wouldLocalBombThreatenTile(projectedBombTile, x, y, bot.range || 2)) {
     score = Math.max(score, 1700);
   }
-  if (bot && bot.moveTarget) {
-    const targetTile = gridAt(bot.moveTarget.x, bot.moveTarget.y);
-    if (targetTile.x === x && targetTile.y === y && getLocalBotThreatScore(x, y) > 0) {
-      score = Math.max(score, 2200);
-    }
-  }
   return score;
 }
 
-function getLocalUnstuckStep(bot, here) {
-  const best = neighbors(here.x, here.y)
+function getLocalUnstuckStep(bot, here, forbiddenDir = null) {
+  const dirs = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ];
+  const filtered = forbiddenDir
+    ? dirs.filter((d) => d.x !== forbiddenDir.x || d.y !== forbiddenDir.y)
+    : dirs;
+  const best = filtered
     .map((dir) => ({
-      x: dir.x - here.x,
-      y: dir.y - here.y,
-      score: scoreAiMove(bot, dir.x, dir.y)
+      x: dir.x,
+      y: dir.y,
+      score: scoreAiMove(bot, here.x + dir.x, here.y + dir.y)
     }))
     .sort((a, b) => b.score - a.score)[0];
   return best && best.score > -9000 ? { x: best.x, y: best.y } : null;
@@ -5271,6 +5319,10 @@ function isCrateOnPathToEnemy(bot, tile) {
 
 function shouldLocalBotBomb(bot, tile, canAttackEnemy, strategicCrate, nearbyEnemy, escapePlan = null) {
   if ((bot.aiBombCooldown || 0) > 0) return false;
+
+  // Crucial: NEVER bomb if the bot cannot escape safely!
+  if (!hasEscapeTileLocal(bot, tile)) return false;
+
   const trapScore = getLocalEnemyTrapScore(bot, tile);
 
   // Always bomb when we have a clean shot at an enemy
@@ -5333,9 +5385,12 @@ function scoreAiMove(bot, x, y) {
   // Small random jitter so bots don't always pick the same path
   let score = Math.random() * 1.5;
   const here = gridAt(bot.x, bot.y);
-  // Discourage standing still
-  if (x === here.x && y === here.y) score -= 80;
   const hereThreat = getLocalBotThreatScore(here.x, here.y);
+
+  // Discourage standing still, and NEVER stand still in danger!
+  if (x === here.x && y === here.y) {
+    score -= hereThreat > 0 ? 8000 : 80;
+  }
   if ((bot.aiRecentTiles || []).includes(`${x},${y}`) && hereThreat === 0) {
     score -= 70;
   }
@@ -5357,8 +5412,16 @@ function scoreAiMove(bot, x, y) {
   if (threat > 0) {
     if (hereThreat === 0) {
       score -= 5000;
-    } else if (threat >= hereThreat) {
-      score -= 1800;
+    } else if (threat > hereThreat) {
+      score -= 2500;
+    } else {
+      const curDist = getDistToNearestBombLocal(here.x, here.y);
+      const nextDist = getDistToNearestBombLocal(x, y);
+      if (nextDist > curDist) {
+        score -= 400;
+      } else {
+        score -= 1500;
+      }
     }
     return score;
   }
@@ -5509,7 +5572,7 @@ function localBombThreatensTileAnyTimer(bomb, x, y) {
 }
 
 function countLocalSafeExits(bot, x, y) {
-  return neighbors(x, y).filter((n) => !isSolid(n.x, n.y, bot) && getLocalBotThreatScore(n.x, n.y) < 1000).length;
+  return neighbors(x, y).filter((n) => !isSolid(n.x, n.y, bot) && getLocalBotThreatScore(n.x, n.y) === 0 && !isDanger(n.x, n.y)).length;
 }
 
 function findLocalBotTarget(bot, here) {
@@ -5750,19 +5813,7 @@ function isPixelOutsideZone(px, py) {
 
 function isBombOrBlastDanger(x, y) {
   if (blasts.some((blast) => blast.cells.some((cell) => cell.x === x && cell.y === y))) return true;
-  return bombs.some((bomb) => {
-    if (bomb.x === x && bomb.y === y) return true;
-    if (bomb.x !== x && bomb.y !== y) return false;
-    const distance = Math.abs(bomb.x - x) + Math.abs(bomb.y - y);
-    if (distance > bomb.range) return false;
-    const stepX = Math.sign(x - bomb.x);
-    const stepY = Math.sign(y - bomb.y);
-    for (let i = 1; i <= distance; i += 1) {
-      const tile = map[bomb.y + stepY * i]?.[bomb.x + stepX * i];
-      if (tile === "wall" || tile === "crate") return false;
-    }
-    return bomb.timer < 1.2;
-  });
+  return bombs.some((bomb) => localBombThreatensTileAnyTimer(bomb, x, y));
 }
 
 function isDanger(x, y) {
